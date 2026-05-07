@@ -222,6 +222,19 @@ public sealed class WorkflowActionResultBuilder
         };
     }
 
+    public WorkflowActionResultEnvelope BuildExecutionValidatedSuccess(
+        NormalizedWorkflowAction normalized,
+        string requestHash,
+        string message)
+    {
+        var result = BaseResult(normalized, requestHash, success: true, resultCode: "Success") with
+        {
+            Message = message
+        };
+
+        return new WorkflowActionResultEnvelope { Result = result };
+    }
+
     private static WorkflowActionResultRecord BaseResult(
         NormalizedWorkflowAction normalized,
         string? requestHash,

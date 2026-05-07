@@ -15,7 +15,7 @@ public sealed class CanonicalRequestHasher
         {
             ["actor.roles"] = envelope.Actor?.Roles is null
                 ? null
-                : envelope.Actor.Roles.Where(role => !string.IsNullOrWhiteSpace(role)).Order(StringComparer.Ordinal).ToArray(),
+                : envelope.Actor.Roles.Where(role => !string.IsNullOrWhiteSpace(role)).ToArray(),
             ["actor.userId"] = envelope.Actor?.UserId,
             ["businessObject.objectId"] = envelope.BusinessObject?.ObjectId,
             ["businessObject.objectType"] = envelope.BusinessObject?.ObjectType,
@@ -34,8 +34,51 @@ public sealed class CanonicalRequestHasher
             ["workflow.workflowKey"] = envelope.Workflow?.WorkflowKey
         };
 
-        var json = JsonSerializer.Serialize(canonical, WorkflowJson.Options);
+        var json = SerializeCanonical(canonical);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+    }
+
+    private static string SerializeCanonical(object? value)
+    {
+        var element = JsonSerializer.SerializeToElement(value);
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
+        {
+            WriteCanonical(element, writer);
+        }
+
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static void WriteCanonical(JsonElement element, Utf8JsonWriter writer)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in element.EnumerateObject().OrderBy(property => property.Name, StringComparer.Ordinal))
+                {
+                    writer.WritePropertyName(property.Name);
+                    WriteCanonical(property.Value, writer);
+                }
+
+                writer.WriteEndObject();
+                break;
+
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in element.EnumerateArray())
+                {
+                    WriteCanonical(item, writer);
+                }
+
+                writer.WriteEndArray();
+                break;
+
+            default:
+                element.WriteTo(writer);
+                break;
+        }
     }
 
     private static object? Canonicalize(JsonElement element)

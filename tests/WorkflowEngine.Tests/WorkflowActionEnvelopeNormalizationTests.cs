@@ -55,5 +55,15 @@ public sealed class WorkflowActionEnvelopeNormalizationTests
 
         Assert.Equal(hasher.ComputeHash(left), hasher.ComputeHash(right));
     }
-}
 
+    [Fact]
+    public void HashPreservesActorRoleArrayOrder()
+    {
+        var left = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var right = WorkflowActionEnvelopeTestData.DeserializeValid();
+        left.Actor!.Roles = ["Maker", "Checker"];
+        right.Actor!.Roles = ["Checker", "Maker"];
+
+        Assert.NotEqual(hasher.ComputeHash(left), hasher.ComputeHash(right));
+    }
+}

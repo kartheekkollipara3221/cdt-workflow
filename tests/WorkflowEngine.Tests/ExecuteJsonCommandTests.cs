@@ -4,6 +4,7 @@ using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
+using WorkflowEngine.Application.WorkflowExecution;
 
 namespace WorkflowEngine.Tests;
 
@@ -13,7 +14,8 @@ public sealed class ExecuteJsonCommandTests
         new WorkflowActionEnvelopeValidator(),
         new WorkflowActionEnvelopeNormalizer(),
         new CanonicalRequestHasher(),
-        new WorkflowActionResultBuilder());
+        new WorkflowActionResultBuilder(),
+        new FakeWorkflowExecutionService());
 
     [Fact]
     public void ExecuteJsonReturnsReadableTextByDefault()
@@ -23,8 +25,8 @@ public sealed class ExecuteJsonCommandTests
         var result = handler.Execute([path]);
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Contains("Result: AcceptedForPhase3Validation", result.Message, StringComparison.Ordinal);
-        Assert.Contains("Workflow transition execution is deferred to Phase 4", result.Message, StringComparison.Ordinal);
+        Assert.Contains("Result: Success", result.Message, StringComparison.Ordinal);
+        Assert.Contains("persisted validation passed", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -38,10 +40,10 @@ public sealed class ExecuteJsonCommandTests
         Assert.Equal(0, result.ExitCode);
         Assert.NotNull(envelope);
         Assert.True(envelope.Result.Success);
-        Assert.Equal("AcceptedForPhase3Validation", envelope.Result.ResultCode);
+        Assert.Equal("Success", envelope.Result.ResultCode);
         Assert.NotNull(envelope.Result.RequestHash);
         Assert.Equal(envelope.Result.RequestHash, envelope.Result.Diagnostics.RequestHash);
-        Assert.False(envelope.Result.Notification?.Queued);
+        Assert.Null(envelope.Result.Notification);
     }
 
     [Fact]
@@ -83,6 +85,24 @@ public sealed class ExecuteJsonCommandTests
     }
 
     [Fact]
+    public void ExecuteJsonParsesAdminOverride()
+    {
+        var service = new FakeWorkflowExecutionService();
+        var localHandler = new ExecuteJsonCommandHandler(
+            new WorkflowActionEnvelopeValidator(),
+            new WorkflowActionEnvelopeNormalizer(),
+            new CanonicalRequestHasher(),
+            new WorkflowActionResultBuilder(),
+            service);
+        var path = WorkflowActionEnvelopeTestData.WriteTempEnvelope(WorkflowActionEnvelopeTestData.ValidSubmitJson);
+
+        var result = localHandler.Execute([path, "--admin-override"]);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.True(service.LastRequest?.AdminOverride);
+    }
+
+    [Fact]
     public void CommandRegistryDispatchesExecuteJsonWhenRegistered()
     {
         var path = WorkflowActionEnvelopeTestData.WriteTempEnvelope(WorkflowActionEnvelopeTestData.ValidSubmitJson);
@@ -92,5 +112,19 @@ public sealed class ExecuteJsonCommandTests
 
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("not implemented yet", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+file sealed class FakeWorkflowExecutionService : IWorkflowExecutionService
+{
+    public WorkflowExecutionRequest? LastRequest { get; private set; }
+
+    public WorkflowActionResultEnvelope Execute(WorkflowExecutionRequest request)
+    {
+        LastRequest = request;
+        return new WorkflowActionResultBuilder().BuildExecutionValidatedSuccess(
+            request.Normalized,
+            request.RequestHash,
+            "Persisted validation passed.");
     }
 }
