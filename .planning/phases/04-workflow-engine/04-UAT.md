@@ -7,7 +7,7 @@ source:
   - 04-03-SUMMARY.md
   - 04-04-SUMMARY.md
 started: "2026-05-07T17:50:00Z"
-updated: "2026-05-07T17:06:35Z"
+updated: "2026-05-07T17:45:07Z"
 ---
 
 ## Current Test
@@ -30,9 +30,11 @@ result: pass
 
 ### 4. Checker Return To Maker Branch
 expected: Execute 03-checker-return-to-maker.json from CheckerReview. The result is Success, CheckerReviewTask is closed, state moves to ReturnedToMaker, MakerReworkTask is created with no due date, WorkflowReturnedToMaker notification is queued to Maker, and audit records CheckerReturnToMaker.
-result: issue
+result: pass
 reported: "none of the show commands are working"
 severity: major
+retest: pass
+retested: "2026-05-07T17:45:07Z"
 
 ### 5. Trading Desk Return To Maker Branch
 expected: On a fresh workflow branch, execute SubmitForChecker, CheckerSendToTradingDesk, then TradingReturnToMaker with overrides. The result is Success, TradingDeskReviewTask is closed, state moves to ReturnedToMaker, MakerReworkTask is created, WorkflowReturnedToMaker notification is queued to Maker, and audit records TradingReturnToMaker.
@@ -53,8 +55,8 @@ result: pass
 ## Summary
 
 total: 8
-passed: 7
-issues: 1
+passed: 8
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
