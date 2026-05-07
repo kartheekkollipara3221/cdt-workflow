@@ -1,7 +1,7 @@
 # Roadmap: Reusable .NET Workflow Engine Console POC
 
 **Source of truth:** Repository-root `PROJECT.md`, especially section 24.
-**Planning mode:** Interactive, coarse phases, sequential execution.
+**Planning mode:** Auto, coarse phases, parallel execution within milestone boundaries.
 
 ## Phase Overview
 
@@ -11,7 +11,7 @@
 | 2 | SQL Schema and Seed Data | Persist workflow metadata/runtime tables and prove Portfolio Trade seed data. | SQL-01, SQL-02, SQL-03, SQL-04, PT-01 | Pending |
 | 3 | Workflow Contracts and Console Actions | Implement request/response DTOs plus `execute-json` and `show-context` parsing/output. | CON-01, CON-02, CON-03, CON-04 | Pending |
 | 4 | Workflow Engine | Execute metadata-driven workflow transitions with validation, tasks, audit, notifications, idempotency, concurrency, and refreshed context. | ENG-01, ENG-02, ENG-03, ENG-04, ENG-05, ENG-06, ENG-07, ENG-08, PT-02, PT-03, PT-04, PT-05 | Pending |
-| 5 | SLA Monitor | Demonstrate SLA due-date scanning and notification outbox processing. | SLA-01, SLA-02, SLA-03 | Pending |
+| 5 | SLA Monitor and Notification Senders | Demonstrate SLA due-date scanning and notification outbox processing through configurable senders. | SLA-01, SLA-02, SLA-03, SLA-04 | Pending |
 | 6 | Samples, Tests, and Demo | Complete samples, automated tests, demo scripts, and README. | DOC-01, DOC-02, DOC-03, DOC-04 | Pending |
 
 ## Phase Details
@@ -81,20 +81,21 @@
 
 **Quality gate before Phase 5:** Run build, tests, `init-db`, `verify-seed`, and required branch sample commands from `PROJECT.md` section 21.
 
-### Phase 5: SLA Monitor
+### Phase 5: SLA Monitor and Notification Senders
 
-**Goal:** `run-sla` and `process-notification-outbox` work. SLA durations are short enough to demo overdue behavior. `SlaTaskOverdue` is queued at most once per task.
+**Goal:** `run-sla` and `process-notification-outbox` work. SLA durations are short enough to demo overdue behavior. `SlaTaskOverdue` is queued at most once per task, and notification delivery is selected by configuration.
 
-**Requirements:** SLA-01, SLA-02, SLA-03
+**Requirements:** SLA-01, SLA-02, SLA-03, SLA-04
 
 **Success criteria:**
 
 1. Pending tasks with overdue `DueAtUtc` queue `SlaTaskOverdue` notifications.
 2. Re-running SLA monitor does not create duplicate overdue notifications for the same task.
 3. Completed tasks and completed workflows do not generate new SLA notifications.
-4. Notification outbox processing command shows pending/processed records without sending real email.
+4. Notification outbox processing command shows pending/processed records without sending real email by default.
+5. `ConsoleNotificationSender`, `NoOpNotificationSender`, and MailKit-backed `SmtpNotificationSender` are selected by configuration and covered by appropriate tests.
 
-**Quality gate before Phase 6:** Run build, tests, and an SLA demo command path.
+**Quality gate before Phase 6:** Run build, tests, and an SLA demo command path. SMTP integration tests are opt-in only against a local fake SMTP server.
 
 ### Phase 6: Samples, Tests, and Demo
 
@@ -107,14 +108,14 @@
 1. Required sample JSON files from `PROJECT.md` section 19 exist and execute successfully.
 2. Required tests from `PROJECT.md` section 20 pass.
 3. Demo scripts from `PROJECT.md` section 25 prove happy path, Checker Return to Maker, and Trading Desk Return to Maker branches.
-4. README explains setup, SQL configuration, commands, workflow context, JSON envelopes, SLA, audit, and reusable engine boundaries.
+4. README explains setup, SQL configuration, commands, workflow context, JSON envelopes, SLA, audit, notification sender configuration, and reusable engine boundaries.
 5. Final quality gates from `PROJECT.md` section 21 pass or any unrun command is documented with the exact reason.
 
 ## Coverage
 
-- v1 requirements: 30
-- Mapped to phases: 30
+- v1 requirements: 32
+- Mapped to phases: 32
 - Unmapped: 0
 
 ---
-*Roadmap created: May 5, 2026 from repository-root PROJECT.md section 24*
+*Roadmap created: May 7, 2026 from repository-root PROJECT.md section 24*

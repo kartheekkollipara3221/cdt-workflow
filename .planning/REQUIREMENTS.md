@@ -1,6 +1,6 @@
 # Requirements: Reusable .NET Workflow Engine Console POC
 
-**Defined:** May 5, 2026
+**Defined:** May 7, 2026
 **Core Value:** A user can run the console, pass a standard workflow action JSON envelope, and see SQL metadata drive workflow state, tasks, notifications, SLA, idempotency, concurrency, and audit without Portfolio Trade logic embedded in the engine.
 
 The repository-root `PROJECT.md` is authoritative. This file converts that contract into checkable GSD requirement IDs for roadmap and phase tracking.
@@ -50,14 +50,15 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 - [ ] **SLA-01**: `run-sla` scans pending tasks and queues `SlaTaskOverdue` notifications when due dates are overdue.
 - [ ] **SLA-02**: SLA overdue notifications are queued at most once per task.
-- [ ] **SLA-03**: `process-notification-outbox` demonstrates notification outbox processing without sending real email.
+- [ ] **SLA-03**: `process-notification-outbox` demonstrates notification outbox processing through configured senders without sending real email by default.
+- [ ] **SLA-04**: SMTP notification delivery is implemented behind `INotificationSender` with MailKit, configuration-driven enablement, and fake/local SMTP tests only.
 
 ### Samples, Tests, and Documentation
 
 - [ ] **DOC-01**: All required sample JSON files from `PROJECT.md` section 19 exist and include expected test expectations.
-- [ ] **DOC-02**: Automated tests cover seed data, transitions, idempotency, concurrency, start workflow, mocked section data, envelope validation, SLA, execute-json, show-context, workflow context, and workflow action results.
+- [ ] **DOC-02**: Automated tests cover seed data, transitions, idempotency, concurrency, start workflow, mocked section data, envelope validation, SLA, notification senders, execute-json, show-context, workflow context, and workflow action results.
 - [ ] **DOC-03**: Demo scripts prove happy path, Checker Return to Maker, and Trading Desk Return to Maker branch behavior.
-- [ ] **DOC-04**: README explains the reusable workflow engine POC, console commands, workflow context, JSON envelopes, SQL setup, return paths, SLA, audit, and demo flow.
+- [ ] **DOC-04**: README explains the reusable workflow engine POC, console commands, workflow context, JSON envelopes, SQL setup, return paths, SLA, audit, notification sender configuration, and demo flow.
 
 ## v2 Requirements
 
@@ -67,6 +68,8 @@ Deferred unless the user explicitly starts a future milestone.
 - **V2-02**: Add business-day holiday calendars for SLA calculations.
 - **V2-03**: Add dashboard/reporting UI.
 - **V2-04**: Add real enterprise authentication and authorization.
+- **V2-05**: Add SQL user-to-role mapping.
+- **V2-06**: Add failure audit records for rejected or rolled-back actions.
 
 ## Out of Scope
 
@@ -74,10 +77,11 @@ Deferred unless the user explicitly starts a future milestone.
 |---------|--------|
 | Web UI or InfoPath replacement UI | The form/UI layer is handled separately; this POC proves workflow behavior. |
 | Full field-level form validation | Mocked section data is enough for workflow execution. |
-| Real SMTP/email sending | The POC persists notification outbox records only. |
+| Real email delivery in default dev/test settings | SMTP code path may exist, but real delivery is disabled by configuration in dev/test. |
 | Parallel approvals or multiple pending tasks | v1 is single-active-state by requirement. |
 | CQRS, MediatR, event sourcing, BPMN, saga frameworks, brokers, plugin systems, microservices, or dynamic rule languages | Explicitly excluded to keep the POC small and reusable. |
 | Hardcoded Portfolio Trade engine logic | Portfolio Trade must remain sample metadata, not engine behavior. |
+| SQL user-to-role lookup | v1 receives roles from console arguments or future auth claims. |
 
 ## Traceability
 
@@ -110,16 +114,17 @@ Deferred unless the user explicitly starts a future milestone.
 | SLA-01 | Phase 5 | Pending |
 | SLA-02 | Phase 5 | Pending |
 | SLA-03 | Phase 5 | Pending |
+| SLA-04 | Phase 5 | Pending |
 | DOC-01 | Phase 6 | Pending |
 | DOC-02 | Phase 6 | Pending |
 | DOC-03 | Phase 6 | Pending |
 | DOC-04 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 30 total
-- Mapped to phases: 30
+- v1 requirements: 32 total
+- Mapped to phases: 32
 - Unmapped: 0
 
 ---
-*Requirements defined: May 5, 2026*
-*Last updated: May 5, 2026 after initialization from repository-root PROJECT.md*
+*Requirements defined: May 7, 2026*
+*Last updated: May 7, 2026 after auto initialization from repository-root PROJECT.md*

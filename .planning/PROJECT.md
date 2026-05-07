@@ -31,7 +31,7 @@ A user can run the console, pass a standard workflow action JSON envelope, and s
 
 - Web UI or InfoPath replacement UI - this project is the console/API-facing workflow proof of concept only.
 - Full field-level form validation - mocked section data is enough for this POC.
-- Real SMTP/email sending - notification outbox records are persisted but not sent.
+- Sending real emails to real recipients during the POC - notification delivery is abstracted and real SMTP is configuration-driven only.
 - Enterprise authentication/authorization - actor and role are simulated through console/API inputs.
 - Parallel approvals, fan-out/fan-in, or multiple active workflow tasks - v1 is single-active-state only.
 - Complex SharePoint migration tooling - this POC proves replacement workflow behavior, not migration automation.
@@ -63,18 +63,20 @@ The workflow engine must remain generic. It may understand workflow definitions,
 - **Idempotency**: Idempotent replay returns stored `ResultJson` and must not re-execute side effects.
 - **Concurrency**: If multiple concurrency guards are supplied, all must match.
 - **Initial version**: `WorkflowInstance.Version` starts at 1 and increments only on state-changing transitions.
+- **Time**: Use injected `TimeProvider`; do not call `DateTime.UtcNow` directly outside the composition root.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use repository-root `PROJECT.md` as the project vision | The user explicitly approved initializing GSD from the existing detailed requirements document. | Pending |
-| Use six GSD phases matching `PROJECT.md` section 24 milestones | User selected coarse granularity and the root project contract already defines stop-the-world milestones. | Pending |
-| Use interactive GSD mode | User selected interactive mode for checkpoints and approvals. | Pending |
-| Use sequential execution | User selected sequential execution for tighter milestone discipline. | Pending |
-| Commit planning docs | User selected Git tracking for planning docs. | Pending |
-| Skip project research during initialization | `PROJECT.md` is already detailed and GSD research agents are unavailable in this runtime. | Pending |
-| Preserve existing `AGENTS.md` | It already contains project-specific GSD and Codex guardrails. | Pending |
+| Use repository-root `PROJECT.md` as the project vision | The invocation provided `PROJECT.md` as the idea document and it contains the detailed project contract. | Pending |
+| Use six GSD phases matching `PROJECT.md` section 24 milestones | The root project contract already defines implementation milestones and quality gates. | Pending |
+| Use automatic GSD mode | The command was invoked with `--auto`, so planning artifacts are generated without interactive gates. | Pending |
+| Use coarse granularity | The source document already defines six milestone-sized phases. | Pending |
+| Allow parallel execution where plans are independent | Auto mode defaults to parallel execution, while phase order still follows the root milestone gates. | Pending |
+| Commit planning docs | Auto mode keeps planning artifacts tracked in git. | Pending |
+| Keep project research lightweight | GSD project subagents are not installed in this runtime, and the source requirements are already detailed. | Pending |
+| Preserve existing `AGENTS.MD` guidance | It already contains project-specific GSD and Codex guardrails derived from the root requirements. | Pending |
 
 ## Evolution
 
@@ -96,4 +98,4 @@ After each milestone:
 4. Update Context with current state.
 
 ---
-*Last updated: May 5, 2026 after initialization from repository-root PROJECT.md*
+*Last updated: May 7, 2026 after auto initialization from repository-root PROJECT.md*
