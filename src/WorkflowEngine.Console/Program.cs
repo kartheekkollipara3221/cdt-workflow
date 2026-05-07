@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WorkflowEngine.Application.Commands;
+using WorkflowEngine.Infrastructure.DependencyInjection;
 
 var configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
@@ -13,10 +14,12 @@ var configuration = new ConfigurationBuilder()
 var services = new ServiceCollection()
     .AddSingleton<IConfiguration>(configuration)
     .AddSingleton(TimeProvider.System)
-    .AddSingleton<CommandRegistry>()
+    .AddScoped<CommandRegistry>()
+    .AddWorkflowInfrastructure(configuration)
     .BuildServiceProvider();
 
-var registry = services.GetRequiredService<CommandRegistry>();
+using var scope = services.CreateScope();
+var registry = scope.ServiceProvider.GetRequiredService<CommandRegistry>();
 var result = registry.Dispatch(args);
 
 if (result.ExitCode == 0)

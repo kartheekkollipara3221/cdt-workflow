@@ -15,10 +15,10 @@ A user can run the console, pass a standard workflow action JSON envelope, and s
 ### Validated
 
 - Build the solution skeleton, console command routing, configuration loading, and EF Core wiring. - Validated in Phase 1: Solution Skeleton.
+- Create SQL schema, EF entities, migrations, required constraints, and Portfolio Trade seed data. - Validated in Phase 2: SQL Schema and Seed Data.
 
 ### Active
 
-- [ ] Create SQL schema, EF entities, migrations, required constraints, and Portfolio Trade seed data.
 - [ ] Implement stable `WorkflowActionEnvelope`, `WorkflowContextResponse`, `AvailableWorkflowAction`, and `WorkflowActionResult` contracts.
 - [ ] Implement `execute-json` and `show-context` console commands.
 - [ ] Implement a metadata-driven workflow engine for transitions, role/action/state validation, tasks, audit, notification outbox, SLA, idempotency, optimistic concurrency, and refreshed context.

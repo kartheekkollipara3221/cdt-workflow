@@ -15,10 +15,10 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 ### SQL Metadata and Runtime Persistence
 
-- [ ] **SQL-01**: Developer can run `init-db` to apply migrations and seed the Portfolio Trade workflow definition into SQL Server.
-- [ ] **SQL-02**: Developer can run `verify-seed` to prove required definition keys, transition rows, roles, states, actions, tasks, notifications, and constraints exist.
-- [ ] **SQL-03**: SQL constraints enforce single pending task per workflow instance and required uniqueness for workflow definition keys.
-- [ ] **SQL-04**: Runtime persistence supports workflow instances, tasks, SLA, notification outbox, audit, idempotency records, and append-only mocked section data.
+- [x] **SQL-01**: Developer can run `init-db` to apply migrations and seed the Portfolio Trade workflow definition into SQL Server.
+- [x] **SQL-02**: Developer can run `verify-seed` to prove required definition keys, transition rows, roles, states, actions, tasks, notifications, and constraints exist.
+- [x] **SQL-03**: SQL constraints enforce single pending task per workflow instance and required uniqueness for workflow definition keys.
+- [x] **SQL-04**: Runtime persistence supports workflow instances, tasks, SLA, notification outbox, audit, idempotency records, and append-only mocked section data.
 
 ### Workflow Contracts and Console Inputs
 
@@ -40,7 +40,7 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 ### Portfolio Trade Sample Metadata
 
-- [ ] **PT-01**: Portfolio Trade states, roles, actions, tasks, and transition matrix exactly match `PROJECT.md` section 7.
+- [x] **PT-01**: Portfolio Trade states, roles, actions, tasks, and transition matrix exactly match `PROJECT.md` section 7.
 - [ ] **PT-02**: Checker can return to Maker from `CheckerReview`, closing `CheckerReviewTask`, creating `MakerReworkTask`, notifying Maker, and writing audit.
 - [ ] **PT-03**: Trading Desk can return to Maker from `TradingDeskReview`, closing `TradingDeskReviewTask`, creating `MakerReworkTask`, notifying Maker, and writing audit.
 - [ ] **PT-04**: Maker can save draft or resubmit from `ReturnedToMaker`, and resubmission closes the existing `MakerReworkTask`.
@@ -90,10 +90,10 @@ Deferred unless the user explicitly starts a future milestone.
 | FND-01 | Phase 1 | Complete |
 | FND-02 | Phase 1 | Complete |
 | FND-03 | Phase 1 | Complete |
-| SQL-01 | Phase 2 | Pending |
-| SQL-02 | Phase 2 | Pending |
-| SQL-03 | Phase 2 | Pending |
-| SQL-04 | Phase 2 | Pending |
+| SQL-01 | Phase 2 | Complete |
+| SQL-02 | Phase 2 | Complete |
+| SQL-03 | Phase 2 | Complete |
+| SQL-04 | Phase 2 | Complete |
 | CON-01 | Phase 3 | Pending |
 | CON-02 | Phase 3 | Pending |
 | CON-03 | Phase 3 | Pending |
@@ -106,7 +106,7 @@ Deferred unless the user explicitly starts a future milestone.
 | ENG-06 | Phase 4 | Pending |
 | ENG-07 | Phase 4 | Pending |
 | ENG-08 | Phase 4 | Pending |
-| PT-01 | Phase 2 | Pending |
+| PT-01 | Phase 2 | Complete |
 | PT-02 | Phase 4 | Pending |
 | PT-03 | Phase 4 | Pending |
 | PT-04 | Phase 4 | Pending |

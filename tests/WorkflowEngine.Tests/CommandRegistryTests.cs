@@ -32,8 +32,8 @@ public sealed class CommandRegistryTests
     }
 
     [Theory]
-    [MemberData(nameof(RequiredCommandCases))]
-    public void RequiredCommandsReturnIntentionalStubOutput(string command)
+    [MemberData(nameof(DeferredCommandCases))]
+    public void DeferredCommandsReturnIntentionalStubOutput(string command)
     {
         var registry = new CommandRegistry();
 
@@ -42,6 +42,39 @@ public sealed class CommandRegistryTests
         Assert.Equal(0, result.ExitCode);
         Assert.Contains(command, result.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("not implemented yet", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void InitDbDispatchesDatabaseInitializerWhenRegistered()
+    {
+        var registry = new CommandRegistry(new FakeInitializer(), null);
+
+        var result = registry.Dispatch(["init-db"]);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("initialized", result.Message);
+    }
+
+    [Fact]
+    public void VerifySeedDispatchesVerifierWhenRegistered()
+    {
+        var registry = new CommandRegistry(null, new FakeVerifier([]));
+
+        var result = registry.Dispatch(["verify-seed"]);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("passed", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void VerifySeedReturnsFailureWhenVerifierReportsErrors()
+    {
+        var registry = new CommandRegistry(null, new FakeVerifier(["missing state"]));
+
+        var result = registry.Dispatch(["verify-seed"]);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("missing state", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -55,14 +88,24 @@ public sealed class CommandRegistryTests
         Assert.Contains("Unknown command", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    public static TheoryData<string> RequiredCommandCases()
+    public static TheoryData<string> DeferredCommandCases()
     {
         var data = new TheoryData<string>();
-        foreach (var command in RequiredCommands)
+        foreach (var command in RequiredCommands.Where(command => command is not ("init-db" or "verify-seed")))
         {
             data.Add(command);
         }
 
         return data;
+    }
+
+    private sealed class FakeInitializer : global::WorkflowEngine.Application.Persistence.IWorkflowDatabaseInitializer
+    {
+        public string Initialize() => "initialized";
+    }
+
+    private sealed class FakeVerifier(IReadOnlyList<string> errors) : global::WorkflowEngine.Application.Persistence.ISeedVerificationService
+    {
+        public global::WorkflowEngine.Application.Persistence.SeedVerificationResult Verify() => new(errors);
     }
 }
