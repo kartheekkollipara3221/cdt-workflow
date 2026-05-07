@@ -22,10 +22,10 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 ### Workflow Contracts and Console Inputs
 
-- [ ] **CON-01**: `WorkflowActionEnvelope` DTOs parse the required JSON request shape and validate actor, action, workflow, section data, MakerPrimary, idempotency, and concurrency rules.
-- [ ] **CON-02**: `WorkflowContextResponse`, `AvailableWorkflowAction`, and `WorkflowActionResult` DTOs preserve the stable contract shapes defined by `PROJECT.md`.
-- [ ] **CON-03**: `execute-json` reads sample files, applies command-line business object and workflow instance overrides deterministically, and prints the expected workflow action result shape.
-- [ ] **CON-04**: `show-context` prints valid workflow context JSON for form-open scenarios using user, role, workflow instance, and format arguments.
+- [x] **CON-01**: `WorkflowActionEnvelope` DTOs parse the required JSON request shape and validate actor, action, workflow, section data, MakerPrimary, idempotency, and concurrency rules.
+- [x] **CON-02**: `WorkflowContextResponse`, `AvailableWorkflowAction`, and `WorkflowActionResult` DTOs preserve the stable contract shapes defined by `PROJECT.md`.
+- [x] **CON-03**: `execute-json` reads sample files, applies command-line business object and workflow instance overrides deterministically, and prints the expected workflow action result shape.
+- [x] **CON-04**: `show-context` prints valid workflow context JSON for form-open scenarios using user, role, workflow instance, and format arguments.
 
 ### Metadata-Driven Workflow Engine
 
@@ -94,10 +94,10 @@ Deferred unless the user explicitly starts a future milestone.
 | SQL-02 | Phase 2 | Complete |
 | SQL-03 | Phase 2 | Complete |
 | SQL-04 | Phase 2 | Complete |
-| CON-01 | Phase 3 | Pending |
-| CON-02 | Phase 3 | Pending |
-| CON-03 | Phase 3 | Pending |
-| CON-04 | Phase 3 | Pending |
+| CON-01 | Phase 3 | Complete |
+| CON-02 | Phase 3 | Complete |
+| CON-03 | Phase 3 | Complete |
+| CON-04 | Phase 3 | Complete |
 | ENG-01 | Phase 4 | Pending |
 | ENG-02 | Phase 4 | Pending |
 | ENG-03 | Phase 4 | Pending |
