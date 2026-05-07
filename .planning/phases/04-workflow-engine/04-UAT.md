@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 04-workflow-engine
 source:
   - 04-01-SUMMARY.md
@@ -7,7 +7,7 @@ source:
   - 04-03-SUMMARY.md
   - 04-04-SUMMARY.md
 started: "2026-05-07T17:50:00Z"
-updated: "2026-05-07T16:43:57Z"
+updated: "2026-05-07T16:45:08Z"
 ---
 
 ## Current Test
@@ -71,3 +71,5 @@ blocked: 0
       issue: "show, show-tasks, show-history, and show-notifications are recognized but fall through to the not-implemented response."
   missing:
     - "Implement handlers and DI registration for show, show-tasks, show-history, and show-notifications."
+  root_cause: "Phase 4 implementation registered the command names in CommandRegistry.RequiredCommandNames but only dispatches show-context. The remaining read-only inspection commands fall through to CommandResult.Success(\"Command '<name>' is recognized but not implemented yet.\"), so UAT cannot inspect workflow state, task closure, notifications, or audit history through the documented demo commands."
+  debug_session: "inline-diagnosis-2026-05-07"
