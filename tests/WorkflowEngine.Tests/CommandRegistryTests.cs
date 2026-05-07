@@ -91,12 +91,28 @@ public sealed class CommandRegistryTests
     public static TheoryData<string> DeferredCommandCases()
     {
         var data = new TheoryData<string>();
-        foreach (var command in RequiredCommands.Where(command => command is not ("init-db" or "verify-seed" or "start-workflow" or "execute-json" or "show-context")))
+        foreach (var command in RequiredCommands.Where(command => command is not ("init-db" or "verify-seed" or "start-workflow" or "execute-json" or "show-context" or "show" or "show-tasks" or "show-history" or "show-notifications")))
         {
             data.Add(command);
         }
 
         return data;
+    }
+
+    [Theory]
+    [InlineData("show")]
+    [InlineData("show-tasks")]
+    [InlineData("show-history")]
+    [InlineData("show-notifications")]
+    public void InspectionCommandsRequireRegisteredHandlers(string command)
+    {
+        var registry = new CommandRegistry();
+
+        var result = registry.Dispatch([command, "WF-PT-1002"]);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.DoesNotContain("not implemented yet", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("requires command services", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class FakeInitializer : global::WorkflowEngine.Application.Persistence.IWorkflowDatabaseInitializer

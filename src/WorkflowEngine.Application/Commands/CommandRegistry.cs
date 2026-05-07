@@ -25,6 +25,10 @@ public sealed class CommandRegistry
     private readonly IStartWorkflowCommandHandler? startWorkflowCommandHandler;
     private readonly IExecuteJsonCommandHandler? executeJsonCommandHandler;
     private readonly IShowContextCommandHandler? showContextCommandHandler;
+    private readonly IShowCommandHandler? showCommandHandler;
+    private readonly IShowTasksCommandHandler? showTasksCommandHandler;
+    private readonly IShowHistoryCommandHandler? showHistoryCommandHandler;
+    private readonly IShowNotificationsCommandHandler? showNotificationsCommandHandler;
     private readonly HashSet<string> knownCommands = new(RequiredCommandNames, StringComparer.OrdinalIgnoreCase);
 
     public CommandRegistry(
@@ -32,13 +36,21 @@ public sealed class CommandRegistry
         ISeedVerificationService? seedVerificationService = null,
         IStartWorkflowCommandHandler? startWorkflowCommandHandler = null,
         IExecuteJsonCommandHandler? executeJsonCommandHandler = null,
-        IShowContextCommandHandler? showContextCommandHandler = null)
+        IShowContextCommandHandler? showContextCommandHandler = null,
+        IShowCommandHandler? showCommandHandler = null,
+        IShowTasksCommandHandler? showTasksCommandHandler = null,
+        IShowHistoryCommandHandler? showHistoryCommandHandler = null,
+        IShowNotificationsCommandHandler? showNotificationsCommandHandler = null)
     {
         this.databaseInitializer = databaseInitializer;
         this.seedVerificationService = seedVerificationService;
         this.startWorkflowCommandHandler = startWorkflowCommandHandler;
         this.executeJsonCommandHandler = executeJsonCommandHandler;
         this.showContextCommandHandler = showContextCommandHandler;
+        this.showCommandHandler = showCommandHandler;
+        this.showTasksCommandHandler = showTasksCommandHandler;
+        this.showHistoryCommandHandler = showHistoryCommandHandler;
+        this.showNotificationsCommandHandler = showNotificationsCommandHandler;
     }
 
     public IReadOnlyCollection<string> KnownCommands => RequiredCommandNames;
@@ -111,6 +123,46 @@ public sealed class CommandRegistry
             }
 
             return showContextCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        if (string.Equals(commandName, "show", StringComparison.OrdinalIgnoreCase))
+        {
+            if (showCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'show' requires command services that are not registered.");
+            }
+
+            return showCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        if (string.Equals(commandName, "show-tasks", StringComparison.OrdinalIgnoreCase))
+        {
+            if (showTasksCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'show-tasks' requires command services that are not registered.");
+            }
+
+            return showTasksCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        if (string.Equals(commandName, "show-history", StringComparison.OrdinalIgnoreCase))
+        {
+            if (showHistoryCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'show-history' requires command services that are not registered.");
+            }
+
+            return showHistoryCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        if (string.Equals(commandName, "show-notifications", StringComparison.OrdinalIgnoreCase))
+        {
+            if (showNotificationsCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'show-notifications' requires command services that are not registered.");
+            }
+
+            return showNotificationsCommandHandler.Execute(args.Skip(1).ToArray());
         }
 
         return CommandResult.Success($"Command '{commandName}' is recognized but not implemented yet.");

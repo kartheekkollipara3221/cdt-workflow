@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 phase: 04-workflow-engine
 source:
   - 04-01-SUMMARY.md
@@ -7,7 +7,7 @@ source:
   - 04-03-SUMMARY.md
   - 04-04-SUMMARY.md
 started: "2026-05-07T17:50:00Z"
-updated: "2026-05-07T16:45:08Z"
+updated: "2026-05-07T17:06:35Z"
 ---
 
 ## Current Test
@@ -62,7 +62,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Execute 03-checker-return-to-maker.json from CheckerReview. The result is Success, CheckerReviewTask is closed, state moves to ReturnedToMaker, MakerReworkTask is created with no due date, WorkflowReturnedToMaker notification is queued to Maker, and audit records CheckerReturnToMaker."
-  status: failed
+  status: resolved
   reason: "User reported: none of the show commands are working"
   severity: major
   test: 4
@@ -73,3 +73,4 @@ blocked: 0
     - "Implement handlers and DI registration for show, show-tasks, show-history, and show-notifications."
   root_cause: "Phase 4 implementation registered the command names in CommandRegistry.RequiredCommandNames but only dispatches show-context. The remaining read-only inspection commands fall through to CommandResult.Success(\"Command '<name>' is recognized but not implemented yet.\"), so UAT cannot inspect workflow state, task closure, notifications, or audit history through the documented demo commands."
   debug_session: "inline-diagnosis-2026-05-07"
+  resolution: "Implemented read-only inspection services and command handlers for show, show-tasks, show-history, and show-notifications. Verified the Checker Return to Maker branch shows ReturnedToMaker state, completed CheckerReviewTask, pending MakerReworkTask with no due date, WorkflowReturnedToMaker notification to Maker, and CheckerReturnToMaker audit history."
