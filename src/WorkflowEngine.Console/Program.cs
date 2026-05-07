@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WorkflowEngine.Application.Commands;
+using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Infrastructure.DependencyInjection;
 
 var configuration = new ConfigurationBuilder()
@@ -14,6 +16,10 @@ var configuration = new ConfigurationBuilder()
 var services = new ServiceCollection()
     .AddSingleton<IConfiguration>(configuration)
     .AddSingleton(TimeProvider.System)
+    .AddScoped<WorkflowActionEnvelopeValidator>()
+    .AddScoped<WorkflowActionEnvelopeNormalizer>()
+    .AddScoped<CanonicalRequestHasher>()
+    .AddScoped<IExecuteJsonCommandHandler, ExecuteJsonCommandHandler>()
     .AddScoped<CommandRegistry>()
     .AddWorkflowInfrastructure(configuration)
     .BuildServiceProvider();

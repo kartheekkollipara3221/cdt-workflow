@@ -22,14 +22,17 @@ public sealed class CommandRegistry
 
     private readonly IWorkflowDatabaseInitializer? databaseInitializer;
     private readonly ISeedVerificationService? seedVerificationService;
+    private readonly IExecuteJsonCommandHandler? executeJsonCommandHandler;
     private readonly HashSet<string> knownCommands = new(RequiredCommandNames, StringComparer.OrdinalIgnoreCase);
 
     public CommandRegistry(
         IWorkflowDatabaseInitializer? databaseInitializer = null,
-        ISeedVerificationService? seedVerificationService = null)
+        ISeedVerificationService? seedVerificationService = null,
+        IExecuteJsonCommandHandler? executeJsonCommandHandler = null)
     {
         this.databaseInitializer = databaseInitializer;
         this.seedVerificationService = seedVerificationService;
+        this.executeJsonCommandHandler = executeJsonCommandHandler;
     }
 
     public IReadOnlyCollection<string> KnownCommands => RequiredCommandNames;
@@ -72,6 +75,16 @@ public sealed class CommandRegistry
             return result.Passed
                 ? CommandResult.Success("Seed verification passed.")
                 : CommandResult.Failure("Seed verification failed:" + Environment.NewLine + string.Join(Environment.NewLine, result.Errors));
+        }
+
+        if (string.Equals(commandName, "execute-json", StringComparison.OrdinalIgnoreCase))
+        {
+            if (executeJsonCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'execute-json' requires command services that are not registered.");
+            }
+
+            return executeJsonCommandHandler.Execute(args.Skip(1).ToArray());
         }
 
         return CommandResult.Success($"Command '{commandName}' is recognized but not implemented yet.");
