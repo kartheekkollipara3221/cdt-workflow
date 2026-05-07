@@ -188,6 +188,40 @@ public sealed class WorkflowActionResultBuilder
         };
     }
 
+    public WorkflowActionResultEnvelope BuildStartWorkflowSuccess(
+        string workflowKey,
+        string businessObjectType,
+        string businessObjectId,
+        string workflowInstanceId,
+        string currentState,
+        string status,
+        int version,
+        DateTimeOffset startedAtUtc,
+        string startedByUserId)
+    {
+        return new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = true,
+                ResultCode = "Success",
+                WorkflowInstanceId = workflowInstanceId,
+                BusinessObject = new WorkflowActionResultBusinessObject
+                {
+                    ObjectType = businessObjectType,
+                    ObjectId = businessObjectId
+                },
+                Message = $"Workflow instance {workflowInstanceId} started for {workflowKey} / {businessObjectId}.",
+                CurrentState = currentState,
+                Status = status,
+                Version = version,
+                StartedAtUtc = startedAtUtc,
+                StartedByUserId = startedByUserId,
+                Diagnostics = new WorkflowActionDiagnostics()
+            }
+        };
+    }
+
     private static WorkflowActionResultRecord BaseResult(
         NormalizedWorkflowAction normalized,
         string? requestHash,

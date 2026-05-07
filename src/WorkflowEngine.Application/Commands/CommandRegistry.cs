@@ -22,6 +22,7 @@ public sealed class CommandRegistry
 
     private readonly IWorkflowDatabaseInitializer? databaseInitializer;
     private readonly ISeedVerificationService? seedVerificationService;
+    private readonly IStartWorkflowCommandHandler? startWorkflowCommandHandler;
     private readonly IExecuteJsonCommandHandler? executeJsonCommandHandler;
     private readonly IShowContextCommandHandler? showContextCommandHandler;
     private readonly HashSet<string> knownCommands = new(RequiredCommandNames, StringComparer.OrdinalIgnoreCase);
@@ -29,11 +30,13 @@ public sealed class CommandRegistry
     public CommandRegistry(
         IWorkflowDatabaseInitializer? databaseInitializer = null,
         ISeedVerificationService? seedVerificationService = null,
+        IStartWorkflowCommandHandler? startWorkflowCommandHandler = null,
         IExecuteJsonCommandHandler? executeJsonCommandHandler = null,
         IShowContextCommandHandler? showContextCommandHandler = null)
     {
         this.databaseInitializer = databaseInitializer;
         this.seedVerificationService = seedVerificationService;
+        this.startWorkflowCommandHandler = startWorkflowCommandHandler;
         this.executeJsonCommandHandler = executeJsonCommandHandler;
         this.showContextCommandHandler = showContextCommandHandler;
     }
@@ -88,6 +91,16 @@ public sealed class CommandRegistry
             }
 
             return executeJsonCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        if (string.Equals(commandName, "start-workflow", StringComparison.OrdinalIgnoreCase))
+        {
+            if (startWorkflowCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'start-workflow' requires command services that are not registered.");
+            }
+
+            return startWorkflowCommandHandler.Execute(args.Skip(1).ToArray());
         }
 
         if (string.Equals(commandName, "show-context", StringComparison.OrdinalIgnoreCase))

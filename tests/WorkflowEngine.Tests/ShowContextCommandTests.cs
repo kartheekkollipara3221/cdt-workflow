@@ -73,7 +73,7 @@ public sealed class ShowContextCommandTests
     public void CommandRegistryDispatchesShowContextWhenRegistered()
     {
         var handler = new StubShowContextCommandHandler();
-        var registry = new CommandRegistry(null, null, null, handler);
+        var registry = new CommandRegistry(null, null, null, null, handler);
 
         var result = registry.Dispatch(["show-context", "WF-PT-CTX", "--user", "checker1", "--roles", "Checker"]);
 

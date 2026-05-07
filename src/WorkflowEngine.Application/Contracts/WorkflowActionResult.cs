@@ -55,6 +55,16 @@ public sealed class WorkflowActionResult
 
     public DateTimeOffset? ExistingInstanceCompletedAtUtc { get; set; }
 
+    public string? CurrentState { get; set; }
+
+    public string? Status { get; set; }
+
+    public int? Version { get; set; }
+
+    public DateTimeOffset? StartedAtUtc { get; set; }
+
+    public string? StartedByUserId { get; set; }
+
     public WorkflowActionDiagnostics Diagnostics { get; set; } = new();
 }
 

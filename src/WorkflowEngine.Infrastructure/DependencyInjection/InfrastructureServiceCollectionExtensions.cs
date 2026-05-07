@@ -6,6 +6,7 @@ using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Seed;
 using WorkflowEngine.Infrastructure.Persistence.Verification;
 using WorkflowEngine.Infrastructure.WorkflowContext;
+using WorkflowEngine.Infrastructure.WorkflowStart;
 
 namespace WorkflowEngine.Infrastructure.DependencyInjection;
 
@@ -30,12 +31,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<WorkflowDatabaseInitializer>();
         services.AddScoped<SeedVerificationService>();
         services.AddScoped<WorkflowContextReader>();
+        services.AddScoped<StartWorkflowService>();
         services.AddScoped<global::WorkflowEngine.Application.Persistence.IWorkflowDatabaseInitializer>(provider =>
             provider.GetRequiredService<WorkflowDatabaseInitializer>());
         services.AddScoped<global::WorkflowEngine.Application.Persistence.ISeedVerificationService>(provider =>
             provider.GetRequiredService<SeedVerificationService>());
         services.AddScoped<global::WorkflowEngine.Application.Context.IWorkflowContextReader>(provider =>
             provider.GetRequiredService<WorkflowContextReader>());
+        services.AddScoped<global::WorkflowEngine.Application.WorkflowStart.IStartWorkflowService>(provider =>
+            provider.GetRequiredService<StartWorkflowService>());
 
         return services;
     }

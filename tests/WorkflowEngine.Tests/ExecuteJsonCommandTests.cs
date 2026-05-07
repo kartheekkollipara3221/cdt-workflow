@@ -86,7 +86,7 @@ public sealed class ExecuteJsonCommandTests
     public void CommandRegistryDispatchesExecuteJsonWhenRegistered()
     {
         var path = WorkflowActionEnvelopeTestData.WriteTempEnvelope(WorkflowActionEnvelopeTestData.ValidSubmitJson);
-        var registry = new CommandRegistry(null, null, handler);
+        var registry = new CommandRegistry(null, null, null, handler);
 
         var result = registry.Dispatch(["execute-json", path]);
 
