@@ -11,7 +11,7 @@
 | 2 | SQL Schema and Seed Data | Persist workflow metadata/runtime tables and prove Portfolio Trade seed data. | SQL-01, SQL-02, SQL-03, SQL-04, PT-01 | Complete - 2026-05-07 |
 | 3 | Workflow Contracts and Console Actions | Implement request/response DTOs plus `execute-json` and `show-context` parsing/output. | CON-01, CON-02, CON-03, CON-04 | Complete - 2026-05-07 |
 | 4 | Workflow Engine | Execute metadata-driven workflow transitions with validation, tasks, audit, notifications, idempotency, concurrency, and refreshed context. | ENG-01, ENG-02, ENG-03, ENG-04, ENG-05, ENG-06, ENG-07, ENG-08, PT-02, PT-03, PT-04, PT-05 | Complete - 2026-05-07 |
-| 5 | SLA Monitor and Notification Senders | Demonstrate SLA due-date scanning and notification outbox processing through configurable senders. | SLA-01, SLA-02, SLA-03, SLA-04 | Pending |
+| 5 | SLA Monitor and Notification Senders | Demonstrate SLA due-date scanning and notification outbox processing through configurable senders. | SLA-01, SLA-02, SLA-03, SLA-04 | Complete - 2026-05-07 |
 | 6 | Samples, Tests, and Demo | Complete samples, automated tests, demo scripts, and README. | DOC-01, DOC-02, DOC-03, DOC-04 | Pending |
 
 ## Phase Details

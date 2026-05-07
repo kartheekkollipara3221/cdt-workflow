@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Domain.Workflow;
+using WorkflowEngine.Infrastructure.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Seed;
 using WorkflowEngine.Infrastructure.Persistence.Verification;
+using WorkflowEngine.Infrastructure.Sla;
 using WorkflowEngine.Infrastructure.WorkflowContext;
 using WorkflowEngine.Infrastructure.WorkflowExecution;
 using WorkflowEngine.Infrastructure.WorkflowInspection;
@@ -36,6 +39,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<WorkflowExecutionService>();
         services.AddScoped<WorkflowInspectionReader>();
         services.AddScoped<StartWorkflowService>();
+        services.AddScoped<RunSlaService>();
+        services.AddScoped<ProcessNotificationOutboxService>();
         services.AddScoped<global::WorkflowEngine.Application.Persistence.IWorkflowDatabaseInitializer>(provider =>
             provider.GetRequiredService<WorkflowDatabaseInitializer>());
         services.AddScoped<global::WorkflowEngine.Application.Persistence.ISeedVerificationService>(provider =>
@@ -48,7 +53,28 @@ public static class InfrastructureServiceCollectionExtensions
             provider.GetRequiredService<WorkflowInspectionReader>());
         services.AddScoped<global::WorkflowEngine.Application.WorkflowStart.IStartWorkflowService>(provider =>
             provider.GetRequiredService<StartWorkflowService>());
+        services.AddScoped<global::WorkflowEngine.Application.Sla.IRunSlaService>(provider =>
+            provider.GetRequiredService<RunSlaService>());
+        services.AddScoped<global::WorkflowEngine.Application.Notifications.IProcessNotificationOutboxService>(provider =>
+            provider.GetRequiredService<ProcessNotificationOutboxService>());
+        services.AddSingleton<INotificationSender>(provider =>
+            CreateNotificationSender(configuration, provider));
 
         return services;
+    }
+
+    private static INotificationSender CreateNotificationSender(
+        IConfiguration configuration,
+        IServiceProvider provider)
+    {
+        var senderType = configuration["Notifications:Sender"] ?? "Console";
+        return senderType.Trim().ToLowerInvariant() switch
+        {
+            "smtp" => new SmtpNotificationSender(configuration),
+            "noop" => new NoOpNotificationSender(),
+            "console" => new ConsoleNotificationSender(),
+            _ => throw new InvalidOperationException(
+                $"Unknown Notifications:Sender value '{senderType}'. Allowed values: Console, NoOp, Smtp.")
+        };
     }
 }

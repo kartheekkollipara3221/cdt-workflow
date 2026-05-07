@@ -29,6 +29,8 @@ public sealed class CommandRegistry
     private readonly IShowTasksCommandHandler? showTasksCommandHandler;
     private readonly IShowHistoryCommandHandler? showHistoryCommandHandler;
     private readonly IShowNotificationsCommandHandler? showNotificationsCommandHandler;
+    private readonly IRunSlaCommandHandler? runSlaCommandHandler;
+    private readonly IProcessNotificationOutboxCommandHandler? processNotificationOutboxCommandHandler;
     private readonly HashSet<string> knownCommands = new(RequiredCommandNames, StringComparer.OrdinalIgnoreCase);
 
     public CommandRegistry(
@@ -40,7 +42,9 @@ public sealed class CommandRegistry
         IShowCommandHandler? showCommandHandler = null,
         IShowTasksCommandHandler? showTasksCommandHandler = null,
         IShowHistoryCommandHandler? showHistoryCommandHandler = null,
-        IShowNotificationsCommandHandler? showNotificationsCommandHandler = null)
+        IShowNotificationsCommandHandler? showNotificationsCommandHandler = null,
+        IRunSlaCommandHandler? runSlaCommandHandler = null,
+        IProcessNotificationOutboxCommandHandler? processNotificationOutboxCommandHandler = null)
     {
         this.databaseInitializer = databaseInitializer;
         this.seedVerificationService = seedVerificationService;
@@ -51,6 +55,8 @@ public sealed class CommandRegistry
         this.showTasksCommandHandler = showTasksCommandHandler;
         this.showHistoryCommandHandler = showHistoryCommandHandler;
         this.showNotificationsCommandHandler = showNotificationsCommandHandler;
+        this.runSlaCommandHandler = runSlaCommandHandler;
+        this.processNotificationOutboxCommandHandler = processNotificationOutboxCommandHandler;
     }
 
     public IReadOnlyCollection<string> KnownCommands => RequiredCommandNames;
@@ -163,6 +169,26 @@ public sealed class CommandRegistry
             }
 
             return showNotificationsCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        if (string.Equals(commandName, "run-sla", StringComparison.OrdinalIgnoreCase))
+        {
+            if (runSlaCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'run-sla' requires command services that are not registered.");
+            }
+
+            return runSlaCommandHandler.RunAsync(args.Skip(1).ToArray(), CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        if (string.Equals(commandName, "process-notification-outbox", StringComparison.OrdinalIgnoreCase))
+        {
+            if (processNotificationOutboxCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'process-notification-outbox' requires command services that are not registered.");
+            }
+
+            return processNotificationOutboxCommandHandler.RunAsync(args.Skip(1).ToArray(), CancellationToken.None).GetAwaiter().GetResult();
         }
 
         return CommandResult.Success($"Command '{commandName}' is recognized but not implemented yet.");

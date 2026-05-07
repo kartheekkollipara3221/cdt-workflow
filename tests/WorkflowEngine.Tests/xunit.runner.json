@@ -1,0 +1,10 @@
+{
+  "filters": {
+    "excludeTraits": [
+      {
+        "name": "Category",
+        "value": "Smtp"
+      }
+    ]
+  }
+}

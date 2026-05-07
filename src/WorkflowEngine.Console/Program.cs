@@ -29,6 +29,8 @@ var services = new ServiceCollection()
     .AddScoped<IShowTasksCommandHandler, ShowTasksCommandHandler>()
     .AddScoped<IShowHistoryCommandHandler, ShowHistoryCommandHandler>()
     .AddScoped<IShowNotificationsCommandHandler, ShowNotificationsCommandHandler>()
+    .AddScoped<IRunSlaCommandHandler, RunSlaCommandHandler>()
+    .AddScoped<IProcessNotificationOutboxCommandHandler, ProcessNotificationOutboxCommandHandler>()
     .AddScoped<CommandRegistry>()
     .AddWorkflowInfrastructure(configuration)
     .BuildServiceProvider();

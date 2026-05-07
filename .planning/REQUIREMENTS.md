@@ -48,10 +48,10 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 ### SLA and Notifications
 
-- [ ] **SLA-01**: `run-sla` scans pending tasks and queues `SlaTaskOverdue` notifications when due dates are overdue.
-- [ ] **SLA-02**: SLA overdue notifications are queued at most once per task.
-- [ ] **SLA-03**: `process-notification-outbox` demonstrates notification outbox processing through configured senders without sending real email by default.
-- [ ] **SLA-04**: SMTP notification delivery is implemented behind `INotificationSender` with MailKit, configuration-driven enablement, and fake/local SMTP tests only.
+- [x] **SLA-01**: `run-sla` scans pending tasks and queues `SlaTaskOverdue` notifications when due dates are overdue.
+- [x] **SLA-02**: SLA overdue notifications are queued at most once per task.
+- [x] **SLA-03**: `process-notification-outbox` demonstrates notification outbox processing through configured senders without sending real email by default.
+- [x] **SLA-04**: SMTP notification delivery is implemented behind `INotificationSender` with MailKit, configuration-driven enablement, and fake/local SMTP tests only.
 
 ### Samples, Tests, and Documentation
 
@@ -111,10 +111,10 @@ Deferred unless the user explicitly starts a future milestone.
 | PT-03 | Phase 4 | Complete |
 | PT-04 | Phase 4 | Complete |
 | PT-05 | Phase 4 | Complete |
-| SLA-01 | Phase 5 | Pending |
-| SLA-02 | Phase 5 | Pending |
-| SLA-03 | Phase 5 | Pending |
-| SLA-04 | Phase 5 | Pending |
+| SLA-01 | Phase 5 | Complete |
+| SLA-02 | Phase 5 | Complete |
+| SLA-03 | Phase 5 | Complete |
+| SLA-04 | Phase 5 | Complete |
 | DOC-01 | Phase 6 | Pending |
 | DOC-02 | Phase 6 | Pending |
 | DOC-03 | Phase 6 | Pending |

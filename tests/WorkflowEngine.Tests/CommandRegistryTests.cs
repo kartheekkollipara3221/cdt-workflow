@@ -91,7 +91,7 @@ public sealed class CommandRegistryTests
     public static TheoryData<string> DeferredCommandCases()
     {
         var data = new TheoryData<string>();
-        foreach (var command in RequiredCommands.Where(command => command is not ("init-db" or "verify-seed" or "start-workflow" or "execute-json" or "show-context" or "show" or "show-tasks" or "show-history" or "show-notifications")))
+        foreach (var command in RequiredCommands.Where(command => command is not ("init-db" or "verify-seed" or "start-workflow" or "execute-json" or "show-context" or "show" or "show-tasks" or "show-history" or "show-notifications" or "run-sla" or "process-notification-outbox")))
         {
             data.Add(command);
         }
@@ -104,6 +104,8 @@ public sealed class CommandRegistryTests
     [InlineData("show-tasks")]
     [InlineData("show-history")]
     [InlineData("show-notifications")]
+    [InlineData("run-sla")]
+    [InlineData("process-notification-outbox")]
     public void InspectionCommandsRequireRegisteredHandlers(string command)
     {
         var registry = new CommandRegistry();
@@ -115,6 +117,28 @@ public sealed class CommandRegistryTests
         Assert.Contains("requires command services", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void RunSlaDispatchesRegisteredHandler()
+    {
+        var registry = new CommandRegistry(runSlaCommandHandler: new FakeRunSlaCommandHandler());
+
+        var result = registry.Dispatch(["run-sla", "--now", "2030-01-15T16:00:00Z"]);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("sla-ran", result.Message);
+    }
+
+    [Fact]
+    public void ProcessNotificationOutboxDispatchesRegisteredHandler()
+    {
+        var registry = new CommandRegistry(processNotificationOutboxCommandHandler: new FakeProcessNotificationOutboxCommandHandler());
+
+        var result = registry.Dispatch(["process-notification-outbox"]);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("outbox-ran", result.Message);
+    }
+
     private sealed class FakeInitializer : global::WorkflowEngine.Application.Persistence.IWorkflowDatabaseInitializer
     {
         public string Initialize() => "initialized";
@@ -123,5 +147,21 @@ public sealed class CommandRegistryTests
     private sealed class FakeVerifier(IReadOnlyList<string> errors) : global::WorkflowEngine.Application.Persistence.ISeedVerificationService
     {
         public global::WorkflowEngine.Application.Persistence.SeedVerificationResult Verify() => new(errors);
+    }
+
+    private sealed class FakeRunSlaCommandHandler : IRunSlaCommandHandler
+    {
+        public Task<CommandResult> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(CommandResult.Success("sla-ran"));
+        }
+    }
+
+    private sealed class FakeProcessNotificationOutboxCommandHandler : IProcessNotificationOutboxCommandHandler
+    {
+        public Task<CommandResult> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(CommandResult.Success("outbox-ran"));
+        }
     }
 }

@@ -20,6 +20,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\WorkflowEngine.Application\WorkflowEngine.Application.csproj" />
     <ProjectReference Include="..\..\src\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\WorkflowEngine.Domain\WorkflowEngine.Domain.csproj" />

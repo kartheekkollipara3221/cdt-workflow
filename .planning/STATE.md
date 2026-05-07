@@ -2,22 +2,22 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 5 - SLA Monitor and Notification Senders
-status: Ready to execute
-last_updated: "2026-05-07T22:42:10.174Z"
+current_phase: 06
+status: ready_to_discuss
+last_updated: "2026-05-07T23:40:00.000Z"
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 12
-  completed_plans: 9
-  percent: 75
+  completed_plans: 12
+  percent: 83
 ---
 
 # Project State
 
 **Project:** Reusable .NET Workflow Engine Console POC
 **Initialized:** May 7, 2026
-**Current phase:** Phase 5 - SLA Monitor and Notification Senders
+**Current phase:** 6
 **Workflow mode:** Auto / YOLO
 **Execution:** Parallel within milestone boundaries
 **Planning docs committed:** Yes
@@ -28,9 +28,12 @@ See: `.planning/PROJECT.md` and repository-root `PROJECT.md`.
 
 **Core value:** A user can run the console, pass a standard workflow action JSON envelope, and see SQL metadata drive workflow state, tasks, notifications, SLA, idempotency, concurrency, and audit without Portfolio Trade logic embedded in the engine.
 
-**Current focus:** Discuss and plan Phase 5: SLA Monitor and Notification Senders.
+**Current focus:** Phase 06 - Samples, Tests, and Demo
 
 ## Current Position
+
+Phase: 06 (Samples, Tests, and Demo) - READY TO DISCUSS
+Plan: Not started
 
 - GSD initialized from repository-root `PROJECT.md`.
 - `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md`, `.planning/ROADMAP.md`, `.planning/STATE.md`, and `.planning/config.json` created.
@@ -41,6 +44,7 @@ See: `.planning/PROJECT.md` and repository-root `PROJECT.md`.
 - Phase 2 is complete: SQL schema, EF migration, Portfolio Trade seed data, `init-db`, `verify-seed`, and focused schema/seed tests are in place.
 - Phase 3 is complete: workflow action/context/result contracts, non-executing `execute-json`, SQL-backed read-only `show-context`, deterministic overrides, validation, and focused contract/command tests are in place.
 - Phase 4 is complete: metadata-driven transition execution, validation, start/reset, idempotency, concurrency, refreshed context, and sample fixtures are in place.
+- Phase 5 is complete: `run-sla`, notification sender selection, SMTP sender boundaries, and durable notification outbox processing are in place.
 
 ## Guardrails
 
@@ -52,7 +56,7 @@ See: `.planning/PROJECT.md` and repository-root `PROJECT.md`.
 
 ## Next Action
 
-Run `$gsd-discuss-phase 5` to settle SLA monitor and notification sender implementation details.
+Run `$gsd-discuss-phase 6` to settle samples, tests, demo, and README implementation details.
 
 ## Recent Events
 
@@ -64,6 +68,7 @@ Run `$gsd-discuss-phase 5` to settle SLA monitor and notification sender impleme
 | May 7, 2026 | Completed Phase 3: Workflow Contracts and Console Actions. |
 | May 7, 2026 | Planned Phase 4: Workflow Engine. |
 | May 7, 2026 | Completed Phase 4: Workflow Engine. |
+| May 7, 2026 | Completed Phase 5: SLA Monitor and Notification Senders. |
 
 ## Open Issues
 
