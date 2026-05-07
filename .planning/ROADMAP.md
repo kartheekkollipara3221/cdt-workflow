@@ -7,7 +7,7 @@
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
-| 1 | Solution Skeleton | Establish solution structure, console routing, configuration, and EF wiring. | FND-01, FND-02, FND-03 | Pending |
+| 1 | Solution Skeleton | Establish solution structure, console routing, configuration, and EF wiring. | FND-01, FND-02, FND-03 | Complete - 2026-05-07 |
 | 2 | SQL Schema and Seed Data | Persist workflow metadata/runtime tables and prove Portfolio Trade seed data. | SQL-01, SQL-02, SQL-03, SQL-04, PT-01 | Pending |
 | 3 | Workflow Contracts and Console Actions | Implement request/response DTOs plus `execute-json` and `show-context` parsing/output. | CON-01, CON-02, CON-03, CON-04 | Pending |
 | 4 | Workflow Engine | Execute metadata-driven workflow transitions with validation, tasks, audit, notifications, idempotency, concurrency, and refreshed context. | ENG-01, ENG-02, ENG-03, ENG-04, ENG-05, ENG-06, ENG-07, ENG-08, PT-02, PT-03, PT-04, PT-05 | Pending |

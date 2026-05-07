@@ -14,11 +14,10 @@ A user can run the console, pass a standard workflow action JSON envelope, and s
 
 ### Validated
 
-(None yet - ship to validate.)
+- Build the solution skeleton, console command routing, configuration loading, and EF Core wiring. - Validated in Phase 1: Solution Skeleton.
 
 ### Active
 
-- [ ] Build the solution skeleton, console command routing, configuration loading, and EF Core wiring.
 - [ ] Create SQL schema, EF entities, migrations, required constraints, and Portfolio Trade seed data.
 - [ ] Implement stable `WorkflowActionEnvelope`, `WorkflowContextResponse`, `AvailableWorkflowAction`, and `WorkflowActionResult` contracts.
 - [ ] Implement `execute-json` and `show-context` console commands.
@@ -98,4 +97,4 @@ After each milestone:
 4. Update Context with current state.
 
 ---
-*Last updated: May 7, 2026 after auto initialization from repository-root PROJECT.md*
+*Last updated: May 7, 2026 after Phase 1 completion*

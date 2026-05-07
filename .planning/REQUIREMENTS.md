@@ -9,9 +9,9 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 ### Foundation
 
-- [ ] **FND-01**: Developer can build a .NET solution with console, application/domain/infrastructure structure, EF Core wiring, nullable enabled, and warnings treated as errors.
-- [ ] **FND-02**: Developer can run a console command router with stubs for every command required by `PROJECT.md` section 10, including `show-context`.
-- [ ] **FND-03**: Application and tests read `ConnectionStrings:DefaultConnection` from configuration sources, not hardcoded workflow logic.
+- [x] **FND-01**: Developer can build a .NET solution with console, application/domain/infrastructure structure, EF Core wiring, nullable enabled, and warnings treated as errors.
+- [x] **FND-02**: Developer can run a console command router with stubs for every command required by `PROJECT.md` section 10, including `show-context`.
+- [x] **FND-03**: Application and tests read `ConnectionStrings:DefaultConnection` from configuration sources, not hardcoded workflow logic.
 
 ### SQL Metadata and Runtime Persistence
 
@@ -87,9 +87,9 @@ Deferred unless the user explicitly starts a future milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | Phase 1 | Pending |
-| FND-02 | Phase 1 | Pending |
-| FND-03 | Phase 1 | Pending |
+| FND-01 | Phase 1 | Complete |
+| FND-02 | Phase 1 | Complete |
+| FND-03 | Phase 1 | Complete |
 | SQL-01 | Phase 2 | Pending |
 | SQL-02 | Phase 2 | Pending |
 | SQL-03 | Phase 2 | Pending |
