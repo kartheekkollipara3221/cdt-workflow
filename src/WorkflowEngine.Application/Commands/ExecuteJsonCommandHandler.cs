@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
 
 namespace WorkflowEngine.Application.Commands;
@@ -8,7 +9,8 @@ namespace WorkflowEngine.Application.Commands;
 public sealed class ExecuteJsonCommandHandler(
     WorkflowActionEnvelopeValidator validator,
     WorkflowActionEnvelopeNormalizer normalizer,
-    CanonicalRequestHasher hasher) : IExecuteJsonCommandHandler
+    CanonicalRequestHasher hasher,
+    WorkflowActionResultBuilder resultBuilder) : IExecuteJsonCommandHandler
 {
     public CommandResult Execute(IReadOnlyList<string> args)
     {
@@ -42,62 +44,13 @@ public sealed class ExecuteJsonCommandHandler(
         var normalized = normalizer.Normalize(envelope, options.BusinessObjectOverride, options.WorkflowInstanceOverride);
         var validationErrors = validator.Validate(normalized.Envelope);
         var requestHash = hasher.ComputeHash(normalized.Envelope);
-        var result = validationErrors.Count == 0
-            ? CreateDeferredResult(normalized, requestHash)
-            : CreateValidationFailedResult(normalized, requestHash, validationErrors);
+        var resultEnvelope = validationErrors.Count == 0
+            ? resultBuilder.BuildAcceptedForPhase3Validation(normalized, requestHash)
+            : resultBuilder.BuildValidationFailed(normalized, validationErrors);
 
         return options.FormatJson
-            ? CommandResult.Success(JsonSerializer.Serialize(new WorkflowActionResultEnvelope { Result = result }, WorkflowJson.Options))
-            : CommandResult.Success(ToReadableText(result));
-    }
-
-    private static WorkflowActionResult CreateDeferredResult(NormalizedWorkflowAction normalized, string requestHash)
-    {
-        var envelope = normalized.Envelope;
-        return new WorkflowActionResult
-        {
-            Success = true,
-            ResultCode = "AcceptedForPhase3Validation",
-            CorrelationId = normalized.EffectiveCorrelationId,
-            WorkflowInstanceId = envelope.Workflow?.WorkflowInstanceId ?? string.Empty,
-            BusinessObject = new WorkflowActionResultBusinessObject
-            {
-                ObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
-                ObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty
-            },
-            ActionKey = envelope.Workflow?.ActionKey ?? string.Empty,
-            Message = "Envelope parsed, overrides applied, validation passed, and request hash computed. Workflow transition execution is deferred to Phase 4.",
-            RequestHash = requestHash,
-            EffectiveIdempotencyKey = normalized.EffectiveIdempotencyKey,
-            Notification = new WorkflowNotificationSummary { Queued = false },
-            Audit = new WorkflowAuditSummary { Written = false }
-        };
-    }
-
-    private static WorkflowActionResult CreateValidationFailedResult(
-        NormalizedWorkflowAction normalized,
-        string requestHash,
-        IReadOnlyList<WorkflowValidationError> errors)
-    {
-        var envelope = normalized.Envelope;
-        return new WorkflowActionResult
-        {
-            Success = false,
-            ResultCode = "ValidationFailed",
-            CorrelationId = normalized.EffectiveCorrelationId,
-            WorkflowInstanceId = envelope.Workflow?.WorkflowInstanceId ?? string.Empty,
-            BusinessObject = new WorkflowActionResultBusinessObject
-            {
-                ObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
-                ObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty
-            },
-            ActionKey = envelope.Workflow?.ActionKey ?? string.Empty,
-            Message = string.Join("; ", errors.Select(error => $"{error.Field}: {error.Message}")),
-            RequestHash = requestHash,
-            EffectiveIdempotencyKey = normalized.EffectiveIdempotencyKey,
-            Notification = new WorkflowNotificationSummary { Queued = false },
-            Audit = new WorkflowAuditSummary { Written = false }
-        };
+            ? CommandResult.Success(JsonSerializer.Serialize(resultEnvelope, WorkflowJson.Options))
+            : CommandResult.Success(ToReadableText(resultEnvelope.Result));
     }
 
     private static string ToReadableText(WorkflowActionResult result)
@@ -180,4 +133,3 @@ public sealed class ExecuteJsonCommandHandler(
         }
     }
 }
-

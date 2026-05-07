@@ -34,7 +34,8 @@ public sealed class WorkflowActionEnvelopeSerializationTests
                 {
                     ObjectType = "PortfolioTrade",
                     ObjectId = "PT-1"
-                }
+                },
+                Diagnostics = new WorkflowActionDiagnostics()
             }
         };
 
@@ -42,7 +43,30 @@ public sealed class WorkflowActionEnvelopeSerializationTests
 
         Assert.Contains("\"resultCode\"", json, StringComparison.Ordinal);
         Assert.Contains("\"workflowInstanceId\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"workflowContext\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"diagnostics\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("ResultCode", json, StringComparison.Ordinal);
     }
-}
 
+    [Fact]
+    public void FailureResultSerializesNullSideEffectFields()
+    {
+        var result = new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = false,
+                ResultCode = "Forbidden",
+                Diagnostics = new WorkflowActionDiagnostics()
+            }
+        };
+
+        var json = JsonSerializer.Serialize(result, WorkflowJson.Options);
+
+        Assert.Contains("\"oldState\": null", json, StringComparison.Ordinal);
+        Assert.Contains("\"closedTask\": null", json, StringComparison.Ordinal);
+        Assert.Contains("\"createdTask\": null", json, StringComparison.Ordinal);
+        Assert.Contains("\"notification\": null", json, StringComparison.Ordinal);
+        Assert.Contains("\"audit\": null", json, StringComparison.Ordinal);
+    }
+}

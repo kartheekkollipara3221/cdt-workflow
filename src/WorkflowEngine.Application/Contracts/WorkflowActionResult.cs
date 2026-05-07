@@ -3,6 +3,8 @@ namespace WorkflowEngine.Application.Contracts;
 public sealed class WorkflowActionResultEnvelope
 {
     public WorkflowActionResult Result { get; set; } = new();
+
+    public WorkflowContext? WorkflowContext { get; set; }
 }
 
 public sealed class WorkflowActionResult
@@ -25,6 +27,12 @@ public sealed class WorkflowActionResult
 
     public string? EffectiveIdempotencyKey { get; set; }
 
+    public string? Expected { get; set; }
+
+    public string? Actual { get; set; }
+
+    public string? FailedGuard { get; set; }
+
     public string? OldState { get; set; }
 
     public string? NewState { get; set; }
@@ -36,6 +44,44 @@ public sealed class WorkflowActionResult
     public WorkflowNotificationSummary? Notification { get; set; }
 
     public WorkflowAuditSummary? Audit { get; set; }
+
+    public string? ExistingInstanceStatus { get; set; }
+
+    public int? ExistingInstanceVersion { get; set; }
+
+    public string? ExistingInstanceCurrentState { get; set; }
+
+    public DateTimeOffset? ExistingInstanceStartedAtUtc { get; set; }
+
+    public DateTimeOffset? ExistingInstanceCompletedAtUtc { get; set; }
+
+    public WorkflowActionDiagnostics Diagnostics { get; set; } = new();
+}
+
+public sealed class WorkflowActionDiagnostics
+{
+    public string? RequestHash { get; set; }
+
+    public string? ResultHash { get; set; }
+
+    public bool Replay { get; set; }
+
+    public DateTimeOffset? OriginalCreatedAtUtc { get; set; }
+
+    public List<WorkflowValidationDiagnostic>? ValidationErrors { get; set; }
+
+    public string? StoredRequestHash { get; set; }
+
+    public string? StoredActionKey { get; set; }
+}
+
+public sealed class WorkflowValidationDiagnostic
+{
+    public string Field { get; set; } = string.Empty;
+
+    public string Rule { get; set; } = string.Empty;
+
+    public string Message { get; set; } = string.Empty;
 }
 
 public sealed class WorkflowActionResultBusinessObject
@@ -71,4 +117,3 @@ public sealed class WorkflowAuditSummary
 
     public string? ActionKey { get; set; }
 }
-

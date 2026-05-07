@@ -2,6 +2,7 @@ using System.Text.Json;
 using WorkflowEngine.Application.Commands;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
 
 namespace WorkflowEngine.Tests;
@@ -11,7 +12,8 @@ public sealed class ExecuteJsonCommandTests
     private readonly ExecuteJsonCommandHandler handler = new(
         new WorkflowActionEnvelopeValidator(),
         new WorkflowActionEnvelopeNormalizer(),
-        new CanonicalRequestHasher());
+        new CanonicalRequestHasher(),
+        new WorkflowActionResultBuilder());
 
     [Fact]
     public void ExecuteJsonReturnsReadableTextByDefault()
@@ -38,6 +40,7 @@ public sealed class ExecuteJsonCommandTests
         Assert.True(envelope.Result.Success);
         Assert.Equal("AcceptedForPhase3Validation", envelope.Result.ResultCode);
         Assert.NotNull(envelope.Result.RequestHash);
+        Assert.Equal(envelope.Result.RequestHash, envelope.Result.Diagnostics.RequestHash);
         Assert.False(envelope.Result.Notification?.Queued);
     }
 
@@ -53,6 +56,8 @@ public sealed class ExecuteJsonCommandTests
         Assert.NotNull(envelope);
         Assert.False(envelope.Result.Success);
         Assert.Equal("ValidationFailed", envelope.Result.ResultCode);
+        Assert.Null(envelope.Result.Diagnostics.RequestHash);
+        Assert.NotEmpty(envelope.Result.Diagnostics.ValidationErrors ?? []);
     }
 
     [Fact]
@@ -89,4 +94,3 @@ public sealed class ExecuteJsonCommandTests
         Assert.DoesNotContain("not implemented yet", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
-

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WorkflowEngine.Application.Commands;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Infrastructure.DependencyInjection;
 
@@ -19,6 +20,8 @@ var services = new ServiceCollection()
     .AddScoped<WorkflowActionEnvelopeValidator>()
     .AddScoped<WorkflowActionEnvelopeNormalizer>()
     .AddScoped<CanonicalRequestHasher>()
+    .AddScoped<WorkflowActionResultBuilder>()
+    .AddScoped<CanonicalWorkflowResultSerializer>()
     .AddScoped<IExecuteJsonCommandHandler, ExecuteJsonCommandHandler>()
     .AddScoped<IShowContextCommandHandler, ShowContextCommandHandler>()
     .AddScoped<CommandRegistry>()
