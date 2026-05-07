@@ -1,0 +1,31 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using WorkflowEngine.Application.Commands;
+
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args)
+    .Build();
+
+var services = new ServiceCollection()
+    .AddSingleton<IConfiguration>(configuration)
+    .AddSingleton(TimeProvider.System)
+    .AddSingleton<CommandRegistry>()
+    .BuildServiceProvider();
+
+var registry = services.GetRequiredService<CommandRegistry>();
+var result = registry.Dispatch(args);
+
+if (result.ExitCode == 0)
+{
+    Console.Out.WriteLine(result.Message);
+}
+else
+{
+    Console.Error.WriteLine(result.Message);
+}
+
+return result.ExitCode;
