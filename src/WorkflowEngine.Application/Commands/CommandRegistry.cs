@@ -23,16 +23,19 @@ public sealed class CommandRegistry
     private readonly IWorkflowDatabaseInitializer? databaseInitializer;
     private readonly ISeedVerificationService? seedVerificationService;
     private readonly IExecuteJsonCommandHandler? executeJsonCommandHandler;
+    private readonly IShowContextCommandHandler? showContextCommandHandler;
     private readonly HashSet<string> knownCommands = new(RequiredCommandNames, StringComparer.OrdinalIgnoreCase);
 
     public CommandRegistry(
         IWorkflowDatabaseInitializer? databaseInitializer = null,
         ISeedVerificationService? seedVerificationService = null,
-        IExecuteJsonCommandHandler? executeJsonCommandHandler = null)
+        IExecuteJsonCommandHandler? executeJsonCommandHandler = null,
+        IShowContextCommandHandler? showContextCommandHandler = null)
     {
         this.databaseInitializer = databaseInitializer;
         this.seedVerificationService = seedVerificationService;
         this.executeJsonCommandHandler = executeJsonCommandHandler;
+        this.showContextCommandHandler = showContextCommandHandler;
     }
 
     public IReadOnlyCollection<string> KnownCommands => RequiredCommandNames;
@@ -85,6 +88,16 @@ public sealed class CommandRegistry
             }
 
             return executeJsonCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        if (string.Equals(commandName, "show-context", StringComparison.OrdinalIgnoreCase))
+        {
+            if (showContextCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'show-context' requires command services that are not registered.");
+            }
+
+            return showContextCommandHandler.Execute(args.Skip(1).ToArray());
         }
 
         return CommandResult.Success($"Command '{commandName}' is recognized but not implemented yet.");

@@ -91,7 +91,7 @@ public sealed class CommandRegistryTests
     public static TheoryData<string> DeferredCommandCases()
     {
         var data = new TheoryData<string>();
-        foreach (var command in RequiredCommands.Where(command => command is not ("init-db" or "verify-seed" or "execute-json")))
+        foreach (var command in RequiredCommands.Where(command => command is not ("init-db" or "verify-seed" or "execute-json" or "show-context")))
         {
             data.Add(command);
         }

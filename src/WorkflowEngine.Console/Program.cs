@@ -20,6 +20,7 @@ var services = new ServiceCollection()
     .AddScoped<WorkflowActionEnvelopeNormalizer>()
     .AddScoped<CanonicalRequestHasher>()
     .AddScoped<IExecuteJsonCommandHandler, ExecuteJsonCommandHandler>()
+    .AddScoped<IShowContextCommandHandler, ShowContextCommandHandler>()
     .AddScoped<CommandRegistry>()
     .AddWorkflowInfrastructure(configuration)
     .BuildServiceProvider();
