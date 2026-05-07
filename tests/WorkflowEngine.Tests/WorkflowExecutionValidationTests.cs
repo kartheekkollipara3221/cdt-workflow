@@ -225,7 +225,12 @@ public sealed class WorkflowExecutionValidationTests
 
     private static WorkflowExecutionService CreateService(WorkflowDbContext dbContext)
     {
-        return new WorkflowExecutionService(dbContext, new WorkflowContextReader(dbContext, new FixedTimeProvider(Now)), new WorkflowActionResultBuilder());
+        return new WorkflowExecutionService(
+            dbContext,
+            new WorkflowContextReader(dbContext, new FixedTimeProvider(Now)),
+            new FixedTimeProvider(Now),
+            new WorkflowActionResultBuilder(),
+            new CanonicalWorkflowResultSerializer());
     }
 
     private static WorkflowExecutionRequest Request(WorkflowActionEnvelope envelope, bool adminOverride = false)

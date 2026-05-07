@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
@@ -13,7 +14,9 @@ namespace WorkflowEngine.Infrastructure.WorkflowExecution;
 public sealed class WorkflowExecutionService(
     WorkflowDbContext dbContext,
     IWorkflowContextReader contextReader,
-    WorkflowActionResultBuilder resultBuilder) : IWorkflowExecutionService
+    TimeProvider timeProvider,
+    WorkflowActionResultBuilder resultBuilder,
+    CanonicalWorkflowResultSerializer resultSerializer) : IWorkflowExecutionService
 {
     public WorkflowActionResultEnvelope Execute(WorkflowExecutionRequest request)
     {
@@ -109,6 +112,10 @@ public sealed class WorkflowExecutionService(
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
+        var performedByRoleKey = matchingRoles.Length == 1
+            ? matchingRoles[0]
+            : transitions[0].AllowedRoleKey;
+
         if (!request.AdminOverride)
         {
             if (matchingRoles.Length == 0)
@@ -131,11 +138,246 @@ public sealed class WorkflowExecutionService(
                     instance.CurrentStateKey);
             }
         }
+        else
+        {
+            performedByRoleKey = "AdminDemoOverride";
+        }
 
-        return resultBuilder.BuildExecutionValidatedSuccess(
-            normalized,
-            request.RequestHash,
-            "Persisted validation passed. Workflow transition side effects are deferred to Phase 4 Plan 04.");
+        return ExecuteSideEffects(request, instance, pendingTask, transitions[0], performedByRoleKey);
+    }
+
+    private WorkflowActionResultEnvelope ExecuteSideEffects(
+        WorkflowExecutionRequest request,
+        WorkflowInstance loadedInstance,
+        WorkflowTask? pendingTask,
+        WorkflowTransitionDefinition transition,
+        string performedByRoleKey)
+    {
+        var normalized = request.Normalized;
+        var envelope = normalized.Envelope;
+        var workflow = envelope.Workflow!;
+        var now = timeProvider.GetUtcNow();
+        WorkflowTaskChange? closedTask = null;
+        WorkflowTaskChange? createdTask = null;
+        WorkflowNotificationSummary? notification = null;
+
+        using (var transaction = dbContext.Database.BeginTransaction())
+        {
+            var instance = dbContext.WorkflowInstances.Single(row => row.Id == loadedInstance.Id);
+            var oldState = instance.CurrentStateKey;
+
+            dbContext.MockSectionData.Add(new MockSectionData
+            {
+                BusinessObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
+                BusinessObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty,
+                SectionKey = envelope.DataSave?.SectionKey ?? string.Empty,
+                PayloadJson = envelope.DataSave?.Payload.GetRawText() ?? "{}",
+                SavedByUserId = envelope.Actor?.UserId ?? string.Empty,
+                SavedAtUtc = now,
+                CorrelationId = normalized.EffectiveCorrelationId
+            });
+
+            var isSaveDraft = string.Equals(workflow.ActionKey, "SaveDraft", StringComparison.Ordinal);
+            if (!isSaveDraft)
+            {
+                if (!string.IsNullOrWhiteSpace(transition.TaskToCloseKey))
+                {
+                    var taskToClose = dbContext.WorkflowTasks.Single(row =>
+                        row.WorkflowInstanceId == instance.WorkflowInstanceId
+                        && row.TaskKey == transition.TaskToCloseKey
+                        && row.Status == "Pending");
+                    taskToClose.Status = "Completed";
+                    taskToClose.CompletedAtUtc = now;
+                    taskToClose.CompletedByUserId = envelope.Actor?.UserId ?? string.Empty;
+                    taskToClose.ClosedByActionKey = workflow.ActionKey;
+                    closedTask = new WorkflowTaskChange
+                    {
+                        TaskId = taskToClose.Id.ToString(CultureInfo.InvariantCulture),
+                        TaskKey = taskToClose.TaskKey,
+                        AssignedRole = taskToClose.AssignedRoleKey,
+                        DueAtUtc = taskToClose.DueAtUtc
+                    };
+                }
+
+                instance.CurrentStateKey = transition.ToStateKey;
+                instance.Version++;
+                if (string.Equals(transition.ToStateKey, "Completed", StringComparison.Ordinal))
+                {
+                    instance.Status = "Completed";
+                    instance.CompletedAtUtc = now;
+                }
+
+                if (!string.IsNullOrWhiteSpace(transition.TaskToCreateKey))
+                {
+                    var taskDefinition = dbContext.WorkflowTaskDefinitions
+                        .AsNoTracking()
+                        .Single(row =>
+                            row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                            && row.TaskKey == transition.TaskToCreateKey);
+                    var dueAtUtc = ResolveDueAtUtc(instance.WorkflowDefinitionVersionId, taskDefinition.SlaPolicyKey, now);
+                    var created = new WorkflowTask
+                    {
+                        WorkflowInstanceId = instance.WorkflowInstanceId,
+                        TaskKey = taskDefinition.TaskKey,
+                        AssignedRoleKey = taskDefinition.OwnerRoleKey,
+                        AssignedUserId = null,
+                        Status = "Pending",
+                        CreatedAtUtc = now,
+                        DueAtUtc = dueAtUtc
+                    };
+                    dbContext.WorkflowTasks.Add(created);
+                    dbContext.SaveChanges();
+                    createdTask = new WorkflowTaskChange
+                    {
+                        TaskId = created.Id.ToString(CultureInfo.InvariantCulture),
+                        TaskKey = created.TaskKey,
+                        AssignedRole = created.AssignedRoleKey,
+                        DueAtUtc = created.DueAtUtc
+                    };
+                }
+
+                if (!string.IsNullOrWhiteSpace(transition.NotificationRouteKey))
+                {
+                    var route = dbContext.NotificationRoutes.AsNoTracking().Single(row =>
+                        row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                        && row.RouteKey == transition.NotificationRouteKey
+                        && row.IsActive);
+                    var outbox = new NotificationOutbox
+                    {
+                        WorkflowInstanceId = instance.WorkflowInstanceId,
+                        WorkflowTaskId = createdTask is null ? null : long.Parse(createdTask.TaskId!, CultureInfo.InvariantCulture),
+                        BusinessObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
+                        BusinessObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty,
+                        NotificationType = route.NotificationType,
+                        RecipientRoleKey = route.RecipientRoleKey,
+                        RecipientUserId = null,
+                        Subject = route.SubjectTemplate,
+                        PayloadJson = JsonSerializer.Serialize(new
+                        {
+                            workflowInstanceId = instance.WorkflowInstanceId,
+                            actionKey = workflow.ActionKey,
+                            oldState,
+                            newState = transition.ToStateKey,
+                            taskKey = createdTask?.TaskKey
+                        }),
+                        Status = "Pending",
+                        CorrelationId = normalized.EffectiveCorrelationId,
+                        CreatedAtUtc = now
+                    };
+                    dbContext.NotificationOutbox.Add(outbox);
+                    notification = new WorkflowNotificationSummary
+                    {
+                        Queued = true,
+                        NotificationType = route.NotificationType,
+                        RecipientRole = route.RecipientRoleKey
+                    };
+                }
+            }
+
+            var reason = workflow.ActionReason;
+            if (request.AdminOverride)
+            {
+                reason = string.IsNullOrWhiteSpace(reason)
+                    ? "[ADMIN OVERRIDE]"
+                    : "[ADMIN OVERRIDE] " + reason;
+            }
+
+            dbContext.WorkflowAudits.Add(new WorkflowAudit
+            {
+                WorkflowInstanceId = instance.WorkflowInstanceId,
+                BusinessObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
+                BusinessObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty,
+                ActionKey = workflow.ActionKey ?? string.Empty,
+                FromStateKey = oldState,
+                ToStateKey = isSaveDraft ? oldState : transition.ToStateKey,
+                PerformedByUserId = envelope.Actor?.UserId ?? string.Empty,
+                PerformedByRoleKey = performedByRoleKey,
+                Reason = reason,
+                CorrelationId = normalized.EffectiveCorrelationId,
+                CreatedAtUtc = now
+            });
+
+            dbContext.SaveChanges();
+            transaction.Commit();
+
+            var result = resultBuilder.BuildExecutionSuccess(
+                normalized,
+                request.RequestHash,
+                oldState,
+                isSaveDraft ? oldState : transition.ToStateKey,
+                closedTask,
+                createdTask,
+                notification ?? new WorkflowNotificationSummary { Queued = false },
+                new WorkflowAuditSummary { Written = true, ActionKey = workflow.ActionKey });
+            result.WorkflowContext = ReadContextOrNull(instance.WorkflowInstanceId, envelope);
+            PersistIdempotencyRecord(result, request, now);
+            return result;
+        }
+    }
+
+    private DateTimeOffset? ResolveDueAtUtc(long workflowDefinitionVersionId, string? slaPolicyKey, DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(slaPolicyKey))
+        {
+            return null;
+        }
+
+        var durationMinutes = dbContext.SlaPolicies.AsNoTracking()
+            .Where(row =>
+                row.WorkflowDefinitionVersionId == workflowDefinitionVersionId
+                && row.SlaPolicyKey == slaPolicyKey
+                && row.IsActive)
+            .Select(row => (int?)row.DurationMinutes)
+            .SingleOrDefault();
+
+        return durationMinutes is null ? null : now.AddMinutes(durationMinutes.Value);
+    }
+
+    private void PersistIdempotencyRecord(
+        WorkflowActionResultEnvelope result,
+        WorkflowExecutionRequest request,
+        DateTimeOffset createdAtUtc)
+    {
+        result.Result.Diagnostics.ResultHash = resultSerializer.ComputeResultHash(result);
+        var resultJson = resultSerializer.Serialize(result);
+
+        dbContext.IdempotencyRecords.Add(new IdempotencyRecord
+        {
+            IdempotencyKey = request.Normalized.EffectiveIdempotencyKey,
+            WorkflowInstanceId = request.Normalized.Envelope.Workflow?.WorkflowInstanceId ?? string.Empty,
+            ActionKey = request.Normalized.Envelope.Workflow?.ActionKey ?? string.Empty,
+            RequestHash = request.RequestHash,
+            ResultHash = result.Result.Diagnostics.ResultHash,
+            ResultJson = resultJson,
+            CreatedAtUtc = createdAtUtc
+        });
+
+        try
+        {
+            dbContext.SaveChanges();
+        }
+        catch (DbUpdateException exception) when (IsIdempotencyUniqueViolation(exception))
+        {
+            dbContext.ChangeTracker.Clear();
+            var existing = TryBuildIdempotencyReplay(request);
+            if (existing is null)
+            {
+                throw;
+            }
+
+            result.Result.Success = existing.Result.Success;
+            result.Result.ResultCode = existing.Result.ResultCode;
+            result.Result.Message = existing.Result.Message;
+            result.WorkflowContext = existing.WorkflowContext;
+        }
+    }
+
+    private static bool IsIdempotencyUniqueViolation(DbUpdateException exception)
+    {
+        return exception.InnerException is SqlException sqlException
+            && sqlException.Errors.Cast<SqlError>().Any(error =>
+                (error.Number == 2601 || error.Number == 2627)
+                && error.Message.Contains("IdempotencyRecord", StringComparison.OrdinalIgnoreCase));
     }
 
     private WorkflowActionResultEnvelope? TryBuildIdempotencyReplay(WorkflowExecutionRequest request)

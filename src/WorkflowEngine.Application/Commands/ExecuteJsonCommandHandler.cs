@@ -59,15 +59,53 @@ public sealed class ExecuteJsonCommandHandler(
 
     private static string ToReadableText(WorkflowActionResult result)
     {
-        return string.Join(
-            Environment.NewLine,
+        var lines = new List<string>
+        {
             $"Result: {result.ResultCode}",
             $"Success: {result.Success}",
             $"Workflow instance: {result.WorkflowInstanceId}",
             $"Business object: {result.BusinessObject?.ObjectType} / {result.BusinessObject?.ObjectId}",
             $"Action: {result.ActionKey}",
             $"Request hash: {result.RequestHash}",
-            $"Message: {result.Message}");
+            $"Message: {result.Message}"
+        };
+
+        if (result.Diagnostics.Replay)
+        {
+            lines.Add($"Idempotent replay: Yes (original action executed at {FormatTimestamp(result.Diagnostics.OriginalCreatedAtUtc)})");
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.OldState) || !string.IsNullOrWhiteSpace(result.NewState))
+        {
+            lines.Add($"State: {result.OldState} -> {result.NewState}");
+        }
+
+        if (result.ClosedTask is not null)
+        {
+            lines.Add($"Closed task: {result.ClosedTask.TaskKey}");
+        }
+
+        if (result.CreatedTask is not null)
+        {
+            lines.Add($"Created task: {result.CreatedTask.TaskKey} ({result.CreatedTask.AssignedRole})");
+        }
+
+        if (result.Notification is not null)
+        {
+            lines.Add($"Notification queued: {result.Notification.Queued}");
+        }
+
+        if (result.Audit is not null)
+        {
+            lines.Add($"Audit written: {result.Audit.ActionKey}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string FormatTimestamp(DateTimeOffset? value)
+    {
+        return value?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
     private sealed record ExecuteJsonOptions(

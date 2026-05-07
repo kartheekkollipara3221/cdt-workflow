@@ -235,6 +235,30 @@ public sealed class WorkflowActionResultBuilder
         return new WorkflowActionResultEnvelope { Result = result };
     }
 
+    public WorkflowActionResultEnvelope BuildExecutionSuccess(
+        NormalizedWorkflowAction normalized,
+        string requestHash,
+        string oldState,
+        string newState,
+        WorkflowTaskChange? closedTask,
+        WorkflowTaskChange? createdTask,
+        WorkflowNotificationSummary? notification,
+        WorkflowAuditSummary audit)
+    {
+        var result = BaseResult(normalized, requestHash, success: true, resultCode: "Success") with
+        {
+            Message = $"Action '{normalized.Envelope.Workflow?.ActionKey}' completed successfully.",
+            OldState = oldState,
+            NewState = newState,
+            ClosedTask = closedTask,
+            CreatedTask = createdTask,
+            Notification = notification,
+            Audit = audit
+        };
+
+        return new WorkflowActionResultEnvelope { Result = result };
+    }
+
     private static WorkflowActionResultRecord BaseResult(
         NormalizedWorkflowAction normalized,
         string? requestHash,
@@ -316,6 +340,10 @@ public sealed class WorkflowActionResultBuilder
 
         public WorkflowTaskChange? CreatedTask { get; init; }
 
+        public string? OldState { get; init; }
+
+        public string? NewState { get; init; }
+
         public WorkflowNotificationSummary? Notification { get; init; }
 
         public WorkflowAuditSummary? Audit { get; init; }
@@ -338,6 +366,8 @@ public sealed class WorkflowActionResultBuilder
                 Expected = source.Expected,
                 Actual = source.Actual,
                 FailedGuard = source.FailedGuard,
+                OldState = source.OldState,
+                NewState = source.NewState,
                 ClosedTask = source.ClosedTask,
                 CreatedTask = source.CreatedTask,
                 Notification = source.Notification,

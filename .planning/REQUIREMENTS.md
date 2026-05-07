@@ -29,22 +29,22 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 ### Metadata-Driven Workflow Engine
 
-- [ ] **ENG-01**: Workflow transition resolution uses SQL metadata matching definition version, current state, action key, and allowed role.
-- [ ] **ENG-02**: Request JSON never controls next state through `toState` or equivalent authority.
-- [ ] **ENG-03**: Role, state, action, workflow definition version, task, and instance version validation return the required result codes.
-- [ ] **ENG-04**: State-changing transitions close the configured task, create the configured task, queue metadata-required notifications, write audit, and increment instance version.
-- [ ] **ENG-05**: `SaveDraft` is authorized through metadata, saves mocked section data, writes lightweight audit, and does not move state, touch tasks/SLA/notifications, or increment version.
-- [ ] **ENG-06**: Idempotent replay returns stored `ResultJson` without duplicating mocked section data, audit, tasks, notifications, or SLA effects.
-- [ ] **ENG-07**: Concurrency guards are independent and all supplied guards must match before saving section data or moving workflow.
-- [ ] **ENG-08**: Workflow context resolves available actions from metadata and returns read-only/no-action behavior for wrong roles or completed workflows.
+- [x] **ENG-01**: Workflow transition resolution uses SQL metadata matching definition version, current state, action key, and allowed role.
+- [x] **ENG-02**: Request JSON never controls next state through `toState` or equivalent authority.
+- [x] **ENG-03**: Role, state, action, workflow definition version, task, and instance version validation return the required result codes.
+- [x] **ENG-04**: State-changing transitions close the configured task, create the configured task, queue metadata-required notifications, write audit, and increment instance version.
+- [x] **ENG-05**: `SaveDraft` is authorized through metadata, saves mocked section data, writes lightweight audit, and does not move state, touch tasks/SLA/notifications, or increment version.
+- [x] **ENG-06**: Idempotent replay returns stored `ResultJson` without duplicating mocked section data, audit, tasks, notifications, or SLA effects.
+- [x] **ENG-07**: Concurrency guards are independent and all supplied guards must match before saving section data or moving workflow.
+- [x] **ENG-08**: Workflow context resolves available actions from metadata and returns read-only/no-action behavior for wrong roles or completed workflows.
 
 ### Portfolio Trade Sample Metadata
 
 - [x] **PT-01**: Portfolio Trade states, roles, actions, tasks, and transition matrix exactly match `PROJECT.md` section 7.
-- [ ] **PT-02**: Checker can return to Maker from `CheckerReview`, closing `CheckerReviewTask`, creating `MakerReworkTask`, notifying Maker, and writing audit.
-- [ ] **PT-03**: Trading Desk can return to Maker from `TradingDeskReview`, closing `TradingDeskReviewTask`, creating `MakerReworkTask`, notifying Maker, and writing audit.
-- [ ] **PT-04**: Maker can save draft or resubmit from `ReturnedToMaker`, and resubmission closes the existing `MakerReworkTask`.
-- [ ] **PT-05**: BDRM can complete the workflow or route back to Trading Desk Rework according to seeded metadata.
+- [x] **PT-02**: Checker can return to Maker from `CheckerReview`, closing `CheckerReviewTask`, creating `MakerReworkTask`, notifying Maker, and writing audit.
+- [x] **PT-03**: Trading Desk can return to Maker from `TradingDeskReview`, closing `TradingDeskReviewTask`, creating `MakerReworkTask`, notifying Maker, and writing audit.
+- [x] **PT-04**: Maker can save draft or resubmit from `ReturnedToMaker`, and resubmission closes the existing `MakerReworkTask`.
+- [x] **PT-05**: BDRM can complete the workflow or route back to Trading Desk Rework according to seeded metadata.
 
 ### SLA and Notifications
 
@@ -98,19 +98,19 @@ Deferred unless the user explicitly starts a future milestone.
 | CON-02 | Phase 3 | Complete |
 | CON-03 | Phase 3 | Complete |
 | CON-04 | Phase 3 | Complete |
-| ENG-01 | Phase 4 | Pending |
-| ENG-02 | Phase 4 | Pending |
-| ENG-03 | Phase 4 | Pending |
-| ENG-04 | Phase 4 | Pending |
-| ENG-05 | Phase 4 | Pending |
-| ENG-06 | Phase 4 | Pending |
-| ENG-07 | Phase 4 | Pending |
-| ENG-08 | Phase 4 | Pending |
+| ENG-01 | Phase 4 | Complete |
+| ENG-02 | Phase 4 | Complete |
+| ENG-03 | Phase 4 | Complete |
+| ENG-04 | Phase 4 | Complete |
+| ENG-05 | Phase 4 | Complete |
+| ENG-06 | Phase 4 | Complete |
+| ENG-07 | Phase 4 | Complete |
+| ENG-08 | Phase 4 | Complete |
 | PT-01 | Phase 2 | Complete |
-| PT-02 | Phase 4 | Pending |
-| PT-03 | Phase 4 | Pending |
-| PT-04 | Phase 4 | Pending |
-| PT-05 | Phase 4 | Pending |
+| PT-02 | Phase 4 | Complete |
+| PT-03 | Phase 4 | Complete |
+| PT-04 | Phase 4 | Complete |
+| PT-05 | Phase 4 | Complete |
 | SLA-01 | Phase 5 | Pending |
 | SLA-02 | Phase 5 | Pending |
 | SLA-03 | Phase 5 | Pending |
