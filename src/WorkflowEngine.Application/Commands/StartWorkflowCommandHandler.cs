@@ -8,11 +8,13 @@ public sealed class StartWorkflowCommandHandler(IStartWorkflowService startWorkf
 {
     public CommandResult Execute(IReadOnlyList<string> args)
     {
-        var options = StartWorkflowOptions.Parse(args);
-        if (!string.IsNullOrWhiteSpace(options.Error))
+        var parseResult = CommandArgumentParser.ParseStartWorkflow(args);
+        if (!parseResult.Success)
         {
-            return CommandResult.Failure(options.Error);
+            return CommandResult.Failure(parseResult.ErrorMessage!);
         }
+
+        var options = (StartWorkflowCommandArguments)parseResult.Arguments!;
 
         try
         {
@@ -37,7 +39,7 @@ public sealed class StartWorkflowCommandHandler(IStartWorkflowService startWorkf
         }
     }
 
-    private static string ToReadableText(StartWorkflowOptions options, StartWorkflowResult startResult)
+    private static string ToReadableText(StartWorkflowCommandArguments options, StartWorkflowResult startResult)
     {
         var result = startResult.Envelope.Result;
         var lines = new List<string>
@@ -95,77 +97,4 @@ public sealed class StartWorkflowCommandHandler(IStartWorkflowService startWorkf
         return value?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
-    private sealed record StartWorkflowOptions(
-        string WorkflowKey,
-        string BusinessObjectId,
-        string UserId,
-        bool Reset,
-        bool FormatJson,
-        string? Error)
-    {
-        public static StartWorkflowOptions Parse(IReadOnlyList<string> args)
-        {
-            if (args.Count < 2)
-            {
-                return Failure("Usage: start-workflow <workflowKey> <businessObjectId> --user <userId> [--reset] [--format json]");
-            }
-
-            var workflowKey = args[0];
-            var businessObjectId = args[1];
-            var userId = string.Empty;
-            var reset = false;
-            var formatJson = false;
-
-            for (var index = 2; index < args.Count; index++)
-            {
-                var arg = args[index];
-                if (string.Equals(arg, "--user", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (++index >= args.Count)
-                    {
-                        return Failure("--user requires a value.");
-                    }
-
-                    userId = args[index];
-                    continue;
-                }
-
-                if (string.Equals(arg, "--reset", StringComparison.OrdinalIgnoreCase))
-                {
-                    reset = true;
-                    continue;
-                }
-
-                if (string.Equals(arg, "--format", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (++index >= args.Count)
-                    {
-                        return Failure("--format requires a value.");
-                    }
-
-                    if (!string.Equals(args[index], "json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return Failure("Only --format json is supported for start-workflow.");
-                    }
-
-                    formatJson = true;
-                    continue;
-                }
-
-                return Failure($"Unknown start-workflow option '{arg}'.");
-            }
-
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return Failure("--user is required.");
-            }
-
-            return new StartWorkflowOptions(workflowKey, businessObjectId, userId, reset, formatJson, null);
-        }
-
-        private static StartWorkflowOptions Failure(string error)
-        {
-            return new StartWorkflowOptions(string.Empty, string.Empty, string.Empty, false, false, error);
-        }
-    }
 }

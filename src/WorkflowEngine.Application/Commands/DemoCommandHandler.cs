@@ -34,9 +34,10 @@ dotnet run --project src/WorkflowEngine.Console -- process-notification-outbox
 
     public CommandResult Execute(IReadOnlyList<string> args)
     {
-        if (args.Count != 0)
+        var parseResult = CommandArgumentParser.Parse("demo", args);
+        if (!parseResult.Success)
         {
-            return CommandResult.Failure("Usage: demo");
+            return CommandResult.Failure(parseResult.ErrorMessage!);
         }
 
         var output = new StringBuilder();

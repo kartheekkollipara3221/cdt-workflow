@@ -6,11 +6,13 @@ public sealed class ShowTasksCommandHandler(IWorkflowInspectionReader inspection
 {
     public CommandResult Execute(IReadOnlyList<string> args)
     {
-        var workflowInstanceId = ShowCommandHandler.SingleWorkflowInstanceId(args);
-        if (workflowInstanceId is null)
+        var parseResult = CommandArgumentParser.ParseWorkflowInstance(args, "Usage: show-tasks <workflowInstanceId>");
+        if (!parseResult.Success)
         {
-            return CommandResult.Failure("Usage: show-tasks <workflowInstanceId>");
+            return CommandResult.Failure(parseResult.ErrorMessage!);
         }
+
+        var workflowInstanceId = ((WorkflowInstanceCommandArguments)parseResult.Arguments!).WorkflowInstanceId;
 
         var snapshot = inspectionReader.Read(workflowInstanceId);
         if (!snapshot.Found)

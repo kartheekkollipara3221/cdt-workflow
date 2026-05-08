@@ -54,6 +54,8 @@ public static class BranchScriptDefinitions
 
     private static string QuoteIfNeeded(string value)
     {
-        return value.Contains(' ', StringComparison.Ordinal) ? $"\"{value}\"" : value;
+        return value.Contains(' ', StringComparison.Ordinal) || (value.Contains('T', StringComparison.Ordinal) && value.EndsWith('Z'))
+            ? $"\"{value}\""
+            : value;
     }
 }

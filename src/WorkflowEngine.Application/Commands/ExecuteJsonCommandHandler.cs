@@ -16,11 +16,13 @@ public sealed class ExecuteJsonCommandHandler(
 {
     public CommandResult Execute(IReadOnlyList<string> args)
     {
-        var options = ExecuteJsonOptions.Parse(args);
-        if (!string.IsNullOrWhiteSpace(options.Error))
+        var parseResult = CommandArgumentParser.ParseExecuteJson(args);
+        if (!parseResult.Success)
         {
-            return CommandResult.Failure(options.Error);
+            return CommandResult.Failure(parseResult.ErrorMessage!);
         }
+
+        var options = (ExecuteJsonCommandArguments)parseResult.Arguments!;
 
         if (!File.Exists(options.FilePath))
         {
@@ -108,78 +110,4 @@ public sealed class ExecuteJsonCommandHandler(
         return value?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
-    private sealed record ExecuteJsonOptions(
-            string FilePath,
-            string? BusinessObjectOverride,
-            string? WorkflowInstanceOverride,
-            bool AdminOverride,
-            bool FormatJson,
-            string? Error)
-    {
-        public static ExecuteJsonOptions Parse(IReadOnlyList<string> args)
-        {
-            if (args.Count == 0)
-            {
-                return new ExecuteJsonOptions(string.Empty, null, null, false, false, "Usage: execute-json <path-to-envelope.json> [--business-object <id>] [--workflow-instance <id>] [--admin-override] [--format json]");
-            }
-
-            var filePath = args[0];
-            string? businessObjectOverride = null;
-            string? workflowInstanceOverride = null;
-            var adminOverride = false;
-            var formatJson = false;
-
-            for (var index = 1; index < args.Count; index++)
-            {
-                var arg = args[index];
-                if (string.Equals(arg, "--business-object", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (++index >= args.Count)
-                    {
-                        return new ExecuteJsonOptions(filePath, null, null, false, false, "--business-object requires a value.");
-                    }
-
-                    businessObjectOverride = args[index];
-                    continue;
-                }
-
-                if (string.Equals(arg, "--workflow-instance", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (++index >= args.Count)
-                    {
-                        return new ExecuteJsonOptions(filePath, null, null, false, false, "--workflow-instance requires a value.");
-                    }
-
-                    workflowInstanceOverride = args[index];
-                    continue;
-                }
-
-                if (string.Equals(arg, "--admin-override", StringComparison.OrdinalIgnoreCase))
-                {
-                    adminOverride = true;
-                    continue;
-                }
-
-                if (string.Equals(arg, "--format", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (++index >= args.Count)
-                    {
-                        return new ExecuteJsonOptions(filePath, null, null, false, false, "--format requires a value.");
-                    }
-
-                    if (!string.Equals(args[index], "json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return new ExecuteJsonOptions(filePath, null, null, false, false, "Only --format json is supported for execute-json.");
-                    }
-
-                    formatJson = true;
-                    continue;
-                }
-
-                return new ExecuteJsonOptions(filePath, null, null, false, false, $"Unknown execute-json option '{arg}'.");
-            }
-
-            return new ExecuteJsonOptions(filePath, businessObjectOverride, workflowInstanceOverride, adminOverride, formatJson, null);
-        }
-    }
 }

@@ -10,9 +10,10 @@ public sealed class ProcessNotificationOutboxCommandHandler(
 {
     public async Task<CommandResult> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
-        if (args.Count != 0)
+        var parseResult = CommandArgumentParser.Parse("process-notification-outbox", args);
+        if (!parseResult.Success)
         {
-            return CommandResult.Failure("Usage: process-notification-outbox");
+            return CommandResult.Failure(parseResult.ErrorMessage!);
         }
 
         Console.Out.WriteLine("Command: ProcessNotificationOutbox");

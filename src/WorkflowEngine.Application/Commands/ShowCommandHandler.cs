@@ -6,11 +6,13 @@ public sealed class ShowCommandHandler(IWorkflowInspectionReader inspectionReade
 {
     public CommandResult Execute(IReadOnlyList<string> args)
     {
-        var workflowInstanceId = SingleWorkflowInstanceId(args);
-        if (workflowInstanceId is null)
+        var parseResult = CommandArgumentParser.ParseWorkflowInstance(args, "Usage: show <workflowInstanceId>");
+        if (!parseResult.Success)
         {
-            return CommandResult.Failure("Usage: show <workflowInstanceId>");
+            return CommandResult.Failure(parseResult.ErrorMessage!);
         }
+
+        var workflowInstanceId = ((WorkflowInstanceCommandArguments)parseResult.Arguments!).WorkflowInstanceId;
 
         var snapshot = inspectionReader.Read(workflowInstanceId);
         if (snapshot.Instance is null)
@@ -41,9 +43,8 @@ public sealed class ShowCommandHandler(IWorkflowInspectionReader inspectionReade
 
     internal static string? SingleWorkflowInstanceId(IReadOnlyList<string> args)
     {
-        return args.Count == 1 && !string.IsNullOrWhiteSpace(args[0])
-            ? args[0]
-            : null;
+        var parseResult = CommandArgumentParser.ParseWorkflowInstance(args, "Usage: show <workflowInstanceId>");
+        return parseResult.Success ? ((WorkflowInstanceCommandArguments)parseResult.Arguments!).WorkflowInstanceId : null;
     }
 
     internal static string FormatTimestamp(DateTimeOffset? timestamp)
