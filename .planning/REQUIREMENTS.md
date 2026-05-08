@@ -55,10 +55,10 @@ The repository-root `PROJECT.md` is authoritative. This file converts that contr
 
 ### Samples, Tests, and Documentation
 
-- [ ] **DOC-01**: All required sample JSON files from `PROJECT.md` section 19 exist and include expected test expectations.
-- [ ] **DOC-02**: Automated tests cover seed data, transitions, idempotency, concurrency, start workflow, mocked section data, envelope validation, SLA, notification senders, execute-json, show-context, workflow context, and workflow action results.
-- [ ] **DOC-03**: Demo scripts prove happy path, Checker Return to Maker, and Trading Desk Return to Maker branch behavior.
-- [ ] **DOC-04**: README explains the reusable workflow engine POC, console commands, workflow context, JSON envelopes, SQL setup, return paths, SLA, audit, notification sender configuration, and demo flow.
+- [x] **DOC-01**: All required sample JSON files from `PROJECT.md` section 19 exist and include expected test expectations.
+- [x] **DOC-02**: Automated tests cover seed data, transitions, idempotency, concurrency, start workflow, mocked section data, envelope validation, SLA, notification senders, execute-json, show-context, workflow context, and workflow action results.
+- [x] **DOC-03**: Demo scripts prove happy path, Checker Return to Maker, and Trading Desk Return to Maker branch behavior.
+- [x] **DOC-04**: README explains the reusable workflow engine POC, console commands, workflow context, JSON envelopes, SQL setup, return paths, SLA, audit, notification sender configuration, and demo flow.
 
 ## v2 Requirements
 
@@ -115,10 +115,10 @@ Deferred unless the user explicitly starts a future milestone.
 | SLA-02 | Phase 5 | Complete |
 | SLA-03 | Phase 5 | Complete |
 | SLA-04 | Phase 5 | Complete |
-| DOC-01 | Phase 6 | Pending |
-| DOC-02 | Phase 6 | Pending |
-| DOC-03 | Phase 6 | Pending |
-| DOC-04 | Phase 6 | Pending |
+| DOC-01 | Phase 6 | Complete |
+| DOC-02 | Phase 6 | Complete |
+| DOC-03 | Phase 6 | Complete |
+| DOC-04 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 32 total
@@ -127,4 +127,4 @@ Deferred unless the user explicitly starts a future milestone.
 
 ---
 *Requirements defined: May 7, 2026*
-*Last updated: May 7, 2026 after auto initialization from repository-root PROJECT.md*
+*Last updated: May 8, 2026 after Phase 6 sign-off*

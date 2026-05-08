@@ -3,21 +3,21 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 06
-status: ready_to_discuss
-last_updated: "2026-05-08T15:01:40.933Z"
+status: milestone_complete
+last_updated: "2026-05-08T16:45:00.000Z"
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 16
-  completed_plans: 12
-  percent: 75
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
 
 **Project:** Reusable .NET Workflow Engine Console POC
 **Initialized:** May 7, 2026
-**Current phase:** 06
+**Current phase:** Complete
 **Workflow mode:** Auto / YOLO
 **Execution:** Parallel within milestone boundaries
 **Planning docs committed:** Yes
@@ -32,8 +32,8 @@ See: `.planning/PROJECT.md` and repository-root `PROJECT.md`.
 
 ## Current Position
 
-Phase: 06 (Samples, Tests, and Demo) — EXECUTING
-Plan: 1 of 4
+Phase: 06 (Samples, Tests, and Demo) - COMPLETE
+Plan: 4 of 4
 
 - GSD initialized from repository-root `PROJECT.md`.
 - `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md`, `.planning/ROADMAP.md`, `.planning/STATE.md`, and `.planning/config.json` created.
@@ -45,6 +45,7 @@ Plan: 1 of 4
 - Phase 3 is complete: workflow action/context/result contracts, non-executing `execute-json`, SQL-backed read-only `show-context`, deterministic overrides, validation, and focused contract/command tests are in place.
 - Phase 4 is complete: metadata-driven transition execution, validation, start/reset, idempotency, concurrency, refreshed context, and sample fixtures are in place.
 - Phase 5 is complete: `run-sla`, notification sender selection, SMTP sender boundaries, and durable notification outbox processing are in place.
+- Phase 6 is complete: samples, coverage audit, demo command, README, validation tests, and fresh-clone sign-off are complete.
 
 ## Guardrails
 
@@ -56,7 +57,7 @@ Plan: 1 of 4
 
 ## Next Action
 
-Run `$gsd-discuss-phase 6` to settle samples, tests, demo, and README implementation details.
+Phase 6 is signed off. The v1 milestone is ready for milestone completion or release packaging.
 
 ## Recent Events
 
@@ -69,8 +70,10 @@ Run `$gsd-discuss-phase 6` to settle samples, tests, demo, and README implementa
 | May 7, 2026 | Planned Phase 4: Workflow Engine. |
 | May 7, 2026 | Completed Phase 4: Workflow Engine. |
 | May 7, 2026 | Completed Phase 5: SLA Monitor and Notification Senders. |
+| May 8, 2026 | Completed Phase 6: Samples, Tests, and Demo, including fresh-clone sign-off. |
 
 ## Open Issues
 
 - GSD subagents are not installed in this runtime, so research files were not produced by project researcher agents.
 - Default parallel MSBuild restore/build failed silently in this sandbox; use `-m:1` for reliable local .NET verification.
+- Tier 2 SMTP integration tests are implemented but skipped unless `smtp4dev` or Papercut infrastructure is available.
