@@ -143,7 +143,61 @@ public sealed class WorkflowExecutionService(
             performedByRoleKey = "AdminDemoOverride";
         }
 
-        return ExecuteSideEffects(request, instance, pendingTask, transitions[0], performedByRoleKey);
+        var transition = request.AdminOverride
+            ? transitions[0]
+            : matchingTransitions[0];
+        foreach (var warning in BuildOptionWarnings(envelope.Workflow?.Options, transition, instance.WorkflowDefinitionVersionId))
+        {
+            Console.Error.WriteLine(warning);
+        }
+
+        return ExecuteSideEffects(request, instance, pendingTask, transition, performedByRoleKey);
+    }
+
+    private IReadOnlyList<string> BuildOptionWarnings(
+        WorkflowActionOptions? options,
+        WorkflowTransitionDefinition transition,
+        long workflowDefinitionVersionId)
+    {
+        if (options is null)
+        {
+            return [];
+        }
+
+        var warnings = new List<string>();
+        AddWarningIfConflict(warnings, "closeCurrentTask", options.CloseCurrentTask, !string.IsNullOrWhiteSpace(transition.TaskToCloseKey));
+        AddWarningIfConflict(warnings, "createNextTask", options.CreateNextTask, !string.IsNullOrWhiteSpace(transition.TaskToCreateKey));
+        AddWarningIfConflict(warnings, "queueNotifications", options.QueueNotifications, !string.IsNullOrWhiteSpace(transition.NotificationRouteKey));
+        AddWarningIfConflict(warnings, "evaluateSla", options.EvaluateSla, TransitionCreatesTaskWithSla(transition, workflowDefinitionVersionId));
+        AddWarningIfConflict(warnings, "writeAudit", options.WriteAudit, metadataValue: true);
+        return warnings;
+    }
+
+    private bool TransitionCreatesTaskWithSla(WorkflowTransitionDefinition transition, long workflowDefinitionVersionId)
+    {
+        if (string.IsNullOrWhiteSpace(transition.TaskToCreateKey))
+        {
+            return false;
+        }
+
+        return dbContext.WorkflowTaskDefinitions.AsNoTracking().Any(row =>
+            row.WorkflowDefinitionVersionId == workflowDefinitionVersionId
+            && row.TaskKey == transition.TaskToCreateKey
+            && !string.IsNullOrWhiteSpace(row.SlaPolicyKey)
+            && row.IsActive);
+    }
+
+    private static void AddWarningIfConflict(List<string> warnings, string fieldName, bool? optionValue, bool metadataValue)
+    {
+        if (optionValue is null || optionValue.Value == metadataValue)
+        {
+            return;
+        }
+
+        warnings.Add(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"WARN: workflow.options.{fieldName} = {optionValue.Value.ToString().ToLowerInvariant()} conflicts with metadata; using metadata"));
     }
 
     private WorkflowActionResultEnvelope ExecuteSideEffects(
