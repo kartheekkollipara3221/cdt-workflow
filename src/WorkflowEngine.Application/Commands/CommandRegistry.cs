@@ -31,6 +31,7 @@ public sealed class CommandRegistry
     private readonly IShowNotificationsCommandHandler? showNotificationsCommandHandler;
     private readonly IRunSlaCommandHandler? runSlaCommandHandler;
     private readonly IProcessNotificationOutboxCommandHandler? processNotificationOutboxCommandHandler;
+    private readonly IDemoCommandHandler? demoCommandHandler;
     private readonly HashSet<string> knownCommands = new(RequiredCommandNames, StringComparer.OrdinalIgnoreCase);
 
     public CommandRegistry(
@@ -44,7 +45,8 @@ public sealed class CommandRegistry
         IShowHistoryCommandHandler? showHistoryCommandHandler = null,
         IShowNotificationsCommandHandler? showNotificationsCommandHandler = null,
         IRunSlaCommandHandler? runSlaCommandHandler = null,
-        IProcessNotificationOutboxCommandHandler? processNotificationOutboxCommandHandler = null)
+        IProcessNotificationOutboxCommandHandler? processNotificationOutboxCommandHandler = null,
+        IDemoCommandHandler? demoCommandHandler = null)
     {
         this.databaseInitializer = databaseInitializer;
         this.seedVerificationService = seedVerificationService;
@@ -57,6 +59,7 @@ public sealed class CommandRegistry
         this.showNotificationsCommandHandler = showNotificationsCommandHandler;
         this.runSlaCommandHandler = runSlaCommandHandler;
         this.processNotificationOutboxCommandHandler = processNotificationOutboxCommandHandler;
+        this.demoCommandHandler = demoCommandHandler;
     }
 
     public IReadOnlyCollection<string> KnownCommands => RequiredCommandNames;
@@ -191,6 +194,16 @@ public sealed class CommandRegistry
             return processNotificationOutboxCommandHandler.RunAsync(args.Skip(1).ToArray(), CancellationToken.None).GetAwaiter().GetResult();
         }
 
-        return CommandResult.Success($"Command '{commandName}' is recognized but not implemented yet.");
+        if (string.Equals(commandName, "demo", StringComparison.OrdinalIgnoreCase))
+        {
+            if (demoCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'demo' requires command services that are not registered.");
+            }
+
+            return demoCommandHandler.Execute(args.Skip(1).ToArray());
+        }
+
+        return CommandResult.Failure($"Command '{commandName}' is known but has no registered handler.");
     }
 }

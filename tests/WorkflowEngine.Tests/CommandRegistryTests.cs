@@ -33,15 +33,15 @@ public sealed class CommandRegistryTests
 
     [Theory]
     [MemberData(nameof(DeferredCommandCases))]
-    public void DeferredCommandsReturnIntentionalStubOutput(string command)
+    public void CommandsWithoutRegisteredHandlersReturnFailure(string command)
     {
         var registry = new CommandRegistry();
 
         var result = registry.Dispatch([command]);
 
-        Assert.Equal(0, result.ExitCode);
+        Assert.NotEqual(0, result.ExitCode);
         Assert.Contains(command, result.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("not implemented yet", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("requires command services", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -139,6 +139,17 @@ public sealed class CommandRegistryTests
         Assert.Equal("outbox-ran", result.Message);
     }
 
+    [Fact]
+    public void DemoDispatchesRegisteredHandler()
+    {
+        var registry = new CommandRegistry(demoCommandHandler: new FakeDemoCommandHandler());
+
+        var result = registry.Dispatch(["demo"]);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("demo-ran", result.Message);
+    }
+
     private sealed class FakeInitializer : global::WorkflowEngine.Application.Persistence.IWorkflowDatabaseInitializer
     {
         public string Initialize() => "initialized";
@@ -162,6 +173,14 @@ public sealed class CommandRegistryTests
         public Task<CommandResult> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken)
         {
             return Task.FromResult(CommandResult.Success("outbox-ran"));
+        }
+    }
+
+    private sealed class FakeDemoCommandHandler : IDemoCommandHandler
+    {
+        public CommandResult Execute(IReadOnlyList<string> args)
+        {
+            return CommandResult.Success("demo-ran");
         }
     }
 }

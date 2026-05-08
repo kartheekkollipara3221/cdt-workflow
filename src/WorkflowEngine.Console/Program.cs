@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WorkflowEngine.Application.Commands;
+using WorkflowEngine.Application.Demo;
 using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
@@ -31,6 +32,8 @@ var services = new ServiceCollection()
     .AddScoped<IShowNotificationsCommandHandler, ShowNotificationsCommandHandler>()
     .AddScoped<IRunSlaCommandHandler, RunSlaCommandHandler>()
     .AddScoped<IProcessNotificationOutboxCommandHandler, ProcessNotificationOutboxCommandHandler>()
+    .AddScoped<IDemoStepRunner, WorkflowEngineDemoStepRunner>()
+    .AddScoped<IDemoCommandHandler, DemoCommandHandler>()
     .AddScoped<CommandRegistry>()
     .AddWorkflowInfrastructure(configuration)
     .BuildServiceProvider();
