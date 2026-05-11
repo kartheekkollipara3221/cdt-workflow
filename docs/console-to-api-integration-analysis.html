@@ -1,0 +1,2146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Console to ASP.NET Core API Integration Analysis - CDT Workflow Engine</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #18212f;
+      --muted: #5c687a;
+      --line: #d8dee9;
+      --accent: #1b6ca8;
+      --accent-dark: #10486f;
+      --good: #146c43;
+      --warn: #946200;
+      --bad: #9b1c31;
+      --code-bg: #101827;
+      --code-ink: #e5edf7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    header {
+      background: #0f2235;
+      color: #ffffff;
+      padding: 32px 40px;
+      border-bottom: 5px solid var(--accent);
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 1100px;
+      margin: 0;
+      color: #d9e8f7;
+    }
+
+    main {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    section, nav, .callout {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+      margin: 0 0 22px;
+      box-shadow: 0 1px 2px rgba(15, 34, 53, 0.04);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--accent-dark);
+      font-size: 1.45rem;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      color: #24364b;
+      margin: 24px 0 10px;
+      font-size: 1.12rem;
+      letter-spacing: 0;
+    }
+
+    h4 {
+      margin: 18px 0 8px;
+      color: #2f4158;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .meta div {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    .toc {
+      columns: 2 320px;
+      list-style-position: inside;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .toc li {
+      break-inside: avoid;
+      margin: 0 0 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 22px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      vertical-align: top;
+      padding: 9px 10px;
+    }
+
+    th {
+      background: #edf3f8;
+      color: #1d3045;
+      text-align: left;
+      font-weight: 650;
+    }
+
+    tr:nth-child(even) td {
+      background: #fbfcfe;
+    }
+
+    code {
+      font-family: Consolas, "Cascadia Mono", monospace;
+      background: #eef2f6;
+      border-radius: 4px;
+      padding: 1px 4px;
+      color: #233348;
+    }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-ink);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid #24364b;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    ul, ol {
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 0 0 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .fact {
+      color: #0b4f34;
+      background: #dff3e8;
+    }
+
+    .rec {
+      color: #0c4a6e;
+      background: #dff0fb;
+    }
+
+    .risk {
+      color: #7f1d1d;
+      background: #fde2e2;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      padding: 12px 14px;
+      background: #eef6fc;
+      margin: 14px 0;
+    }
+
+    .warning {
+      border-left: 4px solid var(--warn);
+      padding: 12px 14px;
+      background: #fff7e6;
+      margin: 14px 0;
+    }
+
+    .compact td, .compact th {
+      padding: 7px 8px;
+      font-size: 0.9rem;
+    }
+
+    .checklist {
+      columns: 2 340px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      main {
+        max-width: none;
+        padding: 0;
+      }
+
+      section, nav, .callout {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+
+      a {
+        color: inherit;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Console to ASP.NET Core API Integration Analysis</h1>
+  <p>Standalone technical migration guide for the CDT Workflow Engine console proof of concept. This document analyzes the repository at <code>C:\projects\cdt-workflow</code> and explains how to manually integrate the workflow functionality into an existing ASP.NET Core API project.</p>
+  <div class="meta">
+    <div><strong>Repository:</strong><br>C:\projects\cdt-workflow</div>
+    <div><strong>Primary solution:</strong><br>src\WorkflowEngine.sln</div>
+    <div><strong>Target framework:</strong><br>.NET 10 / net10.0</div>
+    <div><strong>API project present:</strong><br>No ASP.NET Core API project was found in this repository.</div>
+  </div>
+</header>
+
+<main>
+  <nav id="toc">
+    <h2>Table of Contents</h2>
+    <ol class="toc">
+      <li><a href="#executive-summary">Executive Summary</a></li>
+      <li><a href="#current-project-overview">Current Project Overview</a></li>
+      <li><a href="#intent-mapping">Original Intent and Core Requirement Mapping</a></li>
+      <li><a href="#runtime-flow">Current Runtime Flow</a></li>
+      <li><a href="#module-analysis">Module-by-Module Analysis</a></li>
+      <li><a href="#business-vs-console">Business Logic vs Console-Specific Logic</a></li>
+      <li><a href="#recommended-architecture">Recommended API Architecture</a></li>
+      <li><a href="#integration-steps">Step-by-Step Integration Instructions</a></li>
+      <li><a href="#di-plan">Dependency Injection Plan</a></li>
+      <li><a href="#configuration-plan">Configuration Migration Plan</a></li>
+      <li><a href="#endpoint-design">API Endpoint Design</a></li>
+      <li><a href="#dto-plan">Request and Response DTO Plan</a></li>
+      <li><a href="#error-validation-plan">Error Handling and Validation Plan</a></li>
+      <li><a href="#logging-plan">Logging and Observability Plan</a></li>
+      <li><a href="#testing-plan">Testing Migration Plan</a></li>
+      <li><a href="#build-verification">Build, Verification, and Manual Test Instructions</a></li>
+      <li><a href="#risks">Risks, Gotchas, and Refactoring Recommendations</a></li>
+      <li><a href="#final-checklist">Final Migration Checklist</a></li>
+      <li><a href="#assumptions">Assumptions and Open Questions</a></li>
+      <li><a href="#appendix">Appendix</a></li>
+    </ol>
+  </nav>
+
+  <section id="executive-summary">
+    <h2>1. Executive Summary</h2>
+    <p><span class="badge fact">Fact</span> The current application is a console-style .NET 10 proof of concept for a reusable SQL-backed workflow engine. Its primary purpose is to replace SharePoint Designer workflow behavior with metadata-driven workflow execution, task ownership, SLA tracking, notification outbox records, audit history, idempotency, optimistic concurrency, seed verification, and form-open workflow context output.</p>
+    <p><span class="badge fact">Fact</span> Portfolio Trade is the first sample workflow definition. The code keeps Portfolio Trade behavior in seed metadata, sample JSON files, tests, and demo scripts rather than in a hardcoded Portfolio Trade engine service. The reusable engine works with workflow definitions, versions, states, actions, roles, transitions, tasks, SLA policies, notification routes, audit rows, idempotency records, and opaque section data.</p>
+    <p><span class="badge rec">Recommendation</span> The current code is already separated enough to move into or reference from an ASP.NET Core API. The most practical integration strategy is to reuse the existing <code>WorkflowEngine.Application</code>, <code>WorkflowEngine.Infrastructure</code>, and <code>WorkflowEngine.Domain</code> projects, then replace the console command layer with API controllers or Minimal API endpoints. Do not move <code>Program.cs</code> or command handlers as-is into controllers; controllers should call the same underlying services directly.</p>
+
+    <div class="warning">
+      <strong>Major integration risks:</strong> there is no API project in this repository; actor identity and roles are currently simulated through JSON/CLI input; <code>MockSectionData</code> is a POC substitute for real form persistence; <code>start-workflow --reset</code> and <code>--admin-override</code> are console/demo conveniences that should not become normal production endpoints; the workflow execution service is synchronous while web APIs usually prefer async paths for database I/O.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Current Console App Status</th>
+          <th>API Integration Recommendation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Entry point</td>
+          <td><code>src\WorkflowEngine.Console\Program.cs</code> builds configuration, DI, and dispatches CLI args through <code>CommandRegistry</code>.</td>
+          <td>Do not copy the console entry point. Register equivalent services in the API <code>Program.cs</code> and expose HTTP endpoints instead of CLI commands.</td>
+        </tr>
+        <tr>
+          <td>Business logic</td>
+          <td>Core workflow execution is in <code>WorkflowExecutionService</code>; start/context/SLA/outbox services are separate.</td>
+          <td>Reuse services through interfaces: <code>IWorkflowExecutionService</code>, <code>IStartWorkflowService</code>, <code>IWorkflowContextReader</code>, <code>IRunSlaService</code>, <code>IProcessNotificationOutboxService</code>.</td>
+        </tr>
+        <tr>
+          <td>Configuration</td>
+          <td>Console loads <code>appsettings.json</code>, <code>appsettings.Development.json</code>, environment variables, and command-line values.</td>
+          <td>Move settings into the API <code>appsettings*.json</code>, environment variables, and secrets management. Drop command-line configuration for request behavior.</td>
+        </tr>
+        <tr>
+          <td>Input/output handling</td>
+          <td><code>execute-json</code> reads an envelope file; <code>show-context</code> prints JSON; other commands print readable text.</td>
+          <td>Accept JSON bodies and route parameters. Return <code>WorkflowActionResultEnvelope</code> and <code>WorkflowContextResponse</code> as HTTP JSON.</td>
+        </tr>
+        <tr>
+          <td>External dependencies</td>
+          <td>EF Core SQL Server and MailKit SMTP. No ASP.NET Core package or Web SDK project exists.</td>
+          <td>Add references from the existing API to workflow projects. Avoid new third-party packages unless approved; MailKit is already approved.</td>
+        </tr>
+        <tr>
+          <td>Error handling</td>
+          <td>Console returns <code>CommandResult</code> exit codes and text/JSON messages. Workflow result codes are explicit.</td>
+          <td>Map workflow result codes to HTTP statuses and <code>ProblemDetails</code> or typed error responses. Keep result codes in the response body.</td>
+        </tr>
+        <tr>
+          <td>Logging</td>
+          <td>Console uses <code>Console.Out</code> and <code>Console.Error</code>; sender output may write directly to console.</td>
+          <td>Use <code>ILogger&lt;T&gt;</code> in the API and any adapted services. Do not log opaque <code>dataSave.payload</code> by default.</td>
+        </tr>
+        <tr>
+          <td>Tests</td>
+          <td>Comprehensive xUnit tests cover seed data, transitions, validation, context, idempotency, SLA, outbox, SMTP opt-in, and demo scripts.</td>
+          <td>Keep library tests. Add API integration tests for auth-to-role mapping, endpoint status codes, request body validation, and JSON contract responses.</td>
+        </tr>
+        <tr>
+          <td>API readiness</td>
+          <td>Good reusable boundary, but no web host exists. Contracts are API-shaped already.</td>
+          <td>Use existing contracts and services, replace console I/O, add authenticated actor resolution, and decide whether endpoints are generic or domain-specific.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="current-project-overview">
+    <h2>2. Current Project Overview</h2>
+    <p><span class="badge fact">Fact</span> The repository is a .NET 10 solution with four source projects and one xUnit test project. It is a console POC, not an ASP.NET Core application. A search for <code>Microsoft.NET.Sdk.Web</code>, <code>ControllerBase</code>, <code>WebApplication</code>, <code>AddControllers</code>, and common Minimal API route calls found no API project.</p>
+
+    <h3>Project Type and Entry Point</h3>
+    <table>
+      <tbody>
+        <tr><th>Project type</th><td>Console application plus class libraries.</td></tr>
+        <tr><th>Target framework</th><td>All projects target <code>net10.0</code>.</td></tr>
+        <tr><th>Main entry point</th><td><code>src\WorkflowEngine.Console\Program.cs</code>.</td></tr>
+        <tr><th>Solution file</th><td><code>src\WorkflowEngine.sln</code>.</td></tr>
+        <tr><th>Warnings policy</th><td><code>Directory.Build.props</code> sets <code>TreatWarningsAsErrors=true</code>, nullable enabled, implicit usings enabled, and latest language version.</td></tr>
+        <tr><th>Generated outputs present</th><td><code>bin\</code> and <code>obj\</code> folders exist under source and test projects. Do not copy those into an API project.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Repository Map</h3>
+    <pre><code>C:\projects\cdt-workflow
+|-- PROJECT.md
+|-- README.md
+|-- Directory.Build.props
+|-- dotnet-tools.json
+|-- AGENTS.MD
+|-- ARCHITECTURE_REVIEW.md
+|-- ARCHITECTURE_DEFECT_01_CONCURRENCY.md
+|-- ARCHITECTURE_DEFECT_02_IDEMPOTENCY.md
+|-- ARCHITECTURE_DEFECT_03_SMTP_STARTUP_VALIDATION.md
+|-- ARCHITECTURE_DEFECT_04_SMTP_TEST_LIFECYCLE.md
+|-- ARCHITECTURE_DEFECT_05_SQL_CONNECTION_CONFIGURATION.md
+|-- REVIEW_REMEDIATION_SUMMARY.md
+|-- FULL_PROJECT_REVIEW.md
+|-- FULL_PROJECT_REVIEW.html
+|-- # Project Statistics - v1.md
+|-- .github
+|   `-- workflows
+|       `-- ci.yml
+|-- .planning
+|   |-- PROJECT.md
+|   |-- REQUIREMENTS.md
+|   |-- ROADMAP.md
+|   |-- STATE.md
+|   `-- phases\...
+|-- samples
+|   `-- workflow-actions
+|       |-- 01-save-draft.json
+|       |-- 02-submit-for-checker.json
+|       |-- 03-checker-return-to-maker.json
+|       |-- 04-maker-resubmit-for-checker.json
+|       |-- 05-checker-send-to-trading-desk.json
+|       |-- 06-trading-return-to-maker.json
+|       |-- 07-trading-trade-executed.json
+|       |-- 08-bdrm-trade-fulfilled.json
+|       |-- 09-bdrm-trade-not-executed-properly.json
+|       `-- 10-trading-rework-trade-executed.json
+|-- src
+|   |-- WorkflowEngine.sln
+|   |-- WorkflowEngine.Console
+|   |-- WorkflowEngine.Application
+|   |-- WorkflowEngine.Domain
+|   `-- WorkflowEngine.Infrastructure
+`-- tests
+    |-- COVERAGE_AUDIT.md
+    `-- WorkflowEngine.Tests</code></pre>
+
+    <h3>Important Folders and Files</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Folder / File</th>
+          <th>Responsibility</th>
+          <th>API Integration Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>PROJECT.md</code></td>
+          <td>Authoritative requirements. Defines workflow model, transition matrix, contracts, commands, quality gates, stop-and-ask rules, and demo scripts.</td>
+          <td>Use as the business contract during integration. Do not replace with a new roadmap.</td>
+        </tr>
+        <tr>
+          <td><code>README.md</code></td>
+          <td>Operator/developer guide for running the console, including quickstart, contracts, result codes, SLA, notifications, and testing notes.</td>
+          <td>Use command examples as source behavior, then translate into HTTP examples.</td>
+        </tr>
+        <tr>
+          <td><code>src\WorkflowEngine.Console</code></td>
+          <td>Console composition root, CLI configuration loading, command dispatch, and console appsettings.</td>
+          <td>Do not migrate wholesale. Replace with API host composition and controllers/endpoints.</td>
+        </tr>
+        <tr>
+          <td><code>src\WorkflowEngine.Application</code></td>
+          <td>Contracts, validation, normalization, hashing, command handlers, service interfaces, result builders, demo runner definitions.</td>
+          <td>Most reusable API contracts live here. Command handlers are mostly console-specific wrappers.</td>
+        </tr>
+        <tr>
+          <td><code>src\WorkflowEngine.Domain</code></td>
+          <td>Small domain constants, currently <code>WorkflowKeys.DefaultConnectionName</code>.</td>
+          <td>Reference directly or fold into a shared domain project if your API already has one.</td>
+        </tr>
+        <tr>
+          <td><code>src\WorkflowEngine.Infrastructure</code></td>
+          <td>EF Core model, migrations, SQL seed/verification, workflow execution, context reader, SLA scanner, notification outbox, SMTP/console/no-op senders.</td>
+          <td>Reuse as infrastructure. Register via <code>AddWorkflowInfrastructure</code> if the API can reference the project.</td>
+        </tr>
+        <tr>
+          <td><code>samples\workflow-actions</code></td>
+          <td>Canonical sample envelopes and expected results for the Portfolio Trade flow.</td>
+          <td>Use as manual/API test fixtures. Do not expose <code>testExpectations</code> in production request contracts.</td>
+        </tr>
+        <tr>
+          <td><code>tests\WorkflowEngine.Tests</code></td>
+          <td>xUnit tests for command routing, validation, transitions, SQL seed data, context, SLA, outbox, SMTP, performance, and demo flows.</td>
+          <td>Keep for library verification and add web-layer tests in the API solution.</td>
+        </tr>
+        <tr>
+          <td><code>.github\workflows\ci.yml</code></td>
+          <td>CI workflow with SQL Server service, restore, build, format, default tests, vulnerability audit, and manual SMTP/extended integration jobs.</td>
+          <td>Mirror or adapt into the API repo if integration happens elsewhere.</td>
+        </tr>
+        <tr>
+          <td><code>ARCHITECTURE_REVIEW.md</code> and defect/remediation docs</td>
+          <td>Prior review findings and post-remediation status for concurrency, idempotency, SMTP validation, SMTP test lifecycle, and SQL config.</td>
+          <td>Use as risk context. The current working tree records these as remediated, but API integration can reintroduce them if services are bypassed.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Runtime Dependencies</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Dependency</th>
+          <th>Where Declared</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Microsoft.EntityFrameworkCore.SqlServer 10.0.7</code></td><td><code>src\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj</code></td><td>SQL Server persistence.</td></tr>
+        <tr><td><code>Microsoft.Extensions.Configuration.Abstractions 10.0.7</code></td><td><code>WorkflowEngine.Infrastructure.csproj</code></td><td>Infrastructure configuration access.</td></tr>
+        <tr><td><code>MailKit 4.16.0</code></td><td><code>WorkflowEngine.Infrastructure.csproj</code></td><td>SMTP notification sender.</td></tr>
+        <tr><td><code>Microsoft.Extensions.Configuration.* 10.0.7</code></td><td><code>src\WorkflowEngine.Console\WorkflowEngine.Console.csproj</code></td><td>Console JSON, environment, and command-line configuration.</td></tr>
+        <tr><td><code>Microsoft.Extensions.DependencyInjection 10.0.7</code></td><td><code>WorkflowEngine.Console.csproj</code></td><td>Console DI container.</td></tr>
+        <tr><td><code>Microsoft.EntityFrameworkCore.Design 10.0.7</code></td><td><code>WorkflowEngine.Console.csproj</code></td><td>EF tooling support.</td></tr>
+        <tr><td><code>dotnet-ef 10.0.7</code></td><td><code>dotnet-tools.json</code></td><td>Local EF Core migration tooling.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="intent-mapping">
+    <h2>3. Original Intent and Core Requirement Mapping</h2>
+    <p>The original intent is visible in <code>PROJECT.md</code>, <code>README.md</code>, the sample envelopes, tests, seed data, and naming. The project is not a form/UI replacement. It is the workflow execution backend that a future API/UI can call using stable workflow contracts.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Requirement / Intent</th>
+          <th>Where Implemented</th>
+          <th>How It Works</th>
+          <th>API Integration Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Reusable workflow engine, not Portfolio Trade-specific code</td>
+          <td><code>WorkflowExecutionService</code>, <code>WorkflowDbContext</code>, <code>PortfolioTradeSeedData</code></td>
+          <td>Execution uses generic transition rows matched by workflow version, current state, action key, and allowed role.</td>
+          <td>Keep Portfolio Trade as metadata. API services should not add <code>PortfolioTradeWorkflowService.SubmitForChecker()</code>-style hardcoding.</td>
+        </tr>
+        <tr>
+          <td>SQL-backed workflow metadata and runtime state</td>
+          <td><code>WorkflowDbContext.cs</code>, <code>Migrations\*.cs</code>, entity files</td>
+          <td>EF Core maps metadata tables, runtime instance/task/audit/outbox/idempotency tables, unique indexes, FKs, and status check constraints.</td>
+          <td>API must use SQL Server and run migrations/seed process before endpoint use.</td>
+        </tr>
+        <tr>
+          <td>Standard button-click request object</td>
+          <td><code>WorkflowActionEnvelope.cs</code>, sample JSON files</td>
+          <td>Envelope carries request metadata, business object, actor, UI action, section data save, workflow action, guards, and idempotency key.</td>
+          <td>Use as the POST body shape, but in production derive actor identity and roles from authenticated claims instead of trusting JSON.</td>
+        </tr>
+        <tr>
+          <td>One call saves section data and moves workflow</td>
+          <td><code>WorkflowExecutionService.ExecuteSideEffects</code></td>
+          <td>Inside one transaction, the service appends <code>MockSectionData</code>, updates state/version, closes/creates tasks, queues notification, writes audit, and stores idempotency result.</td>
+          <td>API endpoint should make one service call per user click. Do not split form save and workflow action into two HTTP calls.</td>
+        </tr>
+        <tr>
+          <td>Form-open workflow context</td>
+          <td><code>WorkflowContextResponse.cs</code>, <code>WorkflowContextReader.cs</code>, <code>ShowContextCommandHandler.cs</code></td>
+          <td>Reads persisted instance, current task, SLA, actor roles, and metadata-derived actions.</td>
+          <td>Expose as a GET endpoint or include in domain form-open response.</td>
+        </tr>
+        <tr>
+          <td>Standard action result</td>
+          <td><code>WorkflowActionResult.cs</code>, <code>WorkflowActionResultBuilder.cs</code></td>
+          <td>Result envelope returns success/failure, result code, state changes, task changes, notification/audit summary, hashes, diagnostics, and refreshed context.</td>
+          <td>Use directly as successful and business-error response body.</td>
+        </tr>
+        <tr>
+          <td>No request-supplied next state</td>
+          <td><code>WorkflowActionEnvelope.cs</code> has no <code>toState</code>; <code>WorkflowExecutionService</code> uses <code>WorkflowTransitionDefinition.ToStateKey</code>.</td>
+          <td>Next state is derived exclusively from SQL metadata.</td>
+          <td>API must not add <code>toState</code> to request DTOs.</td>
+        </tr>
+        <tr>
+          <td><code>workflow.options</code> cannot override metadata</td>
+          <td><code>WorkflowExecutionService.BuildOptionWarnings</code></td>
+          <td>Options conflicts print warnings and metadata still wins.</td>
+          <td>For API, convert warnings to structured logs or response diagnostics. Never let API options suppress metadata-required side effects.</td>
+        </tr>
+        <tr>
+          <td>Idempotency and replay</td>
+          <td><code>CanonicalRequestHasher.cs</code>, <code>IdempotencyRecord.cs</code>, <code>CanonicalWorkflowResultSerializer.cs</code></td>
+          <td>Effective idempotency key plus request hash dedupes actions; matching replay returns stored result JSON; changed request returns <code>IdempotencyConflict</code>.</td>
+          <td>Consider accepting an <code>Idempotency-Key</code> header and mapping it into the envelope before hashing.</td>
+        </tr>
+        <tr>
+          <td>Optimistic concurrency</td>
+          <td><code>WorkflowExecutionService.CheckConcurrency</code>, version-predicated <code>ExecuteUpdate</code></td>
+          <td>Expected state/task/version guards are checked, then rechecked inside the transaction; state-changing update predicates on <code>WorkflowInstance.Version</code>.</td>
+          <td>API should require clients to echo <code>requestDefaults</code> from context and map conflicts to HTTP 409.</td>
+        </tr>
+        <tr>
+          <td>SLA and notification outbox</td>
+          <td><code>RunSlaService.cs</code>, <code>ProcessNotificationOutboxService.cs</code>, notification senders</td>
+          <td>Task due dates are computed from SLA policy; overdue scanner queues one <code>SlaTaskOverdue</code> per task; outbox processor claims rows before sending.</td>
+          <td>Use background hosted services or admin-only endpoints. Do not send notifications directly from controllers.</td>
+        </tr>
+        <tr>
+          <td>Seed/sample verification</td>
+          <td><code>WorkflowSeedService.cs</code>, <code>SeedVerificationService.cs</code>, <code>SeedDataSmokeTests.cs</code>, <code>SampleExpectationTests.cs</code></td>
+          <td>Portfolio Trade metadata is upserted and verified against required states, roles, actions, tasks, routes, and transitions.</td>
+          <td>Run seed verification after migration in each environment. Keep samples as regression fixtures.</td>
+        </tr>
+        <tr>
+          <td>Stop-and-ask boundaries</td>
+          <td><code>PROJECT.md</code> Section 22</td>
+          <td>Prohibits contract shape changes, matrix changes, schema changes, new packages, user-role SQL tables, failure audit, parallel workflow, etc. without approval.</td>
+          <td>Manual API integration should stay inside these boundaries unless a deliberate architecture decision is made.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="runtime-flow">
+    <h2>4. Current Runtime Flow</h2>
+    <h3>Startup Flow</h3>
+    <ol>
+      <li><code>src\WorkflowEngine.Console\Program.cs</code> builds configuration using base path <code>AppContext.BaseDirectory</code>.</li>
+      <li>Configuration sources are loaded in this order: <code>appsettings.json</code>, <code>appsettings.Development.json</code>, environment variables, then command-line args.</li>
+      <li>A <code>ServiceCollection</code> is created. The console registers <code>IConfiguration</code>, <code>TimeProvider.System</code>, validators, normalizers, hashers, result builders, command handlers, demo runner, and <code>CommandRegistry</code>.</li>
+      <li><code>AddWorkflowInfrastructure(configuration)</code> validates the SQL connection string and notification sender settings, then registers EF Core and infrastructure services.</li>
+      <li>The console creates one DI scope, resolves <code>CommandRegistry</code>, and calls <code>Dispatch(args)</code>.</li>
+      <li>The returned <code>CommandResult</code> is written to <code>Console.Out</code> for exit code 0 or <code>Console.Error</code> for non-zero exit code.</li>
+      <li>The process returns <code>CommandResult.ExitCode</code>.</li>
+    </ol>
+
+    <h3>Command Flow Diagram</h3>
+    <pre><code>User / CLI Input
+    |
+    v
+src\WorkflowEngine.Console\Program.cs
+    |
+    v
+ConfigurationBuilder
+  appsettings.json
+  appsettings.Development.json
+  environment variables
+  command-line args
+    |
+    v
+ServiceCollection
+  application services
+  command handlers
+  AddWorkflowInfrastructure(configuration)
+    |
+    v
+CommandRegistry.Dispatch(args)
+    |
+    +-- init-db ----------------------&gt; WorkflowDatabaseInitializer.Initialize()
+    +-- verify-seed ------------------&gt; SeedVerificationService.Verify()
+    +-- start-workflow ---------------&gt; StartWorkflowCommandHandler -&gt; IStartWorkflowService
+    +-- execute-json -----------------&gt; ExecuteJsonCommandHandler -&gt; validator/normalizer/hasher -&gt; IWorkflowExecutionService
+    +-- show-context -----------------&gt; ShowContextCommandHandler -&gt; IWorkflowContextReader
+    +-- show/show-tasks/history/... --&gt; inspection handlers -&gt; IWorkflowInspectionReader
+    +-- run-sla ----------------------&gt; RunSlaCommandHandler -&gt; IRunSlaService
+    +-- process-notification-outbox --&gt; ProcessNotificationOutboxCommandHandler -&gt; IProcessNotificationOutboxService
+    `-- demo -------------------------&gt; DemoCommandHandler -&gt; IDemoStepRunner
+    |
+    v
+Console JSON/text output or error</code></pre>
+
+    <h3><code>execute-json</code> Runtime Flow</h3>
+    <ol>
+      <li>Parse arguments with <code>CommandArgumentParser.ParseExecuteJson</code>.</li>
+      <li>Read a JSON file from disk and deserialize it as <code>WorkflowActionEnvelope</code>.</li>
+      <li>Apply <code>--business-object</code> and <code>--workflow-instance</code> overrides through <code>WorkflowActionEnvelopeNormalizer</code>.</li>
+      <li>Validate envelope shape and MakerPrimary consistency with <code>WorkflowActionEnvelopeValidator</code>.</li>
+      <li>Compute the canonical request hash using <code>CanonicalRequestHasher</code>.</li>
+      <li>Call <code>IWorkflowExecutionService.Execute</code> unless validation failed.</li>
+      <li>Return a readable text summary by default or JSON when <code>--format json</code> is supplied.</li>
+    </ol>
+
+    <h3>Core Business Flow</h3>
+    <pre><code>start-workflow PortfolioTrade PT-1001
+    creates WF-PT-1001 in Draft, Active, Version 1
+
+Maker SaveDraft
+    Draft -&gt; Draft
+    append MockSectionData
+    write lightweight audit
+    no version increment, task, SLA, or notification
+
+Maker SubmitForChecker
+    Draft -&gt; CheckerReview
+    create CheckerReviewTask assigned to Checker
+    set SLA due date
+    queue WorkflowTaskAssigned
+    write audit
+
+Checker ReturnToMaker
+    CheckerReview -&gt; ReturnedToMaker
+    close CheckerReviewTask
+    create MakerReworkTask with no SLA
+    queue WorkflowReturnedToMaker
+
+Maker ResubmitForChecker
+    ReturnedToMaker -&gt; CheckerReview
+    close MakerReworkTask
+    create CheckerReviewTask
+    queue WorkflowTaskAssigned
+
+Checker SendToTradingDesk
+    CheckerReview -&gt; TradingDeskReview
+    close CheckerReviewTask
+    create TradingDeskReviewTask
+
+Trading Desk ReturnToMaker or TradeExecuted
+    TradingDeskReview -&gt; ReturnedToMaker
+    or
+    TradingDeskReview -&gt; BdrmClientServiceReview
+
+BDRM Client Service Fulfilled or NotExecutedProperly
+    BdrmClientServiceReview -&gt; Completed
+    or
+    BdrmClientServiceReview -&gt; TradingDeskRework
+
+Trading Desk Rework TradeExecuted
+    TradingDeskRework -&gt; BdrmClientServiceReview</code></pre>
+
+    <h3>Error and Exit Behavior</h3>
+    <p>Console command errors return a non-zero <code>CommandResult.ExitCode</code> and a message written to stderr by <code>Program.cs</code>. Business errors inside workflow execution are normally represented as <code>WorkflowActionResultEnvelope</code> values with <code>Success=false</code> and result codes such as <code>ValidationFailed</code>, <code>Forbidden</code>, <code>InvalidTransition</code>, <code>ConcurrencyConflict</code>, <code>WorkflowDefinitionVersionMismatch</code>, <code>IdempotencyConflict</code>, <code>AmbiguousRoleMatch</code>, <code>AlreadyExists</code>, or <code>WorkflowInstanceNotFound</code>.</p>
+  </section>
+
+  <section id="module-analysis">
+    <h2>5. Module-by-Module Analysis</h2>
+    <p>This section covers the meaningful modules, classes, files, and components visible in the repository. It distinguishes reusable workflow logic from console wrappers and infrastructure.</p>
+
+    <h3>Module Table</h3>
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Module / File</th>
+          <th>Purpose</th>
+          <th>Key Classes / Functions</th>
+          <th>Inputs</th>
+          <th>Outputs</th>
+          <th>Dependencies</th>
+          <th>API Integration Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src\WorkflowEngine.Console\Program.cs</code></td>
+          <td>Console composition root and process entry point.</td>
+          <td>Top-level statements; configuration builder; service registration; command dispatch.</td>
+          <td>CLI args, appsettings, env vars.</td>
+          <td>Console stdout/stderr and exit code.</td>
+          <td>Application and Infrastructure projects.</td>
+          <td>Replace with API <code>Program.cs</code>. Reuse registrations, not CLI dispatch.</td>
+        </tr>
+        <tr>
+          <td><code>WorkflowEngine.Console.csproj</code></td>
+          <td>Defines console app package refs and project refs.</td>
+          <td>Project metadata.</td>
+          <td>Build inputs.</td>
+          <td>Executable.</td>
+          <td>Application, Infrastructure, configuration packages, EF design.</td>
+          <td>Do not need in API unless console remains as a separate tool.</td>
+        </tr>
+        <tr>
+          <td><code>src\WorkflowEngine.Console\appsettings*.json</code></td>
+          <td>Console configuration defaults.</td>
+          <td><code>Notifications:Sender</code>, empty <code>WorkflowEngine</code> section.</td>
+          <td>Configuration provider.</td>
+          <td>Runtime settings.</td>
+          <td>.NET configuration.</td>
+          <td>Move settings to API <code>appsettings*.json</code>; do not rely on console base path.</td>
+        </tr>
+        <tr>
+          <td><code>src\WorkflowEngine.Domain\Workflow\WorkflowKeys.cs</code></td>
+          <td>Shared workflow constants.</td>
+          <td><code>WorkflowKeys.DefaultConnectionName</code>.</td>
+          <td>None.</td>
+          <td><code>DefaultConnection</code>.</td>
+          <td>None.</td>
+          <td>Keep or fold into existing domain constants.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Contracts\WorkflowActionEnvelope.cs</code></td>
+          <td>Button-click request contract.</td>
+          <td><code>WorkflowActionEnvelope</code>, <code>WorkflowRequest</code>, <code>WorkflowBusinessObject</code>, <code>WorkflowActor</code>, <code>WorkflowUiAction</code>, <code>WorkflowDataSave</code>, <code>WorkflowActionBlock</code>, <code>WorkflowActionOptions</code>.</td>
+          <td>JSON body or sample file.</td>
+          <td>Deserialized request model.</td>
+          <td><code>System.Text.Json</code>.</td>
+          <td>Use as API request body after stripping/ignoring <code>TestExpectations</code>. Stamp actor from auth.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Contracts\WorkflowContextResponse.cs</code></td>
+          <td>Form-open workflow context response.</td>
+          <td><code>WorkflowContextResponse</code>, <code>WorkflowContext</code>, nested workflow/business/actor/task/SLA classes.</td>
+          <td>Context reader output.</td>
+          <td>JSON response.</td>
+          <td>Available action contracts.</td>
+          <td>Expose through GET endpoint or include in domain form-open response.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Contracts\AvailableWorkflowAction.cs</code></td>
+          <td>Metadata-derived UI action hints and request defaults.</td>
+          <td><code>AvailableWorkflowAction</code>, <code>WorkflowActionRequestDefaults</code>.</td>
+          <td>Transition/action metadata and current instance/task.</td>
+          <td>Actions for current actor roles.</td>
+          <td>Context reader.</td>
+          <td>API clients should use <code>requestDefaults</code> to build later action envelopes.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Contracts\WorkflowActionResult.cs</code></td>
+          <td>Standard action and start-workflow result contract.</td>
+          <td><code>WorkflowActionResultEnvelope</code>, <code>WorkflowActionResult</code>, diagnostics, task/notification/audit summaries.</td>
+          <td>Result builder and execution service.</td>
+          <td>JSON response.</td>
+          <td>Workflow context.</td>
+          <td>Use as endpoint response body. Map <code>ResultCode</code> to HTTP status.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Contracts\WorkflowJson.cs</code></td>
+          <td>Shared JSON serializer options.</td>
+          <td><code>WorkflowJson.Options</code>.</td>
+          <td>None.</td>
+          <td>Camel-case web defaults, indented JSON.</td>
+          <td><code>System.Text.Json</code>.</td>
+          <td>ASP.NET Core already uses web defaults. Use this for deterministic serialization where needed.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Validation\WorkflowActionEnvelopeValidator.cs</code></td>
+          <td>Envelope shape and MakerPrimary validation.</td>
+          <td><code>Validate</code>, required-block checks, payload object check, save-as-draft rules.</td>
+          <td><code>WorkflowActionEnvelope</code>.</td>
+          <td><code>WorkflowValidationError</code> list.</td>
+          <td>Contracts.</td>
+          <td>Call before execution in API. Add API/model-state validation around it, not instead of it.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Normalization\WorkflowActionEnvelopeNormalizer.cs</code></td>
+          <td>Applies demo override IDs and derives effective IDs.</td>
+          <td><code>Normalize</code>, <code>NormalizedWorkflowAction</code>.</td>
+          <td>Envelope and optional business/workflow overrides.</td>
+          <td>Effective client action, correlation, and idempotency keys.</td>
+          <td>SHA256.</td>
+          <td>API usually should not use CLI override behavior except for internal test/admin routes.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Normalization\CanonicalRequestHasher.cs</code></td>
+          <td>Computes deterministic request hash for idempotency conflict detection.</td>
+          <td><code>ComputeHash</code>, canonical JSON writer.</td>
+          <td>Normalized envelope.</td>
+          <td>SHA256 hex string.</td>
+          <td><code>System.Text.Json</code>, SHA256.</td>
+          <td>Keep exactly in API. Hash after any server-side actor/idempotency stamping.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Results\WorkflowActionResultBuilder.cs</code></td>
+          <td>Builds success and failure result envelopes.</td>
+          <td><code>BuildValidationFailed</code>, <code>BuildConcurrencyConflict</code>, <code>BuildAlreadyExists</code>, <code>BuildExecutionSuccess</code>, etc.</td>
+          <td>Normalized action, request hash, state/task/error data.</td>
+          <td><code>WorkflowActionResultEnvelope</code>.</td>
+          <td>Contracts and validation records.</td>
+          <td>Reuse unchanged. Controllers should not manually build divergent result shapes.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Results\CanonicalWorkflowResultSerializer.cs</code></td>
+          <td>Canonical result serialization and result hash computation.</td>
+          <td><code>Serialize</code>, <code>ComputeResultHash</code>.</td>
+          <td>Result envelope.</td>
+          <td>Canonical JSON and SHA256 result hash.</td>
+          <td><code>WorkflowJson</code>, SHA256.</td>
+          <td>Keep for idempotent replay integrity.</td>
+        </tr>
+        <tr>
+          <td><code>Application\WorkflowExecution\IWorkflowExecutionService.cs</code></td>
+          <td>Execution service abstraction.</td>
+          <td><code>IWorkflowExecutionService.Execute</code>, <code>WorkflowExecutionRequest</code>.</td>
+          <td>Normalized envelope, request hash, admin override flag.</td>
+          <td>Result envelope.</td>
+          <td>Contracts and normalization.</td>
+          <td>Primary controller dependency for action execution.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\WorkflowExecution\WorkflowExecutionService.cs</code></td>
+          <td>Core metadata-driven workflow execution.</td>
+          <td>Validation against persisted instance, transition lookup, role checks, idempotency replay, concurrency checks, transactional side effects.</td>
+          <td><code>WorkflowExecutionRequest</code> and SQL state.</td>
+          <td>Result envelope and database side effects.</td>
+          <td>EF Core, context reader, TimeProvider, result builder, serializer.</td>
+          <td>Move/reuse as an API scoped service. Consider async refactor later; do not bypass it.</td>
+        </tr>
+        <tr>
+          <td><code>Application\WorkflowStart\IStartWorkflowService.cs</code></td>
+          <td>Start-workflow abstraction and result records.</td>
+          <td><code>StartWorkflowRequest</code>, <code>StartWorkflowResult</code>, <code>StartWorkflowResetCounts</code>.</td>
+          <td>Workflow key, business object, user, reset flag.</td>
+          <td>Result envelope.</td>
+          <td>Contracts.</td>
+          <td>Use from API start endpoint, but disable/reset-gate <code>Reset</code> outside dev/admin.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\WorkflowStart\StartWorkflowService.cs</code></td>
+          <td>Creates deterministic workflow instances.</td>
+          <td><code>Start</code>, duplicate handling, demo reset, active version lookup.</td>
+          <td>Start request and SQL metadata.</td>
+          <td>New or existing workflow result.</td>
+          <td>EF Core, TimeProvider, result builder.</td>
+          <td>Use in API. Do not expose destructive reset to normal users.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Context\IWorkflowContextReader.cs</code></td>
+          <td>Context reader abstraction.</td>
+          <td><code>Read</code>, <code>WorkflowContextReadRequest</code>.</td>
+          <td>Workflow instance ID, user ID, roles.</td>
+          <td><code>WorkflowContextResponse</code>.</td>
+          <td>Contracts.</td>
+          <td>Controller dependency for form-open context.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\WorkflowContext\WorkflowContextReader.cs</code></td>
+          <td>Builds persisted workflow context and available actions.</td>
+          <td>Reads instance/version/state/pending task/action metadata; computes SLA and read-only reason.</td>
+          <td>Context read request and SQL state.</td>
+          <td><code>WorkflowContextResponse</code>.</td>
+          <td>EF Core, TimeProvider.</td>
+          <td>Reuse; pass roles from auth claims, not query string in production.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Inspection\IWorkflowInspectionReader.cs</code> and <code>Infrastructure\WorkflowInspection\WorkflowInspectionReader.cs</code></td>
+          <td>Read-only inspection snapshots for show commands.</td>
+          <td>Instance, task, audit, notification inspection records.</td>
+          <td>Workflow instance ID.</td>
+          <td>Snapshot records.</td>
+          <td>EF Core.</td>
+          <td>Useful for admin/debug endpoints. Not required for normal end-user workflow actions.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\Persistence\WorkflowDbContext.cs</code></td>
+          <td>EF Core SQL model.</td>
+          <td>DbSets, table mappings, indexes, FKs, check constraints.</td>
+          <td>DbContext options.</td>
+          <td>SQL data access.</td>
+          <td>EF Core SQL Server.</td>
+          <td>Register as scoped. Coordinate migrations with existing API database strategy.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\Persistence\Entities\*.cs</code></td>
+          <td>EF entity classes for metadata and runtime tables.</td>
+          <td>Workflow definitions, actions, states, roles, transitions, tasks, SLA policies, routes, instances, audits, outbox, idempotency, mock data.</td>
+          <td>EF Core materialization.</td>
+          <td>Persisted rows.</td>
+          <td>DbContext mapping.</td>
+          <td>Keep internal to infrastructure where possible. Avoid exposing directly in API DTOs.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\Persistence\Seed\*.cs</code></td>
+          <td>Portfolio Trade seed data and DB initializer.</td>
+          <td><code>PortfolioTradeSeedData</code>, <code>WorkflowSeedService</code>, <code>WorkflowDatabaseInitializer</code>.</td>
+          <td>SQL database and TimeProvider.</td>
+          <td>Seeded metadata rows.</td>
+          <td>EF Core.</td>
+          <td>Run from migration/ops path. Do not run automatically on every web request.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\Persistence\Verification\SeedVerificationService.cs</code></td>
+          <td>Verifies Portfolio Trade metadata completeness and correctness.</td>
+          <td><code>Verify</code> and helper verification methods.</td>
+          <td>SQL metadata.</td>
+          <td><code>SeedVerificationResult</code>.</td>
+          <td>EF Core.</td>
+          <td>Expose only as admin/health check or deployment verification, not public API.</td>
+        </tr>
+        <tr>
+          <td><code>Infrastructure\Migrations\*.cs</code></td>
+          <td>EF Core migrations for initial schema and hardened constraints.</td>
+          <td><code>InitialWorkflowSchema</code>, <code>HardenRuntimeConstraints</code>, snapshot.</td>
+          <td>EF tooling.</td>
+          <td>SQL schema changes.</td>
+          <td>EF Core migrations.</td>
+          <td>Integrate into existing migration pipeline carefully; avoid duplicate migration histories.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Sla\IRunSlaService.cs</code> and <code>Infrastructure\Sla\RunSlaService.cs</code></td>
+          <td>Overdue SLA scanner.</td>
+          <td><code>RunAsync</code>, <code>RunSlaRequest</code>, result records.</td>
+          <td>Current time and SQL tasks.</td>
+          <td>Queued overdue notifications.</td>
+          <td>EF Core.</td>
+          <td>Run in a background service or admin job. Keep out of normal action endpoint.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Notifications\*.cs</code> and <code>Infrastructure\Notifications\*.cs</code></td>
+          <td>Notification sender abstraction and durable outbox processing.</td>
+          <td><code>INotificationSender</code>, <code>ProcessNotificationOutboxService</code>, <code>ConsoleNotificationSender</code>, <code>NoOpNotificationSender</code>, <code>SmtpNotificationSender</code>.</td>
+          <td>Outbox rows and sender configuration.</td>
+          <td>Sent notifications and outbox status updates.</td>
+          <td>EF Core, MailKit, IConfiguration.</td>
+          <td>Use <code>Smtp</code> in production if configured. Replace console sender with API logging if desired.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Commands\*.cs</code></td>
+          <td>CLI argument parsing, command registry, and console-readable wrappers.</td>
+          <td><code>CommandRegistry</code>, <code>CommandArgumentParser</code>, <code>ExecuteJsonCommandHandler</code>, <code>Show*</code>, <code>RunSlaCommandHandler</code>, <code>DemoCommandHandler</code>.</td>
+          <td>String argument arrays.</td>
+          <td><code>CommandResult</code> and text/JSON strings.</td>
+          <td>Application and infrastructure service interfaces.</td>
+          <td>Mostly console-specific. Use as reference for endpoint behavior; controllers should call underlying services.</td>
+        </tr>
+        <tr>
+          <td><code>Application\Demo\*.cs</code></td>
+          <td>Console demo scenario definitions and runner.</td>
+          <td><code>DemoScriptDefinitions</code>, <code>WorkflowEngineDemoStepRunner</code>, <code>DemoStep</code>.</td>
+          <td>Sample files and command handlers.</td>
+          <td>Demo result messages.</td>
+          <td>Command handlers and samples.</td>
+          <td>Do not move into production API except maybe as an internal smoke-test tool.</td>
+        </tr>
+        <tr>
+          <td><code>tests\WorkflowEngine.Tests\*.cs</code></td>
+          <td>Automated verification suite.</td>
+          <td>Transition, validation, context, seed, SLA, outbox, SMTP, command, demo, and coverage tests.</td>
+          <td>Source code, SQL Server test connection, sample files.</td>
+          <td>Test pass/fail evidence.</td>
+          <td>xUnit, EF Core SQL Server.</td>
+          <td>Keep and extend with API tests. Use test methods as behavior inventory.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Major Module Explanations</h3>
+    <h4>Application Contracts</h4>
+    <p>The contract classes solve the boundary problem between UI/API callers and the workflow engine. <code>WorkflowActionEnvelope</code> is the button-click command; <code>WorkflowContextResponse</code> is the form-open context; <code>AvailableWorkflowAction</code> tells the UI what actions are available; <code>WorkflowActionResultEnvelope</code> is the post-action response. These classes are business/application contracts, not console presentation logic. They should move directly into or be referenced by the API project and should become the public JSON contracts unless the API adds thin wrappers.</p>
+
+    <h4>Validation, Normalization, Hashing, and Result Building</h4>
+    <p><code>WorkflowActionEnvelopeValidator</code>, <code>WorkflowActionEnvelopeNormalizer</code>, <code>CanonicalRequestHasher</code>, <code>WorkflowActionResultBuilder</code>, and <code>CanonicalWorkflowResultSerializer</code> form the reusable application layer around execution. The validator protects required envelope shape; the normalizer exists mainly for sample override reuse; the hasher enables idempotency; the builder centralizes response shapes; the serializer makes replay deterministic. These should be registered as DI services in the API. The API should call them in the same order as <code>ExecuteJsonCommandHandler</code>, but without file I/O.</p>
+
+    <h4>Workflow Execution</h4>
+    <p><code>WorkflowExecutionService</code> is the core business operation. It resolves the persisted workflow instance, verifies request identity against that instance, verifies definition version, rejects completed workflows, resolves action and transition metadata, enforces actor role authorization, emits option conflict warnings, enforces concurrency guards, appends mock section data, closes and creates tasks, queues notification outbox rows, writes audit, and stores idempotency replay data inside one transaction. It is infrastructure/application orchestration logic and should be used as a scoped API service. A controller should not manually reproduce its behavior.</p>
+
+    <h4>Persistence and Seed Metadata</h4>
+    <p><code>WorkflowDbContext</code>, entity classes, migrations, <code>WorkflowSeedService</code>, and <code>SeedVerificationService</code> solve the SQL persistence and metadata setup problem. They belong in the API infrastructure layer. The API should coordinate migration and seeding through deployment scripts or admin operations, not through public endpoints. Portfolio Trade seed metadata should remain seed data; do not convert it into code branches.</p>
+
+    <h4>Workflow Context</h4>
+    <p><code>WorkflowContextReader</code> participates in both form-open behavior and refreshed post-action results. It reads the current instance, active version, current state label, pending task, SLA, and transitions available to the caller's roles. It should become a controller dependency for context endpoints or a dependency of domain form-open services. It should receive roles from authenticated claims in a real API.</p>
+
+    <h4>SLA and Notification Outbox</h4>
+    <p><code>RunSlaService</code> is a background/operations service, not a user-click service. It scans active workflows with pending overdue tasks and queues one <code>SlaTaskOverdue</code> notification per task. <code>ProcessNotificationOutboxService</code> claims pending or expired-processing rows, sends through the configured <code>INotificationSender</code>, and marks them sent or releases the claim on failure. In an API project, these should usually run in hosted background services, scheduled jobs, or admin-only operations.</p>
+
+    <h4>Console Command Layer</h4>
+    <p>The command registry, argument parser, command handlers, and demo runner are presentation/orchestration for the console POC. They are useful documentation for behavior but should not be the primary API layer. In particular, <code>ExecuteJsonCommandHandler</code> reads from disk; an API endpoint should accept the envelope from the request body. <code>Show*</code> handlers format text; API endpoints should return typed JSON. <code>DemoCommandHandler</code> and <code>start-workflow --reset</code> are demo/test conveniences.</p>
+  </section>
+
+  <section id="business-vs-console">
+    <h2>6. Business Logic vs Console-Specific Logic</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Code Area</th>
+          <th>Type</th>
+          <th>Keep As-Is?</th>
+          <th>Refactor?</th>
+          <th>API Placement</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Business/domain logic</td>
+          <td>Metadata-driven workflow execution, task movement, SLA, notification outbox, audit, idempotency.</td>
+          <td>Mostly yes.</td>
+          <td>Optional async refactor later; not required for first manual integration.</td>
+          <td>Reference <code>WorkflowEngine.Application</code>, <code>WorkflowEngine.Infrastructure</code>, and <code>WorkflowEngine.Domain</code>.</td>
+        </tr>
+        <tr>
+          <td>Console input/output</td>
+          <td>CLI argument parsing, file reading, readable text output, demo runner.</td>
+          <td>No for API runtime.</td>
+          <td>Replace with controllers/endpoints, model binding, and HTTP responses.</td>
+          <td>API <code>Controllers</code> or <code>Endpoints</code>; leave console project separate.</td>
+        </tr>
+        <tr>
+          <td>Configuration</td>
+          <td>JSON/env/command-line config plus DI registration.</td>
+          <td>Partially.</td>
+          <td>Move settings into API config; remove command-line request config.</td>
+          <td>API <code>Program.cs</code>, <code>appsettings.json</code>, options classes.</td>
+        </tr>
+        <tr>
+          <td>Validation</td>
+          <td>Envelope validation, persisted identity validation, metadata echo validation, concurrency validation.</td>
+          <td>Yes.</td>
+          <td>Add API model-state/auth validation around it.</td>
+          <td>DI services plus controller filters or endpoint logic.</td>
+        </tr>
+        <tr>
+          <td>External integration</td>
+          <td>SMTP sender and console/no-op senders.</td>
+          <td>SMTP yes; console maybe dev-only.</td>
+          <td>Use API logging for console sender if desired; keep MailKit sender for configured SMTP.</td>
+          <td>Infrastructure services; background worker for outbox.</td>
+        </tr>
+        <tr>
+          <td>Data access</td>
+          <td>EF Core DbContext, migrations, entity classes, seed services.</td>
+          <td>Yes.</td>
+          <td>Coordinate migration history with existing API; consider schema namespace/table ownership.</td>
+          <td>API infrastructure layer and database deployment pipeline.</td>
+        </tr>
+        <tr>
+          <td>Logging/error handling</td>
+          <td>Console output, result codes, exceptions for configuration.</td>
+          <td>Result codes yes; console output no.</td>
+          <td>Map to HTTP status, structured logs, exception handling middleware.</td>
+          <td>API middleware/controllers plus possible service logging adapters.</td>
+        </tr>
+        <tr>
+          <td>Tests</td>
+          <td>xUnit library/integration tests.</td>
+          <td>Yes.</td>
+          <td>Add API tests; remove reliance on command handlers for web behavior.</td>
+          <td>Existing test project plus API test project.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Move Unchanged</h3>
+    <ul>
+      <li><code>Application\Contracts\*.cs</code> except treat <code>WorkflowTestExpectations</code> as sample-only.</li>
+      <li><code>Application\Validation\*.cs</code>, <code>Application\Normalization\*.cs</code>, <code>Application\Results\*.cs</code>.</li>
+      <li>Service interfaces under <code>Application\WorkflowExecution</code>, <code>WorkflowStart</code>, <code>Context</code>, <code>Sla</code>, <code>Notifications</code>, <code>Persistence</code>.</li>
+      <li>Infrastructure services under <code>WorkflowExecution</code>, <code>WorkflowStart</code>, <code>WorkflowContext</code>, <code>Sla</code>, <code>Notifications</code>, <code>Persistence</code>.</li>
+    </ul>
+
+    <h3>Wrap or Adapt</h3>
+    <ul>
+      <li><code>WorkflowExecutionService.Execute</code>: call from API action endpoint after server-side actor resolution.</li>
+      <li><code>StartWorkflowService.Start</code>: call from API start endpoint with <code>Reset=false</code> except controlled admin/dev scenarios.</li>
+      <li><code>RunSlaService</code> and <code>ProcessNotificationOutboxService</code>: call from hosted services or admin endpoints.</li>
+      <li><code>SeedVerificationService</code>: call from deployment verification or admin health diagnostics.</li>
+    </ul>
+
+    <h3>Remove From API Runtime</h3>
+    <ul>
+      <li><code>CommandRegistry</code> and <code>CommandArgumentParser</code> for public API request handling.</li>
+      <li>Text formatting in <code>ShowCommandHandler</code>, <code>ShowTasksCommandHandler</code>, <code>ShowHistoryCommandHandler</code>, and <code>ShowNotificationsCommandHandler</code>.</li>
+      <li>File-reading behavior in <code>ExecuteJsonCommandHandler</code>.</li>
+      <li><code>DemoCommandHandler</code>, <code>DemoScriptDefinitions</code>, and demo-specific <code>PT-DEMO</code> behavior for production.</li>
+    </ul>
+  </section>
+
+  <section id="recommended-architecture">
+    <h2>7. Recommended API Architecture</h2>
+    <p><span class="badge fact">Fact</span> No existing ASP.NET Core API project is present in this repository. The following architecture assumes you will integrate these projects into a separate existing API or create a new API host. If your existing API already uses controllers, align with controllers. If it already uses Minimal APIs, align with that style. If there is no established style, controllers are recommended here because the workflow surface has multiple operations, rich request/response contracts, admin-only operations, and testable action methods.</p>
+
+    <h3>Before and After Conceptual Structure</h3>
+    <pre><code>Current console structure
+src
+|-- WorkflowEngine.Console
+|   `-- Program.cs + CLI command dispatch
+|-- WorkflowEngine.Application
+|   `-- contracts, validation, command handlers, interfaces
+|-- WorkflowEngine.Infrastructure
+|   `-- EF Core, execution, context, SLA, notifications
+`-- WorkflowEngine.Domain
+    `-- shared constants
+
+Recommended API-integrated structure
+ExistingApi
+|-- Controllers or Endpoints
+|   |-- WorkflowInstancesController.cs
+|   |-- WorkflowActionsController.cs
+|   |-- WorkflowContextController.cs
+|   `-- WorkflowAdminController.cs (optional/internal)
+|-- Services
+|   |-- WorkflowActorResolver.cs
+|   |-- WorkflowActionHttpMapper.cs
+|   `-- HostedServices
+|       |-- WorkflowSlaHostedService.cs (optional)
+|       `-- NotificationOutboxHostedService.cs (optional)
+|-- Options
+|   `-- Notification/Smtp options if your API uses typed options
+|-- appsettings.json
+`-- Project references to:
+    |-- WorkflowEngine.Application
+    |-- WorkflowEngine.Infrastructure
+    `-- WorkflowEngine.Domain</code></pre>
+
+    <h3>Component Mapping</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Current Console Component</th>
+          <th>Recommended API Location</th>
+          <th>Recommended API Role</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Program.cs</code> service registration</td><td>API <code>Program.cs</code> or extension method</td><td>Composition root</td><td>Register the reusable services and <code>AddWorkflowInfrastructure</code>; do not dispatch CLI commands.</td></tr>
+        <tr><td><code>ExecuteJsonCommandHandler</code></td><td><code>Controllers\WorkflowActionsController.cs</code> or <code>Endpoints\WorkflowActionEndpoints.cs</code></td><td>Behavior reference only</td><td>Translate its sequence into HTTP body handling: normalize, validate, hash, execute.</td></tr>
+        <tr><td><code>StartWorkflowCommandHandler</code></td><td><code>WorkflowInstancesController</code></td><td>Behavior reference only</td><td>Accept route/body values; use authenticated user; disable <code>Reset</code> by default.</td></tr>
+        <tr><td><code>ShowContextCommandHandler</code></td><td><code>WorkflowContextController</code> or domain form controller</td><td>GET context endpoint</td><td>Use authenticated user/roles instead of <code>--user</code>/<code>--roles</code>.</td></tr>
+        <tr><td><code>Show*</code> inspection command handlers</td><td>Admin controllers</td><td>Operational diagnostics</td><td>Return typed inspection snapshots, not text.</td></tr>
+        <tr><td><code>RunSlaCommandHandler</code></td><td>Hosted service or admin controller</td><td>SLA scan operation</td><td>Prefer background/scheduled service.</td></tr>
+        <tr><td><code>ProcessNotificationOutboxCommandHandler</code></td><td>Hosted service or admin controller</td><td>Outbox delivery operation</td><td>Prefer background/scheduled service.</td></tr>
+        <tr><td><code>WorkflowActionEnvelope</code></td><td>API request body model</td><td>Button-click request</td><td>Do not trust actor fields from client in production; stamp them server-side.</td></tr>
+        <tr><td><code>WorkflowContextResponse</code></td><td>API response model</td><td>Form-open workflow context</td><td>Can be embedded in a larger domain form-open response.</td></tr>
+        <tr><td><code>WorkflowActionResultEnvelope</code></td><td>API response model</td><td>Action response</td><td>Map result code to HTTP status.</td></tr>
+        <tr><td><code>WorkflowDbContext</code></td><td>Infrastructure project referenced by API</td><td>Scoped EF Core context</td><td>Use the API connection string and migration process.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Architectural Choices</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Choice</th>
+          <th>Recommendation</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Controllers vs Minimal APIs</td>
+          <td>Use whichever the existing API uses. If no style exists, use controllers.</td>
+          <td>The workflow surface has several operations, auth concerns, status mapping, and testable actions.</td>
+        </tr>
+        <tr>
+          <td>Service layer</td>
+          <td>Yes; use existing application/infrastructure services.</td>
+          <td>Prevents controllers from duplicating workflow rules.</td>
+        </tr>
+        <tr>
+          <td>Dependency injection</td>
+          <td>Yes; keep services scoped unless stateless/singleton in current design.</td>
+          <td>EF Core <code>DbContext</code> and transaction boundaries require request scopes.</td>
+        </tr>
+        <tr>
+          <td>Options pattern</td>
+          <td>Use API-native configuration and optionally typed options.</td>
+          <td>Current code reads <code>IConfiguration</code>; typed options can be added around API-specific configuration.</td>
+        </tr>
+        <tr>
+          <td>Validation layer</td>
+          <td>Use both API model validation and <code>WorkflowActionEnvelopeValidator</code>.</td>
+          <td>Model validation catches HTTP shape issues; workflow validation catches domain contract rules.</td>
+        </tr>
+        <tr>
+          <td>Logging abstraction</td>
+          <td>Add <code>ILogger</code> at API boundary and optionally adapt services later.</td>
+          <td>Current code writes some warnings to console. API needs structured request/correlation logging.</td>
+        </tr>
+        <tr>
+          <td>Exception handling middleware</td>
+          <td>Yes.</td>
+          <td>Configuration/database failures should become controlled 500 responses and logs; business failures should stay typed result envelopes.</td>
+        </tr>
+        <tr>
+          <td>Background services</td>
+          <td>Recommended for SLA and notification outbox processing.</td>
+          <td>These are operational tasks, not user request paths.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="integration-steps">
+    <h2>8. Step-by-Step Integration Instructions</h2>
+    <div class="note">
+      These steps assume you are manually integrating into an existing ASP.NET Core API that is not present in this repository. Paths under <code>ExistingApi</code> are recommended target paths; adjust names to your actual API project.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Step</th>
+          <th>Action</th>
+          <th>Source File(s)</th>
+          <th>Target API File(s)</th>
+          <th>Verification</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Identify or create the target API project.</td><td>None.</td><td><code>ExistingApi\ExistingApi.csproj</code></td><td>API builds before workflow integration.</td></tr>
+        <tr><td>2</td><td>Add project references or copy reusable projects.</td><td><code>src\WorkflowEngine.Application</code>, <code>src\WorkflowEngine.Infrastructure</code>, <code>src\WorkflowEngine.Domain</code></td><td>API solution/project references</td><td>API restore succeeds.</td></tr>
+        <tr><td>3</td><td>Do not copy console runtime as API runtime.</td><td><code>src\WorkflowEngine.Console\Program.cs</code>, <code>Application\Commands</code></td><td>Use only as behavior reference.</td><td>No API controller depends on <code>CommandRegistry</code>.</td></tr>
+        <tr><td>4</td><td>Register workflow services with DI.</td><td>Console <code>Program.cs</code>, <code>InfrastructureServiceCollectionExtensions.cs</code></td><td>API <code>Program.cs</code> or <code>ServiceCollectionExtensions</code></td><td>API starts and resolves <code>IWorkflowExecutionService</code>.</td></tr>
+        <tr><td>5</td><td>Migrate configuration.</td><td><code>src\WorkflowEngine.Console\appsettings.json</code>, README config section</td><td>API <code>appsettings.json</code>, environment variables, secrets</td><td>Connection string and notification sender resolve at startup.</td></tr>
+        <tr><td>6</td><td>Run database migrations and seed metadata.</td><td><code>Migrations\*.cs</code>, <code>WorkflowDatabaseInitializer.cs</code></td><td>Deployment script/admin operation</td><td><code>verify-seed</code> equivalent passes.</td></tr>
+        <tr><td>7</td><td>Create authenticated actor resolver.</td><td>Console uses <code>--user</code>/<code>--roles</code> and JSON actor.</td><td><code>Services\WorkflowActorResolver.cs</code></td><td>Endpoint tests prove claims become user ID and roles.</td></tr>
+        <tr><td>8</td><td>Create workflow context endpoint.</td><td><code>IWorkflowContextReader</code>, <code>WorkflowContextReader</code></td><td><code>Controllers\WorkflowContextController.cs</code></td><td>GET returns <code>WorkflowContextResponse</code>.</td></tr>
+        <tr><td>9</td><td>Create execute action endpoint.</td><td><code>ExecuteJsonCommandHandler</code> behavior, validators, normalizer, hasher, execution service</td><td><code>Controllers\WorkflowActionsController.cs</code></td><td>POST sample body returns expected <code>WorkflowActionResultEnvelope</code>.</td></tr>
+        <tr><td>10</td><td>Create start workflow endpoint if the API owns workflow creation.</td><td><code>IStartWorkflowService</code>, <code>StartWorkflowService</code></td><td><code>Controllers\WorkflowInstancesController.cs</code></td><td>POST returns Success or AlreadyExists.</td></tr>
+        <tr><td>11</td><td>Add error-to-HTTP mapping.</td><td><code>WorkflowActionResultBuilder.cs</code> result codes</td><td><code>Services\WorkflowHttpResultMapper.cs</code> or controller helper</td><td>API tests cover 400, 403, 404, 409, 500 cases.</td></tr>
+        <tr><td>12</td><td>Add SLA/outbox hosted services or admin endpoints.</td><td><code>IRunSlaService</code>, <code>IProcessNotificationOutboxService</code></td><td><code>HostedServices\*.cs</code> or admin controllers</td><td>Manual run queues/sends notifications in test database.</td></tr>
+        <tr><td>13</td><td>Add API tests.</td><td>Existing <code>tests\WorkflowEngine.Tests</code></td><td>API test project</td><td>Web integration tests pass with SQL Server test connection.</td></tr>
+        <tr><td>14</td><td>Run build/test/seed/sample verification.</td><td><code>src\WorkflowEngine.sln</code>, samples</td><td>API solution and environment</td><td>All relevant commands pass or failures are documented.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Detailed Steps</h3>
+    <h4>1. Create or identify the target API project</h4>
+    <p>Use your existing ASP.NET Core API project. If creating a new one, use .NET 10 to match the workflow projects. If the existing API targets a lower framework, check binary compatibility before referencing <code>net10.0</code> libraries.</p>
+    <pre><code class="language-powershell">dotnet new webapi -n ExistingApi -f net10.0</code></pre>
+
+    <h4>2. Add project references</h4>
+    <p>Prefer project references over copying source files. This preserves tests, migration ownership, namespaces, and future fixes.</p>
+    <pre><code class="language-xml">&lt;ItemGroup&gt;
+  &lt;ProjectReference Include="..\WorkflowEngine.Application\WorkflowEngine.Application.csproj" /&gt;
+  &lt;ProjectReference Include="..\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj" /&gt;
+  &lt;ProjectReference Include="..\WorkflowEngine.Domain\WorkflowEngine.Domain.csproj" /&gt;
+&lt;/ItemGroup&gt;</code></pre>
+    <p><strong>Caution:</strong> Do not copy <code>bin\</code> or <code>obj\</code>. Do not copy <code>WorkflowEngine.Console</code> into the API unless you intentionally keep a separate CLI tool.</p>
+
+    <h4>3. Register workflow services</h4>
+    <p>Mirror the reusable registrations from the console without command handlers unless you need them for internal tools.</p>
+    <pre><code class="language-csharp">using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.Validation;
+using WorkflowEngine.Infrastructure.DependencyInjection;
+
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped&lt;WorkflowActionEnvelopeValidator&gt;();
+builder.Services.AddScoped&lt;WorkflowActionEnvelopeNormalizer&gt;();
+builder.Services.AddScoped&lt;CanonicalRequestHasher&gt;();
+builder.Services.AddScoped&lt;WorkflowActionResultBuilder&gt;();
+builder.Services.AddScoped&lt;CanonicalWorkflowResultSerializer&gt;();
+builder.Services.AddWorkflowInfrastructure(builder.Configuration);</code></pre>
+
+    <h4>4. Create an actor resolver</h4>
+    <p>The console trusts <code>actor.userId</code> and <code>actor.roles</code> in sample JSON. A production API should not. Resolve the actor from <code>HttpContext.User</code> and write those values into the envelope before validation and hashing.</p>
+    <pre><code class="language-csharp">public sealed record WorkflowActorSnapshot(string UserId, string DisplayName, IReadOnlyList&lt;string&gt; Roles);
+
+public interface IWorkflowActorResolver
+{
+    WorkflowActorSnapshot Resolve(ClaimsPrincipal user);
+}</code></pre>
+
+    <h4>5. Create an execute action endpoint</h4>
+    <p>The controller should accept a <code>WorkflowActionEnvelope</code> body, stamp actor identity, normalize, validate, hash, execute, and map result code to HTTP status.</p>
+    <pre><code class="language-csharp">[ApiController]
+[Route("api/workflows/{workflowInstanceId}/actions")]
+public sealed class WorkflowActionsController : ControllerBase
+{
+    [HttpPost]
+    public ActionResult&lt;WorkflowActionResultEnvelope&gt; Execute(
+        string workflowInstanceId,
+        [FromBody] WorkflowActionEnvelope envelope,
+        [FromServices] IWorkflowActorResolver actorResolver,
+        [FromServices] WorkflowActionEnvelopeNormalizer normalizer,
+        [FromServices] WorkflowActionEnvelopeValidator validator,
+        [FromServices] CanonicalRequestHasher hasher,
+        [FromServices] IWorkflowExecutionService executionService)
+    {
+        var actor = actorResolver.Resolve(User);
+        envelope.Actor = new WorkflowActor
+        {
+            UserId = actor.UserId,
+            DisplayName = actor.DisplayName,
+            Roles = actor.Roles.ToList()
+        };
+
+        envelope.Workflow ??= new WorkflowActionBlock();
+        envelope.Workflow.WorkflowInstanceId = workflowInstanceId;
+
+        var normalized = normalizer.Normalize(envelope, businessObjectOverride: null, workflowInstanceOverride: null);
+        var errors = validator.Validate(normalized.Envelope);
+        if (errors.Count &gt; 0)
+        {
+            // Prefer using WorkflowActionResultBuilder here to keep contract shape identical.
+            return BadRequest(errors);
+        }
+
+        var result = executionService.Execute(new WorkflowExecutionRequest(
+            normalized,
+            hasher.ComputeHash(normalized.Envelope),
+            AdminOverride: false));
+
+        return StatusCode(MapWorkflowStatus(result.Result.ResultCode), result);
+    }
+}</code></pre>
+    <p><strong>Caution:</strong> The snippet is intentionally incomplete around error mapping. In your implementation, use <code>WorkflowActionResultBuilder.BuildValidationFailed</code> for validation failures so response shape matches the console contract.</p>
+
+    <h4>6. Create context endpoint</h4>
+    <pre><code class="language-csharp">[HttpGet("api/workflows/{workflowInstanceId}/context")]
+public ActionResult&lt;WorkflowContextResponse&gt; GetContext(
+    string workflowInstanceId,
+    [FromServices] IWorkflowActorResolver actorResolver,
+    [FromServices] IWorkflowContextReader reader)
+{
+    var actor = actorResolver.Resolve(User);
+    try
+    {
+        return reader.Read(new WorkflowContextReadRequest(workflowInstanceId, actor.UserId, actor.Roles));
+    }
+    catch (KeyNotFoundException)
+    {
+        return NotFound();
+    }
+}</code></pre>
+
+    <h4>7. Replace mock form data intentionally</h4>
+    <p><code>MockSectionData</code> is explicitly a POC persistence table. If the existing API already owns real Portfolio Trade or form-section data, decide whether to keep <code>MockSectionData</code> only for demos or replace that part of <code>WorkflowExecutionService</code> with an application service that saves real section data in the same transaction. That replacement is a real design change because the current one-call transaction depends on workflow and data save being coordinated together.</p>
+
+    <h4>8. Add background processing</h4>
+    <p>Use scoped services inside hosted services. Do not inject scoped <code>IRunSlaService</code> or <code>IProcessNotificationOutboxService</code> directly into a singleton hosted service.</p>
+    <pre><code class="language-csharp">public sealed class NotificationOutboxHostedService(IServiceScopeFactory scopes) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            using var scope = scopes.CreateScope();
+            var processor = scope.ServiceProvider.GetRequiredService&lt;IProcessNotificationOutboxService&gt;();
+            await processor.ProcessAsync(stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        }
+    }
+}</code></pre>
+  </section>
+
+  <section id="di-plan">
+    <h2>9. Dependency Injection Plan</h2>
+    <p>The console currently creates all objects through <code>Microsoft.Extensions.DependencyInjection</code>. Most services should keep the same lifetimes in the API. Controllers/endpoints should depend on interfaces where available, not manually construct EF contexts or workflow services.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Service / Class</th>
+          <th>Suggested Interface</th>
+          <th>Lifetime</th>
+          <th>Registration Example</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>TimeProvider.System</code></td><td><code>TimeProvider</code></td><td>Singleton</td><td><code>AddSingleton(TimeProvider.System)</code></td><td>Shared clock abstraction; required by project rules.</td></tr>
+        <tr><td><code>WorkflowDbContext</code></td><td>N/A</td><td>Scoped</td><td><code>AddDbContext&lt;WorkflowDbContext&gt;(...)</code> via <code>AddWorkflowInfrastructure</code></td><td>EF Core context per web request/scope.</td></tr>
+        <tr><td><code>WorkflowActionEnvelopeValidator</code></td><td>N/A</td><td>Scoped or Singleton</td><td><code>AddScoped&lt;WorkflowActionEnvelopeValidator&gt;()</code></td><td>Stateless; scoped matches current console registration.</td></tr>
+        <tr><td><code>WorkflowActionEnvelopeNormalizer</code></td><td>N/A</td><td>Scoped or Singleton</td><td><code>AddScoped&lt;WorkflowActionEnvelopeNormalizer&gt;()</code></td><td>Stateless; used before hashing/execution.</td></tr>
+        <tr><td><code>CanonicalRequestHasher</code></td><td>N/A</td><td>Scoped or Singleton</td><td><code>AddScoped&lt;CanonicalRequestHasher&gt;()</code></td><td>Stateless deterministic hashing.</td></tr>
+        <tr><td><code>WorkflowActionResultBuilder</code></td><td>N/A</td><td>Scoped or Singleton</td><td><code>AddScoped&lt;WorkflowActionResultBuilder&gt;()</code></td><td>Stateless result shape factory.</td></tr>
+        <tr><td><code>CanonicalWorkflowResultSerializer</code></td><td>N/A</td><td>Scoped or Singleton</td><td><code>AddScoped&lt;CanonicalWorkflowResultSerializer&gt;()</code></td><td>Stateless result serializer.</td></tr>
+        <tr><td><code>WorkflowExecutionService</code></td><td><code>IWorkflowExecutionService</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>Uses scoped DbContext and transactions.</td></tr>
+        <tr><td><code>StartWorkflowService</code></td><td><code>IStartWorkflowService</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>Uses scoped DbContext and transaction.</td></tr>
+        <tr><td><code>WorkflowContextReader</code></td><td><code>IWorkflowContextReader</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>Reads SQL state and current time.</td></tr>
+        <tr><td><code>WorkflowInspectionReader</code></td><td><code>IWorkflowInspectionReader</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>SQL read model for admin/debug views.</td></tr>
+        <tr><td><code>RunSlaService</code></td><td><code>IRunSlaService</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>Uses scoped DbContext.</td></tr>
+        <tr><td><code>ProcessNotificationOutboxService</code></td><td><code>IProcessNotificationOutboxService</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>Uses scoped DbContext and singleton sender.</td></tr>
+        <tr><td><code>ConsoleNotificationSender</code></td><td><code>INotificationSender</code></td><td>Singleton</td><td>Selected by <code>Notifications:Sender=Console</code></td><td>Current default; writes to console, good only for dev/POC.</td></tr>
+        <tr><td><code>NoOpNotificationSender</code></td><td><code>INotificationSender</code></td><td>Singleton</td><td>Selected by <code>Notifications:Sender=NoOp</code></td><td>Useful for tests/dev where no delivery should happen.</td></tr>
+        <tr><td><code>SmtpNotificationSender</code></td><td><code>INotificationSender</code></td><td>Singleton</td><td>Selected by <code>Notifications:Sender=Smtp</code></td><td>Reads immutable configuration and creates SMTP client per send.</td></tr>
+        <tr><td><code>WorkflowDatabaseInitializer</code></td><td><code>IWorkflowDatabaseInitializer</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>Migration and seed operation; use from ops path.</td></tr>
+        <tr><td><code>SeedVerificationService</code></td><td><code>ISeedVerificationService</code></td><td>Scoped</td><td><code>AddWorkflowInfrastructure(configuration)</code></td><td>Reads SQL metadata to verify seed.</td></tr>
+        <tr><td><code>IWorkflowActorResolver</code> (new API service)</td><td><code>IWorkflowActorResolver</code></td><td>Scoped or Singleton</td><td><code>AddScoped&lt;IWorkflowActorResolver, ClaimsWorkflowActorResolver&gt;()</code></td><td>Maps authenticated user to workflow user ID and roles.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Recommended API Registration Block</h3>
+    <pre><code class="language-csharp">builder.Services.AddControllers();
+builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services.AddScoped&lt;WorkflowActionEnvelopeValidator&gt;();
+builder.Services.AddScoped&lt;WorkflowActionEnvelopeNormalizer&gt;();
+builder.Services.AddScoped&lt;CanonicalRequestHasher&gt;();
+builder.Services.AddScoped&lt;WorkflowActionResultBuilder&gt;();
+builder.Services.AddScoped&lt;CanonicalWorkflowResultSerializer&gt;();
+
+builder.Services.AddScoped&lt;IWorkflowActorResolver, ClaimsWorkflowActorResolver&gt;();
+builder.Services.AddWorkflowInfrastructure(builder.Configuration);
+
+// Optional operational workers:
+// builder.Services.AddHostedService&lt;WorkflowSlaHostedService&gt;();
+// builder.Services.AddHostedService&lt;NotificationOutboxHostedService&gt;();</code></pre>
+
+    <p>Do not manually construct <code>WorkflowDbContext</code>, <code>WorkflowExecutionService</code>, <code>WorkflowContextReader</code>, or notification senders inside controllers. Doing so bypasses configured lifetimes and makes tests harder.</p>
+  </section>
+
+  <section id="configuration-plan">
+    <h2>10. Configuration Migration Plan</h2>
+    <p>The console configuration is simple but has strict requirements: runtime services require <code>ConnectionStrings:DefaultConnection</code>, notification sender selection is under <code>Notifications:Sender</code>, SMTP settings are under <code>Smtp</code>, and <code>TimeProvider</code> must be injected.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Current Configuration</th>
+          <th>Current Location</th>
+          <th>Recommended API Configuration</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>SQL connection string</td><td><code>ConnectionStrings:DefaultConnection</code>; env var <code>ConnectionStrings__DefaultConnection</code>; design-time fallback in <code>WorkflowDbContextFactory</code></td><td>API <code>appsettings*.json</code>, environment variables, or secret store under the same key.</td><td>Do not hardcode in business logic. Existing design-time fallback is for EF tooling only.</td></tr>
+        <tr><td>Notification sender</td><td><code>Notifications:Sender</code>, default <code>Console</code></td><td>Set <code>Console</code> for dev, <code>NoOp</code> for tests, <code>Smtp</code> for configured production delivery.</td><td>Startup validates allowed values.</td></tr>
+        <tr><td>SMTP host/from/port</td><td><code>Smtp:Host</code>, <code>Smtp:From</code>, optional <code>Smtp:Port</code></td><td>API configuration/secrets/environment.</td><td>Current v1 does not support SMTP username/password by requirement.</td></tr>
+        <tr><td>Role email map</td><td><code>Smtp:RoleEmailMap:{RoleKey}</code></td><td>API config, deployment-specific.</td><td>No SQL role-to-email table in v1.</td></tr>
+        <tr><td>Recipient override</td><td><code>Smtp:RecipientOverride</code></td><td>Dev/test smoke configuration only.</td><td>Redirects all mail while preserving original role in body.</td></tr>
+        <tr><td>Command-line args</td><td>CLI args handled by <code>CommandArgumentParser</code></td><td>HTTP routes, query parameters, request body, and headers.</td><td>Do not let command-line override semantics leak into public API.</td></tr>
+        <tr><td><code>--admin-override</code></td><td>Console <code>execute-json</code> flag</td><td>Admin-only capability if retained, protected by authorization policy.</td><td>Bypasses role authorization only; does not bypass validation/idempotency/concurrency.</td></tr>
+        <tr><td><code>--reset</code></td><td>Console <code>start-workflow</code> demo flag</td><td>Do not expose to normal users. Use only internal dev/test/admin endpoint if absolutely necessary.</td><td>Deletes runtime data for a workflow instance.</td></tr>
+        <tr><td>Test SQL connection</td><td><code>WORKFLOW_ENGINE_TEST_CONNECTION_STRING</code> or <code>ConnectionStrings__DefaultConnection</code></td><td>API test environment variables.</td><td>Used by test helpers; not production config.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Recommended <code>appsettings.json</code> Shape</h3>
+    <pre><code class="language-json">{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR-SQL-SERVER;Database=WorkflowEngine;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
+  },
+  "WorkflowEngine": {},
+  "Notifications": {
+    "Sender": "Console"
+  },
+  "Smtp": {
+    "Host": "localhost",
+    "Port": 25,
+    "From": "workflow@example.com",
+    "RecipientOverride": "",
+    "RoleEmailMap": {
+      "Maker": "maker-team@example.com",
+      "Checker": "checker-team@example.com",
+      "TradingDesk": "trading-desk@example.com",
+      "BDRMClientService": "bdrm-client-service@example.com"
+    }
+  }
+}</code></pre>
+
+    <h3>Options Class Structure</h3>
+    <p>The repository currently has <code>WorkflowEngineOptions.SectionName</code> but no populated workflow options. You can add typed API options without changing workflow contracts:</p>
+    <pre><code class="language-csharp">public sealed class WorkflowApiOptions
+{
+    public bool ExposeAdminEndpoints { get; set; }
+    public TimeSpan SlaScanInterval { get; set; } = TimeSpan.FromMinutes(1);
+    public TimeSpan NotificationOutboxInterval { get; set; } = TimeSpan.FromMinutes(1);
+}</code></pre>
+
+    <h3>Validation Recommendations</h3>
+    <ul>
+      <li>Fail startup if <code>ConnectionStrings:DefaultConnection</code> is missing, matching <code>AddWorkflowInfrastructure</code>.</li>
+      <li>Fail startup if <code>Notifications:Sender</code> is unknown.</li>
+      <li>Fail startup if <code>Notifications:Sender=Smtp</code> and <code>Smtp:Host</code> or <code>Smtp:From</code> is missing.</li>
+      <li>Do a deployment-time seed verification after migrations.</li>
+      <li>Use environment-specific config. Keep production SMTP role maps out of source if they are sensitive.</li>
+    </ul>
+  </section>
+
+  <section id="endpoint-design">
+    <h2>11. API Endpoint Design</h2>
+    <p>Because no API project is present, the table below proposes practical generic endpoints. If your existing API is domain-oriented, it may be better to nest workflow operations under Portfolio Trade routes, for example <code>/api/portfolio-trades/{tradeId}/workflow-context</code> and <code>/api/portfolio-trades/{tradeId}/workflow-actions</code>.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Method</th>
+          <th>Route</th>
+          <th>Request DTO</th>
+          <th>Response DTO</th>
+          <th>Success Code</th>
+          <th>Error Codes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Start workflow</td><td>POST</td><td><code>/api/workflows/{workflowKey}/instances</code></td><td><code>StartWorkflowApiRequest</code></td><td><code>WorkflowActionResultEnvelope</code></td><td>201 or 200</td><td>400, 401, 403, 409, 500</td></tr>
+        <tr><td>Get workflow context</td><td>GET</td><td><code>/api/workflows/{workflowInstanceId}/context</code></td><td>Route only</td><td><code>WorkflowContextResponse</code></td><td>200</td><td>401, 403, 404, 500</td></tr>
+        <tr><td>Execute workflow action</td><td>POST</td><td><code>/api/workflows/{workflowInstanceId}/actions</code></td><td><code>WorkflowActionEnvelope</code></td><td><code>WorkflowActionResultEnvelope</code></td><td>200</td><td>400, 401, 403, 404, 409, 500</td></tr>
+        <tr><td>Get instance summary</td><td>GET</td><td><code>/api/workflows/{workflowInstanceId}</code></td><td>Route only</td><td><code>WorkflowInspectionSnapshot</code> or API-specific DTO</td><td>200</td><td>401, 403, 404</td></tr>
+        <tr><td>Get tasks</td><td>GET</td><td><code>/api/workflows/{workflowInstanceId}/tasks</code></td><td>Route only</td><td>Task inspection DTO list</td><td>200</td><td>401, 403, 404</td></tr>
+        <tr><td>Get history</td><td>GET</td><td><code>/api/workflows/{workflowInstanceId}/history</code></td><td>Route only</td><td>Audit inspection DTO list</td><td>200</td><td>401, 403, 404</td></tr>
+        <tr><td>Get notifications</td><td>GET</td><td><code>/api/workflows/{workflowInstanceId}/notifications</code></td><td>Route only</td><td>Notification inspection DTO list</td><td>200</td><td>401, 403, 404</td></tr>
+        <tr><td>Run SLA scan</td><td>POST</td><td><code>/api/workflow-admin/sla/run</code></td><td>Optional <code>now</code> for admin/test only</td><td><code>RunSlaResult</code></td><td>200</td><td>401, 403, 500</td></tr>
+        <tr><td>Process outbox</td><td>POST</td><td><code>/api/workflow-admin/notifications/process</code></td><td>None</td><td><code>ProcessNotificationOutboxResult</code></td><td>200</td><td>401, 403, 500</td></tr>
+        <tr><td>Verify seed</td><td>GET</td><td><code>/api/workflow-admin/seed/verification</code></td><td>None</td><td><code>SeedVerificationResult</code></td><td>200</td><td>401, 403, 500</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Controller-Style Example</h3>
+    <pre><code class="language-csharp">[ApiController]
+[Route("api/workflows")]
+public sealed class WorkflowContextController(
+    IWorkflowContextReader contextReader,
+    IWorkflowActorResolver actorResolver) : ControllerBase
+{
+    [HttpGet("{workflowInstanceId}/context")]
+    public ActionResult&lt;WorkflowContextResponse&gt; GetContext(string workflowInstanceId)
+    {
+        var actor = actorResolver.Resolve(User);
+        try
+        {
+            return Ok(contextReader.Read(new WorkflowContextReadRequest(
+                workflowInstanceId,
+                actor.UserId,
+                actor.Roles)));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+}</code></pre>
+
+    <h3>Minimal API-Style Example</h3>
+    <pre><code class="language-csharp">app.MapGet("/api/workflows/{workflowInstanceId}/context",
+    (string workflowInstanceId,
+     ClaimsPrincipal user,
+     IWorkflowActorResolver actorResolver,
+     IWorkflowContextReader contextReader) =&gt;
+    {
+        var actor = actorResolver.Resolve(user);
+        try
+        {
+            var response = contextReader.Read(new WorkflowContextReadRequest(
+                workflowInstanceId,
+                actor.UserId,
+                actor.Roles));
+            return Results.Ok(response);
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
+        }
+    })
+    .RequireAuthorization();</code></pre>
+
+    <h3>Authentication and Authorization Considerations</h3>
+    <ul>
+      <li>Production endpoints should require authentication.</li>
+      <li>Workflow roles should come from claims, groups, or an existing enterprise authorization service, not from request JSON.</li>
+      <li>Do not add a SQL user-to-role mapping table inside this workflow schema; that is explicitly out of scope for v1.</li>
+      <li>Admin operations such as seed verification, SLA manual run, outbox manual process, reset, and admin override need separate policies.</li>
+    </ul>
+  </section>
+
+  <section id="dto-plan">
+    <h2>12. Request and Response DTO Plan</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Console Input/Output</th>
+          <th>API DTO</th>
+          <th>Fields</th>
+          <th>Validation Rules</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>start-workflow PortfolioTrade PT-1001 --user maker1</code></td>
+          <td><code>StartWorkflowApiRequest</code></td>
+          <td><code>businessObjectType</code>, <code>businessObjectId</code>; workflow key from route; user from auth.</td>
+          <td>Required non-empty workflow key, object type, object ID, authenticated user.</td>
+          <td>Do not expose <code>reset</code> to normal clients.</td>
+        </tr>
+        <tr>
+          <td><code>execute-json &lt;file&gt;</code></td>
+          <td><code>WorkflowActionEnvelope</code></td>
+          <td>request, businessObject, actor, uiAction, dataSave, workflow.</td>
+          <td>Use existing validator; also require route/body instance consistency.</td>
+          <td>Server should overwrite <code>actor</code> fields from auth.</td>
+        </tr>
+        <tr>
+          <td><code>show-context WF-PT-1001 --user checker1 --roles Checker</code></td>
+          <td>Route only; actor from auth</td>
+          <td><code>workflowInstanceId</code>.</td>
+          <td>Instance exists; authenticated user has access to the business object/workflow.</td>
+          <td>Return <code>WorkflowContextResponse</code>.</td>
+        </tr>
+        <tr>
+          <td>Readable console result text</td>
+          <td><code>WorkflowActionResultEnvelope</code></td>
+          <td><code>result</code>, optional <code>workflowContext</code>.</td>
+          <td>Generated by result builder; do not handcraft divergent shape.</td>
+          <td>HTTP status conveys transport/business category; body preserves workflow result code.</td>
+        </tr>
+        <tr>
+          <td><code>show</code>, <code>show-tasks</code>, <code>show-history</code>, <code>show-notifications</code></td>
+          <td>Admin inspection DTOs</td>
+          <td>Instance, task, audit, notification fields from inspection records.</td>
+          <td>Admin authorization; instance exists.</td>
+          <td>Do not return console-formatted strings.</td>
+        </tr>
+        <tr>
+          <td><code>run-sla --now</code></td>
+          <td><code>RunSlaRequest</code> or admin request DTO</td>
+          <td><code>now</code> optional for admin/test.</td>
+          <td>Only trusted callers may override clock.</td>
+          <td>Prefer background service in production.</td>
+        </tr>
+        <tr>
+          <td><code>process-notification-outbox</code></td>
+          <td>No public DTO</td>
+          <td>None.</td>
+          <td>Admin/background only.</td>
+          <td>Return <code>ProcessNotificationOutboxResult</code> for admin diagnostics.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Do Not Expose Directly</h3>
+    <ul>
+      <li>EF entity classes such as <code>WorkflowInstance</code>, <code>WorkflowTask</code>, <code>NotificationOutbox</code>, and <code>WorkflowAudit</code>.</li>
+      <li><code>WorkflowTestExpectations</code> in production request bodies.</li>
+      <li>Destructive <code>Reset</code> behavior from <code>StartWorkflowRequest</code> unless behind an internal admin policy.</li>
+      <li>Admin override as a normal request flag.</li>
+      <li>Raw <code>MockSectionData.PayloadJson</code> outside diagnostics; it may contain business form data.</li>
+    </ul>
+  </section>
+
+  <section id="error-validation-plan">
+    <h2>13. Error Handling and Validation Plan</h2>
+    <p>The current application returns structured workflow result codes but wraps them in console exit behavior. In an API, keep the workflow result code in the JSON body and map it to an HTTP status that callers can act on.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Error Scenario</th>
+          <th>Current Behavior</th>
+          <th>Recommended API Behavior</th>
+          <th>HTTP Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Malformed JSON / model binding failure</td><td>Console catches <code>JsonException</code> and returns failure text.</td><td>Return <code>ProblemDetails</code> or validation problem.</td><td>400</td></tr>
+        <tr><td>Envelope missing required blocks or MakerPrimary mismatch</td><td><code>ValidationFailed</code> result from validator/result builder.</td><td>Return <code>WorkflowActionResultEnvelope</code> with <code>ValidationFailed</code>.</td><td>400</td></tr>
+        <tr><td>Business object/workflow key mismatch</td><td><code>ValidationFailed</code> before side effects.</td><td>Return validation result and log correlation ID.</td><td>400 or 409</td></tr>
+        <tr><td>Workflow instance not found</td><td><code>WorkflowInstanceNotFound</code> for execute; <code>show-context</code> throws <code>KeyNotFoundException</code> caught by command.</td><td>Return typed workflow result for execute, <code>ProblemDetails</code> or context-specific 404 for GET.</td><td>404</td></tr>
+        <tr><td>Actor roles do not authorize transition</td><td><code>Forbidden</code>.</td><td>Return result envelope and avoid revealing unnecessary role internals.</td><td>403</td></tr>
+        <tr><td>Multiple actor roles match transition</td><td><code>AmbiguousRoleMatch</code>.</td><td>Return result envelope; fix role mapping or require explicit server-side role selection.</td><td>403 or 409</td></tr>
+        <tr><td>No action or transition exists</td><td><code>InvalidTransition</code>.</td><td>Return result envelope.</td><td>409</td></tr>
+        <tr><td>Completed workflow action attempted</td><td><code>InvalidTransition</code>.</td><td>Return result envelope.</td><td>409</td></tr>
+        <tr><td>Concurrency guard mismatch</td><td><code>ConcurrencyConflict</code> with refreshed context when available.</td><td>Return result envelope; client should reload context.</td><td>409</td></tr>
+        <tr><td>Definition version mismatch</td><td><code>WorkflowDefinitionVersionMismatch</code>.</td><td>Return result envelope with refreshed context.</td><td>409</td></tr>
+        <tr><td>Same idempotency key with different request</td><td><code>IdempotencyConflict</code>.</td><td>Return result envelope; client must not retry with changed body and same key.</td><td>409</td></tr>
+        <tr><td>Start duplicate workflow lifetime</td><td><code>AlreadyExists</code> result with existing status/version.</td><td>Return result envelope. Do not auto-create a second workflow lifetime.</td><td>409</td></tr>
+        <tr><td>Missing connection string or invalid SMTP config</td><td>Startup exception in infrastructure registration.</td><td>Fail API startup; deployment should catch.</td><td>N/A startup failure</td></tr>
+        <tr><td>Unexpected exception</td><td>May escape or become command failure depending on command.</td><td>Exception handling middleware returns generic problem, logs details.</td><td>500</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Recommended Error Response Model</h3>
+    <p>For workflow business outcomes, prefer the existing <code>WorkflowActionResultEnvelope</code>. For HTTP-only failures before a workflow result can be built, use ASP.NET Core <code>ProblemDetails</code>.</p>
+    <pre><code class="language-json">{
+  "result": {
+    "success": false,
+    "resultCode": "ConcurrencyConflict",
+    "workflowInstanceId": "WF-PT-1001",
+    "failedGuard": "expectedInstanceVersion",
+    "expected": "2",
+    "actual": "3",
+    "message": "Expected workflow instance version 2 but persisted version is 3. The workflow has moved since you opened the form."
+  },
+  "workflowContext": {
+    "...": "refreshed context when available"
+  }
+}</code></pre>
+  </section>
+
+  <section id="logging-plan">
+    <h2>14. Logging and Observability Plan</h2>
+    <p>The current app primarily communicates through console output. An API needs structured logging, correlation IDs, and clear operational events. Do not log full <code>dataSave.payload</code> by default because it is opaque business form data.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Event / Operation</th>
+          <th>Recommended Log Level</th>
+          <th>Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>API workflow action received</td><td>Information</td><td>Trace request flow by workflow instance, action key, user ID, correlation ID.</td></tr>
+        <tr><td>Validation failed</td><td>Information</td><td>Expected client/business error; useful for UI integration diagnostics.</td></tr>
+        <tr><td>Forbidden/ambiguous role</td><td>Warning</td><td>Potential auth mapping problem or unauthorized attempt.</td></tr>
+        <tr><td>Invalid transition</td><td>Information or Warning</td><td>Could be stale UI or misuse; log action/state/role without payload.</td></tr>
+        <tr><td>Concurrency conflict</td><td>Information</td><td>Expected multi-user workflow behavior; not an exception.</td></tr>
+        <tr><td>Idempotent replay</td><td>Information</td><td>Normal retry behavior; helps diagnose duplicate client submissions.</td></tr>
+        <tr><td>Idempotency conflict</td><td>Warning</td><td>Client reused a key for different content.</td></tr>
+        <tr><td>Successful state transition</td><td>Information</td><td>Audit exists in SQL, but logs help runtime tracing.</td></tr>
+        <tr><td>SLA scan started/completed</td><td>Information</td><td>Operational background activity.</td></tr>
+        <tr><td>SLA duplicate/unique warning</td><td>Warning</td><td>Indicates concurrent scanner race handled safely.</td></tr>
+        <tr><td>Notification outbox claim/send/sent</td><td>Information</td><td>Operational traceability for delivery.</td></tr>
+        <tr><td>Notification sender failure</td><td>Error</td><td>Delivery failure leaves row pending and needs attention.</td></tr>
+        <tr><td>Seed verification failure</td><td>Error</td><td>Deployment/configuration issue.</td></tr>
+        <tr><td>Unexpected exception</td><td>Error</td><td>Requires support investigation.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Correlation</h3>
+    <ul>
+      <li>Use the envelope <code>request.correlationId</code> when present.</li>
+      <li>Consider accepting <code>X-Correlation-ID</code> and writing it into <code>request.correlationId</code> before hashing if this is part of your API standard. Be careful: current request hash intentionally excludes some request metadata but includes workflow/action/business data.</li>
+      <li>Include <code>workflowInstanceId</code>, <code>businessObjectId</code>, <code>actionKey</code>, <code>resultCode</code>, and authenticated user ID in logs.</li>
+    </ul>
+  </section>
+
+  <section id="testing-plan">
+    <h2>15. Testing Migration Plan</h2>
+    <p>The existing test project is strong and should remain the safety net for the reusable libraries. Add a separate API test layer to prove HTTP status mapping, authentication integration, route/body consistency, and JSON serialization.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Test Area</th>
+          <th>Existing Coverage</th>
+          <th>API Test Needed</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Command routing</td><td><code>CommandRegistryTests</code>, <code>CommandArgumentParser</code> behavior indirectly.</td><td>No, unless keeping CLI.</td><td>Low</td></tr>
+        <tr><td>Envelope validation</td><td><code>WorkflowActionEnvelopeValidationTests</code>.</td><td>Yes, API returns HTTP 400 with workflow result body.</td><td>High</td></tr>
+        <tr><td>Actor identity</td><td>Console/test actor is caller-supplied.</td><td>Yes, claims overwrite/derive <code>actor.userId</code> and roles.</td><td>High</td></tr>
+        <tr><td>Workflow execution</td><td><code>WorkflowTransitionTests</code>, <code>WorkflowExecutionValidationTests</code>, <code>WorkflowOptionsConflictTests</code>.</td><td>Yes, one or two end-to-end API action tests using real SQL.</td><td>High</td></tr>
+        <tr><td>Context endpoint</td><td><code>WorkflowContextReaderTests</code>, <code>ShowContextCommandTests</code>.</td><td>Yes, GET context returns actions based on auth roles.</td><td>High</td></tr>
+        <tr><td>Start workflow</td><td><code>StartWorkflowServiceTests</code>, <code>StartWorkflowCommandTests</code>.</td><td>Yes, POST start maps duplicate to 409 and does not expose reset.</td><td>High</td></tr>
+        <tr><td>Seed verification</td><td><code>SeedDataSmokeTests</code>, <code>SeedVerificationService</code>.</td><td>Admin/health endpoint test if exposed.</td><td>Medium</td></tr>
+        <tr><td>SLA scanning</td><td><code>Phase5SlaTests</code>.</td><td>Hosted service or admin endpoint test.</td><td>Medium</td></tr>
+        <tr><td>Notification outbox</td><td><code>Phase5OutboxTests</code>, <code>SmtpNotificationSenderTests</code>, opt-in SMTP integration.</td><td>Hosted service test with fake sender/config.</td><td>Medium</td></tr>
+        <tr><td>Schema constraints</td><td><code>SchemaConstraintTests</code>.</td><td>Keep existing; add migration smoke in API CI if migrations move.</td><td>High</td></tr>
+        <tr><td>Samples</td><td><code>SampleExpectationTests</code>, <code>WorkflowSamplesTests</code>.</td><td>Use samples as HTTP bodies after removing <code>testExpectations</code> or ignoring it.</td><td>Medium</td></tr>
+        <tr><td>Fresh clone/CI</td><td><code>FreshCloneWalkthroughTests</code>, <code>.github\workflows\ci.yml</code>.</td><td>API CI should run restore/build/test with SQL service.</td><td>High</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Example API Test Names</h3>
+    <ul>
+      <li><code>PostWorkflowAction_ValidSubmitForChecker_ReturnsSuccessAndCheckerTask</code></li>
+      <li><code>PostWorkflowAction_UsesClaimsRoles_NotBodyRoles</code></li>
+      <li><code>PostWorkflowAction_StaleExpectedVersion_Returns409ConcurrencyConflict</code></li>
+      <li><code>PostWorkflowAction_MismatchedRouteWorkflowInstance_Returns400</code></li>
+      <li><code>GetWorkflowContext_CheckerRole_ReturnsCheckerActions</code></li>
+      <li><code>GetWorkflowContext_WrongRole_ReturnsNoActionsAndReadOnlyReason</code></li>
+      <li><code>PostStartWorkflow_ExistingBusinessObject_Returns409AlreadyExists</code></li>
+      <li><code>PostStartWorkflow_DoesNotAllowResetForNormalUser</code></li>
+      <li><code>NotificationOutboxHostedService_UsesScopedProcessor</code></li>
+      <li><code>SlaHostedService_QueuesOverdueNotificationsOnce</code></li>
+    </ul>
+  </section>
+
+  <section id="build-verification">
+    <h2>16. Build, Verification, and Manual Test Instructions</h2>
+    <p>Use the actual solution name <code>src\WorkflowEngine.sln</code> for library verification. If your API lives in another solution, run the equivalent commands against that solution too.</p>
+
+    <h3>Current Repository Verification Commands</h3>
+    <pre><code class="language-powershell">dotnet restore src\WorkflowEngine.sln
+dotnet build src\WorkflowEngine.sln -warnaserror
+dotnet test src\WorkflowEngine.sln
+dotnet run --project src\WorkflowEngine.Console -- init-db
+dotnet run --project src\WorkflowEngine.Console -- verify-seed
+dotnet run --project src\WorkflowEngine.Console -- demo</code></pre>
+
+    <h3>API Integration Verification Commands</h3>
+    <pre><code class="language-powershell">dotnet restore &lt;path-to-api-solution.sln&gt;
+dotnet build &lt;path-to-api-solution.sln&gt; -warnaserror
+dotnet test &lt;path-to-api-solution.sln&gt;</code></pre>
+
+    <h3>Manual API Smoke Examples</h3>
+    <p>These examples use the proposed routes. Adjust to your actual API routes and authentication model.</p>
+    <pre><code class="language-bash"># Start a workflow
+curl -X POST "https://localhost:5001/api/workflows/PortfolioTrade/instances" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer &lt;token&gt;" \
+  -d '{
+    "businessObjectType": "PortfolioTrade",
+    "businessObjectId": "PT-1001"
+  }'
+
+# Get form-open workflow context
+curl "https://localhost:5001/api/workflows/WF-PT-1001/context" \
+  -H "Authorization: Bearer &lt;token-with-Checker-role&gt;"
+
+# Execute a workflow action
+curl -X POST "https://localhost:5001/api/workflows/WF-PT-1001/actions" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer &lt;token-with-Maker-role&gt;" \
+  -d @samples/workflow-actions/02-submit-for-checker.json</code></pre>
+
+    <h3>Expected Responses</h3>
+    <ul>
+      <li>Start response: <code>result.resultCode = "Success"</code>, <code>workflowInstanceId = "WF-PT-1001"</code>, <code>currentState = "Draft"</code>, <code>version = 1</code>.</li>
+      <li>Context response for Checker after submit: <code>workflow.currentState = "CheckerReview"</code>, current task <code>CheckerReviewTask</code>, available actions include <code>CheckerReturnToMaker</code> and <code>CheckerSendToTradingDesk</code>.</li>
+      <li>Submit response: <code>result.success = true</code>, <code>oldState = "Draft"</code>, <code>newState = "CheckerReview"</code>, created task <code>CheckerReviewTask</code>, notification type <code>WorkflowTaskAssigned</code>.</li>
+      <li>Stale guard response: HTTP 409 and <code>result.resultCode = "ConcurrencyConflict"</code>.</li>
+    </ul>
+
+    <h3>Project-Specific Notes</h3>
+    <ul>
+      <li>SQL-backed tests need <code>WORKFLOW_ENGINE_TEST_CONNECTION_STRING</code> or <code>ConnectionStrings__DefaultConnection</code>.</li>
+      <li>Default xUnit settings exclude <code>Category=Smtp</code>, <code>Category=FreshClone</code>, and <code>Category=Performance</code>.</li>
+      <li>SMTP integration tests require smtp4dev or Papercut and <code>RUN_SMTP_TESTS=1</code>.</li>
+      <li><code>.planning\STATE.md</code> notes that local verification may need <code>-m:1</code> in some environments if parallel MSBuild is unreliable.</li>
+    </ul>
+  </section>
+
+  <section id="risks">
+    <h2>17. Risks, Gotchas, and Refactoring Recommendations</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>Impact</th>
+          <th>Recommended Mitigation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>No API project is present in this repository</td><td>Integration guidance cannot be tailored to actual API conventions.</td><td>Apply this guide to your API's existing controller/minimal style and folder standards.</td></tr>
+        <tr><td>Actor roles are currently caller-supplied</td><td>Security issue if API trusts request body roles.</td><td>Resolve roles from authenticated claims or an existing auth service and overwrite body actor fields.</td></tr>
+        <tr><td><code>MockSectionData</code> is POC storage</td><td>API may save demo data instead of real form data.</td><td>Decide whether to keep mock data for workflow-only POC or replace with real section persistence in the same transaction.</td></tr>
+        <tr><td>Command handlers read/write console and files</td><td>Bad fit for web request/response model.</td><td>Use command handlers only as behavior reference; controllers call services directly.</td></tr>
+        <tr><td>Synchronous workflow execution</td><td>Blocks request thread during EF operations.</td><td>Accept for first integration if load is low; plan async refactor for production scale.</td></tr>
+        <tr><td>Destructive reset flag</td><td>Deletes runtime workflow data.</td><td>Do not expose <code>Reset=true</code> publicly. Gate admin/dev-only reset with policy and environment checks.</td></tr>
+        <tr><td>Admin override flag</td><td>Bypasses role authorization.</td><td>Do not expose by default. If needed, require strict admin policy and log every use.</td></tr>
+        <tr><td>Schema/migration ownership conflict</td><td>Existing API may already have EF migrations and DbContexts.</td><td>Choose whether workflow keeps its own migration assembly/DbContext or is merged deliberately into API migration strategy.</td></tr>
+        <tr><td>Stringly typed workflow/status keys</td><td>Typos can cause invalid metadata or runtime failures.</td><td>Keep seed verification and schema constraints; optionally centralize constants later without changing contract strings.</td></tr>
+        <tr><td>Console warnings from <code>workflow.options</code></td><td>Warnings may go nowhere in API.</td><td>Refactor warnings to structured logger or diagnostics response as part of API hardening.</td></tr>
+        <tr><td>Notification sender singleton reads config</td><td>Runtime config changes may not be picked up.</td><td>Prefer stable deployment-time config; restart API after SMTP config changes.</td></tr>
+        <tr><td>Outbox and SLA hosted services need scopes</td><td>Injecting scoped services into singleton hosted services causes lifetime errors.</td><td>Use <code>IServiceScopeFactory</code> inside hosted services.</td></tr>
+        <tr><td>Public init-db/verify-seed endpoints</td><td>Operational/security risk.</td><td>Keep migrations in deployment. If endpoints exist, admin-only and environment-gated.</td></tr>
+        <tr><td>Logging payload data</td><td>May leak sensitive form data.</td><td>Log identifiers and result codes, not <code>dataSave.payload</code>.</td></tr>
+        <tr><td>Copying generated <code>bin\</code>/<code>obj\</code></td><td>Pollutes API project and can cause build confusion.</td><td>Reference projects or copy source only.</td></tr>
+        <tr><td>Changing contract shapes during integration</td><td>Breaks tests and client assumptions.</td><td>Follow <code>PROJECT.md</code> stop-and-ask rules before contract changes.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="final-checklist">
+    <h2>18. Final Migration Checklist</h2>
+
+    <h3>Before Moving Code</h3>
+    <ul class="checklist">
+      <li>Confirm the target API framework is compatible with <code>net10.0</code>.</li>
+      <li>Decide whether to reference projects or copy source files.</li>
+      <li>Identify the API's existing endpoint style: controllers or Minimal APIs.</li>
+      <li>Identify the API's authentication/authorization source for workflow roles.</li>
+      <li>Choose database/migration ownership for workflow tables.</li>
+      <li>Confirm <code>ConnectionStrings:DefaultConnection</code> points to the intended SQL Server.</li>
+      <li>Decide whether <code>MockSectionData</code> remains or is replaced by real form data persistence.</li>
+      <li>Review <code>PROJECT.md</code> Section 22 before making contract/schema changes.</li>
+    </ul>
+
+    <h3>While Moving Code</h3>
+    <ul class="checklist">
+      <li>Add references to <code>WorkflowEngine.Application</code>, <code>WorkflowEngine.Infrastructure</code>, and <code>WorkflowEngine.Domain</code>.</li>
+      <li>Register validators, normalizer, hasher, result builder, result serializer, <code>TimeProvider</code>, and infrastructure services.</li>
+      <li>Create an authenticated actor resolver.</li>
+      <li>Create context, execute action, and start workflow endpoints.</li>
+      <li>Map workflow result codes to HTTP statuses.</li>
+      <li>Stamp actor fields server-side before validation and hashing.</li>
+      <li>Do not add <code>toState</code> to request DTOs.</li>
+      <li>Do not let <code>workflow.options</code> override metadata.</li>
+      <li>Keep reset/admin override out of normal user routes.</li>
+      <li>Configure notification sender and SMTP settings per environment.</li>
+    </ul>
+
+    <h3>After Moving Code</h3>
+    <ul class="checklist">
+      <li>Run <code>dotnet restore</code>, <code>dotnet build -warnaserror</code>, and <code>dotnet test</code>.</li>
+      <li>Apply workflow migrations to a development SQL database.</li>
+      <li>Seed Portfolio Trade metadata.</li>
+      <li>Run seed verification.</li>
+      <li>Start a workflow through the API.</li>
+      <li>Call context endpoint for Maker, Checker, TradingDesk, and BDRM roles.</li>
+      <li>Execute sample action envelopes through API endpoints.</li>
+      <li>Verify idempotent replay and concurrency conflict behavior.</li>
+      <li>Run SLA scanner and outbox processor in a test environment.</li>
+      <li>Confirm logs include correlation IDs and do not include raw payloads.</li>
+    </ul>
+
+    <h3>Before Production Use</h3>
+    <ul class="checklist">
+      <li>Replace any demo/test role handling with real authorization.</li>
+      <li>Disable or strictly gate reset and admin override.</li>
+      <li>Decide production notification sender; configure SMTP role maps if using SMTP.</li>
+      <li>Confirm background worker intervals and failure handling.</li>
+      <li>Run SQL-backed integration tests in CI.</li>
+      <li>Run opt-in SMTP tests against a fake SMTP server before configuring a real relay.</li>
+      <li>Document operational runbooks for seed verification, outbox failures, and workflow support.</li>
+      <li>Confirm database backups and migration rollback plans.</li>
+      <li>Review data classification for notification bodies and audit/history exposure.</li>
+    </ul>
+  </section>
+
+  <section id="assumptions">
+    <h2>19. Assumptions and Open Questions</h2>
+    <h3>Assumptions</h3>
+    <ul>
+      <li>No existing ASP.NET Core API project is present in this repository.</li>
+      <li>The target API project is external to this repository or will be added later.</li>
+      <li>The target API can reference .NET 10 class libraries or can itself target .NET 10.</li>
+      <li>SQL Server remains the persistence store, matching the project requirements.</li>
+      <li>Portfolio Trade remains sample/seed metadata and should not be hardcoded in the reusable engine.</li>
+      <li>Enterprise authentication and authorization will be handled by the existing API, not by adding workflow user-role tables.</li>
+      <li>The API integration is manual; this document does not implement or convert code.</li>
+    </ul>
+
+    <h3>Open Questions</h3>
+    <ul>
+      <li>What is the actual target API project path, target framework, and endpoint style?</li>
+      <li>Will workflow endpoints be generic (<code>/api/workflows/...</code>) or nested under Portfolio Trade/domain endpoints?</li>
+      <li>Where does the real form/section data live, and should <code>MockSectionData</code> be replaced during integration?</li>
+      <li>Which authenticated claims map to workflow roles <code>Maker</code>, <code>Checker</code>, <code>TradingDesk</code>, and <code>BDRMClientService</code>?</li>
+      <li>Who owns workflow database migrations in the target API solution?</li>
+      <li>Will SLA and notification outbox processing run in the API host, a worker service, a scheduled job, or manually?</li>
+      <li>What notification sender should production use: <code>Smtp</code>, an API-specific adapter, or an external mail service not currently approved?</li>
+      <li>Should <code>WorkflowInspectionReader</code> data be exposed to users, admins only, or not at all?</li>
+      <li>What audit/history retention and data classification rules apply in production?</li>
+    </ul>
+  </section>
+
+  <section id="appendix">
+    <h2>20. Appendix</h2>
+
+    <h3>Source File Inventory</h3>
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Files</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Console</td>
+          <td><code>src\WorkflowEngine.Console\Program.cs</code>; <code>src\WorkflowEngine.Console\WorkflowEngine.Console.csproj</code>; <code>src\WorkflowEngine.Console\appsettings.json</code>; <code>src\WorkflowEngine.Console\appsettings.Development.json</code>.</td>
+        </tr>
+        <tr>
+          <td>Application commands</td>
+          <td><code>CommandArgumentParser.cs</code>, <code>CommandRegistry.cs</code>, <code>CommandResult.cs</code>, <code>ExecuteJsonCommandHandler.cs</code>, <code>StartWorkflowCommandHandler.cs</code>, <code>ShowContextCommandHandler.cs</code>, <code>ShowCommandHandler.cs</code>, <code>ShowTasksCommandHandler.cs</code>, <code>ShowHistoryCommandHandler.cs</code>, <code>ShowNotificationsCommandHandler.cs</code>, <code>RunSlaCommandHandler.cs</code>, <code>ProcessNotificationOutboxCommandHandler.cs</code>, <code>DemoCommandHandler.cs</code>, and command handler interfaces.</td>
+        </tr>
+        <tr>
+          <td>Application contracts</td>
+          <td><code>WorkflowActionEnvelope.cs</code>, <code>WorkflowActionResult.cs</code>, <code>WorkflowContextResponse.cs</code>, <code>AvailableWorkflowAction.cs</code>, <code>WorkflowJson.cs</code>.</td>
+        </tr>
+        <tr>
+          <td>Application services/helpers</td>
+          <td><code>WorkflowActionEnvelopeValidator.cs</code>, <code>WorkflowValidationError.cs</code>, <code>WorkflowActionEnvelopeNormalizer.cs</code>, <code>CanonicalRequestHasher.cs</code>, <code>WorkflowActionResultBuilder.cs</code>, <code>CanonicalWorkflowResultSerializer.cs</code>, interface files under <code>Context</code>, <code>WorkflowExecution</code>, <code>WorkflowStart</code>, <code>Sla</code>, <code>Notifications</code>, <code>Inspection</code>, and <code>Persistence</code>.</td>
+        </tr>
+        <tr>
+          <td>Demo support</td>
+          <td><code>Application\Demo\ConsoleCommand.cs</code>, <code>DemoScriptDefinitions.cs</code>, <code>DemoStep.cs</code>, <code>IDemoStepRunner.cs</code>, <code>WorkflowEngineDemoStepRunner.cs</code>.</td>
+        </tr>
+        <tr>
+          <td>Domain</td>
+          <td><code>src\WorkflowEngine.Domain\Workflow\WorkflowKeys.cs</code>; <code>WorkflowEngine.Domain.csproj</code>.</td>
+        </tr>
+        <tr>
+          <td>Infrastructure DI and persistence</td>
+          <td><code>InfrastructureServiceCollectionExtensions.cs</code>, <code>WorkflowDbContext.cs</code>, <code>WorkflowDbContextFactory.cs</code>, entity files under <code>Persistence\Entities</code>, migrations under <code>Migrations</code>.</td>
+        </tr>
+        <tr>
+          <td>Infrastructure seed/verification</td>
+          <td><code>PortfolioTradeSeedData.cs</code>, <code>WorkflowSeedService.cs</code>, <code>WorkflowDatabaseInitializer.cs</code>, <code>SeedVerificationService.cs</code>.</td>
+        </tr>
+        <tr>
+          <td>Infrastructure runtime services</td>
+          <td><code>WorkflowExecutionService.cs</code>, <code>StartWorkflowService.cs</code>, <code>WorkflowContextReader.cs</code>, <code>WorkflowInspectionReader.cs</code>, <code>RunSlaService.cs</code>, <code>ProcessNotificationOutboxService.cs</code>, <code>ConsoleNotificationSender.cs</code>, <code>NoOpNotificationSender.cs</code>, <code>SmtpNotificationSender.cs</code>.</td>
+        </tr>
+        <tr>
+          <td>Samples</td>
+          <td>Ten JSON envelopes under <code>samples\workflow-actions</code>, numbered 01 through 10.</td>
+        </tr>
+        <tr>
+          <td>Tests</td>
+          <td>39 C# test/helper files under <code>tests\WorkflowEngine.Tests</code> plus <code>tests\COVERAGE_AUDIT.md</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Class Inventory</h3>
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Classes / Records / Interfaces</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Core contracts</td><td><code>WorkflowActionEnvelope</code>, <code>WorkflowRequest</code>, <code>WorkflowBusinessObject</code>, <code>WorkflowActor</code>, <code>WorkflowUiAction</code>, <code>WorkflowDataSave</code>, <code>WorkflowActionBlock</code>, <code>WorkflowActionOptions</code>, <code>WorkflowContextResponse</code>, <code>WorkflowContext</code>, <code>AvailableWorkflowAction</code>, <code>WorkflowActionRequestDefaults</code>, <code>WorkflowActionResultEnvelope</code>, <code>WorkflowActionResult</code>.</td></tr>
+        <tr><td>Application services/helpers</td><td><code>WorkflowActionEnvelopeValidator</code>, <code>WorkflowActionEnvelopeNormalizer</code>, <code>NormalizedWorkflowAction</code>, <code>CanonicalRequestHasher</code>, <code>WorkflowActionResultBuilder</code>, <code>CanonicalWorkflowResultSerializer</code>.</td></tr>
+        <tr><td>Interfaces</td><td><code>IWorkflowExecutionService</code>, <code>IStartWorkflowService</code>, <code>IWorkflowContextReader</code>, <code>IWorkflowInspectionReader</code>, <code>IRunSlaService</code>, <code>IProcessNotificationOutboxService</code>, <code>INotificationSender</code>, <code>IWorkflowDatabaseInitializer</code>, <code>ISeedVerificationService</code>, command handler interfaces.</td></tr>
+        <tr><td>Infrastructure services</td><td><code>WorkflowExecutionService</code>, <code>StartWorkflowService</code>, <code>WorkflowContextReader</code>, <code>WorkflowInspectionReader</code>, <code>RunSlaService</code>, <code>ProcessNotificationOutboxService</code>, <code>WorkflowDatabaseInitializer</code>, <code>WorkflowSeedService</code>, <code>SeedVerificationService</code>.</td></tr>
+        <tr><td>Notification senders</td><td><code>ConsoleNotificationSender</code>, <code>NoOpNotificationSender</code>, <code>SmtpNotificationSender</code>, <code>NotificationDelivery</code>.</td></tr>
+        <tr><td>EF entities</td><td><code>WorkflowDefinition</code>, <code>WorkflowDefinitionVersion</code>, <code>WorkflowStateDefinition</code>, <code>WorkflowActionDefinition</code>, <code>WorkflowRoleDefinition</code>, <code>WorkflowTaskDefinition</code>, <code>WorkflowTransitionDefinition</code>, <code>WorkflowInstance</code>, <code>WorkflowTask</code>, <code>WorkflowAudit</code>, <code>MockSectionData</code>, <code>SlaPolicy</code>, <code>NotificationRoute</code>, <code>NotificationOutbox</code>, <code>IdempotencyRecord</code>.</td></tr>
+        <tr><td>Console/demo</td><td><code>CommandRegistry</code>, <code>CommandArgumentParser</code>, <code>CommandResult</code>, command handler classes, <code>DemoScriptDefinitions</code>, <code>WorkflowEngineDemoStepRunner</code>, <code>DemoStep</code>, <code>DemoStepExpectations</code>, <code>DemoStepResult</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Dependency Inventory</h3>
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Dependency</th>
+          <th>Version</th>
+          <th>Current Use</th>
+          <th>API Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Microsoft.EntityFrameworkCore.SqlServer</td><td>10.0.7</td><td>SQL Server persistence.</td><td>Required.</td></tr>
+        <tr><td>Microsoft.EntityFrameworkCore.Design</td><td>10.0.7</td><td>EF tooling via console project.</td><td>Move to API startup/migration project if console is removed.</td></tr>
+        <tr><td>Microsoft.Extensions.Configuration.Json</td><td>10.0.7</td><td>Console config loading.</td><td>ASP.NET Core includes configuration providers in Web SDK; add only if needed.</td></tr>
+        <tr><td>Microsoft.Extensions.Configuration.EnvironmentVariables</td><td>10.0.7</td><td>Console env var config.</td><td>API already commonly uses env vars.</td></tr>
+        <tr><td>Microsoft.Extensions.Configuration.CommandLine</td><td>10.0.7</td><td>Console command-line config.</td><td>Usually not needed for API request behavior.</td></tr>
+        <tr><td>Microsoft.Extensions.DependencyInjection</td><td>10.0.7</td><td>Console DI container.</td><td>ASP.NET Core provides DI.</td></tr>
+        <tr><td>MailKit</td><td>4.16.0</td><td>SMTP sender.</td><td>Approved dependency; keep if SMTP is used.</td></tr>
+        <tr><td>xUnit / test SDK / coverlet</td><td>Various</td><td>Test project.</td><td>Add ASP.NET Core test host packages in API test project if needed.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Test Inventory</h3>
+    <p>Key behavior is covered by these test classes: <code>WorkflowTransitionTests</code>, <code>WorkflowExecutionValidationTests</code>, <code>WorkflowContextReaderTests</code>, <code>WorkflowActionEnvelopeValidationTests</code>, <code>WorkflowActionEnvelopeNormalizationTests</code>, <code>WorkflowActionResultBuilderTests</code>, <code>WorkflowActionResultHashTests</code>, <code>SeedDataSmokeTests</code>, <code>SchemaConstraintTests</code>, <code>StartWorkflowServiceTests</code>, <code>StartWorkflowCommandTests</code>, <code>ExecuteJsonCommandTests</code>, <code>ShowContextCommandTests</code>, <code>ShowInspectionCommandTests</code>, <code>Phase5SlaTests</code>, <code>Phase5OutboxTests</code>, <code>NotificationSenderSelectionTests</code>, <code>SmtpNotificationSenderTests</code>, <code>SmtpNotificationSenderIntegrationTests</code>, <code>SampleExpectationTests</code>, <code>BranchScriptTests</code>, <code>DemoCommandTests</code>, <code>FreshCloneWalkthroughTests</code>, <code>WorkflowPerformanceTests</code>, and documentation/coverage validation tests.</p>
+
+    <h3>Suggested Target Folder Structure</h3>
+    <pre><code>ExistingApi
+|-- Controllers
+|   |-- WorkflowInstancesController.cs
+|   |-- WorkflowActionsController.cs
+|   |-- WorkflowContextController.cs
+|   `-- WorkflowAdminController.cs
+|-- Services
+|   |-- ClaimsWorkflowActorResolver.cs
+|   |-- WorkflowHttpResultMapper.cs
+|   `-- HostedServices
+|       |-- WorkflowSlaHostedService.cs
+|       `-- NotificationOutboxHostedService.cs
+|-- Options
+|   `-- WorkflowApiOptions.cs
+|-- appsettings.json
+|-- appsettings.Development.json
+`-- ExistingApi.csproj
+
+Referenced projects:
+src\WorkflowEngine.Application
+src\WorkflowEngine.Infrastructure
+src\WorkflowEngine.Domain</code></pre>
+
+    <h3>Glossary</h3>
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Term</th>
+          <th>Meaning in This Project</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>WorkflowActionEnvelope</td><td>Standard button-click request object that carries actor, UI action, section data, workflow action, guards, and idempotency key.</td></tr>
+        <tr><td>WorkflowContextResponse</td><td>Form-open response object containing current workflow state, task, SLA, actor access, and available actions.</td></tr>
+        <tr><td>WorkflowActionResult</td><td>Post-action result object with result code, state/task/notification/audit summaries, hashes, diagnostics, and optional refreshed context.</td></tr>
+        <tr><td>Transition</td><td>Metadata row mapping workflow version, from-state, action key, and role to to-state and side effects.</td></tr>
+        <tr><td>Single-active-state</td><td>v1 model where each workflow instance has one current state and at most one pending task.</td></tr>
+        <tr><td>Portfolio Trade</td><td>Sample workflow definition represented by seed metadata and samples, not hardcoded engine behavior.</td></tr>
+        <tr><td>MakerPrimary</td><td>Shared Maker button key where <code>saveAsDraft</code> chooses between <code>SaveDraft</code> and submit/resubmit actions.</td></tr>
+        <tr><td>MockSectionData</td><td>Append-only POC table storing opaque section payload JSON; not a real production form table.</td></tr>
+        <tr><td>Notification outbox</td><td>SQL table of pending/processing/sent notification rows processed by a sender abstraction.</td></tr>
+        <tr><td>SLA</td><td>Task due-date policy. Current SLA statuses are <code>OnTrack</code>, <code>Overdue</code>, and <code>NoSla</code>.</td></tr>
+        <tr><td>IdempotencyRecord</td><td>SQL record storing effective idempotency key, request hash, result hash, and result JSON for replay.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+</body>
+</html>
