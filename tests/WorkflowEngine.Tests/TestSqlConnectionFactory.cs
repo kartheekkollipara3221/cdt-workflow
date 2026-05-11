@@ -4,17 +4,26 @@ namespace WorkflowEngine.Tests;
 
 internal static class TestSqlConnectionFactory
 {
-    private const string DefaultConnectionString =
-        "Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False";
-
     public static string ConnectionString(string databaseName)
     {
-        var configured = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
-        var source = string.IsNullOrWhiteSpace(configured)
-            ? DefaultConnectionString
-            : configured;
+        var source = Environment.GetEnvironmentVariable("WORKFLOW_ENGINE_TEST_CONNECTION_STRING");
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            source = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+        }
 
-        return ConnectionStringFromSource(databaseName, source);
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            ThrowMissingConnectionString();
+        }
+
+        return ConnectionStringFromSource(databaseName, source!);
+    }
+
+    internal static void ThrowMissingConnectionString()
+    {
+        throw new InvalidOperationException(
+            "SQL-backed workflow tests require WORKFLOW_ENGINE_TEST_CONNECTION_STRING or ConnectionStrings__DefaultConnection.");
     }
 
     internal static string ConnectionStringFromSource(string databaseName, string source)

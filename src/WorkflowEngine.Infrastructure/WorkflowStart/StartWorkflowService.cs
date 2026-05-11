@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Results;
@@ -35,9 +36,30 @@ public sealed class StartWorkflowService(
         }
 
         using var transaction = dbContext.Database.BeginTransaction();
-        var envelope = InsertFreshInstance(request, workflowInstanceId);
-        transaction.Commit();
-        return new StartWorkflowResult(envelope, ResetCounts: null);
+        try
+        {
+            var envelope = InsertFreshInstance(request, workflowInstanceId);
+            transaction.Commit();
+            return new StartWorkflowResult(envelope, ResetCounts: null);
+        }
+        catch (DbUpdateException exception) when (IsWorkflowInstanceUniqueViolation(exception))
+        {
+            transaction.Rollback();
+            dbContext.ChangeTracker.Clear();
+            var duplicate = FindExisting(request);
+            if (duplicate is null)
+            {
+                throw;
+            }
+
+            return new StartWorkflowResult(
+                resultBuilder.BuildAlreadyExists(
+                    request.WorkflowKey,
+                    request.BusinessObjectType,
+                    request.BusinessObjectId,
+                    duplicate),
+                ResetCounts: null);
+        }
     }
 
     private StartWorkflowResult ResetAndStart(StartWorkflowRequest request, string workflowInstanceId)
@@ -154,5 +176,13 @@ public sealed class StartWorkflowService(
         {
             throw new ArgumentException("startedByUserId is required.", nameof(request));
         }
+    }
+
+    private static bool IsWorkflowInstanceUniqueViolation(DbUpdateException exception)
+    {
+        return exception.InnerException is SqlException sqlException
+            && sqlException.Errors.Cast<SqlError>().Any(error =>
+                (error.Number == 2601 || error.Number == 2627)
+                && error.Message.Contains("WorkflowInstance", StringComparison.OrdinalIgnoreCase));
     }
 }

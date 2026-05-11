@@ -143,6 +143,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("NotificationType")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -152,6 +156,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTimeOffset?>("ProcessingStartedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ProcessingToken")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("RecipientRoleKey")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -159,6 +170,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<string>("RecipientUserId")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("SentAtUtc")
                         .HasColumnType("datetimeoffset");
@@ -187,7 +201,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[NotificationType] = 'SlaTaskOverdue'");
 
-                    b.ToTable("NotificationOutbox", (string)null);
+                    b.ToTable("NotificationOutbox", t =>
+                        {
+                            t.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent')");
+                        });
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.NotificationRoute", b =>
@@ -506,7 +523,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.HasIndex("WorkflowKey", "BusinessObjectType", "BusinessObjectId")
                         .IsUnique();
 
-                    b.ToTable("WorkflowInstance", (string)null);
+                    b.ToTable("WorkflowInstance", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkflowInstance_Status", "[Status] IN ('Active', 'Completed')");
+                        });
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowRoleDefinition", b =>
@@ -631,7 +651,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Status] = 'Pending'");
 
-                    b.ToTable("WorkflowTask", (string)null);
+                    b.ToTable("WorkflowTask", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkflowTask_Status", "[Status] IN ('Pending', 'Completed')");
+                        });
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTaskDefinition", b =>
@@ -743,6 +766,46 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowDefinition");
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.IdempotencyRecord", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowInstance", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowInstanceId")
+                        .HasPrincipalKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.NotificationOutbox", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowInstance", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowInstanceId")
+                        .HasPrincipalKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowAudit", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowInstance", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowInstanceId")
+                        .HasPrincipalKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTask", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowInstance", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowInstanceId")
+                        .HasPrincipalKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowDefinition", b =>

@@ -103,6 +103,73 @@ public sealed class WorkflowExecutionValidationTests
     }
 
     [Fact]
+    public void BusinessObjectIdentityMismatchReturnsValidationFailedBeforeSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        dbContext.SaveChanges();
+        var envelope = Envelope();
+        envelope.BusinessObject!.ObjectId = "PT-9999";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("businessObject.objectId", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        Assert.Equal("Draft", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Equal(1, dbContext.WorkflowInstances.Single().Version);
+        Assert.Empty(dbContext.MockSectionData);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.IdempotencyRecords);
+    }
+
+    [Fact]
+    public void WorkflowKeyMismatchReturnsValidationFailedBeforeSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        dbContext.SaveChanges();
+        var envelope = Envelope();
+        envelope.Workflow!.WorkflowKey = "OtherWorkflow";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("workflow.workflowKey", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        Assert.Equal("Draft", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Empty(dbContext.MockSectionData);
+        Assert.Empty(dbContext.WorkflowAudits);
+    }
+
+    [Fact]
+    public void ActionSectionEchoMustMatchActionMetadataBeforeSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        AddTask(dbContext, "WF-PT-1001", "CheckerReviewTask", "Checker");
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            actionKey: "CheckerSendToTradingDesk",
+            roles: ["Checker"]);
+        envelope.UiAction!.SectionKey = "Checker";
+        envelope.UiAction.ButtonKey = "CheckerPrimary";
+        envelope.UiAction.SaveAsDraft = null;
+        envelope.DataSave!.SectionKey = "Maker";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("dataSave.sectionKey", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        Assert.Equal("CheckerReview", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Single(dbContext.WorkflowTasks.Where(row => row.Status == "Pending"));
+        Assert.Empty(dbContext.MockSectionData);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.NotificationOutbox);
+    }
+
+    [Fact]
     public void CompletedInstanceReturnsInvalidTransitionBeforeActionChecks()
     {
         using var dbContext = CreateSeededContext();
@@ -306,6 +373,18 @@ public sealed class WorkflowExecutionValidationTests
             StartedByUserId = "maker1",
             CompletedAtUtc = completedAtUtc,
             Version = version
+        });
+    }
+
+    private static void AddTask(WorkflowDbContext dbContext, string workflowInstanceId, string taskKey, string assignedRole)
+    {
+        dbContext.WorkflowTasks.Add(new WorkflowTask
+        {
+            WorkflowInstanceId = workflowInstanceId,
+            TaskKey = taskKey,
+            AssignedRoleKey = assignedRole,
+            Status = "Pending",
+            CreatedAtUtc = Now
         });
     }
 

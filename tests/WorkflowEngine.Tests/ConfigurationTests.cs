@@ -30,4 +30,12 @@ public sealed class ConfigurationTests
         Assert.Contains("Data Source=example", connectionString, StringComparison.Ordinal);
         Assert.Contains("Initial Catalog=workflow_tests", connectionString, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TestSqlConnectionFactoryFailsClearlyWhenNoSqlConnectionIsConfigured()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(TestSqlConnectionFactory.ThrowMissingConnectionString);
+
+        Assert.Contains("SQL-backed workflow tests require", exception.Message, StringComparison.Ordinal);
+    }
 }

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 
@@ -35,6 +37,33 @@ public sealed class SchemaConstraintTests
 
         Assert.True(index.IsUnique);
         Assert.Equal("[NotificationType] = 'SlaTaskOverdue'", index.GetFilter());
+    }
+
+    [Theory]
+    [InlineData(typeof(WorkflowInstance), "CK_WorkflowInstance_Status")]
+    [InlineData(typeof(WorkflowTask), "CK_WorkflowTask_Status")]
+    [InlineData(typeof(NotificationOutbox), "CK_NotificationOutbox_Status")]
+    public void RuntimeStatusCheckConstraintsExist(Type entityClrType, string constraintName)
+    {
+        var entityType = dbContext.GetService<IDesignTimeModel>().Model.FindEntityType(entityClrType);
+        Assert.NotNull(entityType);
+
+        Assert.Contains(entityType.GetCheckConstraints(), constraint => constraint.Name == constraintName);
+    }
+
+    [Theory]
+    [InlineData(typeof(WorkflowTask))]
+    [InlineData(typeof(WorkflowAudit))]
+    [InlineData(typeof(NotificationOutbox))]
+    [InlineData(typeof(IdempotencyRecord))]
+    public void RuntimeRowsHaveWorkflowInstanceForeignKeys(Type entityClrType)
+    {
+        var entityType = dbContext.Model.FindEntityType(entityClrType);
+        Assert.NotNull(entityType);
+
+        Assert.Contains(entityType.GetForeignKeys(), foreignKey =>
+            foreignKey.Properties.Select(property => property.Name).SequenceEqual(["WorkflowInstanceId"])
+            && foreignKey.PrincipalKey.Properties.Select(property => property.Name).SequenceEqual(["WorkflowInstanceId"]));
     }
 
     [Theory]

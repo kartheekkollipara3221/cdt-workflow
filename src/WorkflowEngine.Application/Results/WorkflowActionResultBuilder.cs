@@ -12,11 +12,11 @@ public sealed class WorkflowActionResultBuilder
         {
             Result = BaseResult(normalized, requestHash, success: true, resultCode: "AcceptedForPhase3Validation")
                 with
-                {
-                    Message = "Envelope parsed, overrides applied, validation passed, and request hash computed. Workflow transition execution is deferred to Phase 4.",
-                    Notification = new WorkflowNotificationSummary { Queued = false },
-                    Audit = new WorkflowAuditSummary { Written = false }
-                }
+            {
+                Message = "Envelope parsed, overrides applied, validation passed, and request hash computed. Workflow transition execution is deferred to Phase 4.",
+                Notification = new WorkflowNotificationSummary { Queued = false },
+                Audit = new WorkflowAuditSummary { Written = false }
+            }
         };
     }
 

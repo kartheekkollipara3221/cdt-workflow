@@ -8,6 +8,10 @@
       {
         "name": "Category",
         "value": "FreshClone"
+      },
+      {
+        "name": "Category",
+        "value": "Performance"
       }
     ]
   }

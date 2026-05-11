@@ -54,6 +54,26 @@ public sealed class StartWorkflowServiceTests
     }
 
     [Fact]
+    public async Task ConcurrentStartsForSameBusinessObjectReturnSuccessAndAlreadyExists()
+    {
+        using var setupContext = CreateSeededContext();
+        await using var firstContext = CreateDbContext();
+        await using var secondContext = CreateDbContext();
+        var firstService = CreateService(firstContext);
+        var secondService = CreateService(secondContext);
+
+        var results = await Task.WhenAll(
+            Task.Run(() => firstService.Start(Request("PT-RACE"))),
+            Task.Run(() => secondService.Start(Request("PT-RACE"))));
+
+        Assert.Single(results, result => result.Envelope.Result.Success);
+        var duplicate = Assert.Single(results, result => !result.Envelope.Result.Success);
+        Assert.Equal("AlreadyExists", duplicate.Envelope.Result.ResultCode);
+        setupContext.ChangeTracker.Clear();
+        Assert.Single(setupContext.WorkflowInstances.Where(row => row.BusinessObjectId == "PT-RACE"));
+    }
+
+    [Fact]
     public void DifferentBusinessObjectCanStartWhenAnotherObjectIsCompleted()
     {
         using var dbContext = CreateSeededContext();

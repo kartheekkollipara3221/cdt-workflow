@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
@@ -51,11 +53,61 @@ public sealed class Phase5OutboxTests
         dbContext.ChangeTracker.Clear();
         Assert.Equal("Sent", dbContext.NotificationOutbox.Single(row => row.Subject == "First").Status);
         Assert.Equal("Pending", dbContext.NotificationOutbox.Single(row => row.Subject == "Second").Status);
+        Assert.Equal(1, dbContext.NotificationOutbox.Single(row => row.Subject == "Second").RetryCount);
+        Assert.Contains("send failed", dbContext.NotificationOutbox.Single(row => row.Subject == "Second").LastError, StringComparison.Ordinal);
         Assert.Equal("Pending", dbContext.NotificationOutbox.Single(row => row.Subject == "Third").Status);
+    }
+
+    [Fact]
+    public async Task ConcurrentProcessorsClaimBeforeSendingSoOnlyOneSenderRuns()
+    {
+        using var setupContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(setupContext, "WF-PT-1", "Only", Now);
+        setupContext.SaveChanges();
+        await using var firstContext = CreateDbContext();
+        await using var secondContext = CreateDbContext();
+        var firstSender = new BlockingNotificationSender();
+        var secondSender = new RecordingNotificationSender();
+        var firstProcessor = new ProcessNotificationOutboxService(firstContext, firstSender, new FixedTimeProvider(Now));
+        var secondProcessor = new ProcessNotificationOutboxService(secondContext, secondSender, new FixedTimeProvider(Now));
+
+        var firstTask = firstProcessor.ProcessAsync(CancellationToken.None);
+        await firstSender.WaitForSendAsync();
+        var secondResult = await secondProcessor.ProcessAsync(CancellationToken.None);
+        firstSender.Release();
+        var firstResult = await firstTask;
+
+        Assert.Null(firstResult.Failure);
+        Assert.Null(secondResult.Failure);
+        Assert.Single(firstSender.SentRows);
+        Assert.Empty(secondSender.SentRows);
+        Assert.Contains(secondResult.Warnings, warning => warning.Contains("already claimed", StringComparison.Ordinal));
+        setupContext.ChangeTracker.Clear();
+        var row = setupContext.NotificationOutbox.Single();
+        Assert.Equal("Sent", row.Status);
+        Assert.Null(row.ProcessingToken);
+        Assert.Null(row.ProcessingStartedAtUtc);
     }
 
     private static void AddNotification(WorkflowDbContext dbContext, string workflowInstanceId, string subject, DateTimeOffset createdAtUtc)
     {
+        if (!dbContext.WorkflowInstances.Any(row => row.WorkflowInstanceId == workflowInstanceId))
+        {
+            dbContext.WorkflowInstances.Add(new WorkflowInstance
+            {
+                WorkflowInstanceId = workflowInstanceId,
+                WorkflowKey = "PortfolioTrade",
+                WorkflowDefinitionVersionId = PortfolioTradeVersionId(dbContext),
+                BusinessObjectType = "PortfolioTrade",
+                BusinessObjectId = workflowInstanceId,
+                CurrentStateKey = "Draft",
+                Status = "Active",
+                StartedAtUtc = createdAtUtc,
+                StartedByUserId = "maker1",
+                Version = 1
+            });
+        }
+
         dbContext.NotificationOutbox.Add(new NotificationOutbox
         {
             WorkflowInstanceId = workflowInstanceId,
@@ -69,5 +121,47 @@ public sealed class Phase5OutboxTests
             CorrelationId = subject,
             CreatedAtUtc = createdAtUtc
         });
+    }
+
+    private static WorkflowDbContext CreateDbContext()
+    {
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito_phase4_execution_tests"))
+            .Options;
+
+        return new WorkflowDbContext(options);
+    }
+
+    private static long PortfolioTradeVersionId(WorkflowDbContext dbContext)
+    {
+        var definition = dbContext.WorkflowDefinitions.Single(row => row.WorkflowKey == "PortfolioTrade");
+        return dbContext.WorkflowDefinitionVersions.Single(row => row.WorkflowDefinitionId == definition.Id && row.IsActive).Id;
+    }
+
+    private sealed class BlockingNotificationSender : INotificationSender
+    {
+        private readonly TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public string SenderName => "Blocking";
+
+        public List<NotificationDelivery> SentRows { get; } = [];
+
+        public async Task SendAsync(NotificationDelivery notification, CancellationToken cancellationToken)
+        {
+            SentRows.Add(notification);
+            entered.SetResult();
+            await release.Task.WaitAsync(cancellationToken);
+        }
+
+        public Task WaitForSendAsync()
+        {
+            return entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        public void Release()
+        {
+            release.SetResult();
+        }
     }
 }

@@ -8,8 +8,8 @@ Reusable .NET workflow engine proof of concept for replacing SharePoint Designer
 
 - .NET 10 SDK.
 - SQL Server local instance.
-- Default connection string: `Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
-- Override with `ConnectionStrings__DefaultConnection` or `appsettings.Development.json`.
+- Configure `ConnectionStrings__DefaultConnection` or a local, untracked `appsettings.Development.json`.
+- Example local connection string: `Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
 
 ### First run
 
@@ -241,9 +241,11 @@ Never use `--reset` in production. One business object identifier means one work
 ### Testing
 
 - Tier 1 default: `dotnet test`
+- SQL-backed tests require `WORKFLOW_ENGINE_TEST_CONNECTION_STRING` or `ConnectionStrings__DefaultConnection`; the test database name is replaced per suite.
 - Tier 2 SMTP: start smtp4dev with `docker run --rm -p 3025:25 -p 5000:80 rnwood/smtp4dev`, set `RUN_SMTP_TESTS=1`, then run `dotnet test --filter Category=Smtp`
 - Fresh-clone gate: `dotnet test --filter Category=FreshClone`
 - Manual smoke: run README Quickstart and one return-to-Maker branch.
+- GitHub Actions SQL jobs require repository secret `CI_SQL_SA_PASSWORD` for the SQL Server container.
 
 ### Extending the engine
 

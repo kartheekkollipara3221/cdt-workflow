@@ -166,6 +166,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.StartedByUserId).HasMaxLength(200).IsRequired();
             entity.HasIndex(row => row.WorkflowInstanceId).IsUnique();
             entity.HasIndex(row => new { row.WorkflowKey, row.BusinessObjectType, row.BusinessObjectId }).IsUnique();
+            entity.ToTable(table => table.HasCheckConstraint("CK_WorkflowInstance_Status", "[Status] IN ('Active', 'Completed')"));
         });
 
         modelBuilder.Entity<WorkflowTask>(entity =>
@@ -182,6 +183,12 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.HasIndex(row => row.WorkflowInstanceId)
                 .IsUnique()
                 .HasFilter("[Status] = 'Pending'");
+            entity.HasOne<WorkflowInstance>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowInstanceId)
+                .HasPrincipalKey(row => row.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table => table.HasCheckConstraint("CK_WorkflowTask_Status", "[Status] IN ('Pending', 'Completed')"));
         });
 
         modelBuilder.Entity<MockSectionData>(entity =>
@@ -212,6 +219,11 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.Reason).HasMaxLength(1000);
             entity.Property(row => row.CorrelationId).HasMaxLength(150).IsRequired();
             entity.HasIndex(row => row.WorkflowInstanceId);
+            entity.HasOne<WorkflowInstance>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowInstanceId)
+                .HasPrincipalKey(row => row.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<NotificationOutbox>(entity =>
@@ -228,9 +240,17 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.PayloadJson).IsRequired();
             entity.Property(row => row.Status).HasMaxLength(30).IsRequired();
             entity.Property(row => row.CorrelationId).HasMaxLength(150).IsRequired();
+            entity.Property(row => row.ProcessingToken).HasMaxLength(100);
+            entity.Property(row => row.LastError).HasMaxLength(1000);
             entity.HasIndex(row => new { row.WorkflowTaskId, row.NotificationType })
                 .IsUnique()
                 .HasFilter("[NotificationType] = 'SlaTaskOverdue'");
+            entity.HasOne<WorkflowInstance>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowInstanceId)
+                .HasPrincipalKey(row => row.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table => table.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent')"));
         });
 
         modelBuilder.Entity<IdempotencyRecord>(entity =>
@@ -244,6 +264,11 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.ResultHash).HasMaxLength(128).IsRequired();
             entity.Property(row => row.ResultJson).IsRequired();
             entity.HasIndex(row => row.IdempotencyKey).IsUnique();
+            entity.HasOne<WorkflowInstance>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowInstanceId)
+                .HasPrincipalKey(row => row.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

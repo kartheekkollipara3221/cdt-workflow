@@ -4,7 +4,9 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
+using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
@@ -40,6 +42,12 @@ public sealed class WorkflowExecutionService(
             return resultBuilder.BuildWorkflowInstanceNotFound(normalized, request.RequestHash, workflowInstanceId);
         }
 
+        var identityValidation = ValidateEnvelopeIdentity(normalized, instance);
+        if (identityValidation is not null)
+        {
+            return identityValidation;
+        }
+
         var versionNumber = ResolveVersionNumber(instance.WorkflowDefinitionVersionId);
         if (workflow.WorkflowDefinitionVersion is not null && workflow.WorkflowDefinitionVersion.Value != versionNumber)
         {
@@ -59,18 +67,24 @@ public sealed class WorkflowExecutionService(
                 "Workflow is Completed; no actions are permitted.");
         }
 
-        var actionExists = dbContext.WorkflowActionDefinitions
+        var actionDefinition = dbContext.WorkflowActionDefinitions
             .AsNoTracking()
-            .Any(row =>
+            .SingleOrDefault(row =>
                 row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
                 && row.ActionKey == actionKey
                 && row.IsActive);
-        if (!actionExists)
+        if (actionDefinition is null)
         {
             return resultBuilder.BuildInvalidTransition(
                 normalized,
                 request.RequestHash,
                 $"Action '{actionKey}' is not defined for workflow definition version {versionNumber}.");
+        }
+
+        var actionEchoValidation = ValidateActionEcho(normalized, actionDefinition);
+        if (actionEchoValidation is not null)
+        {
+            return actionEchoValidation;
         }
 
         var transitions = dbContext.WorkflowTransitionDefinitions
@@ -152,6 +166,74 @@ public sealed class WorkflowExecutionService(
         }
 
         return ExecuteSideEffects(request, instance, pendingTask, transition, performedByRoleKey);
+    }
+
+    private WorkflowActionResultEnvelope? ValidateEnvelopeIdentity(
+        NormalizedWorkflowAction normalized,
+        WorkflowInstance instance)
+    {
+        var envelope = normalized.Envelope;
+        var errors = new List<WorkflowValidationError>();
+        AddMismatch(
+            errors,
+            "workflow.workflowKey",
+            envelope.Workflow?.WorkflowKey,
+            instance.WorkflowKey);
+        AddMismatch(
+            errors,
+            "businessObject.objectType",
+            envelope.BusinessObject?.ObjectType,
+            instance.BusinessObjectType);
+        AddMismatch(
+            errors,
+            "businessObject.objectId",
+            envelope.BusinessObject?.ObjectId,
+            instance.BusinessObjectId);
+
+        return errors.Count == 0
+            ? null
+            : resultBuilder.BuildValidationFailed(normalized, errors);
+    }
+
+    private WorkflowActionResultEnvelope? ValidateActionEcho(
+        NormalizedWorkflowAction normalized,
+        WorkflowActionDefinition actionDefinition)
+    {
+        var envelope = normalized.Envelope;
+        var errors = new List<WorkflowValidationError>();
+        var uiSectionKey = envelope.UiAction?.SectionKey;
+        var dataSectionKey = envelope.DataSave?.SectionKey;
+        if (!string.Equals(uiSectionKey, dataSectionKey, StringComparison.Ordinal))
+        {
+            errors.Add(new WorkflowValidationError(
+                "dataSave.sectionKey",
+                $"dataSave.sectionKey must match uiAction.sectionKey '{uiSectionKey}'."));
+        }
+
+        AddMismatch(errors, "uiAction.sectionKey", uiSectionKey, actionDefinition.SectionKey);
+        AddMismatch(errors, "dataSave.sectionKey", dataSectionKey, actionDefinition.SectionKey);
+        AddMismatch(errors, "uiAction.buttonKey", envelope.UiAction?.ButtonKey, actionDefinition.ButtonKey);
+
+        return errors.Count == 0
+            ? null
+            : resultBuilder.BuildValidationFailed(normalized, errors);
+    }
+
+    private static void AddMismatch(
+        ICollection<WorkflowValidationError> errors,
+        string field,
+        string? actual,
+        string? expected)
+    {
+        if (string.IsNullOrWhiteSpace(expected)
+            || string.Equals(actual, expected, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        errors.Add(new WorkflowValidationError(
+            field,
+            $"{field} must match persisted workflow metadata value '{expected}'."));
     }
 
     private IReadOnlyList<string> BuildOptionWarnings(

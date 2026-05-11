@@ -15,6 +15,9 @@ public sealed class NotificationOutbox
     public string Status { get; set; } = string.Empty;
     public string CorrelationId { get; set; } = string.Empty;
     public DateTimeOffset CreatedAtUtc { get; set; }
+    public string? ProcessingToken { get; set; }
+    public DateTimeOffset? ProcessingStartedAtUtc { get; set; }
+    public int RetryCount { get; set; }
+    public string? LastError { get; set; }
     public DateTimeOffset? SentAtUtc { get; set; }
 }
-
