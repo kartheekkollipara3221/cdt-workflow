@@ -12,6 +12,7 @@ public sealed class SmtpNotificationSenderIntegrationTests
     [SmtpFact]
     public async Task SmtpSenderDeliversMessageToSmtp4Dev()
     {
+        await EnsureSmtp4DevAvailableAsync();
         var subject = "Phase 5 SMTP " + Guid.NewGuid().ToString("N");
         var sender = new SmtpNotificationSender(SmtpNotificationSenderTests.Configuration(new()
         {
@@ -34,6 +35,7 @@ public sealed class SmtpNotificationSenderIntegrationTests
     [SmtpFact]
     public async Task RecipientOverrideDeliversToOperatorInSmtp4Dev()
     {
+        await EnsureSmtp4DevAvailableAsync();
         var subject = "Phase 5 SMTP override " + Guid.NewGuid().ToString("N");
         var sender = new SmtpNotificationSender(SmtpNotificationSenderTests.Configuration(new()
         {
@@ -52,6 +54,22 @@ public sealed class SmtpNotificationSenderIntegrationTests
 
         Assert.Contains("operator@example.test", message.Json.GetRawText(), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("OriginalRecipientRoleKey: Checker", plaintext, StringComparison.Ordinal);
+    }
+
+    private static async Task EnsureSmtp4DevAvailableAsync()
+    {
+        try
+        {
+            using var client = new HttpClient { BaseAddress = Smtp4DevApi, Timeout = TimeSpan.FromSeconds(2) };
+            using var response = await client.GetAsync("/api/messages");
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            throw new InvalidOperationException(
+                "Tier 2 SMTP tests require smtp4dev running locally: docker run --rm -p 3025:25 -p 5000:80 rnwood/smtp4dev. Then set RUN_SMTP_TESTS=1 and run dotnet test --filter Category=Smtp.",
+                exception);
+        }
     }
 
     private static async Task<Smtp4DevMessage> WaitForMessageAsync(HttpClient client, string subject, CancellationToken cancellationToken)

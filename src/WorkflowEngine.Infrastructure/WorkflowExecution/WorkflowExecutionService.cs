@@ -217,7 +217,21 @@ public sealed class WorkflowExecutionService(
 
         using (var transaction = dbContext.Database.BeginTransaction())
         {
-            var instance = dbContext.WorkflowInstances.Single(row => row.Id == loadedInstance.Id);
+            var instance = dbContext.WorkflowInstances
+                .AsNoTracking()
+                .Single(row => row.Id == loadedInstance.Id);
+            var currentPendingTask = dbContext.WorkflowTasks
+                .AsNoTracking()
+                .OrderBy(row => row.Id)
+                .FirstOrDefault(row => row.WorkflowInstanceId == instance.WorkflowInstanceId && row.Status == "Pending");
+            var currentConcurrency = CheckConcurrency(request, instance, currentPendingTask)
+                ?? CheckTransitionStillCurrent(request, instance, currentPendingTask, transition);
+            if (currentConcurrency is not null)
+            {
+                transaction.Rollback();
+                return TryBuildIdempotencyReplay(request) ?? currentConcurrency;
+            }
+
             var oldState = instance.CurrentStateKey;
 
             dbContext.MockSectionData.Add(new MockSectionData
@@ -234,6 +248,30 @@ public sealed class WorkflowExecutionService(
             var isSaveDraft = string.Equals(workflow.ActionKey, "SaveDraft", StringComparison.Ordinal);
             if (!isSaveDraft)
             {
+                var completed = string.Equals(transition.ToStateKey, "Completed", StringComparison.Ordinal);
+                var updatedRows = dbContext.WorkflowInstances
+                    .Where(row => row.Id == instance.Id && row.Version == instance.Version)
+                    .ExecuteUpdate(setters => setters
+                        .SetProperty(row => row.CurrentStateKey, transition.ToStateKey)
+                        .SetProperty(row => row.Version, row => row.Version + 1)
+                        .SetProperty(row => row.Status, completed ? "Completed" : instance.Status)
+                        .SetProperty(row => row.CompletedAtUtc, completed ? now : instance.CompletedAtUtc));
+                if (updatedRows == 0)
+                {
+                    transaction.Rollback();
+                    dbContext.ChangeTracker.Clear();
+                    var concurrencyConflict = resultBuilder.BuildConcurrencyConflict(
+                        normalized,
+                        request.RequestHash,
+                        "expectedInstanceVersion",
+                        instance.Version.ToString(CultureInfo.InvariantCulture),
+                        ResolveCurrentInstanceVersion(instance.Id).ToString(CultureInfo.InvariantCulture),
+                        $"Expected workflow instance version {instance.Version} but the workflow changed before the state update could be committed.",
+                        ReadContextOrNull(instance.WorkflowInstanceId, envelope));
+                    return TryBuildIdempotencyReplay(request) ?? concurrencyConflict;
+                }
+                SynchronizeTrackedInstance(instance, transition.ToStateKey, instance.Version + 1, completed ? "Completed" : instance.Status, completed ? now : instance.CompletedAtUtc);
+
                 if (!string.IsNullOrWhiteSpace(transition.TaskToCloseKey))
                 {
                     var taskToClose = dbContext.WorkflowTasks.Single(row =>
@@ -251,14 +289,6 @@ public sealed class WorkflowExecutionService(
                         AssignedRole = taskToClose.AssignedRoleKey,
                         DueAtUtc = taskToClose.DueAtUtc
                     };
-                }
-
-                instance.CurrentStateKey = transition.ToStateKey;
-                instance.Version++;
-                if (string.Equals(transition.ToStateKey, "Completed", StringComparison.Ordinal))
-                {
-                    instance.Status = "Completed";
-                    instance.CompletedAtUtc = now;
                 }
 
                 if (!string.IsNullOrWhiteSpace(transition.TaskToCreateKey))
@@ -352,7 +382,6 @@ public sealed class WorkflowExecutionService(
             });
 
             dbContext.SaveChanges();
-            transaction.Commit();
 
             var result = resultBuilder.BuildExecutionSuccess(
                 normalized,
@@ -364,7 +393,26 @@ public sealed class WorkflowExecutionService(
                 notification ?? new WorkflowNotificationSummary { Queued = false },
                 new WorkflowAuditSummary { Written = true, ActionKey = workflow.ActionKey });
             result.WorkflowContext = ReadContextOrNull(instance.WorkflowInstanceId, envelope);
-            PersistIdempotencyRecord(result, request, now);
+            AddIdempotencyRecord(result, request, now);
+
+            try
+            {
+                dbContext.SaveChanges();
+                transaction.Commit();
+            }
+            catch (DbUpdateException exception) when (IsIdempotencyUniqueViolation(exception))
+            {
+                transaction.Rollback();
+                dbContext.ChangeTracker.Clear();
+                var existing = TryBuildIdempotencyReplay(request);
+                if (existing is null)
+                {
+                    throw;
+                }
+
+                return existing;
+            }
+
             return result;
         }
     }
@@ -387,7 +435,7 @@ public sealed class WorkflowExecutionService(
         return durationMinutes is null ? null : now.AddMinutes(durationMinutes.Value);
     }
 
-    private void PersistIdempotencyRecord(
+    private void AddIdempotencyRecord(
         WorkflowActionResultEnvelope result,
         WorkflowExecutionRequest request,
         DateTimeOffset createdAtUtc)
@@ -405,25 +453,6 @@ public sealed class WorkflowExecutionService(
             ResultJson = resultJson,
             CreatedAtUtc = createdAtUtc
         });
-
-        try
-        {
-            dbContext.SaveChanges();
-        }
-        catch (DbUpdateException exception) when (IsIdempotencyUniqueViolation(exception))
-        {
-            dbContext.ChangeTracker.Clear();
-            var existing = TryBuildIdempotencyReplay(request);
-            if (existing is null)
-            {
-                throw;
-            }
-
-            result.Result.Success = existing.Result.Success;
-            result.Result.ResultCode = existing.Result.ResultCode;
-            result.Result.Message = existing.Result.Message;
-            result.WorkflowContext = existing.WorkflowContext;
-        }
     }
 
     private static bool IsIdempotencyUniqueViolation(DbUpdateException exception)
@@ -525,6 +554,40 @@ public sealed class WorkflowExecutionService(
         return null;
     }
 
+    private WorkflowActionResultEnvelope? CheckTransitionStillCurrent(
+        WorkflowExecutionRequest request,
+        WorkflowInstance instance,
+        WorkflowTask? pendingTask,
+        WorkflowTransitionDefinition transition)
+    {
+        if (!string.Equals(instance.CurrentStateKey, transition.FromStateKey, StringComparison.Ordinal))
+        {
+            return resultBuilder.BuildConcurrencyConflict(
+                request.Normalized,
+                request.RequestHash,
+                "expectedCurrentState",
+                transition.FromStateKey,
+                instance.CurrentStateKey,
+                $"Expected current state '{transition.FromStateKey}' but persisted state is '{instance.CurrentStateKey}'. The workflow has moved since this action was resolved.",
+                ReadContextOrNull(instance.WorkflowInstanceId, request.Normalized.Envelope));
+        }
+
+        if (!string.IsNullOrWhiteSpace(transition.TaskToCloseKey)
+            && !string.Equals(pendingTask?.TaskKey, transition.TaskToCloseKey, StringComparison.Ordinal))
+        {
+            return resultBuilder.BuildConcurrencyConflict(
+                request.Normalized,
+                request.RequestHash,
+                "expectedCurrentTaskKey",
+                transition.TaskToCloseKey,
+                pendingTask?.TaskKey ?? string.Empty,
+                $"Expected current task key '{transition.TaskToCloseKey}' but the open task key is '{pendingTask?.TaskKey ?? string.Empty}'.",
+                ReadContextOrNull(instance.WorkflowInstanceId, request.Normalized.Envelope));
+        }
+
+        return null;
+    }
+
     private Application.Contracts.WorkflowContext? ReadContextOrNull(string workflowInstanceId, WorkflowActionEnvelope envelope)
     {
         try
@@ -547,5 +610,36 @@ public sealed class WorkflowExecutionService(
             .Where(row => row.Id == workflowDefinitionVersionId)
             .Select(row => row.VersionNumber)
             .Single();
+    }
+
+    private int ResolveCurrentInstanceVersion(long id)
+    {
+        return dbContext.WorkflowInstances
+            .AsNoTracking()
+            .Where(row => row.Id == id)
+            .Select(row => row.Version)
+            .Single();
+    }
+
+    private void SynchronizeTrackedInstance(
+        WorkflowInstance instance,
+        string currentStateKey,
+        int version,
+        string status,
+        DateTimeOffset? completedAtUtc)
+    {
+        var trackedEntry = dbContext.ChangeTracker
+            .Entries<WorkflowInstance>()
+            .FirstOrDefault(entry => entry.Entity.Id == instance.Id);
+        if (trackedEntry is null)
+        {
+            return;
+        }
+
+        trackedEntry.Entity.CurrentStateKey = currentStateKey;
+        trackedEntry.Entity.Version = version;
+        trackedEntry.Entity.Status = status;
+        trackedEntry.Entity.CompletedAtUtc = completedAtUtc;
+        trackedEntry.State = EntityState.Unchanged;
     }
 }

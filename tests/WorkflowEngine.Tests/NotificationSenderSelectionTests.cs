@@ -24,30 +24,46 @@ public sealed class NotificationSenderSelectionTests
     }
 
     [Fact]
-    public void UnknownSenderFailsFastAtResolution()
+    public void UnknownSenderFailsFastAtStartup()
     {
-        using var provider = BuildProvider("Unknown", smtpHost: "localhost", smtpFrom: "workflow@example.test");
-
-        var exception = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<INotificationSender>());
+        var exception = Assert.Throws<InvalidOperationException>(() => BuildProvider("Unknown", smtpHost: "localhost", smtpFrom: "workflow@example.test"));
 
         Assert.Contains("Allowed values: Console, NoOp, Smtp", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void SmtpSenderRequiresHostAtResolution()
+    public void SmtpSenderRequiresHostAtStartup()
     {
-        using var provider = BuildProvider("Smtp", smtpHost: null, smtpFrom: "workflow@example.test");
-
-        var exception = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<INotificationSender>());
+        var exception = Assert.Throws<InvalidOperationException>(() => BuildProvider("Smtp", smtpHost: null, smtpFrom: "workflow@example.test"));
 
         Assert.Contains("Smtp:Host", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SmtpSenderRequiresFromAtStartup()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() => BuildProvider("Smtp", smtpHost: "localhost", smtpFrom: null));
+
+        Assert.Contains("Smtp:From", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Console")]
+    [InlineData("NoOp")]
+    public void NonSmtpSendersDoNotRequireSmtpSettings(string senderValue)
+    {
+        using var provider = BuildProvider(senderValue, smtpHost: null, smtpFrom: null);
+
+        var sender = provider.GetRequiredService<INotificationSender>();
+
+        Assert.NotNull(sender);
     }
 
     private static ServiceProvider BuildProvider(string? senderValue, string? smtpHost, string? smtpFrom)
     {
         var values = new Dictionary<string, string?>
         {
-            ["ConnectionStrings:DefaultConnection"] = "Server=DOLLY;Database=burrito_sender_selection_tests;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
+            ["ConnectionStrings:DefaultConnection"] = TestSqlConnectionFactory.ConnectionString("burrito_sender_selection_tests")
         };
         if (senderValue is not null)
         {

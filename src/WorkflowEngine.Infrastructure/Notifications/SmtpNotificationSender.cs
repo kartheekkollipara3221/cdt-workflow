@@ -18,25 +18,27 @@ public sealed class SmtpNotificationSender : INotificationSender
     public SmtpNotificationSender(IConfiguration configuration)
     {
         this.configuration = configuration;
-        host = configuration["Smtp:Host"]?.Trim()
-            ?? throw new InvalidOperationException("Smtp:Host is required when Notifications:Sender is Smtp.");
-        if (host.Length == 0)
-        {
-            throw new InvalidOperationException("Smtp:Host is required when Notifications:Sender is Smtp.");
-        }
-
-        from = configuration["Smtp:From"]?.Trim()
-            ?? throw new InvalidOperationException("Smtp:From is required when Notifications:Sender is Smtp.");
-        if (from.Length == 0)
-        {
-            throw new InvalidOperationException("Smtp:From is required when Notifications:Sender is Smtp.");
-        }
-
+        ValidateConfiguration(configuration);
+        host = configuration["Smtp:Host"]!.Trim();
+        from = configuration["Smtp:From"]!.Trim();
         port = int.TryParse(configuration["Smtp:Port"], out var configuredPort) ? configuredPort : 25;
         recipientOverride = EmptyToNull(configuration["Smtp:RecipientOverride"]);
     }
 
     public string SenderName => "Smtp";
+
+    public static void ValidateConfiguration(IConfiguration configuration)
+    {
+        if (string.IsNullOrWhiteSpace(configuration["Smtp:Host"]))
+        {
+            throw new InvalidOperationException("Smtp:Host is required when Notifications:Sender is Smtp.");
+        }
+
+        if (string.IsNullOrWhiteSpace(configuration["Smtp:From"]))
+        {
+            throw new InvalidOperationException("Smtp:From is required when Notifications:Sender is Smtp.");
+        }
+    }
 
     public async Task SendAsync(NotificationDelivery notification, CancellationToken cancellationToken)
     {

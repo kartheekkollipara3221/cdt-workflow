@@ -154,6 +154,35 @@ public sealed class WorkflowExecutionValidationTests
         Assert.Equal("expectedCurrentState", result.Result.FailedGuard);
         Assert.Equal("Draft", result.Result.Expected);
         Assert.Equal("CheckerReview", result.Result.Actual);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+        Assert.Empty(dbContext.IdempotencyRecords);
+    }
+
+    [Fact]
+    public void SaveDraftVersionConcurrencyConflictDoesNotSaveSectionData()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 2);
+        dbContext.SaveChanges();
+
+        var envelope = Envelope(actionKey: "SaveDraft", expectedState: "Draft", expectedVersion: 1);
+        envelope.UiAction!.SaveAsDraft = true;
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.Equal("ConcurrencyConflict", result.Result.ResultCode);
+        Assert.Equal("expectedInstanceVersion", result.Result.FailedGuard);
+        Assert.Equal("1", result.Result.Expected);
+        Assert.Equal("2", result.Result.Actual);
+        Assert.Equal("Draft", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Equal(2, dbContext.WorkflowInstances.Single().Version);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+        Assert.Empty(dbContext.IdempotencyRecords);
     }
 
     [Fact]
@@ -217,7 +246,7 @@ public sealed class WorkflowExecutionValidationTests
     private static WorkflowDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseSqlServer("Server=DOLLY;Database=burrito_phase4_execution_tests;Integrated Security=true;TrustServerCertificate=True;Encrypt=False")
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito_phase4_execution_tests"))
             .Options;
 
         return new WorkflowDbContext(options);

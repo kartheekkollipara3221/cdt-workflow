@@ -72,7 +72,7 @@ public sealed class SeedDataSmokeTests
 
     private static WorkflowDbContext CreateDbContext()
     {
-        var connectionString = "Server=DOLLY;Database=burrito_phase2_tests;Integrated Security=true;TrustServerCertificate=True;Encrypt=False";
+        var connectionString = TestSqlConnectionFactory.ConnectionString("burrito_phase2_tests");
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
             .UseSqlServer(connectionString)
             .Options;
@@ -87,4 +87,3 @@ public sealed class SeedDataSmokeTests
             row.WorkflowDefinitionId == definition.Id && row.VersionNumber == 1).Id;
     }
 }
-

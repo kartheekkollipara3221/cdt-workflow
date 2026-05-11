@@ -126,6 +126,59 @@ public sealed class WorkflowTransitionTests
         Assert.Equal(2, dbContext.WorkflowInstances.Single().Version);
     }
 
+    [Fact]
+    public void StoredIdempotencyResultReplaysOriginalSuccess()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        dbContext.SaveChanges();
+        var request = Request(Envelope());
+        var service = CreateService(dbContext);
+
+        var first = service.Execute(request);
+        dbContext.ChangeTracker.Clear();
+        var second = service.Execute(request);
+
+        Assert.True(first.Result.Success);
+        Assert.True(second.Result.Success);
+        Assert.True(second.Result.Diagnostics.Replay);
+        Assert.Equal(first.Result.OldState, second.Result.OldState);
+        Assert.Equal(first.Result.NewState, second.Result.NewState);
+        Assert.Equal(first.Result.CreatedTask?.TaskKey, second.Result.CreatedTask?.TaskKey);
+        var record = Assert.Single(dbContext.IdempotencyRecords);
+        Assert.Contains("\"resultCode\":\"Success\"", record.ResultJson, StringComparison.Ordinal);
+        Assert.Contains("\"newState\":\"CheckerReview\"", record.ResultJson, StringComparison.Ordinal);
+        Assert.False(string.IsNullOrWhiteSpace(record.ResultHash));
+    }
+
+    [Fact]
+    public void TaskClosingActionWithoutCurrentTaskReturnsConcurrencyConflictWithoutSideEffects()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        dbContext.SaveChanges();
+
+        var result = CreateService(dbContext).Execute(Request(Envelope(
+            actionKey: "CheckerReturnToMaker",
+            sectionKey: "Checker",
+            buttonKey: "CheckerReturnToMaker",
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            roles: ["Checker"],
+            userId: "checker1")));
+
+        Assert.Equal("ConcurrencyConflict", result.Result.ResultCode);
+        Assert.Equal("expectedCurrentTaskKey", result.Result.FailedGuard);
+        Assert.Equal("CheckerReviewTask", result.Result.Expected);
+        Assert.Equal(string.Empty, result.Result.Actual);
+        Assert.Equal("CheckerReview", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+        Assert.Empty(dbContext.IdempotencyRecords);
+    }
+
     private static WorkflowExecutionService CreateService(WorkflowDbContext dbContext)
     {
         return new WorkflowExecutionService(

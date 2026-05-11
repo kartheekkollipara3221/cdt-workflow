@@ -90,7 +90,7 @@ public sealed class FreshCloneWalkthroughTests
     private static WorkflowDbContext CreateBurritoContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseSqlServer("Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False")
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito"))
             .Options;
         return new WorkflowDbContext(options);
     }

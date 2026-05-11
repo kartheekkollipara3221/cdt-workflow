@@ -117,7 +117,7 @@ public sealed class WorkflowContextReaderTests
     internal static WorkflowDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseSqlServer("Server=DOLLY;Database=burrito_phase3_context_tests;Integrated Security=true;TrustServerCertificate=True;Encrypt=False")
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito_phase3_context_tests"))
             .Options;
 
         return new WorkflowDbContext(options);

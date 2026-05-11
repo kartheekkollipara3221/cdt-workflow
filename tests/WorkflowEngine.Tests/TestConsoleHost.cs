@@ -19,7 +19,7 @@ internal sealed class TestConsoleHost : IDisposable
 
     public TestConsoleHost(string databaseName)
     {
-        ConnectionString = $"Server=DOLLY;Database={databaseName};Integrated Security=true;TrustServerCertificate=True;Encrypt=False";
+        ConnectionString = TestSqlConnectionFactory.ConnectionString(databaseName);
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {

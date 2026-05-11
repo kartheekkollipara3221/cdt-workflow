@@ -19,4 +19,15 @@ public sealed class ConfigurationTests
 
         Assert.Equal("Server=example;Database=workflow;", connectionString);
     }
+
+    [Fact]
+    public void TestSqlConnectionFactoryUsesConfiguredSourceWithRequestedDatabase()
+    {
+        var connectionString = TestSqlConnectionFactory.ConnectionStringFromSource(
+            "workflow_tests",
+            "Server=example;Database=template;Integrated Security=true;TrustServerCertificate=True;Encrypt=False");
+
+        Assert.Contains("Data Source=example", connectionString, StringComparison.Ordinal);
+        Assert.Contains("Initial Catalog=workflow_tests", connectionString, StringComparison.Ordinal);
+    }
 }

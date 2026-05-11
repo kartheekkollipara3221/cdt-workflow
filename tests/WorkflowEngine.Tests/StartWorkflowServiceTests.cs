@@ -127,7 +127,7 @@ public sealed class StartWorkflowServiceTests
     internal static WorkflowDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseSqlServer("Server=DOLLY;Database=burrito_phase4_start_tests;Integrated Security=true;TrustServerCertificate=True;Encrypt=False")
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito_phase4_start_tests"))
             .Options;
 
         return new WorkflowDbContext(options);

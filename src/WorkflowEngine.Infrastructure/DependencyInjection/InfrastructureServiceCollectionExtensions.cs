@@ -31,6 +31,8 @@ public static class InfrastructureServiceCollectionExtensions
                 $"Connection string '{WorkflowKeys.DefaultConnectionName}' is not configured.");
         }
 
+        ValidateNotificationSenderConfiguration(configuration);
+
         services.AddDbContext<WorkflowDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<WorkflowSeedService>();
         services.AddScoped<WorkflowDatabaseInitializer>();
@@ -61,6 +63,23 @@ public static class InfrastructureServiceCollectionExtensions
             CreateNotificationSender(configuration, provider));
 
         return services;
+    }
+
+    private static void ValidateNotificationSenderConfiguration(IConfiguration configuration)
+    {
+        var senderType = configuration["Notifications:Sender"] ?? "Console";
+        switch (senderType.Trim().ToLowerInvariant())
+        {
+            case "smtp":
+                SmtpNotificationSender.ValidateConfiguration(configuration);
+                break;
+            case "noop":
+            case "console":
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unknown Notifications:Sender value '{senderType}'. Allowed values: Console, NoOp, Smtp.");
+        }
     }
 
     private static INotificationSender CreateNotificationSender(

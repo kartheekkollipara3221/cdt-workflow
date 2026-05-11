@@ -8,7 +8,7 @@ public sealed class SchemaConstraintTests
 {
     private readonly WorkflowDbContext dbContext = new(
         new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=WorkflowEngineModelTests;Trusted_Connection=True;TrustServerCertificate=True")
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("WorkflowEngineModelTests"))
             .Options);
 
     [Fact]
@@ -70,4 +70,3 @@ public sealed class SchemaConstraintTests
             && index.Properties.Select(property => property.Name).SequenceEqual(propertyNames));
     }
 }
-
