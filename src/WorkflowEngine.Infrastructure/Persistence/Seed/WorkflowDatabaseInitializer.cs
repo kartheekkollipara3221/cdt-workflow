@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Persistence;
 
 namespace WorkflowEngine.Infrastructure.Persistence.Seed;
@@ -9,7 +8,7 @@ public sealed class WorkflowDatabaseInitializer(
 {
     public string Initialize()
     {
-        dbContext.Database.Migrate();
+        WorkflowSchemaInitializer.Apply(dbContext.Database.GetConnectionString()!);
         seedService.SeedPortfolioTrade();
 
         return "Database initialized and Portfolio Trade seed data applied.";

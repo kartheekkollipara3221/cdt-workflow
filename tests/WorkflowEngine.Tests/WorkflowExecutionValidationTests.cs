@@ -305,7 +305,7 @@ public sealed class WorkflowExecutionValidationTests
     {
         var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        WorkflowSchemaInitializer.Apply(dbContext.Database.GetConnectionString()!);
         new WorkflowSeedService(dbContext, new FixedTimeProvider(Now)).SeedPortfolioTrade();
         return dbContext;
     }

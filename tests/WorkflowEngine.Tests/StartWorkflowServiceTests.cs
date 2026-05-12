@@ -139,7 +139,7 @@ public sealed class StartWorkflowServiceTests
     {
         var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        WorkflowSchemaInitializer.Apply(dbContext.Database.GetConnectionString()!);
         new WorkflowSeedService(dbContext, new FixedTimeProvider(Now)).SeedPortfolioTrade();
         return dbContext;
     }
