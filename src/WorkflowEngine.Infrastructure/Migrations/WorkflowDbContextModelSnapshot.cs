@@ -517,8 +517,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WorkflowInstanceId")
-                        .IsUnique();
+                    b.HasAlternateKey("WorkflowInstanceId");
 
                     b.HasIndex("WorkflowKey", "BusinessObjectType", "BusinessObjectId")
                         .IsUnique();

@@ -164,7 +164,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.CurrentStateKey).HasMaxLength(100).IsRequired();
             entity.Property(row => row.Status).HasMaxLength(30).IsRequired();
             entity.Property(row => row.StartedByUserId).HasMaxLength(200).IsRequired();
-            entity.HasIndex(row => row.WorkflowInstanceId).IsUnique();
+            entity.HasAlternateKey(row => row.WorkflowInstanceId);
             entity.HasIndex(row => new { row.WorkflowKey, row.BusinessObjectType, row.BusinessObjectId }).IsUnique();
             entity.ToTable(table => table.HasCheckConstraint("CK_WorkflowInstance_Status", "[Status] IN ('Active', 'Completed')"));
         });
