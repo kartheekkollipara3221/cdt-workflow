@@ -1,15 +1,13 @@
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.WorkflowStart;
-using WorkflowEngine.Infrastructure.Persistence;
-using WorkflowEngine.Infrastructure.Persistence.Entities;
+using WorkflowEngine.Infrastructure.Persistence.DatabaseFirst;
 
 namespace WorkflowEngine.Infrastructure.WorkflowStart;
 
 public sealed class StartWorkflowService(
-    WorkflowDbContext dbContext,
+    DatabaseFirstWorkflowStore store,
     TimeProvider timeProvider,
     WorkflowActionResultBuilder resultBuilder) : IStartWorkflowService
 {
@@ -35,17 +33,17 @@ public sealed class StartWorkflowService(
                 ResetCounts: null);
         }
 
-        using var transaction = dbContext.Database.BeginTransaction();
+        using var connection = store.OpenConnection();
+        using var transaction = connection.BeginTransaction();
         try
         {
-            var envelope = InsertFreshInstance(request, workflowInstanceId);
+            var envelope = InsertFreshInstance(connection, transaction, request, workflowInstanceId);
             transaction.Commit();
             return new StartWorkflowResult(envelope, ResetCounts: null);
         }
-        catch (DbUpdateException exception) when (IsWorkflowInstanceUniqueViolation(exception))
+        catch (SqlException exception) when (IsWorkflowInstanceUniqueViolation(exception))
         {
             transaction.Rollback();
-            dbContext.ChangeTracker.Clear();
             var duplicate = FindExisting(request);
             if (duplicate is null)
             {
@@ -64,55 +62,44 @@ public sealed class StartWorkflowService(
 
     private StartWorkflowResult ResetAndStart(StartWorkflowRequest request, string workflowInstanceId)
     {
-        using var transaction = dbContext.Database.BeginTransaction();
+        using var connection = store.OpenConnection();
+        using var transaction = connection.BeginTransaction();
 
-        var counts = new StartWorkflowResetCounts(
-            dbContext.IdempotencyRecords
-                .Where(row => row.WorkflowInstanceId == workflowInstanceId)
-                .ExecuteDelete(),
-            dbContext.NotificationOutbox
-                .Where(row => row.WorkflowInstanceId == workflowInstanceId)
-                .ExecuteDelete(),
-            dbContext.WorkflowAudits
-                .Where(row => row.WorkflowInstanceId == workflowInstanceId)
-                .ExecuteDelete(),
-            dbContext.MockSectionData
-                .Where(row => row.BusinessObjectType == request.BusinessObjectType
-                    && row.BusinessObjectId == request.BusinessObjectId)
-                .ExecuteDelete(),
-            dbContext.WorkflowTasks
-                .Where(row => row.WorkflowInstanceId == workflowInstanceId)
-                .ExecuteDelete(),
-            dbContext.WorkflowInstances
-                .Where(row => row.WorkflowInstanceId == workflowInstanceId)
-                .ExecuteDelete());
+        var counts = store.ResetRuntimeData(
+            connection,
+            transaction,
+            workflowInstanceId,
+            request.BusinessObjectType,
+            request.BusinessObjectId);
 
-        var envelope = InsertFreshInstance(request, workflowInstanceId);
+        var envelope = InsertFreshInstance(connection, transaction, request, workflowInstanceId);
         transaction.Commit();
         return new StartWorkflowResult(envelope, counts);
     }
 
-    private WorkflowActionResultEnvelope InsertFreshInstance(StartWorkflowRequest request, string workflowInstanceId)
+    private WorkflowActionResultEnvelope InsertFreshInstance(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        StartWorkflowRequest request,
+        string workflowInstanceId)
     {
         var now = timeProvider.GetUtcNow();
-        var versionId = ResolveActiveDefinitionVersionId(request.WorkflowKey);
-        var instance = new WorkflowInstance
-        {
-            WorkflowInstanceId = workflowInstanceId,
-            WorkflowKey = request.WorkflowKey,
-            WorkflowDefinitionVersionId = versionId,
-            BusinessObjectType = request.BusinessObjectType,
-            BusinessObjectId = request.BusinessObjectId,
-            CurrentStateKey = "Draft",
-            Status = "Active",
-            StartedAtUtc = now,
-            StartedByUserId = request.StartedByUserId,
-            CompletedAtUtc = null,
-            Version = 1
-        };
-
-        dbContext.WorkflowInstances.Add(instance);
-        dbContext.SaveChanges();
+        var version = store.GetActiveDefinitionVersion(request.WorkflowKey)
+            ?? throw new InvalidOperationException($"Workflow key '{request.WorkflowKey}' does not have an active definition version.");
+        store.InsertWorkflowInstance(
+            connection,
+            transaction,
+            workflowInstanceId,
+            request.WorkflowKey,
+            version.WorkflowDefinitionVersionId,
+            request.BusinessObjectType,
+            request.BusinessObjectId,
+            "Draft",
+            "Active",
+            now,
+            request.StartedByUserId,
+            completedAtUtc: null,
+            version: 1);
 
         return resultBuilder.BuildStartWorkflowSuccess(
             request.WorkflowKey,
@@ -128,31 +115,10 @@ public sealed class StartWorkflowService(
 
     private ExistingWorkflowInstance? FindExisting(StartWorkflowRequest request)
     {
-        return dbContext.WorkflowInstances
-            .AsNoTracking()
-            .Where(row =>
-                row.WorkflowKey == request.WorkflowKey
-                && row.BusinessObjectType == request.BusinessObjectType
-                && row.BusinessObjectId == request.BusinessObjectId)
-            .Select(row => new ExistingWorkflowInstance(
-                row.WorkflowInstanceId,
-                row.Status,
-                row.Version,
-                row.CurrentStateKey,
-                row.StartedAtUtc,
-                row.CompletedAtUtc))
-            .SingleOrDefault();
-    }
-
-    private long ResolveActiveDefinitionVersionId(string workflowKey)
-    {
-        var versionId = dbContext.WorkflowDefinitionVersions
-            .AsNoTracking()
-            .Where(row => row.IsActive && row.WorkflowDefinition != null && row.WorkflowDefinition.WorkflowKey == workflowKey)
-            .Select(row => (long?)row.Id)
-            .SingleOrDefault();
-
-        return versionId ?? throw new InvalidOperationException($"Workflow key '{workflowKey}' does not have an active definition version.");
+        return store.GetExistingWorkflowInstance(
+            request.WorkflowKey,
+            request.BusinessObjectType,
+            request.BusinessObjectId);
     }
 
     private static void Validate(StartWorkflowRequest request)
@@ -178,10 +144,9 @@ public sealed class StartWorkflowService(
         }
     }
 
-    private static bool IsWorkflowInstanceUniqueViolation(DbUpdateException exception)
+    private static bool IsWorkflowInstanceUniqueViolation(SqlException exception)
     {
-        return exception.InnerException is SqlException sqlException
-            && sqlException.Errors.Cast<SqlError>().Any(error =>
+        return exception.Errors.Cast<SqlError>().Any(error =>
                 (error.Number == 2601 || error.Number == 2627)
                 && error.Message.Contains("WorkflowInstance", StringComparison.OrdinalIgnoreCase));
     }

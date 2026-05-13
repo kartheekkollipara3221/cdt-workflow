@@ -12,7 +12,7 @@ public sealed class SeedDataSmokeTests
     {
         using var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        TestDatabaseFirst.InitializeSchema(dbContext);
 
         var seedService = new WorkflowSeedService(dbContext, TimeProvider.System);
         seedService.SeedPortfolioTrade();
@@ -27,7 +27,7 @@ public sealed class SeedDataSmokeTests
     {
         using var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        TestDatabaseFirst.InitializeSchema(dbContext);
 
         new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
         var versionId = GetPortfolioTradeVersionId(dbContext);
@@ -57,7 +57,7 @@ public sealed class SeedDataSmokeTests
     {
         using var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        TestDatabaseFirst.InitializeSchema(dbContext);
 
         new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
         var versionId = GetPortfolioTradeVersionId(dbContext);

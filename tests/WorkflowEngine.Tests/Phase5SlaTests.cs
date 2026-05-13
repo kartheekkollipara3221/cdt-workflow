@@ -49,7 +49,8 @@ public sealed class Phase5SlaTests
         });
         dbContext.SaveChanges();
 
-        var result = await new RunSlaService(dbContext).RunAsync(new(Now), CancellationToken.None);
+        dbContext.ChangeTracker.Clear();
+        var result = await new RunSlaService(TestSqlConnectionFactory.StoreFor(dbContext)).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Equal(4, result.PendingTasksWithSla);
         Assert.Equal(1, result.AlreadyQueued);
@@ -57,7 +58,7 @@ public sealed class Phase5SlaTests
         Assert.All(result.QueuedNotifications, row => Assert.Equal("Active", dbContext.WorkflowInstances.Single(instance => instance.WorkflowInstanceId == row.WorkflowInstanceId).Status));
         Assert.Equal(3, dbContext.NotificationOutbox.Count(row => row.NotificationType == "SlaTaskOverdue"));
 
-        var second = await new RunSlaService(dbContext).RunAsync(new(Now), CancellationToken.None);
+        var second = await new RunSlaService(TestSqlConnectionFactory.StoreFor(dbContext)).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Empty(second.QueuedNotifications);
     }

@@ -1,9 +1,15 @@
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.Infrastructure.Persistence.DatabaseFirst;
 
 namespace WorkflowEngine.Tests;
 
 internal static class TestSqlConnectionFactory
 {
+    private const string LocalFallbackConnectionString =
+        "Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False";
+
     public static string ConnectionString(string databaseName)
     {
         var source = Environment.GetEnvironmentVariable("WORKFLOW_ENGINE_TEST_CONNECTION_STRING");
@@ -14,16 +20,10 @@ internal static class TestSqlConnectionFactory
 
         if (string.IsNullOrWhiteSpace(source))
         {
-            ThrowMissingConnectionString();
+            source = LocalFallbackConnectionString;
         }
 
         return ConnectionStringFromSource(databaseName, source!);
-    }
-
-    internal static void ThrowMissingConnectionString()
-    {
-        throw new InvalidOperationException(
-            "SQL-backed workflow tests require WORKFLOW_ENGINE_TEST_CONNECTION_STRING or ConnectionStrings__DefaultConnection.");
     }
 
     internal static string ConnectionStringFromSource(string databaseName, string source)
@@ -34,5 +34,11 @@ internal static class TestSqlConnectionFactory
         };
         builder.InitialCatalog = databaseName;
         return builder.ConnectionString;
+    }
+
+    public static DatabaseFirstWorkflowStore StoreFor(WorkflowDbContext dbContext)
+    {
+        return new DatabaseFirstWorkflowStore(
+            new WorkflowSqlConnectionFactory(dbContext.Database.GetDbConnection().ConnectionString));
     }
 }

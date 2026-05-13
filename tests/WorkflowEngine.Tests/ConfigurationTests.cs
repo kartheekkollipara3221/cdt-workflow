@@ -32,10 +32,11 @@ public sealed class ConfigurationTests
     }
 
     [Fact]
-    public void TestSqlConnectionFactoryFailsClearlyWhenNoSqlConnectionIsConfigured()
+    public void TestSqlConnectionFactoryUsesApprovedLocalFallbackWhenNoSqlConnectionIsConfigured()
     {
-        var exception = Assert.Throws<InvalidOperationException>(TestSqlConnectionFactory.ThrowMissingConnectionString);
+        var connectionString = TestSqlConnectionFactory.ConnectionString("workflow_fallback_tests");
 
-        Assert.Contains("SQL-backed workflow tests require", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Data Source=DOLLY", connectionString, StringComparison.Ordinal);
+        Assert.Contains("Initial Catalog=workflow_fallback_tests", connectionString, StringComparison.Ordinal);
     }
 }

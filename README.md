@@ -1,6 +1,6 @@
 # CDT Workflow Engine
 
-Reusable .NET workflow engine proof of concept for replacing SharePoint Designer workflow behavior. Portfolio Trade is the first sample workflow definition; the current interface is a console POC, with the engine boundary designed for a future API/UI integration.
+Reusable .NET workflow engine proof of concept for replacing SharePoint Designer workflow behavior. Portfolio Trade is the first sample workflow definition; the current interface is a console POC, with the engine boundary designed for a future API/UI integration. The runtime is database-first for SQL artifacts and service data access: scripts under `db-first/` create the SQL Server schema and stored procedures, and workflow runtime services call those stored procedures through the database-first store.
 
 ## Quickstart
 
@@ -8,7 +8,7 @@ Reusable .NET workflow engine proof of concept for replacing SharePoint Designer
 
 - .NET 10 SDK.
 - SQL Server local instance.
-- Configure `ConnectionStrings__DefaultConnection` or a local, untracked `appsettings.Development.json`.
+- Local default is `Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`; override with `ConnectionStrings__DefaultConnection` when needed.
 - Example local connection string: `Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
 
 ### First run
@@ -232,6 +232,10 @@ Copy-pasteable `appsettings.json` shape:
 
 Environment overrides use .NET configuration keys, for example `ConnectionStrings__DefaultConnection` and `Notifications__Sender`.
 
+### Database-first artifacts
+
+Schema source lives in `db-first/sql/001-schema.sql`; stored procedures live in `db-first/sql/002-stored-procedures.sql`. `init-db` creates the configured database when missing, runs those SQL artifacts idempotently, then applies Portfolio Trade seed metadata. Runtime services use `DatabaseFirstWorkflowStore` to call those procedures for workflow execution, context, start/reset, inspection, SLA, and notification outbox processing. `db-first/scaffold/scaffold-from-burrito.ps1` refreshes reference scaffold output after DBA schema changes.
+
 ### Going to production
 
 Switch `Notifications:Sender` from `Console` to `Smtp`. Configure `Smtp:Host`, `Smtp:From`, and `Smtp:RoleEmailMap`. Use `Smtp:RecipientOverride` during UI integration smoke tests.
@@ -241,7 +245,7 @@ Never use `--reset` in production. One business object identifier means one work
 ### Testing
 
 - Tier 1 default: `dotnet test`
-- SQL-backed tests require `WORKFLOW_ENGINE_TEST_CONNECTION_STRING` or `ConnectionStrings__DefaultConnection`; the test database name is replaced per suite.
+- SQL-backed tests use `WORKFLOW_ENGINE_TEST_CONNECTION_STRING`, `ConnectionStrings__DefaultConnection`, or the approved local DOLLY fallback; the test database name is replaced per suite.
 - Tier 2 SMTP: start smtp4dev with `docker run --rm -p 3025:25 -p 5000:80 rnwood/smtp4dev`, set `RUN_SMTP_TESTS=1`, then run `dotnet test --filter Category=Smtp`
 - Fresh-clone gate: `dotnet test --filter Category=FreshClone`
 - Manual smoke: run README Quickstart and one return-to-Maker branch.

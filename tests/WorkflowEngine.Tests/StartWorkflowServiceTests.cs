@@ -139,7 +139,7 @@ public sealed class StartWorkflowServiceTests
     {
         var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        TestDatabaseFirst.InitializeSchema(dbContext);
         new WorkflowSeedService(dbContext, new FixedTimeProvider(Now)).SeedPortfolioTrade();
         return dbContext;
     }
@@ -155,7 +155,8 @@ public sealed class StartWorkflowServiceTests
 
     private static StartWorkflowService CreateService(WorkflowDbContext dbContext)
     {
-        return new StartWorkflowService(dbContext, new FixedTimeProvider(Now), new WorkflowActionResultBuilder());
+        dbContext.ChangeTracker.Clear();
+        return new StartWorkflowService(TestSqlConnectionFactory.StoreFor(dbContext), new FixedTimeProvider(Now), new WorkflowActionResultBuilder());
     }
 
     private static StartWorkflowRequest Request(string businessObjectId, bool reset = false)

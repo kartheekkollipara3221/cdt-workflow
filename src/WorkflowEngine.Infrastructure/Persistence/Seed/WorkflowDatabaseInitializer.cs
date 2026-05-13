@@ -1,18 +1,17 @@
-using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Persistence;
+using WorkflowEngine.Infrastructure.Persistence.DatabaseFirst;
 
 namespace WorkflowEngine.Infrastructure.Persistence.Seed;
 
 public sealed class WorkflowDatabaseInitializer(
-    WorkflowDbContext dbContext,
+    DatabaseFirstSchemaInitializer schemaInitializer,
     WorkflowSeedService seedService) : IWorkflowDatabaseInitializer
 {
     public string Initialize()
     {
-        dbContext.Database.Migrate();
+        schemaInitializer.InitializeSchema();
         seedService.SeedPortfolioTrade();
 
-        return "Database initialized and Portfolio Trade seed data applied.";
+        return "Database initialized from database-first schema/stored procedure artifacts and Portfolio Trade seed data applied.";
     }
 }
-

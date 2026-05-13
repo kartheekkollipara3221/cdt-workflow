@@ -20,7 +20,8 @@ public sealed class Phase5OutboxTests
         dbContext.SaveChanges();
         var sender = new RecordingNotificationSender();
 
-        var result = await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
+        dbContext.ChangeTracker.Clear();
+        var result = await new ProcessNotificationOutboxService(TestSqlConnectionFactory.StoreFor(dbContext), sender, new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
 
         Assert.Null(result.Failure);
         Assert.Equal(2, result.PendingCount);
@@ -44,7 +45,8 @@ public sealed class Phase5OutboxTests
         var secondId = dbContext.NotificationOutbox.Single(row => row.Subject == "Second").Id;
         var sender = new RecordingNotificationSender(secondId);
 
-        var result = await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
+        dbContext.ChangeTracker.Clear();
+        var result = await new ProcessNotificationOutboxService(TestSqlConnectionFactory.StoreFor(dbContext), sender, new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
 
         Assert.NotNull(result.Failure);
         Assert.Equal(secondId, result.Failure.Id);
@@ -68,8 +70,8 @@ public sealed class Phase5OutboxTests
         await using var secondContext = CreateDbContext();
         var firstSender = new BlockingNotificationSender();
         var secondSender = new RecordingNotificationSender();
-        var firstProcessor = new ProcessNotificationOutboxService(firstContext, firstSender, new FixedTimeProvider(Now));
-        var secondProcessor = new ProcessNotificationOutboxService(secondContext, secondSender, new FixedTimeProvider(Now));
+        var firstProcessor = new ProcessNotificationOutboxService(TestSqlConnectionFactory.StoreFor(firstContext), firstSender, new FixedTimeProvider(Now));
+        var secondProcessor = new ProcessNotificationOutboxService(TestSqlConnectionFactory.StoreFor(secondContext), secondSender, new FixedTimeProvider(Now));
 
         var firstTask = firstProcessor.ProcessAsync(CancellationToken.None);
         await firstSender.WaitForSendAsync();
@@ -81,7 +83,7 @@ public sealed class Phase5OutboxTests
         Assert.Null(secondResult.Failure);
         Assert.Single(firstSender.SentRows);
         Assert.Empty(secondSender.SentRows);
-        Assert.Contains(secondResult.Warnings, warning => warning.Contains("already claimed", StringComparison.Ordinal));
+        Assert.Equal(0, secondResult.PendingCount);
         setupContext.ChangeTracker.Clear();
         var row = setupContext.NotificationOutbox.Single();
         Assert.Equal("Sent", row.Status);

@@ -1,58 +1,44 @@
-using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
-using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.Infrastructure.Persistence.DatabaseFirst;
+using WorkflowEngine.Infrastructure.Persistence.Entities;
 
 namespace WorkflowEngine.Infrastructure.WorkflowContext;
 
 public sealed class WorkflowContextReader(
-    WorkflowDbContext dbContext,
+    DatabaseFirstWorkflowStore store,
     TimeProvider timeProvider) : IWorkflowContextReader
 {
     public WorkflowContextResponse Read(WorkflowContextReadRequest request)
     {
-        var instance = dbContext.WorkflowInstances
-            .AsNoTracking()
-            .SingleOrDefault(row => row.WorkflowInstanceId == request.WorkflowInstanceId);
-        if (instance is null)
+        var data = store.GetWorkflowContextData(request.WorkflowInstanceId, request.Roles);
+        if (data is null)
         {
             throw new KeyNotFoundException($"Workflow instance '{request.WorkflowInstanceId}' was not found.");
         }
 
-        var definitionVersion = dbContext.WorkflowDefinitionVersions
-            .AsNoTracking()
-            .Single(row => row.Id == instance.WorkflowDefinitionVersionId);
-        var state = dbContext.WorkflowStateDefinitions
-            .AsNoTracking()
-            .SingleOrDefault(row =>
-                row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
-                && row.StateKey == instance.CurrentStateKey);
-        var pendingTask = dbContext.WorkflowTasks
-            .AsNoTracking()
-            .SingleOrDefault(row =>
-                row.WorkflowInstanceId == instance.WorkflowInstanceId
-                && row.Status == "Pending");
-        var taskDefinition = pendingTask is null
-            ? null
-            : dbContext.WorkflowTaskDefinitions
-                .AsNoTracking()
-                .SingleOrDefault(row =>
-                    row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
-                    && row.TaskKey == pendingTask.TaskKey);
+        return BuildResponse(data, request, timeProvider.GetUtcNow());
+    }
 
-        var availableActions = BuildAvailableActions(request, instance, definitionVersion.VersionNumber, pendingTask);
-        var currentTask = pendingTask is null
+    public static WorkflowContextResponse BuildResponse(
+        WorkflowContextData data,
+        WorkflowContextReadRequest request,
+        DateTimeOffset serverTimeUtc)
+    {
+        var instance = data.Instance;
+        var availableActions = BuildAvailableActions(data);
+        var currentTask = data.PendingTask is null
             ? null
             : new WorkflowContextTask
             {
-                TaskId = pendingTask.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                TaskKey = pendingTask.TaskKey,
-                TaskLabel = taskDefinition?.DisplayName ?? pendingTask.TaskKey,
-                AssignedRole = pendingTask.AssignedRoleKey,
-                AssignedUserId = pendingTask.AssignedUserId,
-                Status = pendingTask.Status,
-                CreatedAtUtc = pendingTask.CreatedAtUtc,
-                DueAtUtc = pendingTask.DueAtUtc
+                TaskId = data.PendingTask.Task.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                TaskKey = data.PendingTask.Task.TaskKey,
+                TaskLabel = data.PendingTask.TaskLabel,
+                AssignedRole = data.PendingTask.Task.AssignedRoleKey,
+                AssignedUserId = data.PendingTask.Task.AssignedUserId,
+                Status = data.PendingTask.Task.Status,
+                CreatedAtUtc = data.PendingTask.Task.CreatedAtUtc,
+                DueAtUtc = data.PendingTask.Task.DueAtUtc
             };
 
         return new WorkflowContextResponse
@@ -63,10 +49,10 @@ public sealed class WorkflowContextReader(
                 {
                     WorkflowKey = instance.WorkflowKey,
                     WorkflowInstanceId = instance.WorkflowInstanceId,
-                    WorkflowDefinitionVersion = definitionVersion.VersionNumber,
+                    WorkflowDefinitionVersion = data.WorkflowDefinitionVersionNumber,
                     WorkflowInstanceVersion = instance.Version,
                     CurrentState = instance.CurrentStateKey,
-                    CurrentStateLabel = state?.DisplayName ?? instance.CurrentStateKey,
+                    CurrentStateLabel = data.CurrentStateLabel,
                     Status = instance.Status,
                     StartedAtUtc = instance.StartedAtUtc,
                     CompletedAtUtc = instance.CompletedAtUtc
@@ -82,56 +68,21 @@ public sealed class WorkflowContextReader(
                     DisplayName = request.UserId,
                     EffectiveRoles = request.Roles.ToList(),
                     CanAct = availableActions.Count > 0,
-                    ReadOnlyReason = availableActions.Count > 0 ? null : BuildReadOnlyReason(instance.Status, instance.CurrentStateKey, pendingTask, request.Roles)
+                    ReadOnlyReason = availableActions.Count > 0 ? null : BuildReadOnlyReason(instance.Status, instance.CurrentStateKey, data.PendingTask?.Task, request.Roles)
                 },
                 CurrentTask = currentTask,
-                Sla = BuildSla(pendingTask),
+                Sla = BuildSla(data.PendingTask?.Task, serverTimeUtc),
                 AvailableActions = availableActions,
-                ServerTimeUtc = timeProvider.GetUtcNow()
+                ServerTimeUtc = serverTimeUtc
             }
         };
     }
 
-    private List<AvailableWorkflowAction> BuildAvailableActions(
-        WorkflowContextReadRequest request,
-        Persistence.Entities.WorkflowInstance instance,
-        int versionNumber,
-        Persistence.Entities.WorkflowTask? pendingTask)
+    private static List<AvailableWorkflowAction> BuildAvailableActions(WorkflowContextData data)
     {
-        if (string.Equals(instance.Status, "Completed", StringComparison.Ordinal))
-        {
-            return [];
-        }
-
-        var roleSet = request.Roles.ToHashSet(StringComparer.Ordinal);
-        var transitions = dbContext.WorkflowTransitionDefinitions
-            .AsNoTracking()
-            .Where(row =>
-                row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
-                && row.FromStateKey == instance.CurrentStateKey
-                && row.IsActive
-                && roleSet.Contains(row.AllowedRoleKey))
-            .OrderBy(row => row.Id)
-            .ToList();
-        if (transitions.Count == 0)
-        {
-            return [];
-        }
-
-        var actionKeys = transitions.Select(row => row.ActionKey).ToHashSet(StringComparer.Ordinal);
-        var actions = dbContext.WorkflowActionDefinitions
-            .AsNoTracking()
-            .Where(row =>
-                row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
-                && actionKeys.Contains(row.ActionKey)
-                && row.IsActive)
-            .ToDictionary(row => row.ActionKey, StringComparer.Ordinal);
-
-        return transitions
-            .Where(row => actions.ContainsKey(row.ActionKey))
-            .Select(row =>
+        return data.AvailableActions
+            .Select(action =>
             {
-                var action = actions[row.ActionKey];
                 return new AvailableWorkflowAction
                 {
                     ActionKey = action.ActionKey,
@@ -142,27 +93,26 @@ public sealed class WorkflowContextReader(
                     RequiresReason = action.RequiresReason,
                     RequestDefaults = new WorkflowActionRequestDefaults
                     {
-                        WorkflowKey = instance.WorkflowKey,
-                        WorkflowInstanceId = instance.WorkflowInstanceId,
-                        WorkflowDefinitionVersion = versionNumber,
-                        ExpectedCurrentState = instance.CurrentStateKey,
-                        ExpectedCurrentTaskId = pendingTask?.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        ExpectedCurrentTaskKey = pendingTask?.TaskKey,
-                        ExpectedInstanceVersion = instance.Version
+                        WorkflowKey = data.Instance.WorkflowKey,
+                        WorkflowInstanceId = data.Instance.WorkflowInstanceId,
+                        WorkflowDefinitionVersion = data.WorkflowDefinitionVersionNumber,
+                        ExpectedCurrentState = data.Instance.CurrentStateKey,
+                        ExpectedCurrentTaskId = data.PendingTask?.Task.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ExpectedCurrentTaskKey = data.PendingTask?.Task.TaskKey,
+                        ExpectedInstanceVersion = data.Instance.Version
                     }
                 };
             })
             .ToList();
     }
 
-    private WorkflowContextSla BuildSla(Persistence.Entities.WorkflowTask? pendingTask)
+    private static WorkflowContextSla BuildSla(WorkflowTask? pendingTask, DateTimeOffset now)
     {
         if (pendingTask?.DueAtUtc is null || string.Equals(pendingTask.Status, "Completed", StringComparison.Ordinal))
         {
             return new WorkflowContextSla();
         }
 
-        var now = timeProvider.GetUtcNow();
         if (pendingTask.DueAtUtc <= now)
         {
             return new WorkflowContextSla
@@ -186,7 +136,7 @@ public sealed class WorkflowContextReader(
     private static string BuildReadOnlyReason(
         string workflowStatus,
         string currentState,
-        Persistence.Entities.WorkflowTask? pendingTask,
+        WorkflowTask? pendingTask,
         IReadOnlyList<string> actorRoles)
     {
         if (string.Equals(workflowStatus, "Completed", StringComparison.Ordinal))

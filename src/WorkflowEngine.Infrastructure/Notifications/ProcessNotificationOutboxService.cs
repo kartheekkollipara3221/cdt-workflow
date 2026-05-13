@@ -1,12 +1,11 @@
-using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Notifications;
-using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.Infrastructure.Persistence.DatabaseFirst;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 
 namespace WorkflowEngine.Infrastructure.Notifications;
 
 public sealed class ProcessNotificationOutboxService(
-    WorkflowDbContext dbContext,
+    DatabaseFirstWorkflowStore store,
     INotificationSender notificationSender,
     TimeProvider timeProvider) : IProcessNotificationOutboxService
 {
@@ -15,16 +14,7 @@ public sealed class ProcessNotificationOutboxService(
     public async Task<ProcessNotificationOutboxResult> ProcessAsync(CancellationToken cancellationToken)
     {
         var leaseCutoff = timeProvider.GetUtcNow().Subtract(ProcessingLease);
-        var pendingRows = await dbContext.NotificationOutbox
-            .AsNoTracking()
-            .Where(row =>
-                row.Status == "Pending"
-                || (row.Status == "Processing"
-                    && row.ProcessingStartedAtUtc != null
-                    && row.ProcessingStartedAtUtc <= leaseCutoff))
-            .OrderBy(row => row.CreatedAtUtc)
-            .ThenBy(row => row.Id)
-            .ToListAsync(cancellationToken);
+        var pendingRows = store.GetClaimableNotifications(leaseCutoff);
 
         var processed = new List<ProcessedNotification>();
         var warnings = new List<string>();
@@ -35,19 +25,9 @@ public sealed class ProcessNotificationOutboxService(
             var processingToken = Guid.NewGuid().ToString("N");
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var claimedAtUtc = timeProvider.GetUtcNow();
-                var claimed = await dbContext.NotificationOutbox
-                    .Where(item =>
-                        item.Id == row.Id
-                        && (item.Status == "Pending"
-                            || (item.Status == "Processing"
-                                && item.ProcessingStartedAtUtc != null
-                                && item.ProcessingStartedAtUtc <= leaseCutoff)))
-                    .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(item => item.Status, "Processing")
-                        .SetProperty(item => item.ProcessingToken, processingToken)
-                        .SetProperty(item => item.ProcessingStartedAtUtc, claimedAtUtc)
-                        .SetProperty(item => item.LastError, (string?)null), cancellationToken);
+                var claimed = store.ClaimNotification(row.Id, processingToken, claimedAtUtc, leaseCutoff);
 
                 if (claimed == 0)
                 {
@@ -55,20 +35,12 @@ public sealed class ProcessNotificationOutboxService(
                     continue;
                 }
 
-                var claimedRow = await dbContext.NotificationOutbox
-                    .AsNoTracking()
-                    .SingleAsync(item => item.Id == row.Id && item.ProcessingToken == processingToken, cancellationToken);
+                var claimedRow = store.GetClaimedNotification(row.Id, processingToken)
+                    ?? throw new InvalidOperationException($"Notification outbox row {row.Id} was claimed but could not be re-read.");
 
                 await notificationSender.SendAsync(ToDelivery(claimedRow), cancellationToken);
                 var sentAtUtc = timeProvider.GetUtcNow();
-                var markedSent = await dbContext.NotificationOutbox
-                    .Where(item => item.Id == row.Id && item.Status == "Processing" && item.ProcessingToken == processingToken)
-                    .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(item => item.Status, "Sent")
-                        .SetProperty(item => item.SentAtUtc, sentAtUtc)
-                        .SetProperty(item => item.ProcessingToken, (string?)null)
-                        .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
-                        .SetProperty(item => item.LastError, (string?)null), cancellationToken);
+                var markedSent = store.MarkNotificationSent(row.Id, processingToken, sentAtUtc);
 
                 if (markedSent == 0)
                 {
@@ -85,7 +57,7 @@ public sealed class ProcessNotificationOutboxService(
             }
             catch (Exception exception)
             {
-                await ReleaseClaimAfterFailureAsync(row.Id, processingToken, exception, cancellationToken);
+                ReleaseClaimAfterFailure(row.Id, processingToken, exception);
                 return new ProcessNotificationOutboxResult(
                     notificationSender.SenderName,
                     pendingRows.Count,
@@ -127,22 +99,14 @@ public sealed class ProcessNotificationOutboxService(
             row.CreatedAtUtc);
     }
 
-    private async Task ReleaseClaimAfterFailureAsync(
+    private void ReleaseClaimAfterFailure(
         long id,
         string processingToken,
-        Exception exception,
-        CancellationToken cancellationToken)
+        Exception exception)
     {
         var message = exception.Message.Length <= 1000
             ? exception.Message
             : exception.Message[..1000];
-        await dbContext.NotificationOutbox
-            .Where(item => item.Id == id && item.Status == "Processing" && item.ProcessingToken == processingToken)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(item => item.Status, "Pending")
-                .SetProperty(item => item.ProcessingToken, (string?)null)
-                .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
-                .SetProperty(item => item.RetryCount, item => item.RetryCount + 1)
-                .SetProperty(item => item.LastError, message), CancellationToken.None);
+        store.ReleaseNotificationClaimAfterFailure(id, processingToken, message);
     }
 }

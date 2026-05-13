@@ -86,7 +86,7 @@ public sealed class WorkflowTransitionTests
         var result = CreateService(dbContext).Execute(Request(Envelope(
             actionKey: "CheckerReturnToMaker",
             sectionKey: "Checker",
-            buttonKey: "CheckerReturnToMaker",
+            buttonKey: "CheckerPrimary",
             expectedState: "CheckerReview",
             expectedVersion: 2,
             expectedTaskKey: "CheckerReviewTask",
@@ -161,7 +161,7 @@ public sealed class WorkflowTransitionTests
         var result = CreateService(dbContext).Execute(Request(Envelope(
             actionKey: "CheckerReturnToMaker",
             sectionKey: "Checker",
-            buttonKey: "CheckerReturnToMaker",
+            buttonKey: "CheckerPrimary",
             expectedState: "CheckerReview",
             expectedVersion: 2,
             roles: ["Checker"],
@@ -181,9 +181,11 @@ public sealed class WorkflowTransitionTests
 
     private static WorkflowExecutionService CreateService(WorkflowDbContext dbContext)
     {
+        dbContext.ChangeTracker.Clear();
+        var store = TestSqlConnectionFactory.StoreFor(dbContext);
         return new WorkflowExecutionService(
-            dbContext,
-            new WorkflowContextReader(dbContext, new FixedTimeProvider(Now)),
+            store,
+            new WorkflowContextReader(store, new FixedTimeProvider(Now)),
             new FixedTimeProvider(Now),
             new WorkflowActionResultBuilder(),
             new CanonicalWorkflowResultSerializer());

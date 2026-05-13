@@ -6,7 +6,7 @@ Tier 1 is the default suite:
 dotnet test
 ```
 
-Tier 1 tests use in-process fakes such as `RecordingNotificationSender`. They do not perform file IO, SMTP delivery, or network calls.
+Tier 1 tests use in-process fakes such as `RecordingNotificationSender` for external senders, but most workflow persistence tests are SQL-backed. They use `WORKFLOW_ENGINE_TEST_CONNECTION_STRING`, `ConnectionStrings__DefaultConnection`, or the approved local DOLLY fallback and initialize schema through the database-first SQL artifacts.
 
 Tier 2 SMTP tests are opt-in and must be marked with `Category=Smtp`:
 

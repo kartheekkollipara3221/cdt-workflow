@@ -14,7 +14,7 @@ public sealed class ShowInspectionCommandTests
     public void ShowReturnsWorkflowSummary()
     {
         using var dbContext = CreateReturnToMakerContext();
-        var handler = new ShowCommandHandler(new WorkflowInspectionReader(dbContext));
+        var handler = new ShowCommandHandler(new WorkflowInspectionReader(TestSqlConnectionFactory.StoreFor(dbContext)));
 
         var result = handler.Execute(["WF-PT-SHOW"]);
 
@@ -28,7 +28,7 @@ public sealed class ShowInspectionCommandTests
     public void ShowTasksReturnsClosedAndPendingTasks()
     {
         using var dbContext = CreateReturnToMakerContext();
-        var handler = new ShowTasksCommandHandler(new WorkflowInspectionReader(dbContext));
+        var handler = new ShowTasksCommandHandler(new WorkflowInspectionReader(TestSqlConnectionFactory.StoreFor(dbContext)));
 
         var result = handler.Execute(["WF-PT-SHOW"]);
 
@@ -45,7 +45,7 @@ public sealed class ShowInspectionCommandTests
     public void ShowNotificationsReturnsOutboxRows()
     {
         using var dbContext = CreateReturnToMakerContext();
-        var handler = new ShowNotificationsCommandHandler(new WorkflowInspectionReader(dbContext));
+        var handler = new ShowNotificationsCommandHandler(new WorkflowInspectionReader(TestSqlConnectionFactory.StoreFor(dbContext)));
 
         var result = handler.Execute(["WF-PT-SHOW"]);
 
@@ -59,7 +59,7 @@ public sealed class ShowInspectionCommandTests
     public void ShowHistoryReturnsAuditRows()
     {
         using var dbContext = CreateReturnToMakerContext();
-        var handler = new ShowHistoryCommandHandler(new WorkflowInspectionReader(dbContext));
+        var handler = new ShowHistoryCommandHandler(new WorkflowInspectionReader(TestSqlConnectionFactory.StoreFor(dbContext)));
 
         var result = handler.Execute(["WF-PT-SHOW"]);
 
@@ -77,7 +77,7 @@ public sealed class ShowInspectionCommandTests
     public void MissingWorkflowReturnsNonZero(string command)
     {
         using var dbContext = WorkflowContextReaderTests.CreateSeededContext();
-        var reader = new WorkflowInspectionReader(dbContext);
+        var reader = new WorkflowInspectionReader(TestSqlConnectionFactory.StoreFor(dbContext));
         var result = command switch
         {
             "show" => new ShowCommandHandler(reader).Execute(["WF-PT-MISSING"]),
@@ -95,7 +95,7 @@ public sealed class ShowInspectionCommandTests
     public void CommandRegistryDispatchesInspectionHandlers()
     {
         using var dbContext = CreateReturnToMakerContext();
-        var reader = new WorkflowInspectionReader(dbContext);
+        var reader = new WorkflowInspectionReader(TestSqlConnectionFactory.StoreFor(dbContext));
         var registry = new CommandRegistry(
             showCommandHandler: new ShowCommandHandler(reader),
             showTasksCommandHandler: new ShowTasksCommandHandler(reader),

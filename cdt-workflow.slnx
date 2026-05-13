@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/api/" />
+  <Folder Name="/api/src/">
+    <Project Path="api/src/WorkflowEngine.Api/WorkflowEngine.Api.csproj" />
+  </Folder>
+  <Folder Name="/api/tests/">
+    <Project Path="api/tests/WorkflowEngine.Api.Tests/WorkflowEngine.Api.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/WorkflowEngine.Application/WorkflowEngine.Application.csproj" />
+    <Project Path="src/WorkflowEngine.Console/WorkflowEngine.Console.csproj" />
+    <Project Path="src/WorkflowEngine.Domain/WorkflowEngine.Domain.csproj" />
+    <Project Path="src/WorkflowEngine.Infrastructure/WorkflowEngine.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WorkflowEngine.Tests/WorkflowEngine.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -109,7 +109,7 @@ public sealed class WorkflowContextReaderTests
     {
         var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        TestDatabaseFirst.InitializeSchema(dbContext);
         new WorkflowSeedService(dbContext, new FixedTimeProvider(Now)).SeedPortfolioTrade();
         return dbContext;
     }
@@ -125,7 +125,7 @@ public sealed class WorkflowContextReaderTests
 
     internal static WorkflowContextReader CreateReader(WorkflowDbContext dbContext)
     {
-        return new WorkflowContextReader(dbContext, new FixedTimeProvider(Now));
+        return new WorkflowContextReader(TestSqlConnectionFactory.StoreFor(dbContext), new FixedTimeProvider(Now));
     }
 
     internal static long PortfolioTradeVersionId(WorkflowDbContext dbContext)

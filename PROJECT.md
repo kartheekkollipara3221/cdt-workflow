@@ -55,7 +55,7 @@ The console app is a proof of concept for the reusable workflow engine, not the 
 
 - .NET console app
 - SQL Server integration
-- EF Core migrations/entities
+- EF Core database-first SQL artifacts/entities and stored procedure artifacts
 - Reusable workflow definition model
 - Workflow instances
 - Single-active-state workflow execution
@@ -121,7 +121,8 @@ Required configuration behavior:
   1. Environment variable `ConnectionStrings__DefaultConnection`
   1. `appsettings.Development.json`
   1. `appsettings.json`
-- `init-db` applies migrations and seed data to the configured SQL database.
+- `init-db` applies database-first SQL schema/stored procedure artifacts and seed data to the configured SQL database.
+- Runtime workflow services use database-first stored procedure access for workflow execution, context, start/reset, inspection, SLA scanning, and notification outbox processing.
 - `verify-seed` validates the configured SQL database.
 - SQL-backed tests must not use EF Core InMemory as a substitute for seed or persistence verification.
 
@@ -1289,7 +1290,7 @@ dotnet run --project src/WorkflowEngine.Console -- demo
 
 Seed data is required and testable.
 
-`init-db` must create or update schema and seed:
+`init-db` must create or update schema and stored procedures from `db-first/sql` database-first artifacts and seed:
 
 - PortfolioTrade workflow definition
 - Workflow definition version 1
@@ -2547,7 +2548,7 @@ Solution and project structure exist. Console command routing dispatches a stub 
 
 ### Milestone 2: SQL schema and seed data
 
-All entities in section 12 exist with required unique constraints. `init-db` creates the schema and seeds the Portfolio Trade definition. `verify-seed` passes against SQL Server. The transition matrix in section 7 is exactly reflected in seeded rows, including `ResubmitForChecker`, Checker Return to Maker, and Trading Desk Return to Maker. The notification route seed table from section 11 is fully present.
+All entities in section 12 exist with required unique constraints. `init-db` creates the schema and stored procedures from database-first SQL artifacts and seeds the Portfolio Trade definition. `verify-seed` passes against SQL Server. The transition matrix in section 7 is exactly reflected in seeded rows, including `ResubmitForChecker`, Checker Return to Maker, and Trading Desk Return to Maker. The notification route seed table from section 11 is fully present.
 
 ### Milestone 3: WorkflowActionEnvelope execution path
 

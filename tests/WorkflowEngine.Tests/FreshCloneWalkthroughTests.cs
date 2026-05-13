@@ -7,6 +7,8 @@ namespace WorkflowEngine.Tests;
 [Trait("Category", "FreshClone")]
 public sealed class FreshCloneWalkthroughTests
 {
+    private const string FreshCloneDatabaseName = "burrito_fresh_clone_walkthrough_tests";
+
     [Fact]
     public void DatabaseResetSucceeds()
     {
@@ -90,7 +92,7 @@ public sealed class FreshCloneWalkthroughTests
     private static WorkflowDbContext CreateBurritoContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito"))
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString(FreshCloneDatabaseName))
             .Options;
         return new WorkflowDbContext(options);
     }
@@ -104,6 +106,7 @@ public sealed class FreshCloneWalkthroughTests
             RedirectStandardError = true,
             UseShellExecute = false
         };
+        startInfo.Environment["ConnectionStrings__DefaultConnection"] = TestSqlConnectionFactory.ConnectionString(FreshCloneDatabaseName);
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {fileName} {arguments}.");
         var stdout = process.StandardOutput.ReadToEnd();
         var stderr = process.StandardError.ReadToEnd();

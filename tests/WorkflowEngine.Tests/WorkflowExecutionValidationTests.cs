@@ -24,10 +24,11 @@ public sealed class WorkflowExecutionValidationTests
         using var dbContext = CreateSeededContext();
         var envelope = Envelope();
         var request = Request(envelope);
+        AddInstance(dbContext, "WF-IDEMPOTENCY", "PT-IDEMPOTENCY", "Draft", "Active", 1);
         dbContext.IdempotencyRecords.Add(new IdempotencyRecord
         {
             IdempotencyKey = request.Normalized.EffectiveIdempotencyKey,
-            WorkflowInstanceId = "WF-PT-1001",
+            WorkflowInstanceId = "WF-IDEMPOTENCY",
             ActionKey = "SubmitForChecker",
             RequestHash = request.RequestHash,
             ResultHash = "result-hash",
@@ -57,10 +58,11 @@ public sealed class WorkflowExecutionValidationTests
     {
         using var dbContext = CreateSeededContext();
         var request = Request(Envelope());
+        AddInstance(dbContext, "WF-IDEMPOTENCY", "PT-IDEMPOTENCY", "Draft", "Active", 1);
         dbContext.IdempotencyRecords.Add(new IdempotencyRecord
         {
             IdempotencyKey = request.Normalized.EffectiveIdempotencyKey,
-            WorkflowInstanceId = "WF-PT-1001",
+            WorkflowInstanceId = "WF-IDEMPOTENCY",
             ActionKey = "SubmitForChecker",
             RequestHash = "different-hash",
             ResultHash = "result-hash",
@@ -201,8 +203,12 @@ public sealed class WorkflowExecutionValidationTests
         using var dbContext = CreateSeededContext();
         AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
         dbContext.SaveChanges();
+        var envelope = Envelope(actionKey: "CheckerReturnToMaker", roles: ["Checker"]);
+        envelope.UiAction!.SectionKey = "Checker";
+        envelope.UiAction.ButtonKey = "CheckerPrimary";
+        envelope.DataSave!.SectionKey = "Checker";
 
-        var result = CreateService(dbContext).Execute(Request(Envelope(actionKey: "CheckerReturnToMaker")));
+        var result = CreateService(dbContext).Execute(Request(envelope));
 
         Assert.Equal("InvalidTransition", result.Result.ResultCode);
         Assert.Equal("No transition exists for state 'Draft' with action 'CheckerReturnToMaker'.", result.Result.Message);
@@ -214,8 +220,12 @@ public sealed class WorkflowExecutionValidationTests
         using var dbContext = CreateSeededContext();
         AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 3);
         dbContext.SaveChanges();
+        var envelope = Envelope(expectedState: "Draft", expectedVersion: 1, actionKey: "CheckerSendToTradingDesk", roles: ["Checker"]);
+        envelope.UiAction!.SectionKey = "Checker";
+        envelope.UiAction.ButtonKey = "CheckerPrimary";
+        envelope.DataSave!.SectionKey = "Checker";
 
-        var result = CreateService(dbContext).Execute(Request(Envelope(expectedState: "Draft", expectedVersion: 1, actionKey: "CheckerSendToTradingDesk", roles: ["Checker"])));
+        var result = CreateService(dbContext).Execute(Request(envelope));
 
         Assert.Equal("ConcurrencyConflict", result.Result.ResultCode);
         Assert.Equal("expectedCurrentState", result.Result.FailedGuard);
@@ -305,7 +315,7 @@ public sealed class WorkflowExecutionValidationTests
     {
         var dbContext = CreateDbContext();
         dbContext.Database.EnsureDeleted();
-        dbContext.Database.Migrate();
+        TestDatabaseFirst.InitializeSchema(dbContext);
         new WorkflowSeedService(dbContext, new FixedTimeProvider(Now)).SeedPortfolioTrade();
         return dbContext;
     }
@@ -321,9 +331,11 @@ public sealed class WorkflowExecutionValidationTests
 
     private static WorkflowExecutionService CreateService(WorkflowDbContext dbContext)
     {
+        dbContext.ChangeTracker.Clear();
+        var store = TestSqlConnectionFactory.StoreFor(dbContext);
         return new WorkflowExecutionService(
-            dbContext,
-            new WorkflowContextReader(dbContext, new FixedTimeProvider(Now)),
+            store,
+            new WorkflowContextReader(store, new FixedTimeProvider(Now)),
             new FixedTimeProvider(Now),
             new WorkflowActionResultBuilder(),
             new CanonicalWorkflowResultSerializer());
