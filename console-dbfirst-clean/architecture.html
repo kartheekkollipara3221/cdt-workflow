@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkflowEngine — Architecture Flows</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --bg2:       #161b22;
+    --bg3:       #1c2230;
+    --border:    #21262d;
+    --text:      #c9d1d9;
+    --muted:     #8b949e;
+    --col-console: #818cf8;
+    --col-app:     #34d399;
+    --col-infra:   #fb923c;
+    --col-sql:     #f472b6;
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; font-size: 13px; }
+
+  /* ── Header ─────────────────────────────────────────────────────────── */
+  header {
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header h1 { font-size: 15px; font-weight: 600; color: #a5b4fc; letter-spacing: -0.01em; }
+  header .sub { font-size: 11px; color: var(--muted); }
+  header .legend { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+  header .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  header .leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* ── Middle (sidebar + diagram) ──────────────────────────────────────── */
+  .middle { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ─────────────────────────────────────────────────────────── */
+  #sidebar {
+    width: 210px;
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  #sidebar h2 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 14px 14px 6px;
+  }
+  .flow-group-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #3d444d;
+    padding: 10px 14px 3px;
+  }
+  .flow-item {
+    padding: 8px 14px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.12s, border-color 0.12s;
+    line-height: 1.4;
+  }
+  .flow-item:hover { background: var(--bg3); }
+  .flow-item.active { background: var(--bg3); }
+  .flow-item .fname { display: block; font-size: 12px; font-weight: 500; font-family: 'Courier New', monospace; }
+  .flow-item .fdesc { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── Diagram wrap ────────────────────────────────────────────────────── */
+  #diagram-wrap {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    padding: 28px 28px 20px;
+    background: var(--bg);
+  }
+  #diagram {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 36px;
+    align-items: flex-start;
+    min-height: 500px;
+    position: relative;
+  }
+  #svg-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 5;
+    overflow: visible;
+  }
+
+  /* ── Packages ────────────────────────────────────────────────────────── */
+  .package {
+    width: 196px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    border: 1.5px solid;
+    background: var(--bg2);
+    position: relative;
+    z-index: 2;
+    transition: box-shadow 0.2s;
+  }
+  .package.has-active { box-shadow: 0 0 0 1px currentColor; }
+  .pkg-head {
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pkg-name { font-size: 11px; font-weight: 700; letter-spacing: -0.01em; }
+  .pkg-layer { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .pkg-body { padding: 7px; display: flex; flex-direction: column; gap: 3px; }
+
+  /* ── Components ──────────────────────────────────────────────────────── */
+  .component {
+    border-radius: 5px;
+    padding: 6px 9px;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    cursor: default;
+  }
+  .component .cname { font-size: 11px; font-weight: 600; display: block; line-height: 1.3; }
+  .component .ctype { font-size: 9px; color: var(--muted); display: block; margin-top: 2px; line-height: 1.3; }
+  .component.active-comp {
+    border-color: currentColor !important;
+    box-shadow: 0 0 8px -2px currentColor;
+    transform: translateX(1px);
+  }
+
+  /* ── Info panel ──────────────────────────────────────────────────────── */
+  #info-panel {
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    min-height: 110px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  #info-empty { color: var(--muted); font-size: 12px; line-height: 1.8; }
+  #info-flow { display: none; }
+  #info-flow h3 { font-size: 13px; font-weight: 600; margin-bottom: 4px; font-family: 'Courier New', monospace; }
+  #info-flow .fdescription { font-size: 11px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; max-width: 900px; }
+  #step-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .step-chip {
+    display: flex; align-items: flex-start; gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+    max-width: 340px;
+  }
+  .step-chip:hover { border-color: #484f58; }
+  .step-chip.focused { background: var(--bg); }
+  .step-chip .snum {
+    flex-shrink: 0;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 700;
+    margin-top: 1px;
+  }
+  .step-chip .sroute { color: var(--muted); }
+  .step-chip .sroute b { font-family: 'Courier New', monospace; font-size: 9px; }
+  .step-chip .slabel { color: #8b949e; font-family: 'Courier New', monospace; font-size: 9px; margin-top: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── Controls ────────────────────────────────────────────────────────── */
+  .controls {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .btn {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 12px; border-radius: 5px; font-size: 11px; cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .btn:hover { background: #292f38; border-color: #484f58; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.primary { background: #1f2d4a; border-color: #388bfd; color: #58a6ff; }
+  .btn.primary:hover { background: #253556; }
+  .step-counter { font-size: 11px; color: var(--muted); font-family: monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WorkflowEngine.Console — Architecture Flows</h1>
+  <span class="sub">console-dbfirst-clean &nbsp;·&nbsp; Select a flow to trace execution</span>
+  <div class="legend">
+    <span class="leg-item"><span class="leg-dot" style="background:var(--col-console)"></span>Console</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--col-app)"></span>Application</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--col-infra)"></span>Infrastructure</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--col-sql)"></span>SQL Server</span>
+  </div>
+</header>
+
+<div class="middle">
+  <aside id="sidebar">
+    <h2>Flows</h2>
+    <div id="flow-list"></div>
+  </aside>
+
+  <div id="diagram-wrap">
+    <div id="diagram">
+      <!-- packages injected by JS -->
+      <svg id="svg-overlay"></svg>
+    </div>
+  </div>
+</div>
+
+<div id="info-panel">
+  <div id="info-empty">
+    Select a flow from the sidebar to trace its execution path.<br>
+    Hover numbered bubbles on arrows to see what is passed between components.<br>
+    Use <kbd style="background:var(--bg3);border:1px solid var(--border);padding:1px 5px;border-radius:3px;font-size:10px">Step ▶</kbd> in the panel to animate one step at a time.
+  </div>
+  <div id="info-flow">
+    <div class="controls">
+      <h3 id="info-title"></h3>
+      <button class="btn" id="btn-prev" onclick="stepPrev()" disabled>◀ Prev</button>
+      <button class="btn primary" id="btn-next" onclick="stepNext()">Next ▶</button>
+      <button class="btn" onclick="showAll()">Show All</button>
+      <span class="step-counter" id="step-counter"></span>
+    </div>
+    <p class="fdescription" id="info-desc"></p>
+    <div id="step-chips"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA — all flows driven from this JSON document
+// ═══════════════════════════════════════════════════════════════════════════════
+const DATA = {
+  packages: [
+    {
+      id: "console",
+      name: "WorkflowEngine.Console",
+      layer: "Entry point · CLI · DI composition",
+      color: "#818cf8",
+      components: [
+        { id: "cli-entry",   name: "Program.cs",                       type: "Builds config, wires DI, runs registry" },
+        { id: "cmd-registry",name: "CommandRegistry",                  type: "Dispatch(args) → routes to handler" },
+        { id: "cmd-start",   name: "StartWorkflowCommandHandler",      type: "IStartWorkflowCommandHandler" },
+        { id: "cmd-execute", name: "ExecuteJsonCommandHandler",        type: "IExecuteJsonCommandHandler" },
+        { id: "cmd-context", name: "ShowContextCommandHandler",        type: "IShowContextCommandHandler" },
+        { id: "cmd-inspect", name: "Show / ShowTasks / ShowHistory / ShowNotifications", type: "Inspection command handlers" },
+        { id: "cmd-sla",     name: "RunSlaCommandHandler",             type: "IRunSlaCommandHandler" },
+        { id: "cmd-outbox",  name: "ProcessOutboxCommandHandler",      type: "IProcessNotificationOutboxCommandHandler" },
+        { id: "cmd-demo",    name: "DemoCommandHandler",               type: "IDemoCommandHandler" }
+      ]
+    },
+    {
+      id: "application",
+      name: "WorkflowEngine.Application",
+      layer: "Contracts · Validation · Service interfaces",
+      color: "#34d399",
+      components: [
+        { id: "app-parser",    name: "CommandArgumentParser",              type: "Parses CLI args → typed arg records" },
+        { id: "app-validator", name: "WorkflowActionEnvelopeValidator",    type: "Validates all envelope blocks" },
+        { id: "app-normalizer",name: "WorkflowActionEnvelopeNormalizer",   type: "Applies overrides, derives idempotency key" },
+        { id: "app-hasher",    name: "CanonicalRequestHasher",             type: "SHA-256 of sorted canonical JSON" },
+        { id: "app-result",    name: "WorkflowActionResultBuilder",        type: "Builds typed result envelopes" },
+        { id: "isvc-start",    name: "IStartWorkflowService",              type: "Interface — start / reset workflow" },
+        { id: "isvc-execute",  name: "IWorkflowExecutionService",          type: "Interface — execute envelope" },
+        { id: "isvc-context",  name: "IWorkflowContextReader",             type: "Interface — form-open context" },
+        { id: "isvc-inspect",  name: "IWorkflowInspectionReader",          type: "Interface — snapshot reader" },
+        { id: "isvc-sla",      name: "IRunSlaService",                     type: "Interface — SLA scan" },
+        { id: "isvc-outbox",   name: "IProcessNotificationOutboxService",  type: "Interface — outbox processor" },
+        { id: "isvc-seed",     name: "ISeedVerificationService / IWorkflowDatabaseInitializer", type: "Interfaces — seed & schema" }
+      ]
+    },
+    {
+      id: "infrastructure",
+      name: "WorkflowEngine.Infrastructure",
+      layer: "SQL services · Notifications · Seeding",
+      color: "#fb923c",
+      components: [
+        { id: "infra-start",   name: "StartWorkflowService",               type: "Implements IStartWorkflowService" },
+        { id: "infra-execute", name: "WorkflowExecutionService",            type: "Implements IWorkflowExecutionService" },
+        { id: "infra-context", name: "WorkflowContextReader",               type: "Implements IWorkflowContextReader" },
+        { id: "infra-inspect", name: "WorkflowInspectionReader",            type: "Implements IWorkflowInspectionReader" },
+        { id: "infra-sla",     name: "RunSlaService",                       type: "Implements IRunSlaService" },
+        { id: "infra-outbox",  name: "ProcessNotificationOutboxService",    type: "Implements IProcessNotificationOutboxService" },
+        { id: "infra-seed",    name: "SeedVerificationService / WorkflowSeedService",  type: "Seed validation & insertion" },
+        { id: "infra-schema",  name: "DatabaseFirstSchemaInitializer",      type: "Runs embedded SQL scripts (001-schema, 002-stored-procedures)" },
+        { id: "infra-store",   name: "DatabaseFirstWorkflowStore",          type: "Stored procedure gateway (all SQL reads/writes)" },
+        { id: "infra-sender",  name: "INotificationSender  ·  Console / NoOp / SMTP", type: "Configured at startup via Notifications:Sender" }
+      ]
+    },
+    {
+      id: "sql",
+      name: "SQL Server",
+      layer: "burrito_codefirst database",
+      color: "#f472b6",
+      components: [
+        { id: "sql-instance",    name: "WorkflowInstance",           type: "CurrentStateKey · Status · Version" },
+        { id: "sql-task",        name: "WorkflowTask",               type: "Pending / Completed tasks + DueAtUtc" },
+        { id: "sql-audit",       name: "WorkflowAudit",              type: "Append-only successful-action log" },
+        { id: "sql-outbox",      name: "NotificationOutbox",         type: "Pending / Sent notifications" },
+        { id: "sql-idempotency", name: "IdempotencyRecord",          type: "IdempotencyKey → RequestHash + ResultJson" },
+        { id: "sql-section",     name: "MockSectionData",            type: "Append-only section payloads" },
+        { id: "sql-seed",        name: "Workflow Definition Tables", type: "WorkflowDefinition · DefinitionVersion · States · Actions · Roles · Transitions · Tasks · SlaPolicy · NotificationRoute" }
+      ]
+    }
+  ],
+
+  flows: [
+    // ── SETUP ───────────────────────────────────────────────────────────────
+    {
+      id: "init-db",
+      name: "init-db",
+      group: "Setup",
+      color: "#a78bfa",
+      description: "Creates the database if it does not exist, applies the embedded SQL schema and stored-procedure scripts (001-schema.sql, 002-stored-procedures.sql), then inserts all Portfolio Trade workflow definition seed rows.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",  label: 'dispatch("init-db", [])' },
+        { from: "cmd-registry", to: "infra-schema",  label: "IWorkflowDatabaseInitializer.Initialize()" },
+        { from: "infra-schema", to: "sql-seed",      label: "SqlConnection → IF DB_ID IS NULL CREATE DATABASE; then batch-execute GO-split SQL scripts" },
+        { from: "infra-schema", to: "infra-seed",    label: "hand-off to WorkflowSeedService after schema applied" },
+        { from: "infra-seed",   to: "sql-seed",      label: "INSERT WorkflowDefinition, WorkflowDefinitionVersion, States, Actions, Roles, Transitions, TaskDefinitions, SlaPolicy, NotificationRoute" },
+        { from: "infra-schema", to: "cmd-registry",  label: 'string "Schema and seed applied."' },
+        { from: "cmd-registry", to: "cli-entry",     label: "CommandResult.Success → Console.Out.WriteLine  (exit 0)" }
+      ]
+    },
+    {
+      id: "verify-seed",
+      name: "verify-seed",
+      group: "Setup",
+      color: "#a78bfa",
+      description: "Validates all required seed rows exist: the workflow definition, all 11 transition matrix rows (including both Return-to-Maker paths), task definitions, SLA policies, notification routes, and presentation hints. Returns a structured pass/fail result.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",  label: 'dispatch("verify-seed", [])' },
+        { from: "cmd-registry", to: "isvc-seed",     label: "ISeedVerificationService.Verify()" },
+        { from: "isvc-seed",    to: "infra-seed",    label: "DI resolves → SeedVerificationService" },
+        { from: "infra-seed",   to: "infra-store",   label: "ReadWorkflowDefinitions / ReadTransitions / ReadTasks / ReadRoutes …" },
+        { from: "infra-store",  to: "sql-seed",      label: "SELECT from WorkflowDefinition, WorkflowTransitionDefinition, WorkflowTaskDefinition, SlaPolicy, NotificationRoute" },
+        { from: "infra-seed",   to: "cmd-registry",  label: 'SeedVerificationResult { Passed: bool, Errors: string[] }' },
+        { from: "cmd-registry", to: "cli-entry",     label: "CommandResult.Success(\"Seed verification passed.\") or .Failure(errors joined by newline)" }
+      ]
+    },
+
+    // ── WORKFLOW LIFECYCLE ───────────────────────────────────────────────────
+    {
+      id: "start-workflow",
+      name: "start-workflow",
+      group: "Workflow Lifecycle",
+      color: "#38bdf8",
+      description: "Creates a fresh WorkflowInstance with WorkflowInstanceId='WF-{businessObjectId}', Status='Active', Version=1. Returns AlreadyExists (without modifying data) if an instance already exists for the same workflow key + business object.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",  label: 'dispatch("start-workflow", ["PortfolioTrade","PT-1001","--user","maker1"])' },
+        { from: "cmd-registry", to: "cmd-start",     label: "IStartWorkflowCommandHandler.Execute(args)" },
+        { from: "cmd-start",    to: "app-parser",    label: "CommandArgumentParser.ParseStartWorkflow(args)" },
+        { from: "app-parser",   to: "cmd-start",     label: "StartWorkflowCommandArguments { WorkflowKey, BusinessObjectId, UserId, Reset:false, FormatJson }" },
+        { from: "cmd-start",    to: "isvc-start",    label: "IStartWorkflowService.Start(StartWorkflowRequest { WorkflowKey, BusinessObjectId, UserId, Reset })" },
+        { from: "isvc-start",   to: "infra-start",   label: "DI resolves → StartWorkflowService" },
+        { from: "infra-start",  to: "infra-store",   label: "GetOrCreateWorkflowInstance(workflowKey, businessObjectId, userId)" },
+        { from: "infra-store",  to: "sql-instance",  label: 'INSERT WorkflowInstance (WorkflowInstanceId="WF-PT-1001", Status="Active", Version=1, StartedByUserId="maker1", StartedAtUtc)' },
+        { from: "infra-store",  to: "infra-start",   label: "StartWorkflowResult { Envelope: WorkflowActionResultEnvelope, ResetCounts: null }" },
+        { from: "infra-start",  to: "cmd-start",     label: "StartWorkflowResult" },
+        { from: "cmd-start",    to: "cli-entry",     label: "CommandResult.Success(readable text or JSON if --format json)" }
+      ]
+    },
+    {
+      id: "start-workflow-reset",
+      name: "start-workflow --reset",
+      group: "Workflow Lifecycle",
+      color: "#38bdf8",
+      description: "Deletes all runtime rows for the existing instance (in order: IdempotencyRecord → NotificationOutbox → WorkflowAudit → MockSectionData → WorkflowTask → WorkflowInstance) inside one transaction, then creates a fresh Draft instance. Seed/definition tables are never touched.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",  label: 'dispatch("start-workflow", [..., "--reset"])' },
+        { from: "cmd-registry", to: "cmd-start",     label: "Execute(args) — Reset=true in parsed arguments" },
+        { from: "cmd-start",    to: "isvc-start",    label: "StartWorkflowRequest { Reset: true }" },
+        { from: "isvc-start",   to: "infra-start",   label: "DI resolves → StartWorkflowService" },
+        { from: "infra-start",  to: "infra-store",   label: "DeleteRuntimeData(workflowInstanceId, businessObjectId) — single transaction" },
+        { from: "infra-store",  to: "sql-idempotency",label: "DELETE IdempotencyRecord WHERE WorkflowInstanceId=@id" },
+        { from: "infra-store",  to: "sql-outbox",    label: "DELETE NotificationOutbox WHERE WorkflowInstanceId=@id" },
+        { from: "infra-store",  to: "sql-audit",     label: "DELETE WorkflowAudit WHERE WorkflowInstanceId=@id" },
+        { from: "infra-store",  to: "sql-section",   label: "DELETE MockSectionData WHERE BusinessObjectId=@id" },
+        { from: "infra-store",  to: "sql-task",      label: "DELETE WorkflowTask WHERE WorkflowInstanceId=@id" },
+        { from: "infra-store",  to: "sql-instance",  label: "DELETE WorkflowInstance WHERE WorkflowInstanceId=@id; INSERT fresh (Version=1, Status='Active')" },
+        { from: "infra-start",  to: "cmd-start",     label: "StartWorkflowResult { ResetCounts { IdempotencyRecordRows, NotificationOutboxRows, … } }" },
+        { from: "cmd-start",    to: "cli-entry",     label: "CommandResult.Success — prints cleared-row counts then new instance fields" }
+      ]
+    },
+    {
+      id: "execute-json",
+      name: "execute-json",
+      group: "Workflow Lifecycle",
+      color: "#34d399",
+      description: "Loads and validates a WorkflowActionEnvelope from a JSON file, normalizes overrides, computes a canonical request hash, then executes the workflow action in one transaction: idempotency check → concurrency guards → transition resolve → MockSectionData → state move → task close/create → notification queue → audit write → idempotency record write.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",   label: 'dispatch("execute-json", ["./samples/02-submit-for-checker.json"])' },
+        { from: "cmd-registry", to: "cmd-execute",    label: "IExecuteJsonCommandHandler.Execute(args)" },
+        { from: "cmd-execute",  to: "app-parser",     label: "ParseExecuteJson(args) → ExecuteJsonCommandArguments { FilePath, BusinessObjectOverride?, WorkflowInstanceOverride?, AdminOverride, FormatJson }" },
+        { from: "cmd-execute",  to: "app-normalizer", label: "Normalize(envelope, businessObjectOverride, workflowInstanceOverride)" },
+        { from: "app-normalizer",to: "cmd-execute",   label: "NormalizedWorkflowAction { Envelope(mutated), EffectiveClientActionId, EffectiveCorrelationId, EffectiveIdempotencyKey, OverrideApplied }" },
+        { from: "cmd-execute",  to: "app-validator",  label: "Validate(normalizedEnvelope.Envelope) — checks all required blocks and MakerPrimary consistency" },
+        { from: "app-validator",to: "cmd-execute",    label: "IReadOnlyList<WorkflowValidationError> — empty = valid; non-empty → short-circuit to BuildValidationFailed" },
+        { from: "cmd-execute",  to: "app-hasher",     label: "ComputeHash(envelope) — serialises 14 canonical fields to sorted JSON, SHA-256s bytes" },
+        { from: "app-hasher",   to: "cmd-execute",    label: "requestHash: string (lowercase hex SHA-256)" },
+        { from: "cmd-execute",  to: "isvc-execute",   label: "IWorkflowExecutionService.Execute(WorkflowExecutionRequest { normalized, requestHash, adminOverride })" },
+        { from: "isvc-execute", to: "infra-execute",  label: "DI resolves → WorkflowExecutionService" },
+        { from: "infra-execute",to: "infra-store",    label: "ExecuteWorkflowAction(request) — calls stored procedure" },
+        { from: "infra-store",  to: "sql-idempotency",label: "SELECT IdempotencyRecord WHERE IdempotencyKey=@key → if found & hash matches: return ResultJson (replay); if found & hash differs: return IdempotencyConflict" },
+        { from: "infra-store",  to: "sql-instance",   label: "UPDATE WorkflowInstance SET CurrentStateKey=@new, Version=Version+1 WHERE Id=@id AND Version=@expected (optimistic lock; 0 rows → ConcurrencyConflict)" },
+        { from: "infra-store",  to: "sql-section",    label: 'INSERT MockSectionData (SectionKey, PayloadJson, SavedByUserId=actor.userId, CorrelationId, SavedAtUtc)' },
+        { from: "infra-store",  to: "sql-task",       label: "UPDATE WorkflowTask SET Status='Completed', CompletedAtUtc, CompletedByUserId, ClosedByActionKey (close); INSERT new WorkflowTask Status='Pending', DueAtUtc from SlaPolicy (create)" },
+        { from: "infra-store",  to: "sql-outbox",     label: 'INSERT NotificationOutbox (NotificationType from NotificationRoute, RecipientRoleKey, Subject, Status="Pending")' },
+        { from: "infra-store",  to: "sql-audit",      label: "INSERT WorkflowAudit (ActionKey, FromStateKey, ToStateKey, PerformedByUserId, PerformedByRoleKey, Reason, CorrelationId)" },
+        { from: "infra-store",  to: "sql-idempotency",label: "INSERT IdempotencyRecord (IdempotencyKey, WorkflowInstanceId, ActionKey, RequestHash, ResultHash, ResultJson)" },
+        { from: "infra-execute",to: "cmd-execute",    label: "WorkflowActionResultEnvelope { Result { Success, ResultCode, OldState, NewState, ClosedTask, CreatedTask, Notification, Audit, Diagnostics } }" },
+        { from: "cmd-execute",  to: "cli-entry",      label: "CommandResult.Success(readable text) or .Success(JSON if --format json)" }
+      ]
+    },
+    {
+      id: "execute-json-replay",
+      name: "execute-json  (idempotent replay)",
+      group: "Workflow Lifecycle",
+      color: "#34d399",
+      description: "When the same idempotency key is re-submitted with an identical request hash, the stored ResultJson is returned immediately — no SQL writes, no side effects. Diagnostics.Replay=true and OriginalCreatedAtUtc are set in the response.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-execute",    label: "Same command, same JSON file, same overrides as the original request" },
+        { from: "cmd-execute",  to: "app-normalizer", label: "Normalize → same EffectiveIdempotencyKey derived" },
+        { from: "cmd-execute",  to: "app-hasher",     label: "ComputeHash → same requestHash" },
+        { from: "cmd-execute",  to: "infra-execute",  label: "WorkflowExecutionService.Execute(...)" },
+        { from: "infra-store",  to: "sql-idempotency",label: "SELECT IdempotencyRecord WHERE IdempotencyKey=@key → found, RequestHash matches" },
+        { from: "infra-store",  to: "infra-execute",  label: "Deserialise stored ResultJson → return early (NO writes to any table)" },
+        { from: "infra-execute",to: "cmd-execute",    label: "WorkflowActionResultEnvelope with Diagnostics { Replay:true, OriginalCreatedAtUtc }" },
+        { from: "cmd-execute",  to: "cli-entry",      label: "CommandResult.Success — output identical to original execution" }
+      ]
+    },
+    {
+      id: "execute-json-savedraft",
+      name: "execute-json  (SaveDraft)",
+      group: "Workflow Lifecycle",
+      color: "#34d399",
+      description: "SaveDraft saves section data and writes a lightweight audit row (FromStateKey=ToStateKey) but does NOT move state, increment Version, close/create tasks, evaluate SLA, or queue notifications. It is only valid from Draft and ReturnedToMaker states.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-execute",    label: 'execute-json 01-save-draft.json  (actionKey="SaveDraft", uiAction.saveAsDraft=true)' },
+        { from: "cmd-execute",  to: "app-validator",  label: "Validate — includes MakerPrimary rule: saveAsDraft=true required for SaveDraft action" },
+        { from: "cmd-execute",  to: "app-hasher",     label: "ComputeHash → requestHash" },
+        { from: "cmd-execute",  to: "infra-execute",  label: "WorkflowExecutionService.Execute()" },
+        { from: "infra-store",  to: "sql-section",    label: "INSERT MockSectionData (section payload only)" },
+        { from: "infra-store",  to: "sql-audit",      label: 'INSERT WorkflowAudit (ActionKey="SaveDraft", FromStateKey=ToStateKey="Draft" — state unchanged)' },
+        { from: "infra-store",  to: "sql-idempotency",label: "INSERT IdempotencyRecord" },
+        { from: "infra-store",  to: "infra-execute",  label: "WorkflowActionResultEnvelope — no state change, no task change, no notification" },
+        { from: "infra-execute",to: "cli-entry",      label: "CommandResult.Success — Version and CurrentStateKey identical to before the call" }
+      ]
+    },
+
+    // ── INSPECTION ───────────────────────────────────────────────────────────
+    {
+      id: "show-context",
+      name: "show-context",
+      group: "Inspection",
+      color: "#fbbf24",
+      description: "Returns the full WorkflowContextResponse for a given actor — current state, pending task, SLA status, and available actions computed from SQL transition metadata. Read-only: writes nothing to any table.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",   label: 'dispatch("show-context", ["WF-PT-1001","--user","checker1","--roles","Checker"])' },
+        { from: "cmd-registry", to: "cmd-context",    label: "IShowContextCommandHandler.Execute(args)" },
+        { from: "cmd-context",  to: "app-parser",     label: "ParseShowContext(args) → ShowContextCommandArguments { WorkflowInstanceId, UserId, Roles:string[] }" },
+        { from: "cmd-context",  to: "isvc-context",   label: "IWorkflowContextReader.Read(WorkflowContextReadRequest { WorkflowInstanceId, UserId, Roles })" },
+        { from: "isvc-context", to: "infra-context",  label: "DI resolves → WorkflowContextReader" },
+        { from: "infra-context",to: "infra-store",    label: "ReadWorkflowContext(instanceId, userId, roles[])" },
+        { from: "infra-store",  to: "sql-instance",   label: "SELECT WorkflowInstance (CurrentStateKey, WorkflowDefinitionVersionId, Status, Version, StartedAtUtc, CompletedAtUtc)" },
+        { from: "infra-store",  to: "sql-task",       label: "SELECT pending WorkflowTask (TaskKey, AssignedRoleKey, DueAtUtc) — SLA computed as DueAtUtc vs TimeProvider.GetUtcNow()" },
+        { from: "infra-store",  to: "sql-seed",       label: "SELECT WorkflowTransitionDefinition WHERE FromStateKey=@currentState AND AllowedRoleKey IN @roles → available actions; SELECT WorkflowActionDefinition for ButtonKey/ButtonLabel/Intent/RequiresReason" },
+        { from: "infra-context",to: "cmd-context",    label: "WorkflowContextResponse { workflow, businessObject, actorAccess { canAct, readOnlyReason, effectiveRoles }, currentTask, sla { status, dueAtUtc, overdue, overdueByMinutes }, availableActions[], serverTimeUtc }" },
+        { from: "cmd-context",  to: "cli-entry",      label: "CommandResult.Success(JsonSerializer.Serialize(response))" }
+      ]
+    },
+    {
+      id: "show-inspect",
+      name: "show / show-tasks / show-history / show-notifications",
+      group: "Inspection",
+      color: "#fbbf24",
+      description: "Read-only inspection commands. Each loads a WorkflowInspectionSnapshot (instance + all tasks + audit history + notifications) from SQL and formats the relevant slice as readable console text. Writes nothing.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",   label: 'dispatch("show" | "show-tasks" | "show-history" | "show-notifications", [workflowInstanceId])' },
+        { from: "cmd-registry", to: "cmd-inspect",    label: "Appropriate IShow*CommandHandler.Execute(args)" },
+        { from: "cmd-inspect",  to: "app-parser",     label: "ParseWorkflowInstance(args) → WorkflowInstanceCommandArguments { WorkflowInstanceId }" },
+        { from: "cmd-inspect",  to: "isvc-inspect",   label: "IWorkflowInspectionReader.Read(workflowInstanceId)" },
+        { from: "isvc-inspect", to: "infra-inspect",  label: "DI resolves → WorkflowInspectionReader" },
+        { from: "infra-inspect",to: "infra-store",    label: "ReadWorkflowSnapshot(workflowInstanceId)" },
+        { from: "infra-store",  to: "sql-instance",   label: "SELECT WorkflowInstance" },
+        { from: "infra-store",  to: "sql-task",       label: "SELECT all WorkflowTask rows ORDER BY CreatedAtUtc" },
+        { from: "infra-store",  to: "sql-audit",      label: "SELECT WorkflowAudit rows ORDER BY CreatedAtUtc (show-history)" },
+        { from: "infra-store",  to: "sql-outbox",     label: "SELECT NotificationOutbox rows ORDER BY CreatedAtUtc (show-notifications)" },
+        { from: "infra-inspect",to: "cmd-inspect",    label: "WorkflowInspectionSnapshot { Instance, Tasks:[], History:[], Notifications:[] }" },
+        { from: "cmd-inspect",  to: "cli-entry",      label: "CommandResult.Success(formatted text — only the slice for the specific command)" }
+      ]
+    },
+
+    // ── BACKGROUND PROCESSORS ────────────────────────────────────────────────
+    {
+      id: "run-sla",
+      name: "run-sla",
+      group: "Background Processors",
+      color: "#f87171",
+      description: "Scans for pending tasks with DueAtUtc < now. For each overdue task, skips if an SlaTaskOverdue notification already exists (filtered unique index prevents duplicates), otherwise inserts one SlaTaskOverdue row per task. Does not close tasks or move workflow state.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",   label: 'dispatch("run-sla", ["--now","2030-01-15T16:00:00Z"])' },
+        { from: "cmd-registry", to: "cmd-sla",        label: "IRunSlaCommandHandler.RunAsync(args, CancellationToken.None).GetAwaiter().GetResult()" },
+        { from: "cmd-sla",      to: "app-parser",     label: "ParseRunSla(args) → RunSlaCommandArguments { Now: DateTimeOffset? — uses TimeProvider.System if omitted }" },
+        { from: "cmd-sla",      to: "isvc-sla",       label: "IRunSlaService.RunAsync(RunSlaRequest { Now: DateTimeOffset })" },
+        { from: "isvc-sla",     to: "infra-sla",      label: "DI resolves → RunSlaService" },
+        { from: "infra-sla",    to: "infra-store",    label: "GetOverduePendingTasksAsync(now, ct)" },
+        { from: "infra-store",  to: "sql-task",       label: "SELECT WorkflowTask WHERE Status='Pending' AND DueAtUtc IS NOT NULL AND DueAtUtc < @now" },
+        { from: "infra-store",  to: "sql-outbox",     label: "SELECT NotificationOutbox WHERE WorkflowTaskId=@taskId AND NotificationType='SlaTaskOverdue' — if found: skip (already queued)" },
+        { from: "infra-store",  to: "sql-outbox",     label: 'INSERT NotificationOutbox (SlaTaskOverdue, RecipientRoleKey = task.AssignedRoleKey, Status="Pending") — per overdue task in own short transaction' },
+        { from: "infra-sla",    to: "cmd-sla",        label: "RunSlaResult { Now, PendingTasksWithSla, AlreadyQueued, QueuedNotifications:[], Warnings:[] }" },
+        { from: "cmd-sla",      to: "cli-entry",      label: "CommandResult.Success(summary: sender name, counts, per-task log lines)" }
+      ]
+    },
+    {
+      id: "process-outbox",
+      name: "process-notification-outbox",
+      group: "Background Processors",
+      color: "#f87171",
+      description: "Selects all Pending NotificationOutbox rows (ordered by CreatedAtUtc, Id), calls INotificationSender.SendAsync for each, then marks each Sent in its own short transaction. On exception, processing stops; earlier rows remain Sent, later rows remain Pending for the next run.",
+      steps: [
+        { from: "cli-entry",    to: "cmd-registry",   label: 'dispatch("process-notification-outbox", [])' },
+        { from: "cmd-registry", to: "cmd-outbox",     label: "IProcessNotificationOutboxCommandHandler.RunAsync([], CancellationToken.None).GetAwaiter().GetResult()" },
+        { from: "cmd-outbox",   to: "isvc-outbox",    label: "IProcessNotificationOutboxService.ProcessAsync(CancellationToken)" },
+        { from: "isvc-outbox",  to: "infra-outbox",   label: "DI resolves → ProcessNotificationOutboxService" },
+        { from: "infra-outbox", to: "infra-store",    label: "GetPendingNotificationsAsync() — all Pending rows in order" },
+        { from: "infra-store",  to: "sql-outbox",     label: "SELECT * FROM NotificationOutbox WHERE Status='Pending' ORDER BY CreatedAtUtc, Id" },
+        { from: "infra-outbox", to: "infra-sender",   label: "INotificationSender.SendAsync(NotificationOutboxRow, ct)  [per row]" },
+        { from: "infra-sender", to: "infra-outbox",   label: "Console: prints NotificationType / recipient / subject / workflowInstanceId  |  NoOp: returns immediately  |  SMTP: MailKit SmtpClient.Connect → Send → Disconnect" },
+        { from: "infra-outbox", to: "infra-store",    label: "MarkSentAsync(id, TimeProvider.GetUtcNow()) — per-row transaction" },
+        { from: "infra-store",  to: "sql-outbox",     label: "UPDATE NotificationOutbox SET Status='Sent', SentAtUtc=@now WHERE Id=@id" },
+        { from: "infra-outbox", to: "cmd-outbox",     label: "ProcessNotificationOutboxResult { Processed:[], PendingCount, Failure?: { NotificationType, Exception, … } }" },
+        { from: "cmd-outbox",   to: "cli-entry",      label: "CommandResult.Success/Failure — prints count summary e.g. '3 notifications processed via Console.'" }
+      ]
+    },
+
+    // ── DEMO ─────────────────────────────────────────────────────────────────
+    {
+      id: "demo",
+      name: "demo",
+      group: "Demo",
+      color: "#c084fc",
+      description: "Runs the full Portfolio Trade happy path end-to-end using the reserved PT-DEMO business object. Auto-resets, then executes each step from DemoScriptDefinitions in order. After each execute-json step it compares the result against embedded testExpectations. Prints final audit history on success.",
+      steps: [
+        { from: "cli-entry",   to: "cmd-registry",  label: 'dispatch("demo", [])' },
+        { from: "cmd-registry",to: "cmd-demo",      label: "IDemoCommandHandler.Execute([])" },
+        { from: "cmd-demo",    to: "cmd-start",     label: 'Step 0: start-workflow PortfolioTrade PT-DEMO --user maker1 --reset (resets & creates fresh WF-PT-DEMO)' },
+        { from: "cmd-demo",    to: "cmd-execute",   label: 'Steps 1–N: execute-json <sample.json> --business-object PT-DEMO --workflow-instance WF-PT-DEMO  (100 ms pause between steps)' },
+        { from: "cmd-execute", to: "app-normalizer",label: "Normalizer derives EffectiveIdempotencyKey with :suffix so PT-DEMO keys don't clash with PT-1001 keys" },
+        { from: "cmd-execute", to: "isvc-execute",  label: "Full execute path: validate → hash → transition → task → audit → notification → idempotency record" },
+        { from: "isvc-execute",to: "infra-execute", label: "WorkflowExecutionService → DatabaseFirstWorkflowStore stored procedure" },
+        { from: "cmd-demo",    to: "app-result",    label: "CompareExpectations(DemoStepExpectations, WorkflowActionResult) — asserts resultCode, oldState, newState, closedTaskKey, createdTaskKey, assignedRole, notificationType, auditAction" },
+        { from: "cmd-demo",    to: "cmd-inspect",   label: "After all steps pass: show-history WF-PT-DEMO (prints full audit trail)" },
+        { from: "cmd-demo",    to: "cli-entry",     label: 'CommandResult.Success("Demo completed successfully. N steps executed.") + branch guidance text' }
+      ]
+    }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let activeFlowId   = null;
+let activeStepIdx  = -1; // -1 = show all
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+function init() {
+  buildFlowList();
+  buildPackages();
+  window.addEventListener('resize', () => {
+    if (activeFlowId) redraw();
+  });
+  document.getElementById('diagram-wrap').addEventListener('scroll', () => {
+    if (activeFlowId) redraw();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildFlowList() {
+  const list = document.getElementById('flow-list');
+  let lastGroup = null;
+  DATA.flows.forEach(flow => {
+    if (flow.group !== lastGroup) {
+      const g = document.createElement('div');
+      g.className = 'flow-group-label';
+      g.textContent = flow.group;
+      list.appendChild(g);
+      lastGroup = flow.group;
+    }
+    const item = document.createElement('div');
+    item.className = 'flow-item';
+    item.id = `flow-item-${flow.id}`;
+    item.style.borderLeftColor = 'transparent';
+    item.innerHTML = `<span class="fname" style="color:${flow.color}">${flow.name}</span>`;
+    item.onclick = () => toggleFlow(flow.id);
+    list.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DIAGRAM
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildPackages() {
+  const diagram = document.getElementById('diagram');
+  DATA.packages.forEach(pkg => {
+    const pkgEl = document.createElement('div');
+    pkgEl.className = 'package';
+    pkgEl.id = `pkg-${pkg.id}`;
+    pkgEl.style.borderColor = pkg.color + '50';
+
+    const head = document.createElement('div');
+    head.className = 'pkg-head';
+    head.innerHTML = `<div class="pkg-name" style="color:${pkg.color}">${pkg.name}</div><div class="pkg-layer">${pkg.layer}</div>`;
+    pkgEl.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'pkg-body';
+
+    pkg.components.forEach(comp => {
+      const el = document.createElement('div');
+      el.className = 'component';
+      el.id = `comp-${comp.id}`;
+      el.style.background = pkg.color + '12';
+      el.style.color = pkg.color + 'aa';
+      el.innerHTML = `<span class="cname">${comp.name}</span><span class="ctype">${comp.type}</span>`;
+      body.appendChild(el);
+    });
+
+    pkgEl.appendChild(body);
+    diagram.insertBefore(pkgEl, document.getElementById('svg-overlay'));
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FLOW SELECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+function toggleFlow(flowId) {
+  if (activeFlowId === flowId) {
+    clearAll();
+    return;
+  }
+  clearAll();
+  activeFlowId  = flowId;
+  activeStepIdx = -1;
+
+  const flow = DATA.flows.find(f => f.id === flowId);
+
+  // sidebar
+  const item = document.getElementById(`flow-item-${flowId}`);
+  if (item) {
+    item.classList.add('active');
+    item.style.borderLeftColor = flow.color;
+  }
+
+  // highlight components
+  const involved = new Set(flow.steps.flatMap(s => [s.from, s.to]));
+  involved.forEach(cid => activateComp(cid, true));
+
+  // info panel
+  document.getElementById('info-empty').style.display = 'none';
+  const infoFlow = document.getElementById('info-flow');
+  infoFlow.style.display = '';
+  document.getElementById('info-title').textContent = flow.name;
+  document.getElementById('info-title').style.color = flow.color;
+  document.getElementById('info-desc').textContent = flow.description;
+  buildStepChips(flow);
+  updateStepButtons(flow);
+
+  redraw();
+}
+
+function clearAll() {
+  activeFlowId  = null;
+  activeStepIdx = -1;
+
+  document.querySelectorAll('.flow-item').forEach(el => {
+    el.classList.remove('active');
+    el.style.borderLeftColor = 'transparent';
+  });
+
+  DATA.packages.forEach(pkg => {
+    pkg.components.forEach(comp => {
+      const el = document.getElementById(`comp-${comp.id}`);
+      if (!el) return;
+      el.classList.remove('active-comp');
+      el.style.background   = pkg.color + '12';
+      el.style.color        = pkg.color + 'aa';
+      el.style.borderColor  = 'transparent';
+      el.style.boxShadow    = '';
+      el.style.transform    = '';
+    });
+  });
+
+  document.getElementById('svg-overlay').innerHTML = '';
+  document.getElementById('info-empty').style.display = '';
+  document.getElementById('info-flow').style.display = 'none';
+}
+
+function activateComp(compId, full) {
+  const el = document.getElementById(`comp-${compId}`);
+  if (!el) return;
+  const pkg = DATA.packages.find(p => p.components.some(c => c.id === compId));
+  if (!pkg) return;
+  if (full) {
+    el.classList.add('active-comp');
+    el.style.background  = pkg.color + '25';
+    el.style.color       = pkg.color;
+    el.style.borderColor = pkg.color + '80';
+    el.style.boxShadow   = `0 0 8px -2px ${pkg.color}60`;
+  } else {
+    el.style.background  = pkg.color + '18';
+    el.style.color       = pkg.color + 'cc';
+    el.style.borderColor = 'transparent';
+    el.style.boxShadow   = '';
+    el.classList.remove('active-comp');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STEP CHIPS (info panel)
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildStepChips(flow) {
+  const container = document.getElementById('step-chips');
+  container.innerHTML = '';
+  flow.steps.forEach((step, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'step-chip';
+    chip.id = `chip-${i}`;
+    chip.title = step.label;
+    chip.style.color = flow.color;
+    chip.innerHTML = `
+      <span class="snum" style="background:${flow.color}25;color:${flow.color}">${i + 1}</span>
+      <span>
+        <span class="sroute"><b>${step.from}</b> <span style="opacity:.5">→</span> <b>${step.to}</b></span>
+        <span class="slabel">${step.label}</span>
+      </span>`;
+    chip.onclick = () => focusStep(i);
+    container.appendChild(chip);
+  });
+}
+
+function focusStep(idx) {
+  activeStepIdx = idx;
+  const flow = DATA.flows.find(f => f.id === activeFlowId);
+
+  document.querySelectorAll('.step-chip').forEach((c, i) => {
+    c.classList.toggle('focused', i === idx);
+  });
+
+  // dim all components, then brighten only those in this step
+  const involved = new Set(flow.steps.flatMap(s => [s.from, s.to]));
+  involved.forEach(cid => activateComp(cid, false));
+
+  const step = flow.steps[idx];
+  activateComp(step.from, true);
+  activateComp(step.to,   true);
+
+  updateStepButtons(flow);
+  redraw();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STEP-THROUGH CONTROLS
+// ═══════════════════════════════════════════════════════════════════════════════
+function stepNext() {
+  const flow = DATA.flows.find(f => f.id === activeFlowId);
+  if (!flow) return;
+  const next = activeStepIdx + 1;
+  if (next < flow.steps.length) focusStep(next);
+}
+
+function stepPrev() {
+  if (activeStepIdx > 0) focusStep(activeStepIdx - 1);
+}
+
+function showAll() {
+  activeStepIdx = -1;
+  const flow = DATA.flows.find(f => f.id === activeFlowId);
+  if (!flow) return;
+
+  document.querySelectorAll('.step-chip').forEach(c => c.classList.remove('focused'));
+  const involved = new Set(flow.steps.flatMap(s => [s.from, s.to]));
+  involved.forEach(cid => activateComp(cid, true));
+  updateStepButtons(flow);
+  redraw();
+}
+
+function updateStepButtons(flow) {
+  const prev = document.getElementById('btn-prev');
+  const next = document.getElementById('btn-next');
+  const ctr  = document.getElementById('step-counter');
+
+  prev.disabled = activeStepIdx <= 0;
+  next.disabled = activeStepIdx >= flow.steps.length - 1;
+
+  if (activeStepIdx === -1) {
+    ctr.textContent = `${flow.steps.length} steps`;
+    next.textContent = 'Step ▶';
+  } else {
+    ctr.textContent = `Step ${activeStepIdx + 1} / ${flow.steps.length}`;
+    next.textContent = activeStepIdx < flow.steps.length - 1 ? 'Next ▶' : 'Done';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SVG DRAWING
+// ═══════════════════════════════════════════════════════════════════════════════
+const _markers = new Set();
+
+function redraw() {
+  const flow = DATA.flows.find(f => f.id === activeFlowId);
+  if (!flow) return;
+
+  const svg = document.getElementById('svg-overlay');
+  svg.innerHTML = '';
+  _markers.clear();
+
+  const wrap = document.getElementById('diagram-wrap');
+  svg.setAttribute('width',  wrap.scrollWidth);
+  svg.setAttribute('height', wrap.scrollHeight);
+
+  const stepsToShow = activeStepIdx === -1
+    ? flow.steps.map((s, i) => ({ ...s, idx: i }))
+    : [{ ...flow.steps[activeStepIdx], idx: activeStepIdx }];
+
+  // Track pair counts for vertical offsetting when same from→to pair repeats
+  const pairCounter = {};
+
+  stepsToShow.forEach(step => {
+    const key = `${step.from}|${step.to}`;
+    pairCounter[key] = (pairCounter[key] || 0) + 1;
+    const pairOffset = (pairCounter[key] - 1) * 14;
+    drawStep(svg, step, flow.color, pairOffset);
+  });
+}
+
+function getEdgePoint(compId, edge) {
+  const el = document.getElementById(`comp-${compId}`);
+  if (!el) return null;
+  const wrap    = document.getElementById('diagram-wrap');
+  const wRect   = wrap.getBoundingClientRect();
+  const eRect   = el.getBoundingClientRect();
+  const scrollL = wrap.scrollLeft;
+  const scrollT = wrap.scrollTop;
+
+  const x = edge === 'right'
+    ? eRect.right  - wRect.left + scrollL
+    : eRect.left   - wRect.left + scrollL;
+  const y = eRect.top - wRect.top + scrollT + eRect.height / 2;
+  return { x, y };
+}
+
+function pkgIndexOf(compId) {
+  return DATA.packages.findIndex(p => p.components.some(c => c.id === compId));
+}
+
+function drawStep(svg, step, color, extraOffset) {
+  const fromPkgIdx = pkgIndexOf(step.from);
+  const toPkgIdx   = pkgIndexOf(step.to);
+  const same       = fromPkgIdx === toPkgIdx;
+
+  if (same) {
+    const fPt = getEdgePoint(step.from, 'right');
+    const tPt = getEdgePoint(step.to,   'right');
+    if (!fPt || !tPt) return;
+    drawLoop(svg, fPt, tPt, step.idx + 1, color, step.label);
+  } else {
+    const forward = fromPkgIdx < toPkgIdx;
+    const fPt = getEdgePoint(step.from, forward ? 'right' : 'left');
+    const tPt = getEdgePoint(step.to,   forward ? 'left'  : 'right');
+    if (!fPt || !tPt) return;
+    drawBezier(svg, fPt, tPt, step.idx + 1, color, step.label, extraOffset, !forward);
+  }
+}
+
+function drawBezier(svg, from, to, num, color, label, yOffset, returning) {
+  ensureMarker(svg, color);
+  const fy = from.y + yOffset;
+  const ty = to.y   + yOffset;
+
+  const dx = Math.abs(to.x - from.x);
+  const bend = Math.min(dx * 0.45, 80);
+  const cp1x = from.x + (from.x < to.x ?  bend : -bend);
+  const cp2x = to.x   + (from.x < to.x ? -bend :  bend);
+
+  const path = makeSvgEl('path', {
+    d:               `M ${from.x} ${fy} C ${cp1x} ${fy}, ${cp2x} ${ty}, ${to.x} ${ty}`,
+    stroke:          color,
+    'stroke-width':  '1.8',
+    fill:            'none',
+    opacity:         '0.85',
+    'stroke-dasharray': returning ? '5 3' : 'none',
+    'marker-end':    `url(#mk-${color.replace('#', '')})`
+  });
+  svg.appendChild(path);
+
+  // step bubble + tooltip
+  const midX = (from.x + to.x) / 2;
+  const midY = (fy + ty) / 2 - (returning ? 14 : -2);
+  drawBubble(svg, midX, midY, num, color, label);
+}
+
+function drawLoop(svg, from, to, num, color, label) {
+  ensureMarker(svg, color);
+  const loopX = Math.max(from.x, to.x) + 28;
+
+  const path = makeSvgEl('path', {
+    d:               `M ${from.x} ${from.y} C ${loopX + 15} ${from.y}, ${loopX + 15} ${to.y}, ${to.x} ${to.y}`,
+    stroke:          color,
+    'stroke-width':  '1.5',
+    fill:            'none',
+    opacity:         '0.75',
+    'stroke-dasharray': '4 2',
+    'marker-end':    `url(#mk-${color.replace('#', '')})`
+  });
+  svg.appendChild(path);
+
+  drawBubble(svg, loopX + 22, (from.y + to.y) / 2, num, color, label);
+}
+
+function drawBubble(svg, cx, cy, num, color, label) {
+  const g = makeSvgEl('g', { style: 'cursor:pointer' });
+
+  // circle
+  const circ = makeSvgEl('circle', {
+    cx, cy, r: 10,
+    fill:           '#0d1117',
+    stroke:          color,
+    'stroke-width': '1.5'
+  });
+  g.appendChild(circ);
+
+  const txt = makeSvgEl('text', {
+    x:               cx,
+    y:               cy + 4,
+    'text-anchor':   'middle',
+    fill:            color,
+    'font-size':     '9',
+    'font-weight':   '700',
+    'font-family':   'monospace',
+    'pointer-events':'none'
+  });
+  txt.textContent = num;
+  g.appendChild(txt);
+
+  // tooltip (hidden by default)
+  const tip = buildTooltip(cx, cy, label, color);
+  tip.style.opacity = '0';
+  tip.style.transition = 'opacity 0.15s';
+  g.appendChild(tip);
+
+  g.addEventListener('mouseenter', () => { tip.style.opacity = '1'; });
+  g.addEventListener('mouseleave', () => { tip.style.opacity = '0'; });
+  // make pointer events work on bubble area
+  circ.setAttribute('pointer-events', 'all');
+  g.setAttribute('pointer-events', 'all');
+  svg.setAttribute('pointer-events', 'all'); // SVG itself needs this
+
+  svg.appendChild(g);
+}
+
+function buildTooltip(anchorX, anchorY, text, color) {
+  const g    = makeSvgEl('g', {});
+  const lines = wrapText(text, 50);
+  const lh   = 13;
+  const pw   = Math.min(Math.max(...lines.map(l => l.length)) * 6.2 + 18, 320);
+  const ph   = lines.length * lh + 10;
+  let   bx   = anchorX - pw / 2;
+  const by   = anchorY - ph - 16;
+
+  const bg = makeSvgEl('rect', {
+    x: bx, y: by, width: pw, height: ph, rx: 5,
+    fill:           '#1c2230',
+    stroke:          color,
+    'stroke-width': '1',
+    'pointer-events':'none'
+  });
+  g.appendChild(bg);
+
+  lines.forEach((line, i) => {
+    const lt = makeSvgEl('text', {
+      x:               bx + 9,
+      y:               by + 14 + i * lh,
+      fill:            '#c9d1d9',
+      'font-size':     '9',
+      'font-family':   'monospace',
+      'pointer-events':'none'
+    });
+    lt.textContent = line;
+    g.appendChild(lt);
+  });
+
+  return g;
+}
+
+function ensureMarker(svg, color) {
+  const id = `mk-${color.replace('#', '')}`;
+  if (_markers.has(id)) return;
+  _markers.add(id);
+
+  let defs = svg.querySelector('defs');
+  if (!defs) { defs = makeSvgEl('defs', {}); svg.insertBefore(defs, svg.firstChild); }
+
+  const marker = makeSvgEl('marker', {
+    id, markerWidth: '8', markerHeight: '8', refX: '6', refY: '3', orient: 'auto'
+  });
+  const poly = makeSvgEl('polygon', { points: '0 0, 6 3, 0 6', fill: color });
+  marker.appendChild(poly);
+  defs.appendChild(marker);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+function makeSvgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+
+function wrapText(text, maxCh) {
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  words.forEach(w => {
+    const candidate = cur ? `${cur} ${w}` : w;
+    if (candidate.length > maxCh && cur) { lines.push(cur); cur = w; }
+    else cur = candidate;
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
