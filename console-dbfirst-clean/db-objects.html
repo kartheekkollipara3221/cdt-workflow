@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkflowEngine — Database Objects</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+header {
+  padding: 14px 24px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+header h1 { font-size: 17px; font-weight: 600; color: #f8fafc; }
+header p  { font-size: 13px; color: #64748b; }
+
+.legend {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; }
+.ldot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+.ldot-r { background: #3b82f6; }
+.ldot-w { background: #f59e0b; }
+.ldot-d { background: #ef4444; }
+
+/* ── Detail panel ───────────────────────────────────────────────── */
+#detail {
+  background: #1e293b;
+  border-bottom: 2px solid #334155;
+  padding: 14px 24px;
+  min-height: 64px;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.detail-hint { font-size: 13px; color: #475569; align-self: center; }
+.detail-body { display: none; flex-direction: column; gap: 6px; flex: 1; }
+.detail-body.visible { display: flex; }
+.detail-name { font-size: 13px; font-weight: 600; font-family: monospace; color: #f8fafc; }
+.detail-kind { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+.detail-desc { font-size: 13px; color: #94a3b8; max-width: 760px; line-height: 1.5; }
+.detail-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.tag-r { background: #172554; color: #93c5fd; border: 1px solid #1d4ed8; }
+.tag-w { background: #431407; color: #fde68a; border: 1px solid #b45309; }
+.tag-d { background: #450a0a; color: #fca5a5; border: 1px solid #b91c1c; }
+
+/* ── Matrix wrapper ─────────────────────────────────────────────── */
+#matrix-wrap {
+  padding: 24px;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+table#matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* ── Table column headers (rotated) ─────────────────────────────── */
+thead th.th-table {
+  height: 140px;
+  vertical-align: bottom;
+  padding-bottom: 2px;
+  min-width: 34px;
+  width: 34px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+thead th.th-table .th-inner {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform-origin: bottom center;
+  transform: translateX(-50%) rotate(-55deg);
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  transition: color .15s;
+  padding-bottom: 2px;
+}
+thead th.th-table:hover .th-inner { color: #f8fafc; }
+thead th.th-table.sel .th-inner   { color: #f8fafc; font-weight: 700; }
+
+/* Group band row (coloured stripe above table names) */
+tr.tg-band th.band-cell {
+  height: 5px;
+  padding: 0;
+}
+tr.tg-band th.band-blueprint { background: #7c3aed; }
+tr.tg-band th.band-runtime   { background: #059669; }
+tr.tg-band th.band-infra     { background: #dc2626; }
+tr.tg-band th.band-blank     { background: transparent; }
+
+/* Group label row above column headers */
+tr.tg-label th { padding: 2px 4px; }
+th.glabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-align: center;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+th.glabel-blueprint { color: #a78bfa; background: #2e1065; }
+th.glabel-runtime   { color: #6ee7b7; background: #022c22; }
+th.glabel-infra     { color: #fca5a5; background: #2d0a0a; }
+th.th-empty         { background: transparent; }
+
+/* ── Proc rows ──────────────────────────────────────────────────── */
+td.proc-label {
+  font-size: 11.5px;
+  font-family: monospace;
+  color: #64748b;
+  padding: 3px 14px 3px 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  min-width: 210px;
+  transition: color .15s;
+  border-right: 1px solid #1e293b;
+}
+td.proc-label:hover  { color: #f8fafc; }
+tr.psel td.proc-label { color: #f8fafc; font-weight: 600; }
+
+/* Proc group separator */
+tr.pg-row td {
+  padding: 10px 4px 3px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #475569;
+  border-top: 1px solid #1e293b;
+}
+
+/* ── Cells ──────────────────────────────────────────────────────── */
+td.cell {
+  width: 34px;
+  height: 26px;
+  padding: 3px 2px;
+}
+.dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  transition: opacity .15s, transform .12s;
+}
+.dot-r { background: #3b82f6; }
+.dot-w { background: #f59e0b; }
+.dot-d { background: #ef4444; }
+
+/* Dimming when something is selected */
+body.sel-active .dot { opacity: .07; }
+body.sel-active td.cell.hi .dot { opacity: 1; transform: scale(1.08); }
+
+/* ── Tooltip ────────────────────────────────────────────────────── */
+#tt {
+  position: fixed;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #e2e8f0;
+  pointer-events: none;
+  z-index: 999;
+  max-width: 280px;
+  display: none;
+  line-height: 1.5;
+}
+#tt.show { display: block; }
+.tt-op     { font-weight: 700; }
+.tt-op-r   { color: #93c5fd; }
+.tt-op-w   { color: #fde68a; }
+.tt-op-d   { color: #fca5a5; }
+.tt-table  { color: #e2e8f0; }
+.tt-proc   { color: #94a3b8; font-family: monospace; font-size: 11px; }
+
+/* ── Clear button ───────────────────────────────────────────────── */
+#btn-clear {
+  margin-left: auto;
+  font-size: 12px;
+  color: #64748b;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  padding: 4px 12px;
+  cursor: pointer;
+  display: none;
+}
+#btn-clear:hover { color: #f8fafc; border-color: #64748b; }
+#btn-clear.show { display: inline-block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>WorkflowEngine — Database Objects</h1>
+    <p>Click any table column or proc row to highlight its connections. Hover a cell for details.</p>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><span class="ldot ldot-r"></span> READ (SELECT)</div>
+    <div class="legend-item"><span class="ldot ldot-w"></span> WRITE (INSERT / UPDATE)</div>
+    <div class="legend-item"><span class="ldot ldot-d"></span> DELETE</div>
+  </div>
+  <button id="btn-clear">✕ Clear selection</button>
+</header>
+
+<div id="detail">
+  <span class="detail-hint">← Click a table or stored procedure to see its description and connections</span>
+  <div class="detail-body" id="detail-body">
+    <div style="display:flex;gap:10px;align-items:baseline;">
+      <span class="detail-name" id="d-name"></span>
+      <span class="detail-kind" id="d-kind"></span>
+    </div>
+    <div class="detail-desc" id="d-desc"></div>
+    <div class="detail-tags" id="d-tags"></div>
+  </div>
+</div>
+
+<div id="matrix-wrap">
+  <table id="matrix"></table>
+</div>
+<div id="tt"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════════════
+
+const TABLE_GROUPS = [
+  {
+    id: "blueprint", label: "Blueprint (Config)", color: "#7c3aed",
+    tables: [
+      { id: "WorkflowDefinition",           short: "WfDefinition",
+        desc: "The named workflow type — the title of the rulebook. One row per workflow kind (e.g. 'portfolio-trade'). Root of the configuration hierarchy." },
+      { id: "WorkflowDefinitionVersion",    short: "DefVersion",
+        desc: "A versioned snapshot of the rulebook. Running instances are pinned to the version that was active when they started, so rule changes never break in-flight work." },
+      { id: "WorkflowStateDefinition",      short: "StateDef",
+        desc: "All stages a piece of work can be in (Draft, PendingCheckerReview, Completed…). Rows marked IsTerminal indicate a completed workflow." },
+      { id: "WorkflowActionDefinition",     short: "ActionDef",
+        desc: "Every button a user can press (SubmitForChecker, CheckerApprove…). Stores display label, sort order, and whether a free-text reason is required." },
+      { id: "WorkflowRoleDefinition",       short: "RoleDef",
+        desc: "Named roles that participate in the workflow (Maker, Checker, TradingDesk, BDRM). Used to filter which buttons are shown to which user." },
+      { id: "WorkflowTaskDefinition",       short: "TaskDef",
+        desc: "Named to-do item types assigned to roles during the workflow (e.g. CheckerReviewTask). Optionally links to an SLA policy for deadline tracking." },
+      { id: "WorkflowTransitionDefinition", short: "TransitionDef",
+        desc: "The rules table — the heart of the engine. Each row: when in state X, role R presses button A → move to state Y, close task T1, open T2, queue notification N." },
+      { id: "SlaPolicy",                    short: "SlaPolicy",
+        desc: "Time-limit rules. Each policy says how many minutes a task may sit open before being flagged as overdue by the SLA scanner." },
+      { id: "NotificationRoute",            short: "NotifRoute",
+        desc: "Who to notify and how, keyed by a route name. Stores the recipient role or user and the subject line template used when building the outbox message." },
+    ]
+  },
+  {
+    id: "runtime", label: "Runtime (Live Data)", color: "#059669",
+    tables: [
+      { id: "WorkflowInstance", short: "WfInstance",
+        desc: "One row per active piece of work. Tracks current state, which business object it covers (e.g. trade TRD-001), and a Version counter used for optimistic concurrency — prevents two users from advancing the same item simultaneously." },
+      { id: "WorkflowTask",     short: "WfTask",
+        desc: "The current open to-do item. At most one Pending task per instance (enforced by a filtered unique index). Stores who the task is assigned to and its DueAtUtc deadline." },
+      { id: "MockSectionData",  short: "MockData",
+        desc: "Stand-in for the real application's form data store. JSON payloads saved here on every SaveDraft or data-carrying transition, keyed by business object and section name." },
+      { id: "WorkflowAudit",   short: "WfAudit",
+        desc: "Append-only history of every action taken. One row per action: who did what, which state they moved from/to, when, and why (optional reason). Never modified after insert." },
+    ]
+  },
+  {
+    id: "infra", label: "Infrastructure (Reliability)", color: "#dc2626",
+    tables: [
+      { id: "NotificationOutbox", short: "NotifOutbox",
+        desc: "Outbox queue for notifications. Transitions insert Pending rows; a background job delivers them and marks them Sent. Decouples delivery from the transaction so a mail-server outage never fails a workflow action. Also holds SLA overdue alerts." },
+      { id: "IdempotencyRecord",  short: "IdempotencyRec",
+        desc: "Duplicate-request guard. Stores a SHA-256 hash of each completed request. If the same request arrives again (e.g. a network retry), the stored result is returned without re-executing the transition." },
+    ]
+  },
+];
+
+const PROC_GROUPS = [
+  {
+    id: "blueprint", label: "Blueprint Loaders", color: "#7c3aed",
+    procs: [
+      { id: "usp_WorkflowDefinition_GetActiveVersion",       short: "GetActiveVersion",
+        desc: "Given a workflow key, returns which version of that workflow is currently active. The very first call on every request — resolves the rulebook before anything else happens.",
+        reads: ["WorkflowDefinition", "WorkflowDefinitionVersion"], writes: [], deletes: [] },
+      { id: "usp_WorkflowMetadata_GetForVersion",            short: "GetMetadataForVersion",
+        desc: "Loads the entire rulebook for a specific version in one round-trip — 7 result sets: states, actions, roles, tasks, transitions, SLA policies, and notification routes. Application caches this in memory.",
+        reads: ["WorkflowStateDefinition","WorkflowActionDefinition","WorkflowRoleDefinition","WorkflowTaskDefinition","WorkflowTransitionDefinition","SlaPolicy","NotificationRoute"], writes: [], deletes: [] },
+      { id: "usp_WorkflowDefinitionVersion_Get",             short: "DefinitionVersion_Get",
+        desc: "Fetches a single version row by ID. Used during inspection commands to resolve the version number for display.",
+        reads: ["WorkflowDefinitionVersion"], writes: [], deletes: [] },
+      { id: "usp_WorkflowActionDefinition_Get",              short: "ActionDefinition_Get",
+        desc: "Looks up a single action definition by key within a version. Called during execute-json to validate the requested action exists before processing begins.",
+        reads: ["WorkflowActionDefinition"], writes: [], deletes: [] },
+      { id: "usp_WorkflowTransitionDefinition_ListForAction",short: "TransitionDef_ListForAction",
+        desc: "Finds all valid transitions for a given (from-state, action) pair. This determines who is allowed to act and what state/tasks/notifications result from the action.",
+        reads: ["WorkflowTransitionDefinition"], writes: [], deletes: [] },
+      { id: "usp_WorkflowTaskDefinition_Get",                short: "TaskDefinition_Get",
+        desc: "Looks up a single task definition (owner role, SLA link) by key. Called when a transition creates a new task to determine where to assign it.",
+        reads: ["WorkflowTaskDefinition"], writes: [], deletes: [] },
+      { id: "usp_WorkflowTaskDefinition_HasSla",             short: "TaskDefinition_HasSla",
+        desc: "Quick yes/no: does this task type have an SLA time limit attached? Used to decide whether to compute and store DueAtUtc when creating a task.",
+        reads: ["WorkflowTaskDefinition"], writes: [], deletes: [] },
+      { id: "usp_SlaPolicy_GetDurationMinutes",              short: "SlaPolicy_GetDuration",
+        desc: "Returns the allowed number of minutes for a specific SLA policy key. Used to calculate DueAtUtc = now + DurationMinutes when a new task is created.",
+        reads: ["SlaPolicy"], writes: [], deletes: [] },
+      { id: "usp_NotificationRoute_GetByRouteKey",           short: "NotifRoute_GetByKey",
+        desc: "Looks up notification routing details (recipient role/user, subject template) by route key. Called during transitions to build the outbox message.",
+        reads: ["NotificationRoute"], writes: [], deletes: [] },
+    ]
+  },
+  {
+    id: "instance", label: "Instance Management", color: "#0891b2",
+    procs: [
+      { id: "usp_WorkflowInstance_GetByBusinessObject", short: "Instance_GetByBizObj",
+        desc: "Finds an existing workflow instance for a given business object (workflow key + object type + object ID). Used by start-workflow to detect if one already exists before creating another.",
+        reads: ["WorkflowInstance"], writes: [], deletes: [] },
+      { id: "usp_WorkflowInstance_Get",                 short: "Instance_Get",
+        desc: "Fetches an instance by its internal WorkflowInstanceId. Used throughout execution and inspection once the instance ID is known.",
+        reads: ["WorkflowInstance"], writes: [], deletes: [] },
+      { id: "usp_WorkflowInstance_Insert",              short: "Instance_Insert",
+        desc: "Creates a brand-new workflow instance, setting initial state, status, and Version=1. Called only by the start-workflow command.",
+        reads: [], writes: ["WorkflowInstance"], deletes: [] },
+      { id: "usp_WorkflowInstance_UpdateState",         short: "Instance_UpdateState",
+        desc: "Moves an instance to a new state and increments Version. Only updates if the current Version matches the caller's expected value — if 0 rows are returned, another process changed the record first (concurrency conflict).",
+        reads: [], writes: ["WorkflowInstance"], deletes: [] },
+    ]
+  },
+  {
+    id: "task", label: "Task Management", color: "#0e7490",
+    procs: [
+      { id: "usp_WorkflowTask_GetPending", short: "Task_GetPending",
+        desc: "Returns the single open (Pending) task for an instance, if one exists. Used when displaying what a user needs to do next and when checking for overdue SLA tasks.",
+        reads: ["WorkflowTask"], writes: [], deletes: [] },
+      { id: "usp_WorkflowTask_Insert",     short: "Task_Insert",
+        desc: "Creates a new task assigned to a role, optionally with a DueAtUtc deadline. Called when a workflow transition specifies a TaskToCreateKey.",
+        reads: [], writes: ["WorkflowTask"], deletes: [] },
+      { id: "usp_WorkflowTask_Complete",   short: "Task_Complete",
+        desc: "Closes an existing Pending task (marks it Completed). Only updates if the task is still Pending — prevents double-completion if two processes race. Called when a transition specifies a TaskToCloseKey.",
+        reads: [], writes: ["WorkflowTask"], deletes: [] },
+    ]
+  },
+  {
+    id: "data-audit", label: "Data & Audit", color: "#b45309",
+    procs: [
+      { id: "usp_MockSectionData_Insert", short: "MockSectionData_Insert",
+        desc: "Saves a JSON payload for a named form section against a business object. Called on every SaveDraft and on every data-carrying transition to persist the submitted form data.",
+        reads: [], writes: ["MockSectionData"], deletes: [] },
+      { id: "usp_WorkflowAudit_Insert",   short: "Audit_Insert",
+        desc: "Appends one audit row for every action ever taken — including SaveDraft where FromState equals ToState, making draft saves distinguishable in the history log.",
+        reads: [], writes: ["WorkflowAudit"], deletes: [] },
+    ]
+  },
+  {
+    id: "idempotency", label: "Idempotency", color: "#7e22ce",
+    procs: [
+      { id: "usp_IdempotencyRecord_GetByKey", short: "Idempotency_GetByKey",
+        desc: "Looks up a prior result by idempotency key (a hash of the full request). If found, the engine returns the stored JSON result immediately without re-executing the transition.",
+        reads: ["IdempotencyRecord"], writes: [], deletes: [] },
+      { id: "usp_IdempotencyRecord_Insert",   short: "Idempotency_Insert",
+        desc: "Stores the result of a successfully completed action so any duplicate requests can be safely replayed with the identical outcome.",
+        reads: [], writes: ["IdempotencyRecord"], deletes: [] },
+    ]
+  },
+  {
+    id: "context", label: "Context & Inspection", color: "#0369a1",
+    procs: [
+      { id: "usp_WorkflowContext_Get",    short: "Context_Get",
+        desc: "The 'what can I do right now?' query. Returns the current instance state, the open task (with label), and — filtered to the caller's roles — only the action buttons they are actually allowed to press. Powers the show-context command and a real UI's action toolbar.",
+        reads: ["WorkflowInstance","WorkflowDefinitionVersion","WorkflowStateDefinition","WorkflowTask","WorkflowTaskDefinition","WorkflowTransitionDefinition","WorkflowActionDefinition"], writes: [], deletes: [] },
+      { id: "usp_WorkflowInspection_Get", short: "Inspection_Get",
+        desc: "The 'show me everything' query. Returns the instance, all tasks (past and present), the complete audit log, and all outbox entries. Powers the show, show-tasks, show-history, and show-notifications commands.",
+        reads: ["WorkflowInstance","WorkflowDefinitionVersion","WorkflowTask","WorkflowAudit","NotificationOutbox"], writes: [], deletes: [] },
+    ]
+  },
+  {
+    id: "sla", label: "SLA Scanning", color: "#b45309",
+    procs: [
+      { id: "usp_Sla_GetScanSummary",             short: "Sla_GetScanSummary",
+        desc: "Quick dashboard before the scan runs: how many tasks with deadlines are currently open, and how many already have an SlaTaskOverdue notification queued? Printed by run-sla before processing.",
+        reads: ["WorkflowTask","WorkflowInstance","NotificationOutbox"], writes: [], deletes: [] },
+      { id: "usp_Sla_GetOverdueCandidates",        short: "Sla_GetOverdueCandidates",
+        desc: "Finds all tasks whose deadline has passed but that have not yet had an overdue alert queued in the outbox. The main query the SLA scanner iterates over.",
+        reads: ["WorkflowTask","WorkflowInstance","NotificationOutbox"], writes: [], deletes: [] },
+      { id: "usp_Sla_InsertOverdueNotification",   short: "Sla_InsertOverdueNotif",
+        desc: "For one overdue task, looks up the matching notification route and inserts an SlaTaskOverdue row into the outbox. Contains an NOT EXISTS guard so it is idempotent — safe to call twice.",
+        reads: ["WorkflowTask","WorkflowInstance","NotificationRoute"], writes: ["NotificationOutbox"], deletes: [] },
+    ]
+  },
+  {
+    id: "outbox", label: "Notification Outbox", color: "#b91c1c",
+    procs: [
+      { id: "usp_NotificationOutbox_Insert",                short: "Outbox_Insert",
+        desc: "Queues a notification for later delivery (Status=Pending). Called during a workflow transition when the TransitionDefinition specifies a NotificationRouteKey.",
+        reads: [], writes: ["NotificationOutbox"], deletes: [] },
+      { id: "usp_NotificationOutbox_GetClaimable",          short: "Outbox_GetClaimable",
+        desc: "Returns all Pending messages plus any Processing messages whose lease timestamp has expired. This is the background processor's pickup list before claiming individual rows.",
+        reads: ["NotificationOutbox"], writes: [], deletes: [] },
+      { id: "usp_NotificationOutbox_Claim",                 short: "Outbox_Claim",
+        desc: "Atomically marks one message as Processing with a unique token + timestamp. Only one worker can claim a message at a time. If the lease expires, another worker may re-claim it.",
+        reads: [], writes: ["NotificationOutbox"], deletes: [] },
+      { id: "usp_NotificationOutbox_GetByClaim",            short: "Outbox_GetByClaim",
+        desc: "Fetches a message only if the caller holds the matching claim token. Confirms the worker still owns the row before sending the notification.",
+        reads: ["NotificationOutbox"], writes: [], deletes: [] },
+      { id: "usp_NotificationOutbox_MarkSent",              short: "Outbox_MarkSent",
+        desc: "Marks a successfully delivered message as Sent and clears the lease. Requires the matching claim token — only the rightful worker can close the row.",
+        reads: [], writes: ["NotificationOutbox"], deletes: [] },
+      { id: "usp_NotificationOutbox_ReleaseClaimAfterFailure", short: "Outbox_ReleaseOnFailure",
+        desc: "On delivery failure, releases the claim (back to Pending), increments RetryCount, and records the LastError so it can be retried on the next processor run.",
+        reads: [], writes: ["NotificationOutbox"], deletes: [] },
+    ]
+  },
+  {
+    id: "util", label: "Developer Utilities", color: "#475569",
+    procs: [
+      { id: "usp_RuntimeData_Reset", short: "RuntimeData_Reset",
+        desc: "Wipes all runtime data for one instance: idempotency records, outbox messages, audit history, form data, tasks, and the instance row itself. Reports deleted-row counts per table. Used by start-workflow --reset and the demo script to get back to a clean slate.",
+        reads: [], writes: [],
+        deletes: ["IdempotencyRecord","NotificationOutbox","WorkflowAudit","MockSectionData","WorkflowTask","WorkflowInstance"] },
+    ]
+  },
+];
+
+// ── Flatten for easy lookup ──────────────────────────────────────
+const ALL_TABLES = TABLE_GROUPS.flatMap(g => g.tables.map(t => ({ ...t, groupId: g.id, groupLabel: g.label, groupColor: g.color })));
+const ALL_PROCS  = PROC_GROUPS.flatMap(g => g.procs.map(p => ({ ...p, groupId: g.id, groupLabel: g.label, groupColor: g.color })));
+
+// ═══════════════════════════════════════════════════════════════════
+//  BUILD MATRIX
+// ═══════════════════════════════════════════════════════════════════
+const matrix = document.getElementById('matrix');
+const N = ALL_TABLES.length; // 15
+
+// ── Helper: group spans for table headers ──────────────────────────
+function tableGroupSpans() {
+  const spans = [];
+  let cur = null;
+  ALL_TABLES.forEach((t, i) => {
+    if (!cur || cur.groupId !== t.groupId) {
+      cur = { groupId: t.groupId, groupLabel: t.groupLabel, groupColor: t.groupColor, start: i, count: 1 };
+      spans.push(cur);
+    } else {
+      cur.count++;
+    }
+  });
+  return spans;
+}
+
+const tgSpans = tableGroupSpans();
+
+// ── thead ──────────────────────────────────────────────────────────
+const thead = document.createElement('thead');
+
+// Row 1: group label row
+const trGLabel = document.createElement('tr');
+trGLabel.className = 'tg-label';
+// blank cell for proc-label column
+const blankGLabel = document.createElement('th');
+blankGLabel.className = 'th-empty';
+trGLabel.appendChild(blankGLabel);
+tgSpans.forEach(span => {
+  const th = document.createElement('th');
+  th.colSpan = span.count;
+  th.className = `glabel glabel-${span.groupId}`;
+  th.textContent = span.groupLabel;
+  trGLabel.appendChild(th);
+});
+thead.appendChild(trGLabel);
+
+// Row 2: colour band
+const trBand = document.createElement('tr');
+trBand.className = 'tg-band';
+const blankBand = document.createElement('th');
+blankBand.className = 'band-cell band-blank';
+trBand.appendChild(blankBand);
+ALL_TABLES.forEach(t => {
+  const th = document.createElement('th');
+  th.className = `band-cell band-${t.groupId}`;
+  trBand.appendChild(th);
+});
+thead.appendChild(trBand);
+
+// Row 3: table name headers (rotated)
+const trNames = document.createElement('tr');
+const blankNames = document.createElement('th');
+trNames.appendChild(blankNames);
+ALL_TABLES.forEach((t, i) => {
+  const th = document.createElement('th');
+  th.className = 'th-table';
+  th.dataset.tableIdx = i;
+  th.innerHTML = `<span class="th-inner">${t.short}</span>`;
+  th.title = t.id;
+  trNames.appendChild(th);
+});
+thead.appendChild(trNames);
+matrix.appendChild(thead);
+
+// ── tbody ──────────────────────────────────────────────────────────
+const tbody = document.createElement('tbody');
+
+let procGlobalIdx = 0;
+PROC_GROUPS.forEach(pg => {
+  // group separator row
+  const trSep = document.createElement('tr');
+  trSep.className = 'pg-row';
+  const tdSep = document.createElement('td');
+  tdSep.colSpan = N + 1;
+  tdSep.textContent = pg.label;
+  tdSep.style.color = pg.color;
+  trSep.appendChild(tdSep);
+  tbody.appendChild(trSep);
+
+  pg.procs.forEach(proc => {
+    const tr = document.createElement('tr');
+    tr.dataset.procIdx = procGlobalIdx;
+
+    // proc label cell
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'proc-label';
+    tdLabel.textContent = proc.short;
+    tdLabel.title = proc.id;
+    tdLabel.style.borderLeft = `3px solid ${pg.color}`;
+    tr.appendChild(tdLabel);
+
+    // data cells
+    ALL_TABLES.forEach((t, ti) => {
+      const td = document.createElement('td');
+      td.className = 'cell';
+      td.dataset.procIdx = procGlobalIdx;
+      td.dataset.tableIdx = ti;
+
+      const isRead   = proc.reads.includes(t.id);
+      const isWrite  = proc.writes.includes(t.id);
+      const isDelete = proc.deletes.includes(t.id);
+
+      if (isRead || isWrite || isDelete) {
+        const dot = document.createElement('div');
+        dot.className = 'dot ' + (isDelete ? 'dot-d' : isWrite ? 'dot-w' : 'dot-r');
+        td.appendChild(dot);
+        td.dataset.op = isDelete ? 'd' : isWrite ? 'w' : 'r';
+        td.dataset.hasData = '1';
+      }
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+    procGlobalIdx++;
+  });
+});
+
+matrix.appendChild(tbody);
+
+// ═══════════════════════════════════════════════════════════════════
+//  INTERACTION
+// ═══════════════════════════════════════════════════════════════════
+let selType  = null; // 'table' | 'proc'
+let selIdx   = null;
+
+const btnClear  = document.getElementById('btn-clear');
+const detailEl  = document.getElementById('detail');
+const detailBody= document.getElementById('detail-body');
+const dName     = document.getElementById('d-name');
+const dKind     = document.getElementById('d-kind');
+const dDesc     = document.getElementById('d-desc');
+const dTags     = document.getElementById('d-tags');
+
+function clearSel() {
+  selType = null; selIdx = null;
+  document.body.classList.remove('sel-active');
+  document.querySelectorAll('.sel').forEach(el => el.classList.remove('sel'));
+  document.querySelectorAll('.psel').forEach(el => el.classList.remove('psel'));
+  document.querySelectorAll('.hi').forEach(el => el.classList.remove('hi'));
+  btnClear.classList.remove('show');
+  detailBody.classList.remove('visible');
+  detailEl.querySelector('.detail-hint').style.display = '';
+}
+
+function applyTableSel(ti) {
+  clearSel();
+  selType = 'table'; selIdx = ti;
+  document.body.classList.add('sel-active');
+  btnClear.classList.add('show');
+
+  // highlight column header
+  document.querySelectorAll('.th-table').forEach(th => {
+    if (+th.dataset.tableIdx === ti) th.classList.add('sel');
+  });
+  // highlight cells in that column that have data
+  document.querySelectorAll(`.cell[data-table-idx="${ti}"][data-has-data="1"]`).forEach(td => {
+    td.classList.add('hi');
+    // also highlight the proc row label
+    const row = td.closest('tr');
+    if (row) row.classList.add('psel');
+  });
+
+  showTableDetail(ti);
+}
+
+function applyProcSel(pi) {
+  clearSel();
+  selType = 'proc'; selIdx = pi;
+  document.body.classList.add('sel-active');
+  btnClear.classList.add('show');
+
+  // highlight row
+  const row = document.querySelector(`tr[data-proc-idx="${pi}"]`);
+  if (row) row.classList.add('psel');
+
+  // highlight cells in that row that have data
+  document.querySelectorAll(`.cell[data-proc-idx="${pi}"][data-has-data="1"]`).forEach(td => {
+    td.classList.add('hi');
+    // highlight table header
+    const ti = +td.dataset.tableIdx;
+    document.querySelector(`.th-table[data-table-idx="${ti}"]`)?.classList.add('sel');
+  });
+
+  showProcDetail(pi);
+}
+
+function showTableDetail(ti) {
+  const t = ALL_TABLES[ti];
+  dName.textContent = t.id;
+  dKind.textContent = `Table · ${t.groupLabel}`;
+  dKind.style.color = t.groupColor;
+  dDesc.textContent = t.desc;
+
+  // find procs that touch this table
+  dTags.innerHTML = '';
+  ALL_PROCS.forEach(p => {
+    const isR = p.reads.includes(t.id);
+    const isW = p.writes.includes(t.id);
+    const isD = p.deletes.includes(t.id);
+    if (isR || isW || isD) {
+      const cls = isD ? 'tag-d' : isW ? 'tag-w' : 'tag-r';
+      const op  = isD ? 'DELETE' : isW ? 'WRITE' : 'READ';
+      const tag = document.createElement('span');
+      tag.className = `tag ${cls}`;
+      tag.textContent = `${op}: ${p.short}`;
+      tag.title = p.id;
+      dTags.appendChild(tag);
+    }
+  });
+
+  detailEl.querySelector('.detail-hint').style.display = 'none';
+  detailBody.classList.add('visible');
+}
+
+function showProcDetail(pi) {
+  const p = ALL_PROCS[pi];
+  dName.textContent = p.id;
+  dKind.textContent = `Stored Procedure · ${p.groupLabel}`;
+  dKind.style.color = p.groupColor;
+  dDesc.textContent = p.desc;
+
+  dTags.innerHTML = '';
+  p.reads.forEach(id => {
+    const tag = document.createElement('span'); tag.className = 'tag tag-r';
+    tag.textContent = `READ: ${id}`; dTags.appendChild(tag);
+  });
+  p.writes.forEach(id => {
+    const tag = document.createElement('span'); tag.className = 'tag tag-w';
+    tag.textContent = `WRITE: ${id}`; dTags.appendChild(tag);
+  });
+  p.deletes.forEach(id => {
+    const tag = document.createElement('span'); tag.className = 'tag tag-d';
+    tag.textContent = `DELETE: ${id}`; dTags.appendChild(tag);
+  });
+
+  detailEl.querySelector('.detail-hint').style.display = 'none';
+  detailBody.classList.add('visible');
+}
+
+// ── Event listeners ───────────────────────────────────────────────
+matrix.addEventListener('click', e => {
+  const thTable = e.target.closest('.th-table');
+  if (thTable) { applyTableSel(+thTable.dataset.tableIdx); return; }
+
+  const procLabel = e.target.closest('.proc-label');
+  if (procLabel) {
+    const tr = procLabel.closest('tr');
+    if (tr?.dataset.procIdx !== undefined) applyProcSel(+tr.dataset.procIdx);
+    return;
+  }
+  // clicking an empty cell clears
+  clearSel();
+});
+
+btnClear.addEventListener('click', clearSel);
+
+// ── Tooltip ───────────────────────────────────────────────────────
+const ttEl = document.getElementById('tt');
+const OP_LABELS = { r: 'READS', w: 'WRITES', d: 'DELETES' };
+const OP_CLS    = { r: 'tt-op-r', w: 'tt-op-w', d: 'tt-op-d' };
+
+matrix.addEventListener('mousemove', e => {
+  const cell = e.target.closest('.cell[data-has-data="1"]');
+  if (!cell) { ttEl.classList.remove('show'); return; }
+
+  const pi = +cell.dataset.procIdx;
+  const ti = +cell.dataset.tableIdx;
+  const op = cell.dataset.op;
+  const proc  = ALL_PROCS[pi];
+  const table = ALL_TABLES[ti];
+
+  ttEl.innerHTML =
+    `<div><span class="tt-op ${OP_CLS[op]}">${OP_LABELS[op]}</span> <span class="tt-table">${table.id}</span></div>` +
+    `<div class="tt-proc">${proc.id}</div>`;
+
+  const x = e.clientX + 14, y = e.clientY + 10;
+  ttEl.style.left = x + 'px';
+  ttEl.style.top  = y + 'px';
+  ttEl.classList.add('show');
+});
+
+matrix.addEventListener('mouseleave', () => ttEl.classList.remove('show'));
+</script>
+</body>
+</html>
