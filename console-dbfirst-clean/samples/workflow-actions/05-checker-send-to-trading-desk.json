@@ -1,0 +1,9 @@
+{
+  "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-05-checker-send-to-trading-desk", "correlationId": "corr-sample-05", "requestedAtUtc": "2030-01-15T15:34:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
+  "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
+  "actor": { "userId": "checker1", "displayName": "Checker User One", "roles": ["Checker"] },
+  "uiAction": { "sectionKey": "Checker", "buttonKey": "CheckerPrimary", "buttonLabelShown": "Send to Trading Desk", "saveAsDraft": false },
+  "dataSave": { "sectionKey": "Checker", "payload": { "decision": "Approve", "comment": "Send to Trading Desk." } },
+  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "CheckerReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "CheckerReviewTask", "expectedInstanceVersion": 2, "actionKey": "CheckerSendToTradingDesk", "actionReason": "Checker sent to Trading Desk.", "idempotencyKey": "sample-05-checker-send-to-trading-desk" },
+  "testExpectations": { "expectedResult": "Success", "expectedOldState": "CheckerReview", "expectedNewState": "TradingDeskReview", "expectedClosedTaskKey": "CheckerReviewTask", "expectedCreatedTaskKey": "TradingDeskReviewTask", "expectedAssignedRole": "TradingDesk", "expectedNotificationType": "WorkflowTaskAssigned", "expectedAuditAction": "CheckerSendToTradingDesk" }
+}

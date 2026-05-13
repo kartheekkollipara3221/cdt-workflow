@@ -1,0 +1,89 @@
+using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.Infrastructure.Persistence.Seed;
+using WorkflowEngine.Infrastructure.Persistence.Verification;
+
+namespace WorkflowEngine.Tests;
+
+public sealed class SeedDataSmokeTests
+{
+    [Fact]
+    public void PortfolioTradeSeedVerificationPassesOnSqlServer()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        TestDatabaseFirst.InitializeSchema(dbContext);
+
+        var seedService = new WorkflowSeedService(dbContext, TimeProvider.System);
+        seedService.SeedPortfolioTrade();
+
+        var result = new SeedVerificationService(dbContext).Verify();
+
+        Assert.True(result.Passed, string.Join(Environment.NewLine, result.Errors));
+    }
+
+    [Fact]
+    public void PortfolioTradeTransitionsMatchRequiredMatrix()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        TestDatabaseFirst.InitializeSchema(dbContext);
+
+        new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
+        var versionId = GetPortfolioTradeVersionId(dbContext);
+
+        var transitions = dbContext.WorkflowTransitionDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .Select(row => new
+            {
+                row.FromStateKey,
+                row.ActionKey,
+                row.AllowedRoleKey,
+                row.ToStateKey,
+                row.TaskToCloseKey,
+                row.TaskToCreateKey,
+                row.NotificationRouteKey
+            })
+            .ToList();
+
+        Assert.Equal(11, transitions.Count);
+        Assert.Contains(transitions, row => row.FromStateKey == "ReturnedToMaker" && row.ActionKey == "ResubmitForChecker" && row.TaskToCloseKey == "MakerReworkTask");
+        Assert.Contains(transitions, row => row.FromStateKey == "CheckerReview" && row.ActionKey == "CheckerReturnToMaker" && row.TaskToCreateKey == "MakerReworkTask");
+        Assert.Contains(transitions, row => row.FromStateKey == "TradingDeskReview" && row.ActionKey == "TradingReturnToMaker" && row.TaskToCreateKey == "MakerReworkTask");
+    }
+
+    [Fact]
+    public void AdminDemoOverrideIsNotSeededAndMakerReworkHasNoSla()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        TestDatabaseFirst.InitializeSchema(dbContext);
+
+        new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
+        var versionId = GetPortfolioTradeVersionId(dbContext);
+
+        Assert.DoesNotContain(dbContext.WorkflowRoleDefinitions.Where(row => row.WorkflowDefinitionVersionId == versionId), row => row.RoleKey == "AdminDemoOverride");
+        Assert.DoesNotContain(dbContext.WorkflowTransitionDefinitions.Where(row => row.WorkflowDefinitionVersionId == versionId), row => row.AllowedRoleKey == "AdminDemoOverride");
+
+        var makerRework = Assert.Single(dbContext.WorkflowTaskDefinitions.Where(row =>
+            row.WorkflowDefinitionVersionId == versionId && row.TaskKey == "MakerReworkTask"));
+        Assert.Null(makerRework.SlaPolicyKey);
+    }
+
+    private static WorkflowDbContext CreateDbContext()
+    {
+        var connectionString = TestSqlConnectionFactory.ConnectionString("burrito_phase2_tests");
+        var options = new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(connectionString)
+            .Options;
+
+        return new WorkflowDbContext(options);
+    }
+
+    private static long GetPortfolioTradeVersionId(WorkflowDbContext dbContext)
+    {
+        var definition = dbContext.WorkflowDefinitions.Single(row => row.WorkflowKey == "PortfolioTrade");
+        return dbContext.WorkflowDefinitionVersions.Single(row =>
+            row.WorkflowDefinitionId == definition.Id && row.VersionNumber == 1).Id;
+    }
+}

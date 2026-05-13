@@ -1,0 +1,9 @@
+{
+  "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-04-maker-resubmit-for-checker", "correlationId": "corr-sample-04", "requestedAtUtc": "2030-01-15T15:33:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
+  "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
+  "actor": { "userId": "maker1", "displayName": "Maker User One", "roles": ["Maker"] },
+  "uiAction": { "sectionKey": "Maker", "buttonKey": "MakerPrimary", "buttonLabelShown": "Resubmit", "saveAsDraft": false },
+  "dataSave": { "sectionKey": "Maker", "payload": { "comment": "Corrections made." } },
+  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "ReturnedToMaker", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "MakerReworkTask", "expectedInstanceVersion": 3, "actionKey": "ResubmitForChecker", "actionReason": "Maker resubmitted after corrections.", "idempotencyKey": "sample-04-maker-resubmit-for-checker" },
+  "testExpectations": { "expectedResult": "Success", "expectedOldState": "ReturnedToMaker", "expectedNewState": "CheckerReview", "expectedClosedTaskKey": "MakerReworkTask", "expectedCreatedTaskKey": "CheckerReviewTask", "expectedAssignedRole": "Checker", "expectedNotificationType": "WorkflowTaskAssigned", "expectedAuditAction": "ResubmitForChecker" }
+}

@@ -1,0 +1,9 @@
+{
+  "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-03-checker-return-to-maker", "correlationId": "corr-sample-03", "requestedAtUtc": "2030-01-15T15:32:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
+  "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
+  "actor": { "userId": "checker1", "displayName": "Checker User One", "roles": ["Checker"] },
+  "uiAction": { "sectionKey": "Checker", "buttonKey": "CheckerPrimary", "buttonLabelShown": "Return to Maker", "saveAsDraft": false },
+  "dataSave": { "sectionKey": "Checker", "payload": { "decision": "Return", "comment": "Please correct details." } },
+  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "CheckerReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "CheckerReviewTask", "expectedInstanceVersion": 2, "actionKey": "CheckerReturnToMaker", "actionReason": "Checker returned to Maker.", "idempotencyKey": "sample-03-checker-return-to-maker" },
+  "testExpectations": { "expectedResult": "Success", "expectedOldState": "CheckerReview", "expectedNewState": "ReturnedToMaker", "expectedClosedTaskKey": "CheckerReviewTask", "expectedCreatedTaskKey": "MakerReworkTask", "expectedAssignedRole": "Maker", "expectedNotificationType": "WorkflowReturnedToMaker", "expectedAuditAction": "CheckerReturnToMaker" }
+}

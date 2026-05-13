@@ -1,0 +1,9 @@
+{
+  "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-10-trading-rework-trade-executed", "correlationId": "corr-sample-10", "requestedAtUtc": "2030-01-15T15:39:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
+  "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
+  "actor": { "userId": "trader1", "displayName": "Trading User One", "roles": ["TradingDesk"] },
+  "uiAction": { "sectionKey": "TradingDesk", "buttonKey": "TradingPrimary", "buttonLabelShown": "Trade Executed", "saveAsDraft": false },
+  "dataSave": { "sectionKey": "TradingDesk", "payload": { "executionRef": "EX-REWORK-1001" } },
+  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "TradingDeskRework", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "TradingDeskReworkTask", "expectedInstanceVersion": 5, "actionKey": "TradingTradeExecuted", "actionReason": "Trading rework executed.", "idempotencyKey": "sample-10-trading-rework-trade-executed" },
+  "testExpectations": { "expectedResult": "Success", "expectedOldState": "TradingDeskRework", "expectedNewState": "BdrmClientServiceReview", "expectedClosedTaskKey": "TradingDeskReworkTask", "expectedCreatedTaskKey": "BdrmClientServiceReviewTask", "expectedAssignedRole": "BDRMClientService", "expectedNotificationType": "WorkflowTaskAssigned", "expectedAuditAction": "TradingTradeExecuted" }
+}

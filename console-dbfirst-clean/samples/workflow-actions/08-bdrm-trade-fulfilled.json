@@ -1,0 +1,9 @@
+{
+  "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-08-bdrm-trade-fulfilled", "correlationId": "corr-sample-08", "requestedAtUtc": "2030-01-15T15:37:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
+  "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
+  "actor": { "userId": "bdrm1", "displayName": "BDRM User One", "roles": ["BDRMClientService"] },
+  "uiAction": { "sectionKey": "BDRMClientService", "buttonKey": "BdrmPrimary", "buttonLabelShown": "Trade Fulfilled", "saveAsDraft": false },
+  "dataSave": { "sectionKey": "BDRMClientService", "payload": { "fulfillmentRef": "FUL-1001" } },
+  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "BdrmClientServiceReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "BdrmClientServiceReviewTask", "expectedInstanceVersion": 6, "actionKey": "BdrmTradeFulfilled", "actionReason": "Trade fulfilled.", "idempotencyKey": "sample-08-bdrm-trade-fulfilled" },
+  "testExpectations": { "expectedResult": "Success", "expectedOldState": "BdrmClientServiceReview", "expectedNewState": "Completed", "expectedClosedTaskKey": "BdrmClientServiceReviewTask", "expectedAuditAction": "BdrmTradeFulfilled" }
+}

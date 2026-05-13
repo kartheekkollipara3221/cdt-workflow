@@ -1,0 +1,18 @@
+{
+  "filters": {
+    "excludeTraits": [
+      {
+        "name": "Category",
+        "value": "Smtp"
+      },
+      {
+        "name": "Category",
+        "value": "FreshClone"
+      },
+      {
+        "name": "Category",
+        "value": "Performance"
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-01-save-draft", "correlationId": "corr-sample-01", "requestedAtUtc": "2030-01-15T15:30:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
+  "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
+  "actor": { "userId": "maker1", "displayName": "Maker User One", "roles": ["Maker"] },
+  "uiAction": { "sectionKey": "Maker", "buttonKey": "MakerPrimary", "buttonLabelShown": "Save Draft", "saveAsDraft": true },
+  "dataSave": { "sectionKey": "Maker", "payload": { "comment": "Draft saved." } },
+  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "Draft", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": null, "expectedInstanceVersion": 1, "actionKey": "SaveDraft", "actionReason": "Maker saved draft.", "idempotencyKey": "sample-01-save-draft" },
+  "testExpectations": { "expectedResult": "Success", "expectedOldState": "Draft", "expectedNewState": "Draft", "expectedAuditAction": "SaveDraft" }
+}
