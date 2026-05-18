@@ -104,6 +104,7 @@ public sealed class FreshCloneWalkthroughTests
             RedirectStandardError = true,
             UseShellExecute = false
         };
+        startInfo.Environment["ConnectionStrings__DefaultConnection"] = TestSqlConnectionFactory.ConnectionString("burrito");
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {fileName} {arguments}.");
         var stdout = process.StandardOutput.ReadToEnd();
         var stderr = process.StandardError.ReadToEnd();

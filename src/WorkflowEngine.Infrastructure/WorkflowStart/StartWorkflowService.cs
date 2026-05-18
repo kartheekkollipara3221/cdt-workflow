@@ -87,6 +87,7 @@ public sealed class StartWorkflowService(
                 .Where(row => row.WorkflowInstanceId == workflowInstanceId)
                 .ExecuteDelete());
 
+        dbContext.ChangeTracker.Clear();
         var envelope = InsertFreshInstance(request, workflowInstanceId);
         transaction.Commit();
         return new StartWorkflowResult(envelope, counts);

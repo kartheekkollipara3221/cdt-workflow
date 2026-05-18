@@ -24,6 +24,7 @@ public sealed class WorkflowExecutionValidationTests
         using var dbContext = CreateSeededContext();
         var envelope = Envelope();
         var request = Request(envelope);
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
         dbContext.IdempotencyRecords.Add(new IdempotencyRecord
         {
             IdempotencyKey = request.Normalized.EffectiveIdempotencyKey,
@@ -57,6 +58,7 @@ public sealed class WorkflowExecutionValidationTests
     {
         using var dbContext = CreateSeededContext();
         var request = Request(Envelope());
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
         dbContext.IdempotencyRecords.Add(new IdempotencyRecord
         {
             IdempotencyKey = request.Normalized.EffectiveIdempotencyKey,
@@ -348,7 +350,22 @@ public sealed class WorkflowExecutionValidationTests
         envelope.Workflow.ExpectedInstanceVersion = expectedVersion;
         envelope.Workflow.ActionKey = actionKey;
         envelope.Actor!.Roles = roles?.ToList() ?? ["Maker"];
+        var (sectionKey, buttonKey) = ActionUi(actionKey);
+        envelope.UiAction!.SectionKey = sectionKey;
+        envelope.UiAction.ButtonKey = buttonKey;
+        envelope.DataSave!.SectionKey = sectionKey;
         return envelope;
+    }
+
+    private static (string SectionKey, string ButtonKey) ActionUi(string actionKey)
+    {
+        return actionKey switch
+        {
+            "CheckerReturnToMaker" or "CheckerSendToTradingDesk" => ("Checker", "CheckerPrimary"),
+            "TradingReturnToMaker" or "TradingTradeExecuted" => ("TradingDesk", "TradingPrimary"),
+            "BdrmTradeFulfilled" or "BdrmTradeNotExecutedProperly" => ("BDRMClientService", "BdrmPrimary"),
+            _ => ("Maker", "MakerPrimary")
+        };
     }
 
     private static void AddInstance(

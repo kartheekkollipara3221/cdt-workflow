@@ -67,6 +67,8 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.HasIndex("IdempotencyKey")
                         .IsUnique();
 
+                    b.HasIndex("WorkflowInstanceId");
+
                     b.ToTable("IdempotencyRecord", (string)null);
                 });
 
@@ -200,6 +202,8 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.HasIndex("WorkflowTaskId", "NotificationType")
                         .IsUnique()
                         .HasFilter("[NotificationType] = 'SlaTaskOverdue'");
+
+                    b.HasIndex("WorkflowInstanceId");
 
                     b.ToTable("NotificationOutbox", t =>
                         {

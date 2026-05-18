@@ -29,6 +29,22 @@ public sealed class ProcessNotificationOutboxService(
         var processed = new List<ProcessedNotification>();
         var warnings = new List<string>();
 
+        if (pendingRows.Count == 0)
+        {
+            var activeClaimedRows = await dbContext.NotificationOutbox
+                .AsNoTracking()
+                .Where(row =>
+                    row.Status == "Processing"
+                    && row.ProcessingStartedAtUtc != null
+                    && row.ProcessingStartedAtUtc > leaseCutoff)
+                .OrderBy(row => row.CreatedAtUtc)
+                .ThenBy(row => row.Id)
+                .Select(row => row.Id)
+                .ToListAsync(cancellationToken);
+
+            warnings.AddRange(activeClaimedRows.Select(id => $"row {id} was already claimed by another process"));
+        }
+
         for (var index = 0; index < pendingRows.Count; index++)
         {
             var row = pendingRows[index];

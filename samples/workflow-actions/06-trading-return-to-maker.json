@@ -2,7 +2,7 @@
   "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-06-trading-return-to-maker", "correlationId": "corr-sample-06", "requestedAtUtc": "2030-01-15T15:35:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
   "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
   "actor": { "userId": "trader1", "displayName": "Trading User One", "roles": ["TradingDesk"] },
-  "uiAction": { "sectionKey": "TradingDesk", "buttonKey": "TradingReturnToMaker", "buttonLabelShown": "Return to Maker", "saveAsDraft": false },
+  "uiAction": { "sectionKey": "TradingDesk", "buttonKey": "TradingPrimary", "buttonLabelShown": "Return to Maker", "saveAsDraft": false },
   "dataSave": { "sectionKey": "TradingDesk", "payload": { "decision": "Return", "comment": "Trading details need correction." } },
   "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "TradingDeskReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "TradingDeskReviewTask", "expectedInstanceVersion": 3, "actionKey": "TradingReturnToMaker", "actionReason": "Trading Desk returned to Maker.", "idempotencyKey": "sample-06-trading-return-to-maker" },
   "testExpectations": { "expectedResult": "Success", "expectedOldState": "TradingDeskReview", "expectedNewState": "ReturnedToMaker", "expectedClosedTaskKey": "TradingDeskReviewTask", "expectedCreatedTaskKey": "MakerReworkTask", "expectedAssignedRole": "Maker", "expectedNotificationType": "WorkflowReturnedToMaker", "expectedAuditAction": "TradingReturnToMaker" }

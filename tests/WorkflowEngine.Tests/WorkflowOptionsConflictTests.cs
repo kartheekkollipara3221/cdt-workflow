@@ -23,7 +23,7 @@ public sealed class WorkflowOptionsConflictTests
 
         var result = ExecuteWithCapturedConsole(
             dbContext,
-            Envelope("CheckerReturnToMaker", "Checker", "CheckerReturnToMaker", "CheckerReview", 2, "CheckerReviewTask", ["Checker"], "checker1", new() { CloseCurrentTask = false }));
+            Envelope("CheckerReturnToMaker", "Checker", "CheckerPrimary", "CheckerReview", 2, "CheckerReviewTask", ["Checker"], "checker1", new() { CloseCurrentTask = false }));
 
         Assert.Contains("WARN: workflow.options.closeCurrentTask = false conflicts with metadata; using metadata", result.Stderr);
         Assert.Contains(dbContext.WorkflowTasks, row => row.TaskKey == "CheckerReviewTask" && row.Status == "Completed");
@@ -115,7 +115,7 @@ public sealed class WorkflowOptionsConflictTests
 
         var result = ExecuteWithCapturedConsole(
             dbContext,
-            Envelope("CheckerReturnToMaker", "Checker", "CheckerReturnToMaker", "CheckerReview", 2, "CheckerReviewTask", ["Checker"], "checker1", new() { EvaluateSla = true }));
+            Envelope("CheckerReturnToMaker", "Checker", "CheckerPrimary", "CheckerReview", 2, "CheckerReviewTask", ["Checker"], "checker1", new() { EvaluateSla = true }));
 
         Assert.Contains("WARN: workflow.options.evaluateSla = true conflicts with metadata; using metadata", result.Stderr);
         Assert.Null(dbContext.WorkflowTasks.Single(row => row.TaskKey == "MakerReworkTask").DueAtUtc);

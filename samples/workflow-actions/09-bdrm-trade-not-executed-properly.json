@@ -2,7 +2,7 @@
   "request": { "commandType": "ExecuteWorkflowAction", "commandVersion": 1, "clientActionId": "sample-09-bdrm-trade-not-executed-properly", "correlationId": "corr-sample-09", "requestedAtUtc": "2030-01-15T15:38:00Z", "sourceSystem": "PortfolioTradeConsoleSample" },
   "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001", "objectVersion": 1 },
   "actor": { "userId": "bdrm1", "displayName": "BDRM User One", "roles": ["BDRMClientService"] },
-  "uiAction": { "sectionKey": "BDRMClientService", "buttonKey": "BdrmTradeNotExecutedProperly", "buttonLabelShown": "Trade Not Executed Properly", "saveAsDraft": false },
+  "uiAction": { "sectionKey": "BDRMClientService", "buttonKey": "BdrmPrimary", "buttonLabelShown": "Trade Not Executed Properly", "saveAsDraft": false },
   "dataSave": { "sectionKey": "BDRMClientService", "payload": { "issue": "Execution mismatch." } },
   "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "BdrmClientServiceReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "BdrmClientServiceReviewTask", "expectedInstanceVersion": 4, "actionKey": "BdrmTradeNotExecutedProperly", "actionReason": "BDRM found execution issue.", "idempotencyKey": "sample-09-bdrm-trade-not-executed-properly" },
   "testExpectations": { "expectedResult": "Success", "expectedOldState": "BdrmClientServiceReview", "expectedNewState": "TradingDeskRework", "expectedClosedTaskKey": "BdrmClientServiceReviewTask", "expectedCreatedTaskKey": "TradingDeskReworkTask", "expectedAssignedRole": "TradingDesk", "expectedNotificationType": "WorkflowTaskAssigned", "expectedAuditAction": "BdrmTradeNotExecutedProperly" }

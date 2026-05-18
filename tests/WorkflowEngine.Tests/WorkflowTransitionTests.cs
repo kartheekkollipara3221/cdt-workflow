@@ -86,7 +86,7 @@ public sealed class WorkflowTransitionTests
         var result = CreateService(dbContext).Execute(Request(Envelope(
             actionKey: "CheckerReturnToMaker",
             sectionKey: "Checker",
-            buttonKey: "CheckerReturnToMaker",
+            buttonKey: "CheckerPrimary",
             expectedState: "CheckerReview",
             expectedVersion: 2,
             expectedTaskKey: "CheckerReviewTask",
@@ -161,7 +161,7 @@ public sealed class WorkflowTransitionTests
         var result = CreateService(dbContext).Execute(Request(Envelope(
             actionKey: "CheckerReturnToMaker",
             sectionKey: "Checker",
-            buttonKey: "CheckerReturnToMaker",
+            buttonKey: "CheckerPrimary",
             expectedState: "CheckerReview",
             expectedVersion: 2,
             roles: ["Checker"],
