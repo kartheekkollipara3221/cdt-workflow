@@ -18,6 +18,7 @@ CLAUDE.md
 
 # Local generated review/export artifacts
 FULL_PROJECT_REVIEW.html
+bundle-output/
 
 # Local scratch copies and nested repos
 api/cet/
