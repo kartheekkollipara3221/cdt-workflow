@@ -6,3 +6,22 @@ obj/
 TestResults/
 *.user
 *.suo
+
+# IDE workspace caches
+.vs/
+**/.vs/
+
+# Local agent/tooling state
+.claude/
+CLAUDE.md
+*.local.json
+
+# Local generated review/export artifacts
+FULL_PROJECT_REVIEW.html
+
+# Local scratch copies and nested repos
+api/cet/
+console-dbfirst-clean/
+
+# Accidental duplicate generated docs under the source tree
+src/docs/workflow-map/
