@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WorkflowEngine.WorkflowApi/WorkflowEngine.WorkflowApi.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WorkflowEngine.WorkflowApi.Tests/WorkflowEngine.WorkflowApi.Tests.csproj" />
+  </Folder>
+  <Project Path="../src/WorkflowEngine.Application/WorkflowEngine.Application.csproj" />
+  <Project Path="../src/WorkflowEngine.Domain/WorkflowEngine.Domain.csproj" />
+  <Project Path="../src/WorkflowEngine.Infrastructure/WorkflowEngine.Infrastructure.csproj" />
+</Solution>
