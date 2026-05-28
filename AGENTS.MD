@@ -50,3 +50,19 @@ Seed verification run:
 Sample JSON executed:
 Files updated:
 Open issues:
+
+## Long-running Codex work
+
+For multi-step work, maintain `CODEX_HANDOFF.md`.
+
+Update it before ending a session or when context is getting low. Include:
+
+- Current goal
+- Completed changes
+- Changed files
+- Build/test status
+- Remaining tasks
+- Known risks
+- Next-session prompt
+
+Do not rely only on chat history for project state.

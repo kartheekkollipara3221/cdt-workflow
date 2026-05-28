@@ -42,6 +42,11 @@ public sealed class WorkflowExecutionService(
             return resultBuilder.BuildWorkflowInstanceNotFound(normalized, request.RequestHash, workflowInstanceId);
         }
 
+        if (request.DeriveIdentityFromPersistence)
+        {
+            ApplyPersistedIdentity(envelope, instance);
+        }
+
         var identityValidation = ValidateEnvelopeIdentity(normalized, instance);
         if (identityValidation is not null)
         {
@@ -81,10 +86,13 @@ public sealed class WorkflowExecutionService(
                 $"Action '{actionKey}' is not defined for workflow definition version {versionNumber}.");
         }
 
-        var actionEchoValidation = ValidateActionEcho(normalized, actionDefinition);
-        if (actionEchoValidation is not null)
+        if (request.ValidateActionEcho)
         {
-            return actionEchoValidation;
+            var actionEchoValidation = ValidateActionEcho(normalized, actionDefinition);
+            if (actionEchoValidation is not null)
+            {
+                return actionEchoValidation;
+            }
         }
 
         var transitions = dbContext.WorkflowTransitionDefinitions
@@ -193,6 +201,17 @@ public sealed class WorkflowExecutionService(
         return errors.Count == 0
             ? null
             : resultBuilder.BuildValidationFailed(normalized, errors);
+    }
+
+    private static void ApplyPersistedIdentity(WorkflowActionEnvelope envelope, WorkflowInstance instance)
+    {
+        envelope.Workflow ??= new WorkflowActionBlock();
+        envelope.Workflow.WorkflowKey = instance.WorkflowKey;
+        envelope.BusinessObject = new WorkflowBusinessObject
+        {
+            ObjectType = instance.BusinessObjectType,
+            ObjectId = instance.BusinessObjectId
+        };
     }
 
     private WorkflowActionResultEnvelope? ValidateActionEcho(
@@ -316,16 +335,19 @@ public sealed class WorkflowExecutionService(
 
             var oldState = instance.CurrentStateKey;
 
-            dbContext.MockSectionData.Add(new MockSectionData
+            if (request.PersistSectionData)
             {
-                BusinessObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
-                BusinessObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty,
-                SectionKey = envelope.DataSave?.SectionKey ?? string.Empty,
-                PayloadJson = envelope.DataSave?.Payload.GetRawText() ?? "{}",
-                SavedByUserId = envelope.Actor?.UserId ?? string.Empty,
-                SavedAtUtc = now,
-                CorrelationId = normalized.EffectiveCorrelationId
-            });
+                dbContext.MockSectionData.Add(new MockSectionData
+                {
+                    BusinessObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
+                    BusinessObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty,
+                    SectionKey = envelope.DataSave?.SectionKey ?? string.Empty,
+                    PayloadJson = envelope.DataSave?.Payload.GetRawText() ?? "{}",
+                    SavedByUserId = envelope.Actor?.UserId ?? string.Empty,
+                    SavedAtUtc = now,
+                    CorrelationId = normalized.EffectiveCorrelationId
+                });
+            }
 
             var isSaveDraft = string.Equals(workflow.ActionKey, "SaveDraft", StringComparison.Ordinal);
             if (!isSaveDraft)

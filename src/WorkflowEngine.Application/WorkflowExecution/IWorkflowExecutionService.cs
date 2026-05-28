@@ -11,4 +11,11 @@ public interface IWorkflowExecutionService
 public sealed record WorkflowExecutionRequest(
     NormalizedWorkflowAction Normalized,
     string RequestHash,
-    bool AdminOverride);
+    bool AdminOverride)
+{
+    public bool DeriveIdentityFromPersistence { get; init; }
+
+    public bool ValidateActionEcho { get; init; } = true;
+
+    public bool PersistSectionData { get; init; } = true;
+}

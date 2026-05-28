@@ -3,7 +3,10 @@ using System.Xml.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using WorkflowEngine.Application.Context;
+using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.WorkflowApi.Controllers;
 using WorkflowEngine.WorkflowApi.Services;
 
@@ -34,7 +37,7 @@ public sealed class WorkflowApiProjectStructureTests
     }
 
     [Fact]
-    public void PhaseOneApiUsesControllersAndDoesNotExposeConsoleOrButtonClickRoutes()
+    public void WorkflowApiUsesControllersAndDoesNotExposeConsoleCommands()
     {
         var controllerTypes = typeof(WorkflowContextController).Assembly.GetTypes()
             .Where(type => typeof(ControllerBase).IsAssignableFrom(type) && !type.IsAbstract)
@@ -46,8 +49,14 @@ public sealed class WorkflowApiProjectStructureTests
             Directory.GetFiles(sourceDirectory, "*.cs", SearchOption.AllDirectories)
                 .Select(File.ReadAllText));
 
-        Assert.Single(controllerTypes);
-        Assert.Contains("api/workflow-instances/{workflowinstanceid}/context", routeTemplates);
+        Assert.Equal(3, controllerTypes.Count);
+        Assert.Contains(typeof(WorkflowActionController), controllerTypes);
+        Assert.Contains(typeof(WorkflowContextController), controllerTypes);
+        Assert.Contains(typeof(WorkflowStartController), controllerTypes);
+        Assert.Contains("v1/workflowaction", routeTemplates);
+        Assert.Contains("v1/workflowcontext", routeTemplates);
+        Assert.Contains("v1/workflowstart", routeTemplates);
+        Assert.DoesNotContain("api/workflow-instances/{workflowinstanceid}/context", routeTemplates);
         Assert.Contains("MapControllers(", sourceText, StringComparison.Ordinal);
         Assert.DoesNotContain("MapGet(", sourceText, StringComparison.Ordinal);
         Assert.DoesNotContain("MapPost(", sourceText, StringComparison.Ordinal);
@@ -59,11 +68,12 @@ public sealed class WorkflowApiProjectStructureTests
         Assert.DoesNotContain("verify-seed", sourceText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("admin-override", sourceText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("MockSectionData", sourceText, StringComparison.Ordinal);
-        Assert.DoesNotContain("WorkflowActionEnvelope", sourceText, StringComparison.Ordinal);
+        Assert.DoesNotContain("[FromBody] WorkflowActionEnvelope", sourceText, StringComparison.Ordinal);
+        Assert.Contains("[FromBody] WorkflowActionRequest", sourceText, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ConfigureServicesRegistersWorkflowContextControllerDependencies()
+    public void ConfigureServicesRegistersWorkflowControllerDependencies()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -80,7 +90,17 @@ public sealed class WorkflowApiProjectStructureTests
         using var scope = provider.CreateScope();
 
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowContextReader>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowExecutionService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowActorResolver>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<WorkflowActionEnvelopeNormalizer>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<CanonicalRequestHasher>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowActionService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowContextQueryService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowStartService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<WorkflowEngine.Application.WorkflowStart.IStartWorkflowService>());
+
+        var jsonOptions = provider.GetRequiredService<IOptions<JsonOptions>>();
+        Assert.Null(jsonOptions.Value.JsonSerializerOptions.PropertyNamingPolicy);
     }
 
     private static IEnumerable<string> GetRouteTemplates(Type controllerType)
@@ -92,6 +112,11 @@ public sealed class WorkflowApiProjectStructureTests
 
         foreach (var method in controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public))
         {
+            foreach (var route in method.GetCustomAttributes<RouteAttribute>())
+            {
+                yield return route.Template;
+            }
+
             foreach (var httpMethod in method.GetCustomAttributes<HttpMethodAttribute>())
             {
                 if (!string.IsNullOrWhiteSpace(httpMethod.Template))

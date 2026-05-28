@@ -1,58 +1,29 @@
 using Microsoft.AspNetCore.Mvc;
-using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
+using WorkflowEngine.WorkflowApi.Models;
 using WorkflowEngine.WorkflowApi.Services;
 
 namespace WorkflowEngine.WorkflowApi.Controllers;
 
 [ApiController]
-[Route("api/workflow-instances/{workflowInstanceId}/context")]
 public sealed class WorkflowContextController(
-    IWorkflowContextReader workflowContextReader,
-    IWorkflowActorResolver actorResolver) : ControllerBase
+    IWorkflowContextQueryService workflowContextQueryService) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(WorkflowContextResponse), StatusCodes.Status200OK)]
+    [Route("v1/WorkflowContext")]
+    [ProducesResponseType(typeof(WorkflowContextApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public ActionResult<WorkflowContextResponse> Get(string workflowInstanceId)
+    public ActionResult GetWorkflowContext(
+        [FromQuery] string workflowInstanceId,
+        [FromHeader(Name = "X-Workflow-UserId")] string? workflowUserId = null,
+        [FromHeader(Name = "X-Workflow-Roles")] string? workflowRoles = null,
+        [FromHeader(Name = "X-Workflow-DisplayName")] string? workflowDisplayName = null)
     {
-        if (string.IsNullOrWhiteSpace(workflowInstanceId))
-        {
-            return Problem(
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "Invalid workflow context request.",
-                detail: "workflowInstanceId is required.");
-        }
+        var workflowContext = workflowContextQueryService.GetWorkflowContext(HttpContext, workflowInstanceId);
 
-        WorkflowActorSnapshot actor;
-        try
-        {
-            actor = actorResolver.Resolve(HttpContext);
-        }
-        catch (WorkflowActorResolutionException exception)
-        {
-            return Problem(
-                statusCode: exception.StatusCode,
-                title: exception.Title,
-                detail: exception.Detail);
-        }
-
-        try
-        {
-            return workflowContextReader.Read(new WorkflowContextReadRequest(
-                workflowInstanceId.Trim(),
-                actor.UserId,
-                actor.Roles));
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return Problem(
-                statusCode: StatusCodes.Status404NotFound,
-                title: "Workflow instance was not found.",
-                detail: exception.Message);
-        }
+        return Ok(new WorkflowContextApiResponse(new WorkflowContextApiResult(workflowContext.WorkflowContext)));
     }
 }

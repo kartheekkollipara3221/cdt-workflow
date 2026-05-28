@@ -1,0 +1,99 @@
+program.cs file
+using BBH.CP.Atlas.App.Middlewares;
+using BBH.CP.Atlas.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using System.Text;
+ 
+var builder = WebApplication.CreateBuilder(args);
+var corsOrigins = "_corsOrigins";
+var configuration = new ConfigurationBuilder()
+              .SetBasePath(System.AppContext.BaseDirectory)
+              .AddJsonFile($"appsettings.json")
+              .Build();
+ 
+builder.Logging.AddLog4Net("log4net.config");
+ 
+ 
+builder.Services.AddDbContext<CPSharepointContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("DBConnection")));
+ 
+builder.Services.AddSingleton<IConfiguration>(configuration);
+builder.Services.AddControllers();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
+    });
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        { new OpenApiSecuritySchemeReference("Bearer", document), new List<string>() }
+    });
+});
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
+builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = null);
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: corsOrigins,
+                      policy =>
+                      {
+                          policy.WithOrigins("http://localhost:4200") // No trailing slash
+                                .AllowAnyHeader()
+                                .AllowAnyMethod()
+                                .AllowCredentials();
+                      });
+});
+var app = builder.Build();
+ 
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "CP Atlas V1");
+        c.RoutePrefix = "";
+    });
+    Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
+}
+else
+    app.UseExceptionHandler();
+ 
+app.UseCors(corsOrigins);
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+app.Run();
+
+Sample controller method implemented in the project
+   public class CPAtlasController(CPSharepointContext context, IConfiguration configuration) : ControllerBase
+    {
+        [HttpGet]
+        [Route("v1/Application")]
+        public ActionResult GetApplication(string lanID)
+        {
+            return Ok(new { result = new CPAtlasService(context, configuration).GetApplication(lanID) });
+        }
+}
