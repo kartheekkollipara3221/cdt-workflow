@@ -4,7 +4,15 @@
     "http": {
       "commandName": "Project",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Notifications__Sender": "Smtp",
+        "Smtp__Host": "localhost",
+        "Smtp__Port": "125",
+        "Smtp__From": "workflow@example.test",
+        "Smtp__RoleEmailMap__Checker": "cdt-checkers@example.test",
+        "Smtp__RoleEmailMap__TradingDesk": "cdt-trading@example.test",
+        "Smtp__RoleEmailMap__BDRMClientService": "cdt-bdrm@example.test",
+        "Smtp__RoleEmailMap__Maker": "cdt-makers@example.test"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5058"

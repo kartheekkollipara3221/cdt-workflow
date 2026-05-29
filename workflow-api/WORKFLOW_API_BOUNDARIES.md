@@ -21,6 +21,7 @@ It must expose workflow capabilities from the reusable workflow engine without b
   - task close/create behavior
   - SLA-related task due dates
   - notification outbox rows
+  - SMTP delivery of notification outbox rows created by the current workflow action
   - workflow audit rows
   - idempotency records
 - Return workflow response contracts such as `WorkflowContextResponse` and `WorkflowActionResult`.
@@ -146,6 +147,7 @@ Existing intended endpoints:
   - Request input is `workflowKey`, `businessObjectType`, and `businessObjectId`.
   - Actor identity comes from the temporary trusted-header adapter and is recorded as the starting user.
   - The endpoint does not accept `reset`.
+  - The endpoint does not send email unless a future metadata-backed start notification is added.
   - The endpoint does not create, update, validate, or read form/business object data.
   - Successful responses use the target wrapper shape:
     - top-level `result`
@@ -174,6 +176,10 @@ Existing intended endpoints:
   - Response includes the action result and refreshed workflow context.
   - Refreshed workflow context is computed for the submitting actor from trusted headers.
   - Workflow-level failures return custom error code `500` rather than HTTP 200 with `result.success = false`.
+  - If a successful action queues a metadata notification, the endpoint delivers only the notification rows created by that action before returning success.
+  - The action-created notification rows are selected by the action result workflow instance ID and correlation ID.
+  - Delivery uses the configured `INotificationSender`; in a real SMTP environment `Notifications:Sender = "Smtp"` resolves recipients through `Smtp:RoleEmailMap:{RecipientRoleKey}`.
+  - If action-created SMTP delivery fails, the workflow action response is converted to `result.success = false`, `result.resultCode = "NotificationDeliveryFailed"`, and the controller returns HTTP 500.
   - Successful responses use the target wrapper shape:
     - top-level `result`
     - nested `result.actionResult`

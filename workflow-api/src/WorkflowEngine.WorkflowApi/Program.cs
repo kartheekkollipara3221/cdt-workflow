@@ -64,6 +64,7 @@ public partial class Program
         services.AddScoped<CanonicalWorkflowResultSerializer>();
         services.AddWorkflowInfrastructure(configuration);
         services.AddScoped<IWorkflowActorResolver, TrustedHeaderWorkflowActorResolver>();
+        services.AddScoped<IWorkflowActionNotificationDispatcher, WorkflowActionNotificationDispatcher>();
         services.AddScoped<IWorkflowActionService, WorkflowActionService>();
         services.AddScoped<IWorkflowContextQueryService, WorkflowContextQueryService>();
         services.AddScoped<IWorkflowStartService, WorkflowStartService>();

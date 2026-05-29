@@ -94,6 +94,7 @@ public sealed class WorkflowApiProjectStructureTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowActorResolver>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<WorkflowActionEnvelopeNormalizer>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<CanonicalRequestHasher>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowActionNotificationDispatcher>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowActionService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowContextQueryService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IWorkflowStartService>());

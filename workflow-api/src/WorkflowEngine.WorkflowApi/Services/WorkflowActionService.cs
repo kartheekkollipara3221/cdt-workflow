@@ -9,7 +9,8 @@ public sealed class WorkflowActionService(
     IWorkflowActorResolver actorResolver,
     WorkflowActionEnvelopeNormalizer normalizer,
     CanonicalRequestHasher hasher,
-    IWorkflowExecutionService workflowExecutionService) : IWorkflowActionService
+    IWorkflowExecutionService workflowExecutionService,
+    IWorkflowActionNotificationDispatcher notificationDispatcher) : IWorkflowActionService
 {
     public WorkflowActionApiResponse ExecuteWorkflowAction(HttpContext httpContext, WorkflowActionRequest? request)
     {
@@ -62,9 +63,47 @@ public sealed class WorkflowActionService(
                 ValidateActionEcho = false
             });
 
+        DispatchCreatedNotifications(resultEnvelope.Result);
+
         return new WorkflowActionApiResponse(new WorkflowActionApiResult(
             resultEnvelope.Result,
             resultEnvelope.WorkflowContext));
+    }
+
+    private void DispatchCreatedNotifications(WorkflowActionResult actionResult)
+    {
+        if (!actionResult.Success || actionResult.Notification?.Queued != true)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(actionResult.WorkflowInstanceId)
+            || string.IsNullOrWhiteSpace(actionResult.CorrelationId))
+        {
+            MarkNotificationDeliveryFailed(
+                actionResult,
+                "Workflow action notification delivery requires workflow instance id and correlation id.");
+            return;
+        }
+
+        var dispatchResult = notificationDispatcher.DispatchCreatedNotifications(
+            actionResult.WorkflowInstanceId,
+            actionResult.CorrelationId);
+        if (!dispatchResult.Success)
+        {
+            MarkNotificationDeliveryFailed(
+                actionResult,
+                dispatchResult.FailureMessage ?? "Workflow action notification delivery failed.");
+        }
+    }
+
+    private static void MarkNotificationDeliveryFailed(
+        WorkflowActionResult actionResult,
+        string message)
+    {
+        actionResult.Success = false;
+        actionResult.ResultCode = "NotificationDeliveryFailed";
+        actionResult.Message = message;
     }
 
     private static string RequiredText(string? value, string fieldName)

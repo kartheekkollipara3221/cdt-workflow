@@ -18,13 +18,23 @@ public sealed class WorkflowActionServiceTests
                 Success = true,
                 ResultCode = "Success",
                 WorkflowInstanceId = "WF-PT-1001",
-                ActionKey = "CheckerSendToTradingDesk"
+                ActionKey = "CheckerSendToTradingDesk",
+                CorrelationId = "api-action-1",
+                Notification = new WorkflowNotificationSummary
+                {
+                    Queued = true,
+                    NotificationType = "WorkflowTaskAssigned",
+                    RecipientRole = "TradingDesk"
+                }
             },
             WorkflowContext = new WorkflowContext()
         });
+        var dispatcher = new RecordingWorkflowActionNotificationDispatcher(
+            WorkflowActionNotificationDispatchResult.Delivered([]));
         var service = CreateService(
             new StubActorResolver(new WorkflowActorSnapshot("checker1", "Checker One", ["Checker"])),
-            executionService);
+            executionService,
+            dispatcher);
 
         var response = service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
         {
@@ -63,6 +73,83 @@ public sealed class WorkflowActionServiceTests
         Assert.Equal(
             new CanonicalRequestHasher().ComputeHash(envelope),
             executionService.LastRequest.RequestHash);
+        Assert.Equal("WF-PT-1001", dispatcher.LastWorkflowInstanceId);
+        Assert.Equal("api-action-1", dispatcher.LastCorrelationId);
+        Assert.Equal(1, dispatcher.DispatchCount);
+    }
+
+    [Fact]
+    public void ExecuteWorkflowActionDoesNotDispatchNotificationsWhenActionQueuedNone()
+    {
+        var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = true,
+                ResultCode = "Success",
+                WorkflowInstanceId = "WF-PT-1001",
+                ActionKey = "SaveDraft",
+                CorrelationId = "api-action-2",
+                Notification = new WorkflowNotificationSummary { Queued = false }
+            },
+            WorkflowContext = new WorkflowContext()
+        });
+        var dispatcher = new RecordingWorkflowActionNotificationDispatcher(
+            WorkflowActionNotificationDispatchResult.Delivered([]));
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            executionService,
+            dispatcher);
+
+        var response = service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ActionKey = "SaveDraft"
+        });
+
+        Assert.True(response.Result.ActionResult.Success);
+        Assert.Equal(0, dispatcher.DispatchCount);
+    }
+
+    [Fact]
+    public void ExecuteWorkflowActionReturnsFailureWhenCreatedNotificationDeliveryFails()
+    {
+        var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = true,
+                ResultCode = "Success",
+                WorkflowInstanceId = "WF-PT-1001",
+                ActionKey = "SubmitForChecker",
+                CorrelationId = "api-action-3",
+                Notification = new WorkflowNotificationSummary
+                {
+                    Queued = true,
+                    NotificationType = "WorkflowTaskAssigned",
+                    RecipientRole = "Checker"
+                }
+            },
+            WorkflowContext = new WorkflowContext()
+        });
+        var dispatcher = new RecordingWorkflowActionNotificationDispatcher(
+            WorkflowActionNotificationDispatchResult.Failed("SMTP delivery failed for notification 42."));
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            executionService,
+            dispatcher);
+
+        var response = service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ActionKey = "SubmitForChecker"
+        });
+
+        Assert.False(response.Result.ActionResult.Success);
+        Assert.Equal("NotificationDeliveryFailed", response.Result.ActionResult.ResultCode);
+        Assert.Equal("SMTP delivery failed for notification 42.", response.Result.ActionResult.Message);
+        Assert.Equal("WF-PT-1001", dispatcher.LastWorkflowInstanceId);
+        Assert.Equal("api-action-3", dispatcher.LastCorrelationId);
     }
 
     [Fact]
@@ -110,13 +197,16 @@ public sealed class WorkflowActionServiceTests
 
     private static WorkflowActionService CreateService(
         IWorkflowActorResolver actorResolver,
-        IWorkflowExecutionService workflowExecutionService)
+        IWorkflowExecutionService workflowExecutionService,
+        IWorkflowActionNotificationDispatcher? notificationDispatcher = null)
     {
         return new WorkflowActionService(
             actorResolver,
             new WorkflowActionEnvelopeNormalizer(),
             new CanonicalRequestHasher(),
-            workflowExecutionService);
+            workflowExecutionService,
+            notificationDispatcher ?? new RecordingWorkflowActionNotificationDispatcher(
+                WorkflowActionNotificationDispatchResult.Delivered([])));
     }
 
     private sealed class StubActorResolver(WorkflowActorSnapshot actor) : IWorkflowActorResolver
@@ -138,6 +228,27 @@ public sealed class WorkflowActionServiceTests
             LastRequest = request;
 
             return Response;
+        }
+    }
+
+    private sealed class RecordingWorkflowActionNotificationDispatcher(
+        WorkflowActionNotificationDispatchResult result) : IWorkflowActionNotificationDispatcher
+    {
+        public int DispatchCount { get; private set; }
+
+        public string? LastWorkflowInstanceId { get; private set; }
+
+        public string? LastCorrelationId { get; private set; }
+
+        public WorkflowActionNotificationDispatchResult DispatchCreatedNotifications(
+            string workflowInstanceId,
+            string correlationId)
+        {
+            DispatchCount++;
+            LastWorkflowInstanceId = workflowInstanceId;
+            LastCorrelationId = correlationId;
+
+            return result;
         }
     }
 }

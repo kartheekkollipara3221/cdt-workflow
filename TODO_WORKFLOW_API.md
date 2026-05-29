@@ -27,6 +27,15 @@
       Keep for local integration testing or move to environment/user-local config.
       Risk level: Medium
 
+- [ ] Review Visual Studio `launchSettings.json` SMTP environment variables before commit.
+      Files involved:
+      `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json`
+      Why it matters:
+      The `http` profile now contains local SMTP testing values, including `Smtp__Port = 125`. Earlier smtp4dev output showed SMTP listening on port `25`; verify the intended port and whether these local values should be committed.
+      Suggested next step:
+      Confirm the current smtp4dev port, then either keep the profile values intentionally, move them to user-local settings, or document the manual setup instead.
+      Risk level: Medium
+
 - [x] Implement `POST /v1/WorkflowAction`.
       Files involved:
       API controller/service; `WorkflowActionRequest`; existing `IWorkflowExecutionService`, `WorkflowActionEnvelopeNormalizer`, `CanonicalRequestHasher`.
@@ -43,6 +52,19 @@
       The form/business API needs a clean workflow-only endpoint it can call after creating its business object.
       Completed:
       Added a workflow-only start endpoint accepting `workflowKey`, `businessObjectType`, and `businessObjectId`; starting user comes from trusted headers; public `reset` is not exposed. Response shape is `{ result: { actionResult, workflowContext } }`.
+      Risk level: Medium
+
+- [x] Deliver action-created notifications before successful `POST /v1/WorkflowAction` responses.
+      Files involved:
+      `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs`,
+      `workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowActionNotificationDispatcher.cs`,
+      `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs`
+      Why it matters:
+      In real SMTP environments, workflow action POST success must mean metadata-created notification rows for that action were delivered.
+      Completed:
+      Added a targeted dispatcher that selects only pending notification rows for the successful action's workflow instance ID and correlation ID, sends them through the configured `INotificationSender`, marks them `Sent` on success, and converts delivery failure into `NotificationDeliveryFailed` so the controller returns HTTP 500.
+      Boundary:
+      `POST /v1/WorkflowStart` still sends no email unless start later creates a metadata-backed notification row.
       Risk level: Medium
 
 - [ ] Decide whether audit/history, tasks, and notifications need read APIs.

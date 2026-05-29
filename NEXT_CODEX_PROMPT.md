@@ -6,7 +6,7 @@ Continue the `WorkflowEngine.WorkflowApi` migration/alignment work. Do not recre
 
 Before planning or editing:
 
-1. Read `AGENTS.md` if present.
+1. Read `AGENTS.md` / `AGENTS.MD` if present.
 2. Read `PROJECT.md`; it is the source of truth.
 3. Read `CODEX_HANDOFF.md`.
 4. Read `workflow-api/WORKFLOW_API_BOUNDARIES.md`.
@@ -14,7 +14,7 @@ Before planning or editing:
 6. Inspect the current worktree:
 
 ```powershell
-git status --short
+git status --short --untracked-files=all
 git diff --stat
 git diff --name-only
 ```
@@ -33,16 +33,22 @@ Important constraints:
 - Do not add new external packages unless clearly required and approved by project constraints.
 - Keep the temporary trusted-header actor adapter for now; do not implement real user lookup/auth/role mapping.
 - Workflow API is workflow-only. Do not add form data validation, form persistence, business object lifecycle, or public console admin behavior.
+- Do not revert the user's local changes unless explicitly asked.
 
-Completed in the latest sessions:
+Completed in latest sessions:
 
 - Added `POST /v1/WorkflowStart`.
-- Added `GET /v1/WorkflowContext` target-style nested response shape.
+- Added target-style `GET /v1/WorkflowContext` response shape.
 - Added `POST /v1/WorkflowAction` workflow-only request body and nested response shape.
-- Added `workflow-api/WORKFLOW_API_BOUNDARIES.md`.
+- Added targeted action-created notification delivery for `POST /v1/WorkflowAction`: if a successful action queues metadata notification rows, the API sends only rows matching the action workflow instance ID and correlation ID before returning success; delivery failure becomes `NotificationDeliveryFailed` and HTTP 500.
+- Confirmed `POST /v1/WorkflowStart` sends no email unless a future metadata-backed start notification is added.
+- Added/updated `workflow-api/WORKFLOW_API_BOUNDARIES.md`.
 - Verified live SQL-backed start/context/action sequence using `PT-API-START`.
-- `dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed, with one warning only when a running API process locked the apphost exe.
-- `dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed with 32 tests.
+- Verified live API SMTP delivery with smtp4dev and a real `POST /v1/WorkflowAction`.
+- User also verified Swagger Return to Maker on `WF-PT-SWAGGER-001XX`.
+- User verified console `process-notification-outbox` SMTP path works.
+- `dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed with 0 warnings and 0 errors before the final docs-only handoff update.
+- `dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed with 34 tests before the final docs-only handoff update.
 - Broader `dotnet test src\WorkflowEngine.sln -m:1 /p:UseAppHost=false` passed earlier with `WORKFLOW_ENGINE_TEST_CONNECTION_STRING` set: 206 passed, 2 skipped.
 
 Current endpoint contracts:
@@ -76,6 +82,29 @@ X-Workflow-Roles: Maker
 X-Workflow-DisplayName: Maker One
 ```
 
+For Checker actions, use:
+
+```text
+X-Workflow-UserId: checker1
+X-Workflow-Roles: Checker
+X-Workflow-DisplayName: Checker One
+```
+
+Important current worktree notes:
+
+- `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` has local SMTP env vars in the `http` profile. Review before commit. Current file shows `Smtp__Port = 125`; earlier smtp4dev output showed port `25`, so verify the intended local port.
+- Two new source files are untracked and must be reviewed/added if committing:
+  - `workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowActionNotificationDispatcher.cs`
+  - `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs`
+- Unrelated untracked `~/.codex/superpowers/` should not be added.
+
 Suggested next task:
 
-Review and normalize `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json`, then decide whether to keep `src/WorkflowEngine.Console/appsettings.Development.json` pointing at the API development database.
+Review the current worktree and decide whether to keep or adjust the local SMTP env vars in `launchSettings.json`; then continue from the highest-priority unchecked item in `TODO_WORKFLOW_API.md`.
+
+Before final handoff, run:
+
+```powershell
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+```
