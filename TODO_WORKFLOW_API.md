@@ -9,13 +9,13 @@
       Local Swagger smoke check on `http://localhost:5068/swagger/v1/swagger.json` returned only `/v1/WorkflowAction` and `/v1/WorkflowContext`.
       Risk level: Low
 
-- [ ] Review and normalize `launchSettings.json`.
+- [x] Review and normalize `launchSettings.json`.
       Files involved:
       `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json`
       Why it matters:
       It appears modified by Visual Studio and may contain local tooling noise.
-      Suggested next step:
-      Keep only desired launch profiles for migration/testing.
+      Completed:
+      Kept project `http` and `https` launch profiles for local migration/testing, preserved existing launch URLs, moved `$schema` to the top-level conventional position, and removed IIS Express-specific local tooling settings.
       Risk level: Low
 
 - [ ] Decide whether to keep the console development connection string.

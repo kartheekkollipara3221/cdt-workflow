@@ -315,10 +315,15 @@ File: `src/WorkflowEngine.Console/appsettings.Development.json`
 File: `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json`
 
 - Changed:
-  - Worktree shows modified `http`, `https`, and `IIS Express` profile content.
+  - Normalized launch settings to project-only `http` and `https` profiles.
+  - Preserved existing launch URLs:
+    - `http://localhost:5058`
+    - `https://localhost:7176;http://localhost:5058`
+  - Moved `$schema` to the conventional top-level position.
+  - Removed Visual Studio IIS Express profile and `iisSettings` local tooling configuration.
 - Why:
-  - Appears to have been changed by Visual Studio/runtime tooling during local debug/testing.
-- Status: needs review before commit.
+  - Keep only intentional SDK-run launch profiles for local migration/testing.
+- Status: complete as of 2026-05-29.
 
 ### Logging / error handling
 
@@ -425,43 +430,15 @@ File: `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Startup/WorkflowApiPr
 
 ## Current git/worktree status
 
-Command: `git status --short`
+Command: `git status --short --untracked-files=all`
 
 Summary:
 
 ```text
- M AGENTS.MD
- M src/WorkflowEngine.Application/WorkflowExecution/IWorkflowExecutionService.cs
- M src/WorkflowEngine.Console/appsettings.Development.json
- M src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs
- M workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowContextController.cs
- M workflow-api/src/WorkflowEngine.WorkflowApi/Program.cs
+ M CODEX_HANDOFF.md
+ M TODO_WORKFLOW_API.md
  M workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json
- M workflow-api/src/WorkflowEngine.WorkflowApi/WorkflowEngine.WorkflowApi.csproj
- M workflow-api/src/WorkflowEngine.WorkflowApi/appsettings.json
- M workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Controllers/WorkflowContextControllerTests.cs
- M workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Startup/WorkflowApiProjectStructureTests.cs
-?? CODEX_HANDOFF.md
-?? NEXT_CODEX_PROMPT.md
-?? TODO_WORKFLOW_API.md
-?? workflow-api/WORKFLOW_API_BOUNDARIES.md
-?? workflow-api/final-state-project.txt
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowActionController.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowStartController.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Infrastructure/
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Models/
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowActionService.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowContextQueryService.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowStartService.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowApiRequestException.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowContextQueryService.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowStartService.cs
-?? workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Controllers/WorkflowActionControllerTests.cs
-?? workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Controllers/WorkflowStartControllerTests.cs
-?? workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionServiceTests.cs
-?? workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowContextQueryServiceTests.cs
-?? workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowStartServiceTests.cs
+?? ~/.codex/superpowers/
 ```
 
 Command: `git diff --stat`
@@ -469,38 +446,22 @@ Command: `git diff --stat`
 Summary:
 
 ```text
- AGENTS.MD                                          |  18 ++-
- .../WorkflowExecution/IWorkflowExecutionService.cs |   9 +-
- .../appsettings.Development.json                   |   3 +
- .../WorkflowExecution/WorkflowExecutionService.cs  |  46 ++++++--
- .../Controllers/WorkflowContextController.cs       |  51 ++------
- .../src/WorkflowEngine.WorkflowApi/Program.cs      |  63 +++++++++-
- .../Properties/launchSettings.json                 |  31 +++--
- .../WorkflowEngine.WorkflowApi.csproj              |   4 +
- .../WorkflowEngine.WorkflowApi/appsettings.json    |   5 +
- .../Controllers/WorkflowContextControllerTests.cs  | 130 ++++-----------------
- .../Startup/WorkflowApiProjectStructureTests.cs    |  35 +++++-
- 11 files changed, 220 insertions(+), 175 deletions(-)
+ CODEX_HANDOFF.md                                      | 17 +++++++++++------
+ TODO_WORKFLOW_API.md                                  |  6 +++---
+ .../Properties/launchSettings.json                    | 19 ++-----------------
+ 3 files changed, 16 insertions(+), 26 deletions(-)
 ```
 
-Note: `git diff --stat` does not include untracked new files listed above.
+Note: `git diff --stat` does not include the unrelated untracked `~/.codex/superpowers/` directory.
 
 Command: `git diff --name-only`
 
 Tracked files changed:
 
 ```text
-AGENTS.MD
-src/WorkflowEngine.Application/WorkflowExecution/IWorkflowExecutionService.cs
-src/WorkflowEngine.Console/appsettings.Development.json
-src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs
-workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowContextController.cs
-workflow-api/src/WorkflowEngine.WorkflowApi/Program.cs
+CODEX_HANDOFF.md
+TODO_WORKFLOW_API.md
 workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json
-workflow-api/src/WorkflowEngine.WorkflowApi/WorkflowEngine.WorkflowApi.csproj
-workflow-api/src/WorkflowEngine.WorkflowApi/appsettings.json
-workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Controllers/WorkflowContextControllerTests.cs
-workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Startup/WorkflowApiProjectStructureTests.cs
 ```
 
 ## Current build/test status
@@ -513,9 +474,7 @@ dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=fal
 
 Result:
 - Passed.
-- 1 warning:
-  - `MSB3061` could not delete `WorkflowEngine.WorkflowApi.exe` because it was locked by running process `WorkflowEngine.WorkflowApi (3692)`.
-  - Build still succeeded.
+- 0 warnings, 0 errors.
 
 Command:
 
@@ -526,7 +485,7 @@ dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=fals
 Result:
 - Passed.
 - 32 tests passed, 0 failed, 0 skipped.
-- Same executable-lock warning from running process `WorkflowEngine.WorkflowApi (3692)`.
+- No executable-lock warning in the latest run.
 
 Earlier broader command:
 
@@ -595,13 +554,13 @@ Live SQL/API checks completed earlier:
 
 ## Open issues / remaining work
 
-- [ ] Review `launchSettings.json` changes before commit.
+- [x] Review `launchSettings.json` changes before commit.
       Files involved:
       `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json`
       Why it matters:
       It appears modified by Visual Studio and may contain local tooling noise.
-      Suggested next step:
-      Compare desired profiles (`http`, `https`, optional IIS Express`) and keep only intentional changes.
+      Completed:
+      Kept only the project `http` and `https` profiles, preserved existing launch URLs, moved `$schema` to the top-level conventional position, and removed IIS Express local tooling settings.
       Risk level: Low
 
 - [ ] Decide whether to keep console `appsettings.Development.json` connection string.
