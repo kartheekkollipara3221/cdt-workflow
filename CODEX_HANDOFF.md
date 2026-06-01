@@ -463,6 +463,13 @@ File: `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Startup/WorkflowApiPr
   - Return to Maker on `WF-PT-SWAGGER-001XX` passed through Swagger using Checker role.
   - Console `process-notification-outbox` SMTP path is working as well.
 
+### User manual start-with-initial-action API/SMTP check
+
+- Installed `Rnwood.Smtp4dev` 3.15.0 repo-locally under `.tools\smtp4dev`.
+- Started smtp4dev with SMTP on `localhost:3025` and web UI on `http://localhost:5000`.
+- Verified both ports were reachable.
+- User reported the manual API tests passed for the latest start-with-initial-action workflow behavior.
+
 ## Current git/worktree status
 
 Commands run before this handoff update:
