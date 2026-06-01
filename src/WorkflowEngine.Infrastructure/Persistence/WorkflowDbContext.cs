@@ -17,6 +17,8 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
 
     public DbSet<WorkflowTaskDefinition> WorkflowTaskDefinitions => Set<WorkflowTaskDefinition>();
 
+    public DbSet<WorkflowTaskAssignmentRoleDefinition> WorkflowTaskAssignmentRoleDefinitions => Set<WorkflowTaskAssignmentRoleDefinition>();
+
     public DbSet<WorkflowTransitionDefinition> WorkflowTransitionDefinitions => Set<WorkflowTransitionDefinition>();
 
     public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
@@ -113,6 +115,15 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.OwnerRoleKey).HasMaxLength(100).IsRequired();
             entity.Property(row => row.SlaPolicyKey).HasMaxLength(100);
             entity.HasIndex(row => new { row.WorkflowDefinitionVersionId, row.TaskKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<WorkflowTaskAssignmentRoleDefinition>(entity =>
+        {
+            entity.ToTable("WorkflowTaskAssignmentRoleDefinition");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.TaskKey).HasMaxLength(100).IsRequired();
+            entity.Property(row => row.RoleKey).HasMaxLength(100).UseCollation("Latin1_General_BIN2").IsRequired();
+            entity.HasIndex(row => new { row.WorkflowDefinitionVersionId, row.TaskKey, row.RoleKey }).IsUnique();
         });
 
         modelBuilder.Entity<WorkflowTransitionDefinition>(entity =>

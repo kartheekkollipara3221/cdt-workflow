@@ -199,13 +199,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("WorkflowInstanceId");
+
                     b.HasIndex("WorkflowTaskId", "NotificationType")
                         .IsUnique()
                         .HasFilter("[NotificationType] = 'SlaTaskOverdue'");
 
-                    b.HasIndex("WorkflowInstanceId");
-
-                    b.ToTable("NotificationOutbox", t =>
+                    b.ToTable("NotificationOutbox", null, t =>
                         {
                             t.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent')");
                         });
@@ -521,12 +521,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("WorkflowInstanceId");
-
                     b.HasIndex("WorkflowKey", "BusinessObjectType", "BusinessObjectId")
                         .IsUnique();
 
-                    b.ToTable("WorkflowInstance", t =>
+                    b.ToTable("WorkflowInstance", null, t =>
                         {
                             t.HasCheckConstraint("CK_WorkflowInstance_Status", "[Status] IN ('Active', 'Completed')");
                         });
@@ -654,10 +652,43 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Status] = 'Pending'");
 
-                    b.ToTable("WorkflowTask", t =>
+                    b.ToTable("WorkflowTask", null, t =>
                         {
                             t.HasCheckConstraint("CK_WorkflowTask_Status", "[Status] IN ('Pending', 'Completed')");
                         });
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTaskAssignmentRoleDefinition", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RoleKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .UseCollation("Latin1_General_BIN2");
+
+                    b.Property<string>("TaskKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<long>("WorkflowDefinitionVersionId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowDefinitionVersionId", "TaskKey", "RoleKey")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowTaskAssignmentRoleDefinition", (string)null);
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTaskDefinition", b =>
@@ -760,17 +791,6 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.ToTable("WorkflowTransitionDefinition", (string)null);
                 });
 
-            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowDefinitionVersion", b =>
-                {
-                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowDefinition", "WorkflowDefinition")
-                        .WithMany("Versions")
-                        .HasForeignKey("WorkflowDefinitionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("WorkflowDefinition");
-                });
-
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.IdempotencyRecord", b =>
                 {
                     b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowInstance", null)
@@ -799,6 +819,17 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasPrincipalKey("WorkflowInstanceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowDefinitionVersion", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowDefinition", "WorkflowDefinition")
+                        .WithMany("Versions")
+                        .HasForeignKey("WorkflowDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("WorkflowDefinition");
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTask", b =>

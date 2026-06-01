@@ -38,6 +38,7 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
         UpsertActions(version.Id);
         UpsertSlaPolicies(version.Id);
         UpsertTasks(version.Id);
+        UpsertTaskAssignmentRoles(version.Id);
         UpsertNotificationRoutes(version.Id);
         UpsertTransitions(version.Id);
         dbContext.SaveChanges();
@@ -137,6 +138,29 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
         }
     }
 
+    private void UpsertTaskAssignmentRoles(long versionId)
+    {
+        foreach (var seed in PortfolioTradeSeedData.TaskAssignmentRoles)
+        {
+            var row = dbContext.WorkflowTaskAssignmentRoleDefinitions.SingleOrDefault(item =>
+                item.WorkflowDefinitionVersionId == versionId
+                && item.TaskKey == seed.TaskKey
+                && item.RoleKey == seed.RoleKey);
+            if (row is null)
+            {
+                row = new WorkflowTaskAssignmentRoleDefinition
+                {
+                    WorkflowDefinitionVersionId = versionId,
+                    TaskKey = seed.TaskKey,
+                    RoleKey = seed.RoleKey
+                };
+                dbContext.WorkflowTaskAssignmentRoleDefinitions.Add(row);
+            }
+
+            row.IsActive = true;
+        }
+    }
+
     private void UpsertNotificationRoutes(long versionId)
     {
         foreach (var seed in PortfolioTradeSeedData.NotificationRoutes)
@@ -187,4 +211,3 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
         }
     }
 }
-

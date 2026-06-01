@@ -53,6 +53,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         VerifyNoAdminDemoOverride(errors, version.Id);
         VerifyActionHints(errors, version.Id);
         VerifyTaskReferences(errors, version.Id);
+        VerifyTaskAssignmentRoles(errors, version.Id);
         VerifyNotificationRoutes(errors, version.Id);
         VerifyTransitions(errors, version.Id);
         VerifyNoDuplicateTransitions(errors, version.Id);
@@ -156,6 +157,40 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         if (makerRework?.SlaPolicyKey is not null)
         {
             errors.Add("MakerReworkTask must not have an SLA policy in v1.");
+        }
+    }
+
+    private void VerifyTaskAssignmentRoles(ICollection<string> errors, long versionId)
+    {
+        var roleKeys = dbContext.WorkflowRoleDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .Select(row => row.RoleKey)
+            .ToHashSet(StringComparer.Ordinal);
+        var taskKeys = dbContext.WorkflowTaskDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .Select(row => row.TaskKey)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var expected = PortfolioTradeSeedData.TaskAssignmentRoles
+            .Select(row => $"{row.TaskKey}/{row.RoleKey}");
+        var actual = dbContext.WorkflowTaskAssignmentRoleDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.IsActive)
+            .Select(row => new { row.TaskKey, row.RoleKey })
+            .ToList()
+            .Select(row => $"{row.TaskKey}/{row.RoleKey}");
+        VerifyKeySet(errors, "task assignment role", expected, actual);
+
+        foreach (var row in dbContext.WorkflowTaskAssignmentRoleDefinitions.Where(row => row.WorkflowDefinitionVersionId == versionId))
+        {
+            if (!taskKeys.Contains(row.TaskKey))
+            {
+                errors.Add($"Task assignment role references missing TaskKey '{row.TaskKey}'.");
+            }
+
+            if (!roleKeys.Contains(row.RoleKey))
+            {
+                errors.Add($"Task assignment role references missing RoleKey '{row.RoleKey}'.");
+            }
         }
     }
 
@@ -287,4 +322,3 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 }
-

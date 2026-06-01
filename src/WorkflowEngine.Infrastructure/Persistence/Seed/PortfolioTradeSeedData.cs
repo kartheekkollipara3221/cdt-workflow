@@ -21,6 +21,9 @@ internal static class PortfolioTradeSeedData
         new("Maker", "Maker"),
         new("Checker", "Checker"),
         new("TradingDesk", "Trading Desk"),
+        new("TradingDeskTaxable", "Taxable"),
+        new("TradingDeskTaxExempt", "Tax Exempt"),
+        new("TradingDeskEquity", "Equity"),
         new("BDRMClientService", "BDRM Client Service")
     ];
 
@@ -59,12 +62,19 @@ internal static class PortfolioTradeSeedData
         new("RouteCheckerAssignedOnSubmit", "WorkflowTaskAssigned", "Checker", "Portfolio Trade submitted for Checker review"),
         new("RouteCheckerAssignedOnResubmit", "WorkflowTaskAssigned", "Checker", "Portfolio Trade resubmitted for Checker review"),
         new("RouteReturnedToMakerFromChecker", "WorkflowReturnedToMaker", "Maker", "Portfolio Trade returned by Checker"),
-        new("RouteTradingDeskAssigned", "WorkflowTaskAssigned", "TradingDesk", "Portfolio Trade assigned to Trading Desk"),
+        new("RouteTradingDeskAssigned", "WorkflowTaskAssigned", null, "Portfolio Trade assigned to Trading Desk"),
         new("RouteReturnedToMakerFromTradingDesk", "WorkflowReturnedToMaker", "Maker", "Portfolio Trade returned by Trading Desk"),
         new("RouteBdrmAssigned", "WorkflowTaskAssigned", "BDRMClientService", "Portfolio Trade assigned to BDRM Client Service"),
         new("RouteWorkflowCompleted", "WorkflowCompleted", "Maker", "Portfolio Trade workflow completed"),
         new("RouteTradingDeskReworkAssigned", "WorkflowTaskAssigned", "TradingDesk", "Portfolio Trade returned for Trading Desk rework"),
         new("RouteSlaTaskOverdue", "SlaTaskOverdue", null, "Portfolio Trade workflow task is overdue")
+    ];
+
+    public static readonly TaskAssignmentRoleSeed[] TaskAssignmentRoles =
+    [
+        new("TradingDeskReviewTask", "TradingDeskTaxable"),
+        new("TradingDeskReviewTask", "TradingDeskTaxExempt"),
+        new("TradingDeskReviewTask", "TradingDeskEquity")
     ];
 
     public static readonly TransitionSeed[] Transitions =
@@ -101,6 +111,8 @@ internal sealed record SlaPolicySeed(string Key, int DurationMinutes);
 
 internal sealed record TaskSeed(string Key, string DisplayName, string OwnerRoleKey, string? SlaPolicyKey);
 
+internal sealed record TaskAssignmentRoleSeed(string TaskKey, string RoleKey);
+
 internal sealed record NotificationRouteSeed(string Key, string NotificationType, string? RecipientRoleKey, string SubjectTemplate);
 
 internal sealed record TransitionSeed(
@@ -112,4 +124,3 @@ internal sealed record TransitionSeed(
     string? TaskToCreateKey,
     string? NotificationRouteKey,
     string AuditLabel);
-

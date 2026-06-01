@@ -53,6 +53,38 @@ public sealed class SeedDataSmokeTests
     }
 
     [Fact]
+    public void PortfolioTradeTradingDeskAssignmentRolesAreSeeded()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        dbContext.Database.Migrate();
+
+        new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
+        var versionId = GetPortfolioTradeVersionId(dbContext);
+
+        var roleKeys = dbContext.WorkflowRoleDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .Select(row => row.RoleKey)
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.Contains("TradingDeskTaxable", roleKeys);
+        Assert.Contains("TradingDeskTaxExempt", roleKeys);
+        Assert.Contains("TradingDeskEquity", roleKeys);
+
+        var assignmentRoles = dbContext.WorkflowTaskAssignmentRoleDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.TaskKey == "TradingDeskReviewTask")
+            .Select(row => row.RoleKey)
+            .OrderBy(row => row)
+            .ToArray();
+        Assert.Equal(
+            ["TradingDeskEquity", "TradingDeskTaxExempt", "TradingDeskTaxable"],
+            assignmentRoles);
+
+        var route = Assert.Single(dbContext.NotificationRoutes.Where(row =>
+            row.WorkflowDefinitionVersionId == versionId && row.RouteKey == "RouteTradingDeskAssigned"));
+        Assert.Null(route.RecipientRoleKey);
+    }
+
+    [Fact]
     public void AdminDemoOverrideIsNotSeededAndMakerReworkHasNoSla()
     {
         using var dbContext = CreateDbContext();
