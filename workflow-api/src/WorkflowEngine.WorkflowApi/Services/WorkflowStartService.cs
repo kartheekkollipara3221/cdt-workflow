@@ -1,4 +1,5 @@
 using WorkflowEngine.Application.Context;
+using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.WorkflowApi.Models;
 using ApplicationStartWorkflowRequest = WorkflowEngine.Application.WorkflowStart.StartWorkflowRequest;
 using ApplicationStartWorkflowService = WorkflowEngine.Application.WorkflowStart.IStartWorkflowService;
@@ -8,7 +9,8 @@ namespace WorkflowEngine.WorkflowApi.Services;
 public sealed class WorkflowStartService(
     IWorkflowActorResolver actorResolver,
     ApplicationStartWorkflowService startWorkflowService,
-    IWorkflowContextReader workflowContextReader) : IWorkflowStartService
+    IWorkflowContextReader workflowContextReader,
+    IWorkflowActionNotificationDispatcher notificationDispatcher) : IWorkflowStartService
 {
     public WorkflowStartApiResponse StartWorkflow(HttpContext httpContext, WorkflowStartRequest? request)
     {
@@ -25,6 +27,7 @@ public sealed class WorkflowStartService(
         var workflowKey = RequiredText(request.WorkflowKey, "workflowKey");
         var businessObjectType = RequiredText(request.BusinessObjectType, "businessObjectType");
         var businessObjectId = RequiredText(request.BusinessObjectId, "businessObjectId");
+        var initialActionKey = OptionalText(request.InitialActionKey);
         var actor = actorResolver.Resolve(httpContext);
 
         var startResult = startWorkflowService.Start(new ApplicationStartWorkflowRequest(
@@ -32,7 +35,10 @@ public sealed class WorkflowStartService(
             businessObjectType,
             businessObjectId,
             actor.UserId,
-            Reset: false));
+            Reset: false,
+            InitialActionKey: initialActionKey,
+            StartedByDisplayName: actor.DisplayName,
+            StartedByRoles: actor.Roles));
 
         var actionResult = startResult.Envelope.Result;
         var workflowContext = actionResult.Success
@@ -42,7 +48,49 @@ public sealed class WorkflowStartService(
                 actor.Roles)).WorkflowContext
             : null;
 
+        DispatchInitialActionNotifications(initialActionKey, actionResult);
+
         return new WorkflowStartApiResponse(new WorkflowStartApiResult(actionResult, workflowContext));
+    }
+
+    private void DispatchInitialActionNotifications(
+        string? initialActionKey,
+        WorkflowActionResult actionResult)
+    {
+        if (string.IsNullOrWhiteSpace(initialActionKey)
+            || !actionResult.Success
+            || actionResult.Notification?.Queued != true)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(actionResult.WorkflowInstanceId)
+            || string.IsNullOrWhiteSpace(actionResult.CorrelationId))
+        {
+            MarkNotificationDeliveryFailed(
+                actionResult,
+                "Workflow start initial action notification delivery requires workflow instance id and correlation id.");
+            return;
+        }
+
+        var dispatchResult = notificationDispatcher.DispatchCreatedNotifications(
+            actionResult.WorkflowInstanceId,
+            actionResult.CorrelationId);
+        if (!dispatchResult.Success)
+        {
+            MarkNotificationDeliveryFailed(
+                actionResult,
+                dispatchResult.FailureMessage ?? "Workflow start initial action notification delivery failed.");
+        }
+    }
+
+    private static void MarkNotificationDeliveryFailed(
+        WorkflowActionResult actionResult,
+        string message)
+    {
+        actionResult.Success = false;
+        actionResult.ResultCode = "NotificationDeliveryFailed";
+        actionResult.Message = message;
     }
 
     private static string RequiredText(string? value, string fieldName)
@@ -56,5 +104,10 @@ public sealed class WorkflowStartService(
             StatusCodes.Status400BadRequest,
             "Invalid workflow start request.",
             $"{fieldName} is required.");
+    }
+
+    private static string? OptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

@@ -7,4 +7,6 @@ public sealed class WorkflowStartRequest
     public string? BusinessObjectType { get; set; }
 
     public string? BusinessObjectId { get; set; }
+
+    public string? InitialActionKey { get; set; }
 }

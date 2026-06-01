@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-05-29
+Last updated: 2026-06-01
 
 ## Project goal
 
@@ -118,10 +118,41 @@ File: `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowStartService
   - Resolves starting actor through `IWorkflowActorResolver`.
   - Validates required body fields.
   - Calls application `IStartWorkflowService.Start(...)` with `Reset = false`.
+  - Passes optional `InitialActionKey` and trusted actor display/roles to the application start request.
   - Reads refreshed workflow context after successful start.
+  - If start executed an initial action that queued metadata notifications, dispatches only rows created by that initial action before returning success.
+  - Converts initial-action notification delivery failure into `NotificationDeliveryFailed`.
   - Wraps response as `{ result: { actionResult, workflowContext } }`.
 - Why:
   - Keep controller thin and keep workflow start logic in the existing application/infrastructure service.
+- Status: complete, including optional start-plus-initial-action behavior.
+
+File: `src/WorkflowEngine.Application/WorkflowStart/IStartWorkflowService.cs`
+
+- What changed:
+  - Added optional `InitialActionKey`, `StartedByDisplayName`, and `StartedByRoles` to `StartWorkflowRequest`.
+- Why:
+  - Lets API callers start a workflow and immediately execute one metadata-valid first action using the same trusted actor.
+- Status: complete.
+
+File: `src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs`
+
+- What changed:
+  - If `InitialActionKey` is blank, existing start-only behavior is preserved.
+  - If `InitialActionKey` is present, creates the workflow instance and executes the initial action through `WorkflowExecutionService` inside one SQL transaction.
+  - Uses API-style execution flags: derive identity from persistence, skip section-data persistence, skip UI echo validation, and no admin override.
+  - Rolls back the newly-created workflow instance when the initial action fails before commit.
+  - Returns the initial action result and refreshed post-action workflow context on success.
+- Why:
+  - Supports one-call Maker submit for brand-new forms without requiring a prior SaveDraft.
+- Status: complete.
+
+File: `src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs`
+
+- What changed:
+  - `ExecuteSideEffects` now joins an existing EF Core transaction when one is already active, otherwise it keeps owning its own transaction.
+- Why:
+  - Allows start-plus-initial-action to be atomic while preserving standalone workflow action behavior.
 - Status: complete.
 
 File: `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowContextQueryService.cs`
@@ -224,8 +255,8 @@ File: `src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionServ
 
 File: `workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs`
 
-- What changed: added workflow start request body (`WorkflowKey`, `BusinessObjectType`, `BusinessObjectId`).
-- Why: workflow start must attach an instance to an upstream business object.
+- What changed: added workflow start request body (`WorkflowKey`, `BusinessObjectType`, `BusinessObjectId`) and optional `InitialActionKey`.
+- Why: workflow start must attach an instance to an upstream business object, and `InitialActionKey` supports one-call start-and-submit flows.
 - Status: complete.
 
 File: `workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartApiResponse.cs`
@@ -352,7 +383,12 @@ File: `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Controllers/WorkflowS
 
 File: `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowStartServiceTests.cs`
 
-- What changed: tests trusted actor use, `Reset = false`, context read on success, no context read on failed start, and missing body/field validation.
+- What changed: tests trusted actor use, `Reset = false`, context read on success, no context read on failed start, missing body/field validation, initial-action request mapping, and initial-action notification dispatch/failure behavior.
+- Status: complete.
+
+File: `tests/WorkflowEngine.Tests/WorkflowStartInitialActionTests.cs`
+
+- What changed: added SQL-backed coverage for start plus `SubmitForChecker` and rollback on invalid initial action.
 - Status: complete.
 
 File: `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Controllers/WorkflowActionControllerTests.cs`
@@ -491,26 +527,35 @@ Notes:
 
 ## Current build/test status
 
-Commands run after this handoff update:
+Commands run for the latest start-with-initial-action work:
 
 ```powershell
 dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
 dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING = 'Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter WorkflowStartInitialActionTests -m:1 /p:UseAppHost=false
 ```
 
 Results:
 
 - Build passed with 0 warnings and 0 errors.
-- API test suite passed: 34 passed, 0 failed, 0 skipped.
+- API test suite passed: 38 passed, 0 failed, 0 skipped.
+- Focused SQL-backed start initial action tests passed: 2 passed, 0 failed, 0 skipped.
 
-Broader suite previously passed earlier with:
+Broader suite verification attempted with:
 
 ```powershell
 $env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING = 'Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'
 dotnet test src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
 ```
 
-Result at that time: 206 passed, 0 failed, 2 skipped. It was not rerun after the final handoff docs-only update unless the next session chooses to run it.
+Result:
+
+- The command timed out twice, once at 5 minutes and once at 10 minutes.
+- Hang diagnostics on `tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj` reached 202 passed and 2 skipped before the blame collector aborted while `WorkflowEngine.Tests.FreshCloneWalkthroughTests.Demo_RunsSuccessfullyAfterInitDb` was active.
+- The isolated `FreshCloneWalkthroughTests.Demo_RunsSuccessfullyAfterInitDb` test also timed out.
+- Stale `dotnet`/`testhost`/MSBuild processes from the timed-out runs were stopped; no test processes remained afterward.
+- The new feature's focused SQL-backed tests passed, so the remaining verification gap is isolated to the existing fresh-clone walkthrough demo shell-out test path.
 
 ## Important decisions made
 
@@ -539,6 +584,9 @@ Result at that time: 206 passed, 0 failed, 2 skipped. It was not rerun after the
 - `POST /v1/WorkflowAction` delivers only metadata notification rows created by the current action before returning success.
 - SMTP recipient resolution stays role/group-based through `Smtp:RoleEmailMap`; no individual user lookup was added.
 - `POST /v1/WorkflowStart` sends no email unless start later creates metadata-backed notification rows.
+- `POST /v1/WorkflowStart` can optionally accept `initialActionKey` to start and immediately execute a metadata-valid first action.
+- Start plus initial action returns the initial action result and refreshed post-action workflow context.
+- Start plus invalid initial action rolls back the newly-created workflow instance before returning the workflow failure result.
 - Trusted-header actor adapter remains temporary; no real auth/JWT/claims/user-role DB mapping has been added.
 - Workflow API remains workflow-only; no form validation, business object lifecycle, public console admin behavior, or deployment orchestration endpoints were added.
 

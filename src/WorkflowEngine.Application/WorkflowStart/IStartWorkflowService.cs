@@ -12,7 +12,10 @@ public sealed record StartWorkflowRequest(
     string BusinessObjectType,
     string BusinessObjectId,
     string StartedByUserId,
-    bool Reset);
+    bool Reset,
+    string? InitialActionKey = null,
+    string? StartedByDisplayName = null,
+    IReadOnlyList<string>? StartedByRoles = null);
 
 public sealed record StartWorkflowResult(
     WorkflowActionResultEnvelope Envelope,

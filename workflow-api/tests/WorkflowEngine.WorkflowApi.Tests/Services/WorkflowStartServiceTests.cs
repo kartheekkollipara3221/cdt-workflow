@@ -54,6 +54,156 @@ public sealed class WorkflowStartServiceTests
     }
 
     [Fact]
+    public void StartWorkflowPassesInitialActionAndActorEvidenceToApplicationStart()
+    {
+        var expectedContext = new WorkflowContextResponse();
+        expectedContext.WorkflowContext.Workflow.WorkflowInstanceId = "WF-PT-1001";
+        var applicationStart = new RecordingStartWorkflowService(new StartWorkflowResult(
+            new WorkflowActionResultEnvelope
+            {
+                Result = new WorkflowActionResult
+                {
+                    Success = true,
+                    ResultCode = "Success",
+                    WorkflowInstanceId = "WF-PT-1001"
+                }
+            },
+            ResetCounts: null));
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            applicationStart,
+            new RecordingWorkflowContextReader(expectedContext));
+
+        var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
+        {
+            WorkflowKey = " PortfolioTrade ",
+            BusinessObjectType = " PortfolioTrade ",
+            BusinessObjectId = " PT-1001 ",
+            InitialActionKey = " SubmitForChecker "
+        });
+
+        Assert.True(response.Result.ActionResult.Success);
+        Assert.NotNull(applicationStart.LastRequest);
+        Assert.Equal("SubmitForChecker", applicationStart.LastRequest.InitialActionKey);
+        Assert.Equal("Maker One", applicationStart.LastRequest.StartedByDisplayName);
+        Assert.Equal(["Maker"], applicationStart.LastRequest.StartedByRoles);
+    }
+
+    [Fact]
+    public void StartWorkflowDispatchesInitialActionCreatedNotifications()
+    {
+        var applicationStart = new RecordingStartWorkflowService(new StartWorkflowResult(
+            new WorkflowActionResultEnvelope
+            {
+                Result = new WorkflowActionResult
+                {
+                    Success = true,
+                    ResultCode = "Success",
+                    WorkflowInstanceId = "WF-PT-1001",
+                    ActionKey = "SubmitForChecker",
+                    CorrelationId = "start-action-1",
+                    Notification = new WorkflowNotificationSummary
+                    {
+                        Queued = true,
+                        NotificationType = "WorkflowTaskAssigned",
+                        RecipientRole = "Checker"
+                    }
+                },
+                WorkflowContext = new WorkflowContext()
+            },
+            ResetCounts: null));
+        var dispatcher = new RecordingWorkflowActionNotificationDispatcher(
+            WorkflowActionNotificationDispatchResult.Delivered([]));
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            applicationStart,
+            new RecordingWorkflowContextReader(new WorkflowContextResponse()),
+            dispatcher);
+
+        var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
+        {
+            WorkflowKey = "PortfolioTrade",
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-1001",
+            InitialActionKey = "SubmitForChecker"
+        });
+
+        Assert.True(response.Result.ActionResult.Success);
+        Assert.Equal("WF-PT-1001", dispatcher.LastWorkflowInstanceId);
+        Assert.Equal("start-action-1", dispatcher.LastCorrelationId);
+        Assert.Equal(1, dispatcher.DispatchCount);
+    }
+
+    [Fact]
+    public void StartWorkflowDoesNotDispatchNotificationsForStartOnly()
+    {
+        var applicationStart = new RecordingStartWorkflowService(SuccessResult());
+        var dispatcher = new RecordingWorkflowActionNotificationDispatcher(
+            WorkflowActionNotificationDispatchResult.Delivered([]));
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            applicationStart,
+            new RecordingWorkflowContextReader(new WorkflowContextResponse()),
+            dispatcher);
+
+        var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
+        {
+            WorkflowKey = "PortfolioTrade",
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-1001"
+        });
+
+        Assert.True(response.Result.ActionResult.Success);
+        Assert.Equal(0, dispatcher.DispatchCount);
+    }
+
+    [Fact]
+    public void StartWorkflowReturnsFailureWhenInitialActionNotificationDeliveryFails()
+    {
+        var applicationStart = new RecordingStartWorkflowService(new StartWorkflowResult(
+            new WorkflowActionResultEnvelope
+            {
+                Result = new WorkflowActionResult
+                {
+                    Success = true,
+                    ResultCode = "Success",
+                    WorkflowInstanceId = "WF-PT-1001",
+                    ActionKey = "SubmitForChecker",
+                    CorrelationId = "start-action-2",
+                    Notification = new WorkflowNotificationSummary
+                    {
+                        Queued = true,
+                        NotificationType = "WorkflowTaskAssigned",
+                        RecipientRole = "Checker"
+                    }
+                },
+                WorkflowContext = new WorkflowContext()
+            },
+            ResetCounts: null));
+        var dispatcher = new RecordingWorkflowActionNotificationDispatcher(
+            WorkflowActionNotificationDispatchResult.Failed("SMTP delivery failed for notification 99."));
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            applicationStart,
+            new RecordingWorkflowContextReader(new WorkflowContextResponse()),
+            dispatcher);
+
+        var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
+        {
+            WorkflowKey = "PortfolioTrade",
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-1001",
+            InitialActionKey = "SubmitForChecker"
+        });
+
+        Assert.False(response.Result.ActionResult.Success);
+        Assert.Equal("NotificationDeliveryFailed", response.Result.ActionResult.ResultCode);
+        Assert.Equal("SMTP delivery failed for notification 99.", response.Result.ActionResult.Message);
+        Assert.Equal("WF-PT-1001", dispatcher.LastWorkflowInstanceId);
+        Assert.Equal("start-action-2", dispatcher.LastCorrelationId);
+    }
+
+    [Fact]
     public void StartWorkflowDoesNotReadContextForFailedStart()
     {
         var applicationStart = new RecordingStartWorkflowService(new StartWorkflowResult(
@@ -137,9 +287,15 @@ public sealed class WorkflowStartServiceTests
     private static ApiWorkflowStartService CreateService(
         IWorkflowActorResolver actorResolver,
         IStartWorkflowService startWorkflowService,
-        IWorkflowContextReader workflowContextReader)
+        IWorkflowContextReader workflowContextReader,
+        IWorkflowActionNotificationDispatcher? notificationDispatcher = null)
     {
-        return new ApiWorkflowStartService(actorResolver, startWorkflowService, workflowContextReader);
+        return new ApiWorkflowStartService(
+            actorResolver,
+            startWorkflowService,
+            workflowContextReader,
+            notificationDispatcher ?? new RecordingWorkflowActionNotificationDispatcher(
+                WorkflowActionNotificationDispatchResult.Delivered([])));
     }
 
     private static StartWorkflowResult SuccessResult()
@@ -188,6 +344,27 @@ public sealed class WorkflowStartServiceTests
             LastRequest = request;
 
             return response;
+        }
+    }
+
+    private sealed class RecordingWorkflowActionNotificationDispatcher(
+        WorkflowActionNotificationDispatchResult result) : IWorkflowActionNotificationDispatcher
+    {
+        public int DispatchCount { get; private set; }
+
+        public string? LastWorkflowInstanceId { get; private set; }
+
+        public string? LastCorrelationId { get; private set; }
+
+        public WorkflowActionNotificationDispatchResult DispatchCreatedNotifications(
+            string workflowInstanceId,
+            string correlationId)
+        {
+            DispatchCount++;
+            LastWorkflowInstanceId = workflowInstanceId;
+            LastCorrelationId = correlationId;
+
+            return result;
         }
     }
 }

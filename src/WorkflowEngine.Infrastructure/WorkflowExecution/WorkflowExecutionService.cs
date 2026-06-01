@@ -316,7 +316,9 @@ public sealed class WorkflowExecutionService(
         WorkflowTaskChange? createdTask = null;
         WorkflowNotificationSummary? notification = null;
 
-        using (var transaction = dbContext.Database.BeginTransaction())
+        using (var transaction = dbContext.Database.CurrentTransaction is null
+            ? dbContext.Database.BeginTransaction()
+            : null)
         {
             var instance = dbContext.WorkflowInstances
                 .AsNoTracking()
@@ -329,7 +331,7 @@ public sealed class WorkflowExecutionService(
                 ?? CheckTransitionStillCurrent(request, instance, currentPendingTask, transition);
             if (currentConcurrency is not null)
             {
-                transaction.Rollback();
+                transaction?.Rollback();
                 return TryBuildIdempotencyReplay(request) ?? currentConcurrency;
             }
 
@@ -362,7 +364,7 @@ public sealed class WorkflowExecutionService(
                         .SetProperty(row => row.CompletedAtUtc, completed ? now : instance.CompletedAtUtc));
                 if (updatedRows == 0)
                 {
-                    transaction.Rollback();
+                    transaction?.Rollback();
                     dbContext.ChangeTracker.Clear();
                     var concurrencyConflict = resultBuilder.BuildConcurrencyConflict(
                         normalized,
@@ -502,11 +504,11 @@ public sealed class WorkflowExecutionService(
             try
             {
                 dbContext.SaveChanges();
-                transaction.Commit();
+                transaction?.Commit();
             }
             catch (DbUpdateException exception) when (IsIdempotencyUniqueViolation(exception))
             {
-                transaction.Rollback();
+                transaction?.Rollback();
                 dbContext.ChangeTracker.Clear();
                 var existing = TryBuildIdempotencyReplay(request);
                 if (existing is null)

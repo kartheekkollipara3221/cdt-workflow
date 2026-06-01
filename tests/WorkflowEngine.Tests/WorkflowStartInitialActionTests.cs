@@ -1,0 +1,98 @@
+using WorkflowEngine.Application.Contracts;
+using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.WorkflowStart;
+using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.Infrastructure.WorkflowContext;
+using WorkflowEngine.Infrastructure.WorkflowExecution;
+using WorkflowEngine.Infrastructure.WorkflowStart;
+
+namespace WorkflowEngine.Tests;
+
+[Collection("SqlServerWorkflowExecution")]
+public sealed class WorkflowStartInitialActionTests
+{
+    [Fact]
+    public void StartWithInitialSubmitMovesToCheckerReviewWithoutMockSectionData()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var service = CreateService(dbContext);
+
+        var result = service.Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "PortfolioTrade",
+            "PT-START-SUBMIT",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "SubmitForChecker",
+            StartedByDisplayName: "Maker One",
+            StartedByRoles: ["Maker"]));
+
+        Assert.True(result.Envelope.Result.Success);
+        Assert.Equal("SubmitForChecker", result.Envelope.Result.ActionKey);
+        Assert.Equal("Draft", result.Envelope.Result.OldState);
+        Assert.Equal("CheckerReview", result.Envelope.Result.NewState);
+        Assert.NotNull(result.Envelope.WorkflowContext);
+
+        var instance = Assert.Single(dbContext.WorkflowInstances);
+        Assert.Equal("CheckerReview", instance.CurrentStateKey);
+        Assert.Equal(2, instance.Version);
+
+        var task = Assert.Single(dbContext.WorkflowTasks);
+        Assert.Equal("CheckerReviewTask", task.TaskKey);
+        Assert.Equal("Pending", task.Status);
+
+        var notification = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal("WorkflowTaskAssigned", notification.NotificationType);
+        Assert.Equal("Checker", notification.RecipientRoleKey);
+
+        Assert.Single(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+    }
+
+    [Fact]
+    public void StartWithInvalidInitialActionRollsBackCreatedInstance()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var service = CreateService(dbContext);
+
+        var result = service.Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "PortfolioTrade",
+            "PT-BAD-ACTION",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "CheckerReturnToMaker",
+            StartedByDisplayName: "Maker One",
+            StartedByRoles: ["Maker"]));
+
+        Assert.False(result.Envelope.Result.Success);
+        Assert.Equal("InvalidTransition", result.Envelope.Result.ResultCode);
+        Assert.Empty(dbContext.WorkflowInstances);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.IdempotencyRecords);
+    }
+
+    private static StartWorkflowService CreateService(WorkflowDbContext dbContext)
+    {
+        var timeProvider = new FixedTimeProvider(DateTimeOffset.Parse("2030-01-15T15:30:00Z"));
+        var resultBuilder = new WorkflowActionResultBuilder();
+        var contextReader = new WorkflowContextReader(dbContext, timeProvider);
+        var executionService = new WorkflowExecutionService(
+            dbContext,
+            contextReader,
+            timeProvider,
+            resultBuilder,
+            new CanonicalWorkflowResultSerializer());
+
+        return new StartWorkflowService(
+            dbContext,
+            timeProvider,
+            resultBuilder,
+            new WorkflowActionEnvelopeNormalizer(),
+            new CanonicalRequestHasher(),
+            executionService);
+    }
+}

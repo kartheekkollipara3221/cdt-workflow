@@ -54,6 +54,19 @@
       Added a workflow-only start endpoint accepting `workflowKey`, `businessObjectType`, and `businessObjectId`; starting user comes from trusted headers; public `reset` is not exposed. Response shape is `{ result: { actionResult, workflowContext } }`.
       Risk level: Medium
 
+- [x] Support optional initial action on `POST /v1/WorkflowStart`.
+      Files involved:
+      `workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs`,
+      `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowStartService.cs`,
+      `src/WorkflowEngine.Application/WorkflowStart/IStartWorkflowService.cs`,
+      `src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs`,
+      `src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs`
+      Why it matters:
+      Maker can submit a brand-new form into workflow in one API call without first saving a draft.
+      Completed:
+      Added optional `initialActionKey` to `WorkflowStartRequest`. When present, workflow start creates the instance in `Draft` and immediately executes the metadata-valid first action, returning the initial action result and refreshed context. Invalid initial actions roll back the newly-created workflow instance. Action-created notifications are delivered through the same targeted dispatcher used by `POST /v1/WorkflowAction`.
+      Risk level: Medium
+
 - [x] Deliver action-created notifications before successful `POST /v1/WorkflowAction` responses.
       Files involved:
       `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs`,

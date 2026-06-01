@@ -145,9 +145,14 @@ Existing intended endpoints:
 - `POST /v1/WorkflowStart`
   - Starts one workflow instance for an upstream business object.
   - Request input is `workflowKey`, `businessObjectType`, and `businessObjectId`.
+  - Optional request input `initialActionKey` starts the workflow and immediately executes one metadata-valid first action from the newly-created workflow state.
   - Actor identity comes from the temporary trusted-header adapter and is recorded as the starting user.
   - The endpoint does not accept `reset`.
-  - The endpoint does not send email unless a future metadata-backed start notification is added.
+  - The endpoint does not require `SaveDraft`; `SaveDraft` and submit actions are ordinary metadata actions from `Draft` when seeded.
+  - If `initialActionKey` is omitted, the endpoint does not send email unless a future metadata-backed start notification is added.
+  - If `initialActionKey` queues a metadata notification, the endpoint delivers only notification rows created by that initial action before returning success.
+  - If the initial action fails before commit, the newly-created workflow instance is rolled back.
+  - If initial-action notification delivery fails after commit, the response is converted to `NotificationDeliveryFailed` and HTTP 500, and the notification row remains pending for retry.
   - The endpoint does not create, update, validate, or read form/business object data.
   - Successful responses use the target wrapper shape:
     - top-level `result`

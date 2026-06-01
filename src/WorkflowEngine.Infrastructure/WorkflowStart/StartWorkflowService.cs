@@ -1,25 +1,59 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Contracts;
+using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Application.WorkflowStart;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
+using WorkflowEngine.Infrastructure.WorkflowContext;
+using WorkflowEngine.Infrastructure.WorkflowExecution;
 
 namespace WorkflowEngine.Infrastructure.WorkflowStart;
 
 public sealed class StartWorkflowService(
     WorkflowDbContext dbContext,
     TimeProvider timeProvider,
-    WorkflowActionResultBuilder resultBuilder) : IStartWorkflowService
+    WorkflowActionResultBuilder resultBuilder,
+    WorkflowActionEnvelopeNormalizer normalizer,
+    CanonicalRequestHasher hasher,
+    WorkflowExecutionService workflowExecutionService) : IStartWorkflowService
 {
+    public StartWorkflowService(
+        WorkflowDbContext dbContext,
+        TimeProvider timeProvider,
+        WorkflowActionResultBuilder resultBuilder)
+        : this(
+            dbContext,
+            timeProvider,
+            resultBuilder,
+            new WorkflowActionEnvelopeNormalizer(),
+            new CanonicalRequestHasher(),
+            new WorkflowExecutionService(
+                dbContext,
+                new WorkflowContextReader(dbContext, timeProvider),
+                timeProvider,
+                resultBuilder,
+                new CanonicalWorkflowResultSerializer()))
+    {
+    }
+
     public StartWorkflowResult Start(StartWorkflowRequest request)
     {
         Validate(request);
 
         var workflowInstanceId = $"WF-{request.BusinessObjectId}";
+        var initialActionKey = OptionalText(request.InitialActionKey);
         if (request.Reset)
         {
+            if (initialActionKey is not null)
+            {
+                return ResetAndStartWithInitialAction(
+                    request with { InitialActionKey = initialActionKey },
+                    workflowInstanceId);
+            }
+
             return ResetAndStart(request, workflowInstanceId);
         }
 
@@ -33,6 +67,13 @@ public sealed class StartWorkflowService(
                     request.BusinessObjectId,
                     existing),
                 ResetCounts: null);
+        }
+
+        if (initialActionKey is not null)
+        {
+            return StartWithInitialAction(
+                request with { InitialActionKey = initialActionKey },
+                workflowInstanceId);
         }
 
         using var transaction = dbContext.Database.BeginTransaction();
@@ -66,7 +107,130 @@ public sealed class StartWorkflowService(
     {
         using var transaction = dbContext.Database.BeginTransaction();
 
-        var counts = new StartWorkflowResetCounts(
+        var counts = DeleteRuntimeRows(request, workflowInstanceId);
+
+        dbContext.ChangeTracker.Clear();
+        var envelope = InsertFreshInstance(request, workflowInstanceId);
+        transaction.Commit();
+        return new StartWorkflowResult(envelope, counts);
+    }
+
+    private StartWorkflowResult ResetAndStartWithInitialAction(
+        StartWorkflowRequest request,
+        string workflowInstanceId)
+    {
+        using var transaction = dbContext.Database.BeginTransaction();
+
+        var counts = DeleteRuntimeRows(request, workflowInstanceId);
+
+        dbContext.ChangeTracker.Clear();
+        InsertFreshInstance(request, workflowInstanceId);
+        var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId);
+        if (!actionEnvelope.Result.Success)
+        {
+            transaction.Rollback();
+            return new StartWorkflowResult(actionEnvelope, ResetCounts: null);
+        }
+
+        transaction.Commit();
+        return new StartWorkflowResult(actionEnvelope, counts);
+    }
+
+    private StartWorkflowResult StartWithInitialAction(
+        StartWorkflowRequest request,
+        string workflowInstanceId)
+    {
+        using var transaction = dbContext.Database.BeginTransaction();
+
+        try
+        {
+            InsertFreshInstance(request, workflowInstanceId);
+            var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId);
+            if (!actionEnvelope.Result.Success)
+            {
+                transaction.Rollback();
+                return new StartWorkflowResult(actionEnvelope, ResetCounts: null);
+            }
+
+            transaction.Commit();
+            return new StartWorkflowResult(actionEnvelope, ResetCounts: null);
+        }
+        catch (DbUpdateException exception) when (IsWorkflowInstanceUniqueViolation(exception))
+        {
+            transaction.Rollback();
+            dbContext.ChangeTracker.Clear();
+            var duplicate = FindExisting(request);
+            if (duplicate is null)
+            {
+                throw;
+            }
+
+            return new StartWorkflowResult(
+                resultBuilder.BuildAlreadyExists(
+                    request.WorkflowKey,
+                    request.BusinessObjectType,
+                    request.BusinessObjectId,
+                    duplicate),
+                ResetCounts: null);
+        }
+    }
+
+    private WorkflowActionResultEnvelope ExecuteInitialAction(
+        StartWorkflowRequest request,
+        string workflowInstanceId)
+    {
+        var generatedId = Guid.NewGuid().ToString("N");
+        var envelope = new WorkflowActionEnvelope
+        {
+            Request = new WorkflowRequest
+            {
+                CommandType = "ExecuteWorkflowAction",
+                CommandVersion = 1,
+                ClientActionId = generatedId,
+                CorrelationId = generatedId,
+                SourceSystem = "WorkflowEngine.StartWorkflow"
+            },
+            Actor = new WorkflowActor
+            {
+                UserId = request.StartedByUserId,
+                DisplayName = string.IsNullOrWhiteSpace(request.StartedByDisplayName)
+                    ? request.StartedByUserId
+                    : request.StartedByDisplayName,
+                Roles = request.StartedByRoles?
+                    .Where(role => !string.IsNullOrWhiteSpace(role))
+                    .Select(role => role.Trim())
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList() ?? []
+            },
+            Workflow = new WorkflowActionBlock
+            {
+                WorkflowInstanceId = workflowInstanceId,
+                ActionKey = request.InitialActionKey,
+                IdempotencyKey = generatedId
+            }
+        };
+
+        var normalized = normalizer.Normalize(
+            envelope,
+            businessObjectOverride: null,
+            workflowInstanceOverride: null);
+
+        return workflowExecutionService.Execute(new WorkflowExecutionRequest(
+                normalized,
+                hasher.ComputeHash(normalized.Envelope),
+                AdminOverride: false)
+            {
+                DeriveIdentityFromPersistence = true,
+                PersistSectionData = false,
+                ValidateActionEcho = false
+            });
+    }
+
+    private StartWorkflowResetCounts DeleteRuntimeRows(
+        StartWorkflowRequest request,
+        string workflowInstanceId)
+    {
+        return new StartWorkflowResetCounts(
             dbContext.IdempotencyRecords
                 .Where(row => row.WorkflowInstanceId == workflowInstanceId)
                 .ExecuteDelete(),
@@ -86,11 +250,6 @@ public sealed class StartWorkflowService(
             dbContext.WorkflowInstances
                 .Where(row => row.WorkflowInstanceId == workflowInstanceId)
                 .ExecuteDelete());
-
-        dbContext.ChangeTracker.Clear();
-        var envelope = InsertFreshInstance(request, workflowInstanceId);
-        transaction.Commit();
-        return new StartWorkflowResult(envelope, counts);
     }
 
     private WorkflowActionResultEnvelope InsertFreshInstance(StartWorkflowRequest request, string workflowInstanceId)
@@ -177,6 +336,11 @@ public sealed class StartWorkflowService(
         {
             throw new ArgumentException("startedByUserId is required.", nameof(request));
         }
+    }
+
+    private static string? OptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static bool IsWorkflowInstanceUniqueViolation(DbUpdateException exception)
