@@ -173,6 +173,9 @@ Existing intended endpoints:
   - The API request DTO should contain only pure workflow fields:
     - workflow instance ID
     - action key
+    - optional `assignedRoleKey` for metadata-defined dynamic task assignment
+  - The request body contains `workflowInstanceId`, `actionKey`, and optional `assignedRoleKey`.
+  - `assignedRoleKey` is accepted only for transitions whose created task supports dynamic assignment metadata; for `CheckerSendToTradingDesk`, the upstream form/business API supplies one of `TradingDeskTaxable`, `TradingDeskTaxExempt`, or `TradingDeskEquity`.
   - `workflowInstanceId` is the lookup key.
   - Workflow key and workflow definition version are derived from persisted workflow metadata, not echoed by the request.
   - Business object identity is derived from the persisted workflow instance, not echoed by the request.
@@ -244,7 +247,7 @@ Do not require or accept `objectType` or `objectId` in the workflow action reque
 
 ## Seventh Open Clarification
 
-Answered: the workflow action request DTO should only accept `workflowInstanceId` and `actionKey`.
+Answered: the workflow action request DTO should only accept `workflowInstanceId`, `actionKey`, and optional `assignedRoleKey`.
 
 Do not require or accept `expectedCurrentState`, `expectedCurrentTaskId`, `expectedCurrentTaskKey`, or `expectedInstanceVersion` in the public API request DTO. The engine validates current state and task from persisted workflow data and metadata.
 
@@ -252,7 +255,7 @@ Do not require or accept `expectedCurrentState`, `expectedCurrentTaskId`, `expec
 
 Answered: the API generates IDs and correlation internally.
 
-Do not accept `actionReason`, `clientActionId`, `correlationId`, `idempotencyKey`, or source-system/command metadata in the public workflow action request DTO. The request body should contain only `workflowInstanceId` and `actionKey`.
+Do not accept `actionReason`, `clientActionId`, `correlationId`, `idempotencyKey`, or source-system/command metadata in the public workflow action request DTO. The request body should contain only `workflowInstanceId`, `actionKey`, and optional `assignedRoleKey`.
 
 ## Ninth Open Clarification
 

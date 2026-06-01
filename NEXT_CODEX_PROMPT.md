@@ -47,6 +47,11 @@ Completed in latest sessions:
 - Verified live API SMTP delivery with smtp4dev and a real `POST /v1/WorkflowAction`.
 - User also verified Swagger Return to Maker on `WF-PT-SWAGGER-001XX`.
 - User verified console `process-notification-outbox` SMTP path works.
+- User confirmed local API and console testing should use `Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
+- After the user stopped the running WorkflowApi process, Debug build/test passed for `workflow-api\WorkflowEngine.WorkflowApi.slnx`: build 0 warnings/errors, tests 38 passed.
+- For this DB alignment update, Release builds passed for `workflow-api\WorkflowEngine.WorkflowApi.slnx`, `src\WorkflowEngine.sln`, and `api\WorkflowEngine.Api.sln`.
+- Release tests passed for `workflow-api\WorkflowEngine.WorkflowApi.slnx` and `api\WorkflowEngine.Api.sln`: 38 passed each, 0 failed.
+- Dynamic trading desk assignment is in progress: `CheckerSendToTradingDesk` accepts optional `assignedRoleKey`; valid values are `TradingDeskTaxable`, `TradingDeskTaxExempt`, and `TradingDeskEquity`; broad `TradingDesk` remains the actor role for later trading actions.
 - `dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed with 0 warnings and 0 errors before the final docs-only handoff update.
 - `dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed with 34 tests before the final docs-only handoff update.
 - Broader `dotnet test src\WorkflowEngine.sln -m:1 /p:UseAppHost=false` passed earlier with `WORKFLOW_ENGINE_TEST_CONNECTION_STRING` set: 206 passed, 2 skipped.
@@ -70,7 +75,8 @@ Current endpoint contracts:
 ```json
 {
   "workflowInstanceId": "WF-PT-123",
-  "actionKey": "SubmitForChecker"
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable"
 }
 ```
 
@@ -92,8 +98,8 @@ X-Workflow-DisplayName: Checker One
 
 Important current worktree notes:
 
-- `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` has local SMTP env vars in the `http` profile. Review before commit. Current file shows `Smtp__Port = 125`; earlier smtp4dev output showed port `25`, so verify the intended local port.
-- Two new source files are untracked and must be reviewed/added if committing:
+- `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` has local SMTP env vars in the `http` profile. Review before commit. Current file shows `Smtp__Port = 3025`; verify this against the current smtp4dev listener.
+- The action notification dispatcher source files are tracked now:
   - `workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowActionNotificationDispatcher.cs`
   - `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs`
 - Unrelated untracked `~/.codex/superpowers/` should not be added.

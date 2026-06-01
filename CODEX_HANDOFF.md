@@ -314,7 +314,17 @@ File: `src/WorkflowEngine.Console/appsettings.Development.json`
   - Same local API DB connection string.
 - Why:
   - Allows console prep commands (`init-db`, `verify-seed`, `start-workflow`, `show-notifications`, `process-notification-outbox`) to target the same DB as the API.
-- Status: open decision because it contains a developer-machine DB name.
+- Status: confirmed by user on 2026-06-01. Local API and console testing should use `cdt_workflow_api_20260527`.
+
+Files:
+- `api/src/WorkflowEngine.Api/appsettings.json`
+- `api/src/WorkflowEngine.Api/appsettings.Development.json`
+
+- What changed:
+  - Aligned the older tracked `WorkflowEngine.Api` configuration to `Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
+- Why:
+  - Prevent either tracked API host from accidentally targeting `burrito` or `cdt_workflow` while local tests are run against `cdt_workflow_api_20260527`.
+- Status: complete.
 
 File: `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json`
 
@@ -324,7 +334,7 @@ File: `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.jso
   - Current `http` profile includes:
     - `Notifications__Sender = Smtp`
     - `Smtp__Host = localhost`
-    - `Smtp__Port = 125`
+    - `Smtp__Port = 3025`
     - `Smtp__From = workflow@example.test`
     - `Smtp__RoleEmailMap__Checker = cdt-checkers@example.test`
     - `Smtp__RoleEmailMap__TradingDesk = cdt-trading@example.test`
@@ -335,7 +345,14 @@ File: `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.jso
 - Status: needs review before commit.
 - Behavior impact:
   - This makes the VS `http` profile use SMTP instead of `NoOp`.
-  - Verify `Smtp__Port` against the actual smtp4dev listener before relying on it. Earlier user-provided smtp4dev output showed port `25`; current `launchSettings.json` shows `125`.
+  - Verify `Smtp__Port` against the actual smtp4dev listener before relying on it. Current `launchSettings.json` shows `3025`.
+
+### Dynamic Trading Desk Assignment
+
+- User approved dynamic trading desk assignment.
+- Upstream business/form API supplies `assignedRoleKey`.
+- Supported assignment role keys are `TradingDeskTaxable`, `TradingDeskTaxExempt`, and `TradingDeskEquity`.
+- Broad `TradingDesk` remains the actor role for Trading Desk actions.
 
 ### Logging / error handling
 
@@ -472,7 +489,7 @@ File: `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Startup/WorkflowApiPr
 
 ## Current git/worktree status
 
-Commands run before this handoff update:
+Commands run during this handoff update:
 
 ```powershell
 git status --short --untracked-files=all
@@ -486,53 +503,67 @@ Summary at the time of inspection:
  M CODEX_HANDOFF.md
  M NEXT_CODEX_PROMPT.md
  M TODO_WORKFLOW_API.md
- M workflow-api/WORKFLOW_API_BOUNDARIES.md
- M workflow-api/src/WorkflowEngine.WorkflowApi/Program.cs
+ M api/src/WorkflowEngine.Api/appsettings.Development.json
+ M api/src/WorkflowEngine.Api/appsettings.json
  M workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json
- M workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs
- M workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionServiceTests.cs
- M workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Startup/WorkflowApiProjectStructureTests.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowActionNotificationDispatcher.cs
-?? workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs
+?? .tools/smtp4dev/...
 ?? ~/.codex/superpowers/
 ```
 
-`git diff --stat` summary at final inspection time:
+`git diff --stat` summary:
 
 ```text
- CODEX_HANDOFF.md                                   | 517 ++++++++++-----------
- NEXT_CODEX_PROMPT.md                               |  45 +-
- TODO_WORKFLOW_API.md                               |  22 +
- workflow-api/WORKFLOW_API_BOUNDARIES.md            |   6 +
- .../src/WorkflowEngine.WorkflowApi/Program.cs      |   1 +
- .../Properties/launchSettings.json                 |  10 +-
- .../Services/WorkflowActionService.cs              |  41 +-
- .../Services/WorkflowActionServiceTests.cs         | 119 ++++-
- .../Startup/WorkflowApiProjectStructureTests.cs    |   1 +
- 9 files changed, 488 insertions(+), 274 deletions(-)
+ CODEX_HANDOFF.md                                   | 98 ++++++++++++----------
+ NEXT_CODEX_PROMPT.md                               |  7 +-
+ TODO_WORKFLOW_API.md                               |  8 +-
+ .../appsettings.Development.json                   |  2 +-
+ api/src/WorkflowEngine.Api/appsettings.json        |  2 +-
+ .../Properties/launchSettings.json                 |  2 +-
+ 6 files changed, 68 insertions(+), 51 deletions(-)
 ```
 
-Tracked files changed at inspection time:
+Tracked files changed:
 
 ```text
 CODEX_HANDOFF.md
 NEXT_CODEX_PROMPT.md
 TODO_WORKFLOW_API.md
-workflow-api/WORKFLOW_API_BOUNDARIES.md
-workflow-api/src/WorkflowEngine.WorkflowApi/Program.cs
+api/src/WorkflowEngine.Api/appsettings.Development.json
+api/src/WorkflowEngine.Api/appsettings.json
 workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json
-workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs
-workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionServiceTests.cs
-workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Startup/WorkflowApiProjectStructureTests.cs
 ```
 
 Notes:
 
-- `git diff --stat` does not include untracked dispatcher source files.
-- `~/.codex/superpowers/` is unrelated/untracked. Do not add it.
-- Review `launchSettings.json` before commit because it contains local SMTP testing values.
+- `workflow-api/src/WorkflowEngine.WorkflowApi/appsettings.Development.json` and `src/WorkflowEngine.Console/appsettings.Development.json` already target `cdt_workflow_api_20260527`.
+- The older tracked `api/src/WorkflowEngine.Api` config now also targets `cdt_workflow_api_20260527`.
+- `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` now uses `Smtp__Port = 3025`, matching the recent repo-local smtp4dev setup.
+- `.tools/smtp4dev/...` and `~/.codex/superpowers/` are unrelated/untracked. Do not add them unless explicitly requested.
 
 ## Current build/test status
+
+Commands run for the DB alignment update:
+
+```powershell
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -c Release -m:1 /p:UseAppHost=false
+dotnet build src\WorkflowEngine.sln -c Release -m:1 /p:UseAppHost=false
+dotnet build api\WorkflowEngine.Api.sln -c Release -m:1 /p:UseAppHost=false
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -c Release -m:1 /p:UseAppHost=false
+dotnet test api\WorkflowEngine.Api.sln -c Release -m:1 /p:UseAppHost=false
+```
+
+Results:
+
+- Initial Debug build of `workflow-api\WorkflowEngine.WorkflowApi.slnx` failed because a running Visual Studio/API process locked Debug DLLs.
+- After the user stopped the running process, Debug build of `workflow-api\WorkflowEngine.WorkflowApi.slnx` passed with 0 warnings and 0 errors.
+- Debug tests for `workflow-api\WorkflowEngine.WorkflowApi.slnx` passed: 38 passed, 0 failed, 0 skipped.
+- Release build of `workflow-api\WorkflowEngine.WorkflowApi.slnx` passed with 0 warnings and 0 errors.
+- Release build of `src\WorkflowEngine.sln` passed with 0 warnings and 0 errors.
+- Release build of `api\WorkflowEngine.Api.sln` passed with 0 warnings and 0 errors.
+- Release tests for `workflow-api\WorkflowEngine.WorkflowApi.slnx` passed: 38 passed, 0 failed, 0 skipped.
+- Release tests for `api\WorkflowEngine.Api.sln` passed: 38 passed, 0 failed, 0 skipped.
 
 Commands run for the latest start-with-initial-action work:
 
@@ -594,25 +625,18 @@ Result:
 - `POST /v1/WorkflowStart` can optionally accept `initialActionKey` to start and immediately execute a metadata-valid first action.
 - Start plus initial action returns the initial action result and refreshed post-action workflow context.
 - Start plus invalid initial action rolls back the newly-created workflow instance before returning the workflow failure result.
+- `CheckerSendToTradingDesk` supports dynamic task assignment through `assignedRoleKey`; valid values are `TradingDeskTaxable`, `TradingDeskTaxExempt`, and `TradingDeskEquity`.
+- Broad `TradingDesk` remains the actor role authorized to execute later Trading Desk actions, even when the task is assigned to a specific desk role.
 - Trusted-header actor adapter remains temporary; no real auth/JWT/claims/user-role DB mapping has been added.
 - Workflow API remains workflow-only; no form validation, business object lifecycle, public console admin behavior, or deployment orchestration endpoints were added.
 
 ## Open issues / remaining work
 
-- [ ] Decide whether to keep console development connection string.
-      Files involved:
-      `src/WorkflowEngine.Console/appsettings.Development.json`
-      Why it matters:
-      It makes console prep commands target the API database but includes a local database name.
-      Suggested next step:
-      Keep for local integration testing or move to environment/user-local config.
-      Risk level: Medium
-
 - [ ] Review `launchSettings.json` SMTP values before commit.
       Files involved:
       `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json`
       Why it matters:
-      It now contains local SMTP testing environment variables. Current file shows `Smtp__Port = 125`, while earlier smtp4dev output showed SMTP listening on port `25`.
+      It now contains local SMTP testing environment variables. Current file shows `Smtp__Port = 3025`.
       Suggested next step:
       Confirm the intended local smtp4dev port and decide whether these local SMTP env vars should be committed, moved to user-local settings, or documented only.
       Risk level: Medium
@@ -692,7 +716,7 @@ Result:
 - `process-notification-outbox` is currently manual/console-driven unless production chooses a scheduled/background runner.
 - Live API checks used local DB `cdt_workflow_api_20260527` on `Server=DOLLY`.
 - Manual Swagger/smtp4dev tests created workflow/runtime rows in the local dev DB, including `WF-PT-SWAGGER-001XX`.
-- Current worktree has uncommitted source/doc changes and untracked dispatcher files.
+- Current worktree has uncommitted config/doc changes and untracked local smtp4dev tool files.
 - `workflow-api/final-state-project.txt` is untracked/reference input and should remain a reference unless user wants it committed.
 - Some command probes intermittently hit a sandbox `spawn setup refresh` error; rerunning or using already-approved/escalated commands has worked.
 
