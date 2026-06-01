@@ -26,6 +26,7 @@ public sealed class WorkflowActionService(
 
         var workflowInstanceId = RequiredText(request.WorkflowInstanceId, "workflowInstanceId");
         var actionKey = RequiredText(request.ActionKey, "actionKey");
+        var assignedRoleKey = OptionalText(request.AssignedRoleKey);
         var actor = actorResolver.Resolve(httpContext);
         var generatedId = Guid.NewGuid().ToString("N");
         var envelope = new WorkflowActionEnvelope
@@ -48,6 +49,7 @@ public sealed class WorkflowActionService(
             {
                 WorkflowInstanceId = workflowInstanceId,
                 ActionKey = actionKey,
+                AssignedRoleKey = assignedRoleKey,
                 IdempotencyKey = generatedId
             }
         };
@@ -117,5 +119,10 @@ public sealed class WorkflowActionService(
             StatusCodes.Status400BadRequest,
             "Invalid workflow action request.",
             $"{fieldName} is required.");
+    }
+
+    private static string? OptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

@@ -39,7 +39,8 @@ public sealed class WorkflowActionServiceTests
         var response = service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
         {
             WorkflowInstanceId = " WF-PT-1001 ",
-            ActionKey = " CheckerSendToTradingDesk "
+            ActionKey = " CheckerSendToTradingDesk ",
+            AssignedRoleKey = " TradingDeskTaxable "
         });
 
         Assert.True(response.Result.ActionResult.Success);
@@ -54,6 +55,7 @@ public sealed class WorkflowActionServiceTests
         var envelope = executionService.LastRequest.Normalized.Envelope;
         Assert.Equal("WF-PT-1001", envelope.Workflow?.WorkflowInstanceId);
         Assert.Equal("CheckerSendToTradingDesk", envelope.Workflow?.ActionKey);
+        Assert.Equal("TradingDeskTaxable", envelope.Workflow?.AssignedRoleKey);
         Assert.Equal("checker1", envelope.Actor?.UserId);
         Assert.Equal("Checker One", envelope.Actor?.DisplayName);
         Assert.Equal(["Checker"], envelope.Actor?.Roles);
@@ -193,6 +195,37 @@ public sealed class WorkflowActionServiceTests
         Assert.Equal("Invalid workflow action request.", exception.Title);
         Assert.Equal(expectedDetail, exception.Detail);
         Assert.Null(executionService.LastRequest);
+    }
+
+    [Fact]
+    public void ExecuteWorkflowActionTrimsBlankAssignedRoleKeyToNull()
+    {
+        var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = true,
+                ResultCode = "Success",
+                WorkflowInstanceId = "WF-PT-1001",
+                ActionKey = "SaveDraft",
+                CorrelationId = "api-action-blank-assignment",
+                Notification = new WorkflowNotificationSummary { Queued = false }
+            },
+            WorkflowContext = new WorkflowContext()
+        });
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            executionService);
+
+        service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ActionKey = "SaveDraft",
+            AssignedRoleKey = " "
+        });
+
+        Assert.NotNull(executionService.LastRequest);
+        Assert.Null(executionService.LastRequest.Normalized.Envelope.Workflow?.AssignedRoleKey);
     }
 
     private static WorkflowActionService CreateService(

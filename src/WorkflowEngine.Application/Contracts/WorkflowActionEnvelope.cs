@@ -90,6 +90,8 @@ public sealed class WorkflowActionBlock
 
     public string? ActionReason { get; set; }
 
+    public string? AssignedRoleKey { get; set; }
+
     public string? IdempotencyKey { get; set; }
 
     public WorkflowActionOptions? Options { get; set; }
@@ -126,4 +128,3 @@ public sealed class WorkflowTestExpectations
 
     public string? ExpectedAuditAction { get; set; }
 }
-
