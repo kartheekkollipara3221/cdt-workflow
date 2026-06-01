@@ -500,45 +500,34 @@ git diff --name-only
 Summary at the time of inspection:
 
 ```text
- M CODEX_HANDOFF.md
- M NEXT_CODEX_PROMPT.md
- M TODO_WORKFLOW_API.md
  M api/src/WorkflowEngine.Api/appsettings.Development.json
  M api/src/WorkflowEngine.Api/appsettings.json
- M workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json
 ?? .tools/smtp4dev/...
+?? docs/superpowers/plans/2026-06-01-dynamic-trading-desk-assignment.md
 ?? ~/.codex/superpowers/
 ```
 
 `git diff --stat` summary:
 
 ```text
- CODEX_HANDOFF.md                                   | 98 ++++++++++++----------
- NEXT_CODEX_PROMPT.md                               |  7 +-
- TODO_WORKFLOW_API.md                               |  8 +-
- .../appsettings.Development.json                   |  2 +-
- api/src/WorkflowEngine.Api/appsettings.json        |  2 +-
- .../Properties/launchSettings.json                 |  2 +-
- 6 files changed, 68 insertions(+), 51 deletions(-)
+ api/src/WorkflowEngine.Api/appsettings.Development.json | 2 +-
+ api/src/WorkflowEngine.Api/appsettings.json             | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 ```
 
 Tracked files changed:
 
 ```text
-CODEX_HANDOFF.md
-NEXT_CODEX_PROMPT.md
-TODO_WORKFLOW_API.md
 api/src/WorkflowEngine.Api/appsettings.Development.json
 api/src/WorkflowEngine.Api/appsettings.json
-workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json
 ```
 
 Notes:
 
 - `workflow-api/src/WorkflowEngine.WorkflowApi/appsettings.Development.json` and `src/WorkflowEngine.Console/appsettings.Development.json` already target `cdt_workflow_api_20260527`.
 - The older tracked `api/src/WorkflowEngine.Api` config now also targets `cdt_workflow_api_20260527`.
-- `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` now uses `Smtp__Port = 3025`, matching the recent repo-local smtp4dev setup.
-- `.tools/smtp4dev/...` and `~/.codex/superpowers/` are unrelated/untracked. Do not add them unless explicitly requested.
+- Dynamic Trading Desk assignment commits are complete through `80a9d3b docs: record dynamic trading desk assignment contract`.
+- `.tools/smtp4dev/...`, `docs/superpowers/plans/2026-06-01-dynamic-trading-desk-assignment.md`, and `~/.codex/superpowers/` are untracked. Do not add them unless explicitly requested.
 
 ## Current build/test status
 
@@ -594,6 +583,33 @@ Result:
 - The isolated `FreshCloneWalkthroughTests.Demo_RunsSuccessfullyAfterInitDb` test also timed out.
 - Stale `dotnet`/`testhost`/MSBuild processes from the timed-out runs were stopped; no test processes remained afterward.
 - The new feature's focused SQL-backed tests passed, so the remaining verification gap is isolated to the existing fresh-clone walkthrough demo shell-out test path.
+
+Commands run for the dynamic Trading Desk assignment work:
+
+```powershell
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING = 'Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter SeedDataSmokeTests /p:UseAppHost=false
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter "WorkflowTransitionTests|WorkflowExecutionValidationTests" /p:UseAppHost=false
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter "SeedDataSmokeTests|WorkflowTransitionTests|WorkflowExecutionValidationTests" /p:UseAppHost=false
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet build src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
+$env:ConnectionStrings__DefaultConnection = 'Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'
+dotnet run --project src\WorkflowEngine.Console -- init-db
+dotnet run --project src\WorkflowEngine.Console -- verify-seed
+```
+
+Results:
+
+- Seed data smoke tests passed: 4 passed, 0 failed.
+- Focused dynamic assignment engine tests passed during implementation: 28 passed, 0 failed.
+- Workflow API tests passed: 39 passed, 0 failed, 0 skipped.
+- Final focused workflow engine tests passed: 32 passed, 0 failed, 0 skipped.
+- `workflow-api\WorkflowEngine.WorkflowApi.slnx` build passed with 0 warnings and 0 errors.
+- `src\WorkflowEngine.sln` build passed with 0 warnings and 0 errors.
+- Console `init-db` passed against `cdt_workflow_api_20260527`.
+- Console `verify-seed` passed.
+- Console sample path using `PT-DESK-SAMPLE` passed and `show-tasks` confirmed `TradingDeskReviewTask` pending with role `TradingDeskTaxable`.
 
 ## Important decisions made
 

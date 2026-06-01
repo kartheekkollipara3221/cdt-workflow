@@ -80,7 +80,7 @@
       `POST /v1/WorkflowStart` still sends no email unless start later creates a metadata-backed notification row.
       Risk level: Medium
 
-- [ ] Support dynamic Trading Desk task assignment.
+- [x] Support dynamic Trading Desk task assignment.
       Files involved:
       `workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs`,
       `src/WorkflowEngine.Application/Contracts/WorkflowActionEnvelope.cs`,
@@ -89,8 +89,8 @@
       `samples/workflow-actions/05-checker-send-to-trading-desk.json`
       Why it matters:
       `CheckerSendToTradingDesk` must create the Trading Desk review task for the upstream-selected desk group while keeping workflow authorization metadata-driven.
-      Suggested next step:
-      Run final verification, then mark this item complete.
+      Completed:
+      Added `assignedRoleKey` API/envelope mapping, SQL assignment-role metadata, seed verification, execution validation, dynamic task assignment, notification recipient fallback, console sample alignment, and boundary docs. Final verification passed: API tests, focused workflow engine tests, builds, `init-db`, and `verify-seed`.
       Risk level: Medium
 
 - [ ] Decide whether audit/history, tasks, and notifications need read APIs.

@@ -51,7 +51,8 @@ Completed in latest sessions:
 - After the user stopped the running WorkflowApi process, Debug build/test passed for `workflow-api\WorkflowEngine.WorkflowApi.slnx`: build 0 warnings/errors, tests 38 passed.
 - For this DB alignment update, Release builds passed for `workflow-api\WorkflowEngine.WorkflowApi.slnx`, `src\WorkflowEngine.sln`, and `api\WorkflowEngine.Api.sln`.
 - Release tests passed for `workflow-api\WorkflowEngine.WorkflowApi.slnx` and `api\WorkflowEngine.Api.sln`: 38 passed each, 0 failed.
-- Dynamic trading desk assignment is in progress: `CheckerSendToTradingDesk` accepts optional `assignedRoleKey`; valid values are `TradingDeskTaxable`, `TradingDeskTaxExempt`, and `TradingDeskEquity`; broad `TradingDesk` remains the actor role for later trading actions.
+- Dynamic trading desk assignment is complete: `CheckerSendToTradingDesk` accepts optional `assignedRoleKey`; valid values are `TradingDeskTaxable`, `TradingDeskTaxExempt`, and `TradingDeskEquity`; broad `TradingDesk` remains the actor role for later trading actions.
+- Dynamic assignment verification passed: API tests 39 passed; focused workflow engine tests 32 passed; `workflow-api\WorkflowEngine.WorkflowApi.slnx` and `src\WorkflowEngine.sln` builds passed with 0 warnings/errors; console `init-db` and `verify-seed` passed against `cdt_workflow_api_20260527`.
 - `dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed with 0 warnings and 0 errors before the final docs-only handoff update.
 - `dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false` passed with 34 tests before the final docs-only handoff update.
 - Broader `dotnet test src\WorkflowEngine.sln -m:1 /p:UseAppHost=false` passed earlier with `WORKFLOW_ENGINE_TEST_CONNECTION_STRING` set: 206 passed, 2 skipped.
@@ -98,7 +99,7 @@ X-Workflow-DisplayName: Checker One
 
 Important current worktree notes:
 
-- `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` has local SMTP env vars in the `http` profile. Review before commit. Current file shows `Smtp__Port = 3025`; verify this against the current smtp4dev listener.
+- `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` has committed local SMTP env vars in the `http` profile. Current file shows `Smtp__Port = 3025`; verify this against the current smtp4dev listener before relying on live SMTP tests.
 - The action notification dispatcher source files are tracked now:
   - `workflow-api/src/WorkflowEngine.WorkflowApi/Services/IWorkflowActionNotificationDispatcher.cs`
   - `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs`
@@ -106,7 +107,7 @@ Important current worktree notes:
 
 Suggested next task:
 
-Review the current worktree and decide whether to keep or adjust the local SMTP env vars in `launchSettings.json`; then continue from the highest-priority unchecked item in `TODO_WORKFLOW_API.md`.
+Review the two remaining uncommitted `api/src/WorkflowEngine.Api` config edits, then continue from the highest-priority unchecked item in `TODO_WORKFLOW_API.md`.
 
 Before final handoff, run:
 
