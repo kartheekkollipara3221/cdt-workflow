@@ -103,6 +103,83 @@ public sealed class WorkflowTransitionTests
         Assert.Equal("Maker", dbContext.NotificationOutbox.Single().RecipientRoleKey);
     }
 
+    [Theory]
+    [InlineData("TradingDeskTaxable")]
+    [InlineData("TradingDeskTaxExempt")]
+    [InlineData("TradingDeskEquity")]
+    public void CheckerSendToTradingDeskAssignsSpecificDeskTaskAndNotification(string assignedRoleKey)
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        dbContext.WorkflowTasks.Add(new WorkflowTask
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            TaskKey = "CheckerReviewTask",
+            AssignedRoleKey = "Checker",
+            Status = "Pending",
+            CreatedAtUtc = Now,
+            DueAtUtc = Now.AddMinutes(2)
+        });
+        dbContext.SaveChanges();
+
+        var envelope = Envelope(
+            actionKey: "CheckerSendToTradingDesk",
+            sectionKey: "Checker",
+            buttonKey: "CheckerPrimary",
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            expectedTaskKey: "CheckerReviewTask",
+            roles: ["Checker"],
+            userId: "checker1");
+        envelope.Workflow!.AssignedRoleKey = assignedRoleKey;
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.True(result.Result.Success);
+        Assert.Equal("TradingDeskReview", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Contains(dbContext.WorkflowTasks, row => row.TaskKey == "CheckerReviewTask" && row.Status == "Completed");
+        var tradingTask = Assert.Single(dbContext.WorkflowTasks.Where(row => row.TaskKey == "TradingDeskReviewTask"));
+        Assert.Equal("Pending", tradingTask.Status);
+        Assert.Equal(assignedRoleKey, tradingTask.AssignedRoleKey);
+        var notification = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal("WorkflowTaskAssigned", notification.NotificationType);
+        Assert.Equal(assignedRoleKey, notification.RecipientRoleKey);
+        Assert.Equal(assignedRoleKey, result.Result.CreatedTask?.AssignedRole);
+        Assert.Equal(assignedRoleKey, result.Result.Notification?.RecipientRole);
+    }
+
+    [Fact]
+    public void BroadTradingDeskRoleCanExecuteTaskAssignedToSpecificDesk()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "TradingDeskReview", "Active", 3);
+        dbContext.WorkflowTasks.Add(new WorkflowTask
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            TaskKey = "TradingDeskReviewTask",
+            AssignedRoleKey = "TradingDeskTaxable",
+            Status = "Pending",
+            CreatedAtUtc = Now,
+            DueAtUtc = Now.AddMinutes(2)
+        });
+        dbContext.SaveChanges();
+
+        var result = CreateService(dbContext).Execute(Request(Envelope(
+            actionKey: "TradingTradeExecuted",
+            sectionKey: "TradingDesk",
+            buttonKey: "TradingPrimary",
+            expectedState: "TradingDeskReview",
+            expectedVersion: 3,
+            expectedTaskKey: "TradingDeskReviewTask",
+            roles: ["TradingDesk"],
+            userId: "trader1")));
+
+        Assert.True(result.Result.Success);
+        Assert.Equal("BdrmClientServiceReview", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Contains(dbContext.WorkflowTasks, row => row.TaskKey == "TradingDeskReviewTask" && row.Status == "Completed");
+        Assert.Contains(dbContext.WorkflowTasks, row => row.TaskKey == "BdrmClientServiceReviewTask" && row.AssignedRoleKey == "BDRMClientService" && row.Status == "Pending");
+    }
+
     [Fact]
     public void IdempotentReplayDoesNotDuplicateSideEffects()
     {

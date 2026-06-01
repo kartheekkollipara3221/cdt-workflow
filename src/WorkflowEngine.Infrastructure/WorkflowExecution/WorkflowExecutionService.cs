@@ -168,6 +168,12 @@ public sealed class WorkflowExecutionService(
         var transition = request.AdminOverride
             ? transitions[0]
             : matchingTransitions[0];
+        var assignmentValidation = ValidateAssignedRoleKey(normalized, instance.WorkflowDefinitionVersionId, transition);
+        if (assignmentValidation is not null)
+        {
+            return assignmentValidation;
+        }
+
         foreach (var warning in BuildOptionWarnings(envelope.Workflow?.Options, transition, instance.WorkflowDefinitionVersionId))
         {
             Console.Error.WriteLine(warning);
@@ -236,6 +242,54 @@ public sealed class WorkflowExecutionService(
         return errors.Count == 0
             ? null
             : resultBuilder.BuildValidationFailed(normalized, errors);
+    }
+
+    private WorkflowActionResultEnvelope? ValidateAssignedRoleKey(
+        NormalizedWorkflowAction normalized,
+        long workflowDefinitionVersionId,
+        WorkflowTransitionDefinition transition)
+    {
+        var assignedRoleKey = normalized.Envelope.Workflow?.AssignedRoleKey?.Trim();
+        var createsTask = !string.IsNullOrWhiteSpace(transition.TaskToCreateKey);
+        var hasDynamicAssignment = createsTask && dbContext.WorkflowTaskAssignmentRoleDefinitions.AsNoTracking().Any(row =>
+            row.WorkflowDefinitionVersionId == workflowDefinitionVersionId
+            && row.TaskKey == transition.TaskToCreateKey
+            && row.IsActive);
+
+        var errors = new List<WorkflowValidationError>();
+        if (!hasDynamicAssignment)
+        {
+            if (!string.IsNullOrWhiteSpace(assignedRoleKey))
+            {
+                errors.Add(new WorkflowValidationError(
+                    "workflow.assignedRoleKey",
+                    "workflow.assignedRoleKey is only allowed when the created task supports dynamic assignment."));
+            }
+
+            return errors.Count == 0 ? null : resultBuilder.BuildValidationFailed(normalized, errors);
+        }
+
+        if (string.IsNullOrWhiteSpace(assignedRoleKey))
+        {
+            errors.Add(new WorkflowValidationError(
+                "workflow.assignedRoleKey",
+                $"workflow.assignedRoleKey is required when creating task '{transition.TaskToCreateKey}'."));
+            return resultBuilder.BuildValidationFailed(normalized, errors);
+        }
+
+        var isAllowed = dbContext.WorkflowTaskAssignmentRoleDefinitions.AsNoTracking().Any(row =>
+            row.WorkflowDefinitionVersionId == workflowDefinitionVersionId
+            && row.TaskKey == transition.TaskToCreateKey
+            && row.RoleKey == assignedRoleKey
+            && row.IsActive);
+        if (!isAllowed)
+        {
+            errors.Add(new WorkflowValidationError(
+                "workflow.assignedRoleKey",
+                $"workflow.assignedRoleKey '{assignedRoleKey}' is not allowed for task '{transition.TaskToCreateKey}'."));
+        }
+
+        return errors.Count == 0 ? null : resultBuilder.BuildValidationFailed(normalized, errors);
     }
 
     private static void AddMismatch(
@@ -409,7 +463,10 @@ public sealed class WorkflowExecutionService(
                     {
                         WorkflowInstanceId = instance.WorkflowInstanceId,
                         TaskKey = taskDefinition.TaskKey,
-                        AssignedRoleKey = taskDefinition.OwnerRoleKey,
+                        AssignedRoleKey = ResolveCreatedTaskAssignedRole(
+                            instance.WorkflowDefinitionVersionId,
+                            taskDefinition,
+                            workflow.AssignedRoleKey),
                         AssignedUserId = null,
                         Status = "Pending",
                         CreatedAtUtc = now,
@@ -432,6 +489,7 @@ public sealed class WorkflowExecutionService(
                         row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
                         && row.RouteKey == transition.NotificationRouteKey
                         && row.IsActive);
+                    var recipientRoleKey = route.RecipientRoleKey ?? createdTask?.AssignedRole;
                     var outbox = new NotificationOutbox
                     {
                         WorkflowInstanceId = instance.WorkflowInstanceId,
@@ -439,7 +497,7 @@ public sealed class WorkflowExecutionService(
                         BusinessObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
                         BusinessObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty,
                         NotificationType = route.NotificationType,
-                        RecipientRoleKey = route.RecipientRoleKey,
+                        RecipientRoleKey = recipientRoleKey,
                         RecipientUserId = null,
                         Subject = route.SubjectTemplate,
                         PayloadJson = JsonSerializer.Serialize(new
@@ -459,7 +517,7 @@ public sealed class WorkflowExecutionService(
                     {
                         Queued = true,
                         NotificationType = route.NotificationType,
-                        RecipientRole = route.RecipientRoleKey
+                        RecipientRole = recipientRoleKey
                     };
                 }
             }
@@ -539,6 +597,21 @@ public sealed class WorkflowExecutionService(
             .SingleOrDefault();
 
         return durationMinutes is null ? null : now.AddMinutes(durationMinutes.Value);
+    }
+
+    private string ResolveCreatedTaskAssignedRole(
+        long workflowDefinitionVersionId,
+        WorkflowTaskDefinition taskDefinition,
+        string? assignedRoleKey)
+    {
+        var hasDynamicAssignment = dbContext.WorkflowTaskAssignmentRoleDefinitions.AsNoTracking().Any(row =>
+            row.WorkflowDefinitionVersionId == workflowDefinitionVersionId
+            && row.TaskKey == taskDefinition.TaskKey
+            && row.IsActive);
+
+        return hasDynamicAssignment
+            ? assignedRoleKey!.Trim()
+            : taskDefinition.OwnerRoleKey;
     }
 
     private void AddIdempotencyRecord(

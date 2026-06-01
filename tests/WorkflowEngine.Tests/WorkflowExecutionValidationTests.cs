@@ -172,6 +172,77 @@ public sealed class WorkflowExecutionValidationTests
     }
 
     [Fact]
+    public void DynamicAssignmentMissingRoleReturnsValidationFailedBeforeSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        AddTask(dbContext, "WF-PT-1001", "CheckerReviewTask", "Checker");
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            actionKey: "CheckerSendToTradingDesk",
+            roles: ["Checker"]);
+        envelope.Workflow!.ExpectedCurrentTaskKey = "CheckerReviewTask";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("workflow.assignedRoleKey", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        Assert.Equal("CheckerReview", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Single(dbContext.WorkflowTasks.Where(row => row.Status == "Pending" && row.TaskKey == "CheckerReviewTask"));
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+    }
+
+    [Fact]
+    public void DynamicAssignmentInvalidRoleReturnsValidationFailedBeforeSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        AddTask(dbContext, "WF-PT-1001", "CheckerReviewTask", "Checker");
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            actionKey: "CheckerSendToTradingDesk",
+            roles: ["Checker"]);
+        envelope.Workflow!.ExpectedCurrentTaskKey = "CheckerReviewTask";
+        envelope.Workflow.AssignedRoleKey = "TradingDeskMunicipal";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("workflow.assignedRoleKey", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        Assert.Equal("CheckerReview", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Single(dbContext.WorkflowTasks.Where(row => row.Status == "Pending" && row.TaskKey == "CheckerReviewTask"));
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+    }
+
+    [Fact]
+    public void AssignmentRoleOnNonDynamicTransitionReturnsValidationFailedBeforeSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        dbContext.SaveChanges();
+        var envelope = Envelope();
+        envelope.Workflow!.AssignedRoleKey = "TradingDeskTaxable";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("workflow.assignedRoleKey", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        Assert.Equal("Draft", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+    }
+
+    [Fact]
     public void CompletedInstanceReturnsInvalidTransitionBeforeActionChecks()
     {
         using var dbContext = CreateSeededContext();
