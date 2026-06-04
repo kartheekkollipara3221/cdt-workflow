@@ -85,6 +85,16 @@ public sealed class SmtpNotificationSender : INotificationSender
 
     private string BuildBody(NotificationDelivery notification)
     {
+        if (!string.IsNullOrWhiteSpace(notification.Body))
+        {
+            if (string.IsNullOrWhiteSpace(recipientOverride))
+            {
+                return notification.Body;
+            }
+
+            return $"OriginalRecipientRoleKey: {notification.RecipientRoleKey ?? "(none)"}{Environment.NewLine}{notification.Body}";
+        }
+
         var builder = new StringBuilder();
         builder.AppendLine($"WorkflowInstanceId: {notification.WorkflowInstanceId}");
         builder.AppendLine($"NotificationType: {notification.NotificationType}");

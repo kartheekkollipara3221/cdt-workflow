@@ -35,7 +35,7 @@ public sealed class SmtpNotificationSenderTests
     }
 
     [Fact]
-    public void RoleMappingBuildsPlainTextKeyValueMessage()
+    public void RoleMappingBuildsMessageFromPersistedBody()
     {
         var sender = new SmtpNotificationSender(Configuration(new()
         {
@@ -44,14 +44,11 @@ public sealed class SmtpNotificationSenderTests
             ["Smtp:RoleEmailMap:Checker"] = "cdt-checkers@example.test"
         }));
 
-        using var message = sender.BuildMessage(Delivery());
+        using var message = sender.BuildMessage(Delivery(body: "Rendered email body"));
 
         Assert.Equal("Task overdue", message.Subject);
         Assert.Contains("cdt-checkers@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
-        var body = message.TextBody;
-        Assert.Contains("WorkflowInstanceId: WF-PT-1001", body, StringComparison.Ordinal);
-        Assert.Contains("taskKey: CheckerReviewTask", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("{\"taskKey\"", body, StringComparison.Ordinal);
+        Assert.Equal("Rendered email body", message.TextBody);
     }
 
     [Fact]
@@ -71,7 +68,7 @@ public sealed class SmtpNotificationSenderTests
         Assert.Contains("OriginalRecipientRoleKey: Checker", message.TextBody, StringComparison.Ordinal);
     }
 
-    internal static NotificationDelivery Delivery(string subject = "Task overdue")
+    internal static NotificationDelivery Delivery(string subject = "Task overdue", string body = "")
     {
         return new NotificationDelivery(
             10,
@@ -83,6 +80,7 @@ public sealed class SmtpNotificationSenderTests
             "Checker",
             null,
             subject,
+            body,
             """{"taskKey":"CheckerReviewTask","dueAtUtc":"2030-01-15T16:00:00Z"}""",
             "Pending",
             "corr-1",
