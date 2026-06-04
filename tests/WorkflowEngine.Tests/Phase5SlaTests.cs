@@ -73,6 +73,44 @@ public sealed class Phase5SlaTests
         Assert.Empty(second.QueuedNotifications);
     }
 
+    [Fact]
+    public async Task RunSlaUsesLegacySlaRouteKeyWhenTaskHasNoStoredNotificationSnapshot()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-LEGACY-SLA", "PT-LEGACY-SLA", "Active", versionId);
+        var legacyTask = AddTask(
+            dbContext,
+            "WF-PT-LEGACY-SLA",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-5),
+            storeNotificationSnapshot: false);
+        dbContext.NotificationRoutes.Add(new NotificationRoute
+        {
+            WorkflowDefinitionVersionId = versionId,
+            RouteKey = "RouteOtherSlaTaskOverdue",
+            NotificationType = "SlaTaskOverdue",
+            RecipientRoleKey = "Maker",
+            SubjectTemplate = "Wrong SLA overdue route",
+            BodyTemplate = "Wrong SLA overdue route for {{workflowInstanceId}}",
+            OverdueSubjectPrefix = "Wrong: ",
+            IsActive = true
+        });
+        dbContext.SaveChanges();
+
+        var result = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+
+        var notification = dbContext.NotificationOutbox.Single(row =>
+            row.WorkflowTaskId == legacyTask.Id && row.NotificationType == "SlaTaskOverdue");
+        Assert.Empty(result.Warnings);
+        Assert.Equal([legacyTask.Id], result.QueuedNotifications.Select(row => row.WorkflowTaskId));
+        Assert.Equal("Overdue: Workflow task overdue", notification.Subject);
+        Assert.Equal("Checker", notification.RecipientRoleKey);
+    }
+
     private static void AddInstance(WorkflowDbContext dbContext, string workflowInstanceId, string businessObjectId, string status, long versionId)
     {
         dbContext.WorkflowInstances.Add(new WorkflowInstance
@@ -96,7 +134,8 @@ public sealed class Phase5SlaTests
         string taskKey,
         string roleKey,
         DateTimeOffset? dueAtUtc,
-        string status = "Pending")
+        string status = "Pending",
+        bool storeNotificationSnapshot = true)
     {
         var task = new WorkflowTask
         {
@@ -106,13 +145,17 @@ public sealed class Phase5SlaTests
             Status = status,
             CreatedAtUtc = Now.AddHours(-1),
             DueAtUtc = dueAtUtc,
-            NotificationRouteKey = taskKey switch
-            {
-                "CheckerReviewTask" => "RouteCheckerAssignedOnSubmit",
-                "TradingDeskReviewTask" => "RouteTradingDeskAssigned",
-                _ => null
-            },
-            NotificationContextJson = dueAtUtc is null ? null : JsonSerializer.Serialize(NotificationContext())
+            NotificationRouteKey = storeNotificationSnapshot
+                ? taskKey switch
+                {
+                    "CheckerReviewTask" => "RouteCheckerAssignedOnSubmit",
+                    "TradingDeskReviewTask" => "RouteTradingDeskAssigned",
+                    _ => null
+                }
+                : null,
+            NotificationContextJson = storeNotificationSnapshot && dueAtUtc is not null
+                ? JsonSerializer.Serialize(NotificationContext())
+                : null
         };
         dbContext.WorkflowTasks.Add(task);
         return task;

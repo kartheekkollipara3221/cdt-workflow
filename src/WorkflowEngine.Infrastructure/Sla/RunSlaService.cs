@@ -85,7 +85,7 @@ public sealed class RunSlaService(
                         && item.IsActive, cancellationToken)
                     : await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
                         item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
-                        && item.NotificationType == "SlaTaskOverdue"
+                        && item.RouteKey == "RouteSlaTaskOverdue"
                         && item.IsActive, cancellationToken);
 
                 var context = string.IsNullOrWhiteSpace(task.NotificationContextJson)
