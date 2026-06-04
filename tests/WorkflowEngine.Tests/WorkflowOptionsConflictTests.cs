@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -243,7 +244,8 @@ public sealed class WorkflowOptionsConflictTests
             new WorkflowContextReader(dbContext, new FixedTimeProvider(Now)),
             new FixedTimeProvider(Now),
             new WorkflowActionResultBuilder(),
-            new CanonicalWorkflowResultSerializer());
+            new CanonicalWorkflowResultSerializer(),
+            new NotificationTemplateRenderer());
     }
 
     private static WorkflowActionEnvelope Envelope(
@@ -272,7 +274,27 @@ public sealed class WorkflowOptionsConflictTests
         envelope.Workflow.ExpectedCurrentTaskKey = expectedTaskKey;
         envelope.Workflow.IdempotencyKey = $"options-{Guid.NewGuid():N}";
         envelope.Workflow.Options = options;
+        envelope.Workflow.NotificationContext = NotificationContext();
         return envelope;
+    }
+
+    private static Dictionary<string, string?> NotificationContext()
+    {
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["referenceNumber"] = "1050",
+            ["submitterDisplayName"] = "Kollipara, Kartheek",
+            ["returnedByDisplayName"] = "Kollipara, Kartheek",
+            ["recipientDisplayName"] = "Kollipara, Kartheek",
+            ["traderDisplayName"] = "Kollipara, Kartheek",
+            ["confirmerDisplayName"] = "Kollipara, Kartheek",
+            ["deskName"] = "Taxable",
+            ["securityType"] = "Other",
+            ["accountShortName"] = "EFG",
+            ["accountDisplayName"] = "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+            ["submittedDate"] = "4/24/2026",
+            ["tradeLink"] = "https://sharepoint.example.test/trades/1050"
+        };
     }
 
     private static void AddInstanceWithTask(

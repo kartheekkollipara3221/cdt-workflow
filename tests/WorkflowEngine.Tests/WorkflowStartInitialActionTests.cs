@@ -1,5 +1,6 @@
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.WorkflowStart;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -26,7 +27,8 @@ public sealed class WorkflowStartInitialActionTests
             Reset: false,
             InitialActionKey: "SubmitForChecker",
             StartedByDisplayName: "Maker One",
-            StartedByRoles: ["Maker"]));
+            StartedByRoles: ["Maker"],
+            NotificationContext: NotificationContext()));
 
         Assert.True(result.Envelope.Result.Success);
         Assert.Equal("SubmitForChecker", result.Envelope.Result.ActionKey);
@@ -81,6 +83,11 @@ public sealed class WorkflowStartInitialActionTests
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
         var service = CreateService(dbContext);
 
+        var notificationContext = NotificationContext();
+        notificationContext["deskName"] = "Original";
+        notificationContext[" deskName "] = " Taxable ";
+        notificationContext["emptyValue"] = " ";
+
         var result = service.Start(new StartWorkflowRequest(
             "PortfolioTrade",
             "PortfolioTrade",
@@ -90,12 +97,7 @@ public sealed class WorkflowStartInitialActionTests
             InitialActionKey: "SubmitForChecker",
             StartedByDisplayName: "Maker One",
             StartedByRoles: ["Maker"],
-            NotificationContext: new Dictionary<string, string?>
-            {
-                ["deskName"] = "Original",
-                [" deskName "] = " Taxable ",
-                ["emptyValue"] = " "
-            }));
+            NotificationContext: notificationContext));
 
         Assert.True(result.Envelope.Result.Success);
         Assert.Equal("SubmitForChecker", result.Envelope.Result.ActionKey);
@@ -113,7 +115,8 @@ public sealed class WorkflowStartInitialActionTests
             contextReader,
             timeProvider,
             resultBuilder,
-            new CanonicalWorkflowResultSerializer());
+            new CanonicalWorkflowResultSerializer(),
+            new NotificationTemplateRenderer());
 
         return new StartWorkflowService(
             dbContext,
@@ -122,5 +125,24 @@ public sealed class WorkflowStartInitialActionTests
             new WorkflowActionEnvelopeNormalizer(),
             new CanonicalRequestHasher(),
             executionService);
+    }
+
+    private static Dictionary<string, string?> NotificationContext()
+    {
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["referenceNumber"] = "1050",
+            ["submitterDisplayName"] = "Kollipara, Kartheek",
+            ["returnedByDisplayName"] = "Kollipara, Kartheek",
+            ["recipientDisplayName"] = "Kollipara, Kartheek",
+            ["traderDisplayName"] = "Kollipara, Kartheek",
+            ["confirmerDisplayName"] = "Kollipara, Kartheek",
+            ["deskName"] = "Taxable",
+            ["securityType"] = "Other",
+            ["accountShortName"] = "EFG",
+            ["accountDisplayName"] = "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+            ["submittedDate"] = "4/24/2026",
+            ["tradeLink"] = "https://sharepoint.example.test/trades/1050"
+        };
     }
 }

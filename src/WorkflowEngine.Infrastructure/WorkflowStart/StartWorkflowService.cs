@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Application.WorkflowStart;
@@ -35,7 +36,8 @@ public sealed class StartWorkflowService(
                 new WorkflowContextReader(dbContext, timeProvider),
                 timeProvider,
                 resultBuilder,
-                new CanonicalWorkflowResultSerializer()))
+                new CanonicalWorkflowResultSerializer(),
+                new NotificationTemplateRenderer()))
     {
     }
 

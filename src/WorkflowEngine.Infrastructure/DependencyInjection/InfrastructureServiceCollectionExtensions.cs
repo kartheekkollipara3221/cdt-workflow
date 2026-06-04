@@ -34,6 +34,7 @@ public static class InfrastructureServiceCollectionExtensions
         ValidateNotificationSenderConfiguration(configuration);
 
         services.AddDbContext<WorkflowDbContext>(options => options.UseSqlServer(connectionString));
+        services.AddSingleton<NotificationTemplateRenderer>();
         services.AddScoped<WorkflowSeedService>();
         services.AddScoped<WorkflowDatabaseInitializer>();
         services.AddScoped<SeedVerificationService>();

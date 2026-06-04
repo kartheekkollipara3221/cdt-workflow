@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -399,7 +400,8 @@ public sealed class WorkflowExecutionValidationTests
             new WorkflowContextReader(dbContext, new FixedTimeProvider(Now)),
             new FixedTimeProvider(Now),
             new WorkflowActionResultBuilder(),
-            new CanonicalWorkflowResultSerializer());
+            new CanonicalWorkflowResultSerializer(),
+            new NotificationTemplateRenderer());
     }
 
     private static WorkflowExecutionRequest Request(WorkflowActionEnvelope envelope, bool adminOverride = false)
@@ -425,7 +427,27 @@ public sealed class WorkflowExecutionValidationTests
         envelope.UiAction!.SectionKey = sectionKey;
         envelope.UiAction.ButtonKey = buttonKey;
         envelope.DataSave!.SectionKey = sectionKey;
+        envelope.Workflow.NotificationContext = NotificationContext();
         return envelope;
+    }
+
+    private static Dictionary<string, string?> NotificationContext()
+    {
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["referenceNumber"] = "1050",
+            ["submitterDisplayName"] = "Kollipara, Kartheek",
+            ["returnedByDisplayName"] = "Kollipara, Kartheek",
+            ["recipientDisplayName"] = "Kollipara, Kartheek",
+            ["traderDisplayName"] = "Kollipara, Kartheek",
+            ["confirmerDisplayName"] = "Kollipara, Kartheek",
+            ["deskName"] = "Taxable",
+            ["securityType"] = "Other",
+            ["accountShortName"] = "EFG",
+            ["accountDisplayName"] = "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+            ["submittedDate"] = "4/24/2026",
+            ["tradeLink"] = "https://sharepoint.example.test/trades/1050"
+        };
     }
 
     private static (string SectionKey, string ButtonKey) ActionUi(string actionKey)

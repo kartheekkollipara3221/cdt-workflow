@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -59,12 +60,44 @@ public sealed class WorkflowTransitionTests
         Assert.Equal("Pending", task.Status);
         Assert.NotNull(task.DueAtUtc);
         var notification = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal("Directed Trade Pending Checker Approval", notification.Subject);
+        Assert.Contains("Kollipara, Kartheek", notification.Body, StringComparison.Ordinal);
+        Assert.Contains("Taxable desk", notification.Body, StringComparison.Ordinal);
+        Assert.Contains("Sharepoint link = https://sharepoint.example.test/trades/1050", notification.Body, StringComparison.Ordinal);
+        Assert.Contains("\"submitterDisplayName\":\"Kollipara, Kartheek\"", notification.PayloadJson, StringComparison.Ordinal);
+        var createdTask = Assert.Single(dbContext.WorkflowTasks);
+        Assert.Equal("RouteCheckerAssignedOnSubmit", createdTask.NotificationRouteKey);
+        Assert.Contains("\"deskName\":\"Taxable\"", createdTask.NotificationContextJson, StringComparison.Ordinal);
         Assert.Equal("WorkflowTaskAssigned", notification.NotificationType);
         Assert.Equal("Checker", notification.RecipientRoleKey);
         Assert.Single(dbContext.WorkflowAudits);
         Assert.Single(dbContext.MockSectionData);
         Assert.Single(dbContext.IdempotencyRecords);
         Assert.NotNull(result.WorkflowContext);
+    }
+
+    [Fact]
+    public void SubmitForCheckerWithMissingNotificationTokenReturnsValidationFailedAndRollsBackSideEffects()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        dbContext.SaveChanges();
+        var envelope = Envelope();
+        envelope.Workflow!.NotificationContext!.Remove("tradeLink");
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.False(result.Result.Success);
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("workflow.notificationContext.tradeLink", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        var instance = dbContext.WorkflowInstances.Single();
+        Assert.Equal("Draft", instance.CurrentStateKey);
+        Assert.Equal(1, instance.Version);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.MockSectionData);
+        Assert.Empty(dbContext.IdempotencyRecords);
     }
 
     [Fact]
@@ -263,7 +296,8 @@ public sealed class WorkflowTransitionTests
             new WorkflowContextReader(dbContext, new FixedTimeProvider(Now)),
             new FixedTimeProvider(Now),
             new WorkflowActionResultBuilder(),
-            new CanonicalWorkflowResultSerializer());
+            new CanonicalWorkflowResultSerializer(),
+            new NotificationTemplateRenderer());
     }
 
     private static WorkflowExecutionRequest Request(WorkflowActionEnvelope envelope)
@@ -296,7 +330,27 @@ public sealed class WorkflowTransitionTests
         envelope.Workflow.ExpectedInstanceVersion = expectedVersion;
         envelope.Workflow.ExpectedCurrentTaskKey = expectedTaskKey;
         envelope.Workflow.IdempotencyKey = $"idem-{actionKey}-{expectedState}";
+        envelope.Workflow.NotificationContext = NotificationContext();
         return envelope;
+    }
+
+    private static Dictionary<string, string?> NotificationContext()
+    {
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["referenceNumber"] = "1050",
+            ["submitterDisplayName"] = "Kollipara, Kartheek",
+            ["returnedByDisplayName"] = "Kollipara, Kartheek",
+            ["recipientDisplayName"] = "Kollipara, Kartheek",
+            ["traderDisplayName"] = "Kollipara, Kartheek",
+            ["confirmerDisplayName"] = "Kollipara, Kartheek",
+            ["deskName"] = "Taxable",
+            ["securityType"] = "Other",
+            ["accountShortName"] = "EFG",
+            ["accountDisplayName"] = "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+            ["submittedDate"] = "4/24/2026",
+            ["tradeLink"] = "https://sharepoint.example.test/trades/1050"
+        };
     }
 
     private static void AddInstance(

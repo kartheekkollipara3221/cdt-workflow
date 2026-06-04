@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Application.WorkflowExecution;
@@ -18,7 +19,8 @@ public sealed class WorkflowExecutionService(
     IWorkflowContextReader contextReader,
     TimeProvider timeProvider,
     WorkflowActionResultBuilder resultBuilder,
-    CanonicalWorkflowResultSerializer resultSerializer) : IWorkflowExecutionService
+    CanonicalWorkflowResultSerializer resultSerializer,
+    NotificationTemplateRenderer templateRenderer) : IWorkflowExecutionService
 {
     public WorkflowActionResultEnvelope Execute(WorkflowExecutionRequest request)
     {
@@ -309,6 +311,41 @@ public sealed class WorkflowExecutionService(
             $"{field} must match persisted workflow metadata value '{expected}'."));
     }
 
+    private NotificationTemplateRenderResult RenderTemplate(
+        string template,
+        IReadOnlyDictionary<string, string?> context)
+    {
+        return templateRenderer.Render(template, context, "workflow.notificationContext");
+    }
+
+    private static Dictionary<string, string?> BuildNotificationContext(
+        WorkflowActionEnvelope envelope,
+        WorkflowInstance instance,
+        WorkflowTransitionDefinition transition,
+        string oldState,
+        WorkflowTaskChange? createdTask,
+        string? recipientRoleKey)
+    {
+        var context = envelope.Workflow?.NotificationContext is null
+            ? new Dictionary<string, string?>(StringComparer.Ordinal)
+            : new Dictionary<string, string?>(envelope.Workflow.NotificationContext, StringComparer.Ordinal);
+
+        context["workflowInstanceId"] = instance.WorkflowInstanceId;
+        context["actionKey"] = envelope.Workflow?.ActionKey ?? string.Empty;
+        context["oldState"] = oldState;
+        context["newState"] = transition.ToStateKey;
+        context["taskKey"] = createdTask?.TaskKey ?? transition.TaskToCreateKey ?? string.Empty;
+        context["recipientRoleKey"] = recipientRoleKey ?? string.Empty;
+        return context;
+    }
+
+    private WorkflowActionResultEnvelope? BuildTemplateValidationFailed(
+        NormalizedWorkflowAction normalized,
+        IReadOnlyList<WorkflowValidationError> errors)
+    {
+        return errors.Count == 0 ? null : resultBuilder.BuildValidationFailed(normalized, errors);
+    }
+
     private IReadOnlyList<string> BuildOptionWarnings(
         WorkflowActionOptions? options,
         WorkflowTransitionDefinition transition,
@@ -490,6 +527,31 @@ public sealed class WorkflowExecutionService(
                         && row.RouteKey == transition.NotificationRouteKey
                         && row.IsActive);
                     var recipientRoleKey = route.RecipientRoleKey ?? createdTask?.AssignedRole;
+                    var notificationContext = BuildNotificationContext(
+                        envelope,
+                        instance,
+                        transition,
+                        oldState,
+                        createdTask,
+                        recipientRoleKey);
+                    var renderedSubject = RenderTemplate(route.SubjectTemplate, notificationContext);
+                    var renderedBody = RenderTemplate(route.BodyTemplate, notificationContext);
+                    var templateErrors = renderedSubject.Errors.Concat(renderedBody.Errors).ToArray();
+                    if (templateErrors.Length > 0)
+                    {
+                        transaction?.Rollback();
+                        dbContext.ChangeTracker.Clear();
+                        return BuildTemplateValidationFailed(normalized, templateErrors)!;
+                    }
+
+                    if (createdTask is not null)
+                    {
+                        var createdTaskId = long.Parse(createdTask.TaskId!, CultureInfo.InvariantCulture);
+                        var trackedCreatedTask = dbContext.WorkflowTasks.Single(row => row.Id == createdTaskId);
+                        trackedCreatedTask.NotificationRouteKey = route.RouteKey;
+                        trackedCreatedTask.NotificationContextJson = JsonSerializer.Serialize(notificationContext);
+                    }
+
                     var outbox = new NotificationOutbox
                     {
                         WorkflowInstanceId = instance.WorkflowInstanceId,
@@ -499,15 +561,9 @@ public sealed class WorkflowExecutionService(
                         NotificationType = route.NotificationType,
                         RecipientRoleKey = recipientRoleKey,
                         RecipientUserId = null,
-                        Subject = route.SubjectTemplate,
-                        PayloadJson = JsonSerializer.Serialize(new
-                        {
-                            workflowInstanceId = instance.WorkflowInstanceId,
-                            actionKey = workflow.ActionKey,
-                            oldState,
-                            newState = transition.ToStateKey,
-                            taskKey = createdTask?.TaskKey
-                        }),
+                        Subject = renderedSubject.Rendered,
+                        Body = renderedBody.Rendered,
+                        PayloadJson = JsonSerializer.Serialize(notificationContext),
                         Status = "Pending",
                         CorrelationId = normalized.EffectiveCorrelationId,
                         CreatedAtUtc = now
