@@ -40,7 +40,13 @@ public sealed class WorkflowActionServiceTests
         {
             WorkflowInstanceId = " WF-PT-1001 ",
             ActionKey = " CheckerSendToTradingDesk ",
-            AssignedRoleKey = " TradingDeskTaxable "
+            AssignedRoleKey = " TradingDeskTaxable ",
+            NotificationContext = new Dictionary<string, string?>
+            {
+                ["submitterDisplayName"] = " Kollipara, Kartheek ",
+                ["deskName"] = "Taxable",
+                ["emptyValue"] = " "
+            }
         });
 
         Assert.True(response.Result.ActionResult.Success);
@@ -56,6 +62,9 @@ public sealed class WorkflowActionServiceTests
         Assert.Equal("WF-PT-1001", envelope.Workflow?.WorkflowInstanceId);
         Assert.Equal("CheckerSendToTradingDesk", envelope.Workflow?.ActionKey);
         Assert.Equal("TradingDeskTaxable", envelope.Workflow?.AssignedRoleKey);
+        Assert.Equal("Kollipara, Kartheek", envelope.Workflow?.NotificationContext?["submitterDisplayName"]);
+        Assert.Equal("Taxable", envelope.Workflow?.NotificationContext?["deskName"]);
+        Assert.False(envelope.Workflow?.NotificationContext?.ContainsKey("emptyValue") ?? true);
         Assert.Equal("checker1", envelope.Actor?.UserId);
         Assert.Equal("Checker One", envelope.Actor?.DisplayName);
         Assert.Equal(["Checker"], envelope.Actor?.Roles);

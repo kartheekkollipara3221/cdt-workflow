@@ -7,4 +7,6 @@ public sealed class WorkflowActionRequest
     public string? ActionKey { get; set; }
 
     public string? AssignedRoleKey { get; set; }
+
+    public Dictionary<string, string?>? NotificationContext { get; set; }
 }

@@ -146,6 +146,8 @@ Existing intended endpoints:
   - Starts one workflow instance for an upstream business object.
   - Request input is `workflowKey`, `businessObjectType`, and `businessObjectId`.
   - Optional request input `initialActionKey` starts the workflow and immediately executes one metadata-valid first action from the newly-created workflow state.
+  - Optional `notificationContext`, a string key/value dictionary supplied by the upstream external API for email template rendering.
+  - `notificationContext` is notification data only. It is not form payload, is not persisted as form data, and does not drive workflow transitions.
   - Actor identity comes from the temporary trusted-header adapter and is recorded as the starting user.
   - The endpoint does not accept `reset`.
   - The endpoint does not require `SaveDraft`; `SaveDraft` and submit actions are ordinary metadata actions from `Draft` when seeded.
@@ -170,12 +172,15 @@ Existing intended endpoints:
   - The API request DTO must omit `dataSave` entirely.
   - The API request DTO must not accept form section payloads.
   - The API request DTO must not accept UI echo fields such as `sectionKey`, `buttonKey`, `buttonLabelShown`, or `saveAsDraft`.
-  - The API request DTO should contain only pure workflow fields:
+  - The API request DTO should contain only pure workflow fields plus notification-only context:
     - workflow instance ID
     - action key
     - optional `assignedRoleKey` for metadata-defined dynamic task assignment
-  - The request body contains `workflowInstanceId`, `actionKey`, and optional `assignedRoleKey`.
+    - optional `notificationContext` for email template rendering data
+  - The request body contains `workflowInstanceId`, `actionKey`, optional `assignedRoleKey`, and optional `notificationContext`.
   - `assignedRoleKey` is accepted only for transitions whose created task supports dynamic assignment metadata; for `CheckerSendToTradingDesk`, the upstream form/business API supplies one of `TradingDeskTaxable`, `TradingDeskTaxExempt`, or `TradingDeskEquity`.
+  - Optional `notificationContext`, a string key/value dictionary supplied by the upstream external API for email template rendering.
+  - `notificationContext` is notification data only. It is not form payload, is not persisted as form data, and does not drive workflow transitions.
   - `workflowInstanceId` is the lookup key.
   - Workflow key and workflow definition version are derived from persisted workflow metadata, not echoed by the request.
   - Business object identity is derived from the persisted workflow instance, not echoed by the request.

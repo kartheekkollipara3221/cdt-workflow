@@ -50,6 +50,7 @@ public sealed class WorkflowActionService(
                 WorkflowInstanceId = workflowInstanceId,
                 ActionKey = actionKey,
                 AssignedRoleKey = assignedRoleKey,
+                NotificationContext = NormalizeNotificationContext(request.NotificationContext),
                 IdempotencyKey = generatedId
             }
         };
@@ -119,6 +120,23 @@ public sealed class WorkflowActionService(
             StatusCodes.Status400BadRequest,
             "Invalid workflow action request.",
             $"{fieldName} is required.");
+    }
+
+    private static Dictionary<string, string?>? NormalizeNotificationContext(Dictionary<string, string?>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return null;
+        }
+
+        var normalized = values
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
+            .ToDictionary(
+                pair => pair.Key.Trim(),
+                pair => (string?)pair.Value!.Trim(),
+                StringComparer.Ordinal);
+
+        return normalized.Count == 0 ? null : normalized;
     }
 
     private static string? OptionalText(string? value)

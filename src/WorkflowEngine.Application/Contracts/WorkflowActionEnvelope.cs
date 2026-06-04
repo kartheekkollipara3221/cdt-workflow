@@ -92,6 +92,8 @@ public sealed class WorkflowActionBlock
 
     public string? AssignedRoleKey { get; set; }
 
+    public Dictionary<string, string?>? NotificationContext { get; set; }
+
     public string? IdempotencyKey { get; set; }
 
     public WorkflowActionOptions? Options { get; set; }

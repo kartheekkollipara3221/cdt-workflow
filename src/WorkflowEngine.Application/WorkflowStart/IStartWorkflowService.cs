@@ -15,7 +15,8 @@ public sealed record StartWorkflowRequest(
     bool Reset,
     string? InitialActionKey = null,
     string? StartedByDisplayName = null,
-    IReadOnlyList<string>? StartedByRoles = null);
+    IReadOnlyList<string>? StartedByRoles = null,
+    IReadOnlyDictionary<string, string?>? NotificationContext = null);
 
 public sealed record StartWorkflowResult(
     WorkflowActionResultEnvelope Envelope,

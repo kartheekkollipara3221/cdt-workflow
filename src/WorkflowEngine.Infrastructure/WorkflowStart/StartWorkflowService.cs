@@ -206,6 +206,7 @@ public sealed class StartWorkflowService(
             {
                 WorkflowInstanceId = workflowInstanceId,
                 ActionKey = request.InitialActionKey,
+                NotificationContext = CopyNotificationContext(request.NotificationContext),
                 IdempotencyKey = generatedId
             }
         };
@@ -341,6 +342,24 @@ public sealed class StartWorkflowService(
     private static string? OptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static Dictionary<string, string?>? CopyNotificationContext(
+        IReadOnlyDictionary<string, string?>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return null;
+        }
+
+        var copied = values
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
+            .ToDictionary(
+                pair => pair.Key.Trim(),
+                pair => (string?)pair.Value!.Trim(),
+                StringComparer.Ordinal);
+
+        return copied.Count == 0 ? null : copied;
     }
 
     private static bool IsWorkflowInstanceUniqueViolation(DbUpdateException exception)

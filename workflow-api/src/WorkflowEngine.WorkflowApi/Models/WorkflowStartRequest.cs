@@ -9,4 +9,6 @@ public sealed class WorkflowStartRequest
     public string? BusinessObjectId { get; set; }
 
     public string? InitialActionKey { get; set; }
+
+    public Dictionary<string, string?>? NotificationContext { get; set; }
 }

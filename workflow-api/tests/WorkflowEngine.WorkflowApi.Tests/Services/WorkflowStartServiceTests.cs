@@ -79,7 +79,13 @@ public sealed class WorkflowStartServiceTests
             WorkflowKey = " PortfolioTrade ",
             BusinessObjectType = " PortfolioTrade ",
             BusinessObjectId = " PT-1001 ",
-            InitialActionKey = " SubmitForChecker "
+            InitialActionKey = " SubmitForChecker ",
+            NotificationContext = new Dictionary<string, string?>
+            {
+                ["submitterDisplayName"] = " Kollipara, Kartheek ",
+                ["deskName"] = "Taxable",
+                ["emptyValue"] = " "
+            }
         });
 
         Assert.True(response.Result.ActionResult.Success);
@@ -87,6 +93,10 @@ public sealed class WorkflowStartServiceTests
         Assert.Equal("SubmitForChecker", applicationStart.LastRequest.InitialActionKey);
         Assert.Equal("Maker One", applicationStart.LastRequest.StartedByDisplayName);
         Assert.Equal(["Maker"], applicationStart.LastRequest.StartedByRoles);
+        Assert.NotNull(applicationStart.LastRequest.NotificationContext);
+        Assert.Equal("Kollipara, Kartheek", applicationStart.LastRequest.NotificationContext["submitterDisplayName"]);
+        Assert.Equal("Taxable", applicationStart.LastRequest.NotificationContext["deskName"]);
+        Assert.False(applicationStart.LastRequest.NotificationContext.ContainsKey("emptyValue"));
     }
 
     [Fact]

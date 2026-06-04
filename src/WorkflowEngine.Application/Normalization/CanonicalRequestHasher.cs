@@ -25,6 +25,12 @@ public sealed class CanonicalRequestHasher
             ["dataSave.sectionKey"] = envelope.DataSave?.SectionKey,
             ["workflow.actionKey"] = envelope.Workflow?.ActionKey,
             ["workflow.actionReason"] = envelope.Workflow?.ActionReason,
+            ["workflow.notificationContext"] = envelope.Workflow?.NotificationContext is null
+                ? null
+                : envelope.Workflow.NotificationContext
+                    .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
+                    .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                    .ToDictionary(pair => pair.Key.Trim(), pair => pair.Value!.Trim(), StringComparer.Ordinal),
             ["workflow.expectedCurrentState"] = envelope.Workflow?.ExpectedCurrentState,
             ["workflow.expectedCurrentTaskId"] = envelope.Workflow?.ExpectedCurrentTaskId,
             ["workflow.expectedCurrentTaskKey"] = envelope.Workflow?.ExpectedCurrentTaskKey,

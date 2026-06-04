@@ -38,7 +38,8 @@ public sealed class WorkflowStartService(
             Reset: false,
             InitialActionKey: initialActionKey,
             StartedByDisplayName: actor.DisplayName,
-            StartedByRoles: actor.Roles));
+            StartedByRoles: actor.Roles,
+            NotificationContext: NormalizeNotificationContext(request.NotificationContext)));
 
         var actionResult = startResult.Envelope.Result;
         var workflowContext = actionResult.Success
@@ -104,6 +105,23 @@ public sealed class WorkflowStartService(
             StatusCodes.Status400BadRequest,
             "Invalid workflow start request.",
             $"{fieldName} is required.");
+    }
+
+    private static Dictionary<string, string?>? NormalizeNotificationContext(Dictionary<string, string?>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return null;
+        }
+
+        var normalized = values
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
+            .ToDictionary(
+                pair => pair.Key.Trim(),
+                pair => (string?)pair.Value!.Trim(),
+                StringComparer.Ordinal);
+
+        return normalized.Count == 0 ? null : normalized;
     }
 
     private static string? OptionalText(string? value)
