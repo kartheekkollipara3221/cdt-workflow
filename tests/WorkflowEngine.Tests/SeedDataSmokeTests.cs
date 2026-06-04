@@ -5,6 +5,7 @@ using WorkflowEngine.Infrastructure.Persistence.Verification;
 
 namespace WorkflowEngine.Tests;
 
+[Collection("SqlServerWorkflowExecution")]
 public sealed class SeedDataSmokeTests
 {
     [Fact]
