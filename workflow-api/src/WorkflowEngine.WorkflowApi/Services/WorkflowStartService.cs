@@ -114,12 +114,16 @@ public sealed class WorkflowStartService(
             return null;
         }
 
-        var normalized = values
-            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
-            .ToDictionary(
-                pair => pair.Key.Trim(),
-                pair => (string?)pair.Value!.Trim(),
-                StringComparer.Ordinal);
+        var normalized = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var pair in values)
+        {
+            if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
+            {
+                continue;
+            }
+
+            normalized[pair.Key.Trim()] = pair.Value!.Trim();
+        }
 
         return normalized.Count == 0 ? null : normalized;
     }

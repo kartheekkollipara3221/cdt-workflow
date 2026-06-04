@@ -237,6 +237,46 @@ public sealed class WorkflowActionServiceTests
         Assert.Null(executionService.LastRequest.Normalized.Envelope.Workflow?.AssignedRoleKey);
     }
 
+    [Fact]
+    public void ExecuteWorkflowActionMergesDuplicateNotificationContextKeysAfterTrim()
+    {
+        var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = true,
+                ResultCode = "Success",
+                WorkflowInstanceId = "WF-PT-1001",
+                ActionKey = "SaveDraft",
+                CorrelationId = "api-action-duplicate-context",
+                Notification = new WorkflowNotificationSummary { Queued = false }
+            },
+            WorkflowContext = new WorkflowContext()
+        });
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            executionService);
+
+        service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ActionKey = "SaveDraft",
+            NotificationContext = new Dictionary<string, string?>
+            {
+                ["deskName"] = "Original",
+                [" deskName "] = " Taxable ",
+                ["emptyValue"] = " "
+            }
+        });
+
+        var context = Assert.IsType<Dictionary<string, string?>>(
+            executionService.LastRequest?.Normalized.Envelope.Workflow?.NotificationContext);
+        var item = Assert.Single(context);
+        Assert.Equal("deskName", item.Key);
+        Assert.Equal("Taxable", item.Value);
+        Assert.False(context.ContainsKey("emptyValue"));
+    }
+
     private static WorkflowActionService CreateService(
         IWorkflowActorResolver actorResolver,
         IWorkflowExecutionService workflowExecutionService,

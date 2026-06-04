@@ -352,12 +352,16 @@ public sealed class StartWorkflowService(
             return null;
         }
 
-        var copied = values
-            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
-            .ToDictionary(
-                pair => pair.Key.Trim(),
-                pair => (string?)pair.Value!.Trim(),
-                StringComparer.Ordinal);
+        var copied = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var pair in values)
+        {
+            if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
+            {
+                continue;
+            }
+
+            copied[pair.Key.Trim()] = pair.Value!.Trim();
+        }
 
         return copied.Count == 0 ? null : copied;
     }

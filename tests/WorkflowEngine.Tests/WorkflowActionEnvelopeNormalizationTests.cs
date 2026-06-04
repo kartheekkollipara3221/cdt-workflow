@@ -66,4 +66,23 @@ public sealed class WorkflowActionEnvelopeNormalizationTests
 
         Assert.NotEqual(hasher.ComputeHash(left), hasher.ComputeHash(right));
     }
+
+    [Fact]
+    public void HashMergesDuplicateNotificationContextKeysAfterTrim()
+    {
+        var duplicateKeys = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var normalized = WorkflowActionEnvelopeTestData.DeserializeValid();
+        duplicateKeys.Workflow!.NotificationContext = new Dictionary<string, string?>
+        {
+            ["deskName"] = "Original",
+            [" deskName "] = " Taxable ",
+            ["emptyValue"] = " "
+        };
+        normalized.Workflow!.NotificationContext = new Dictionary<string, string?>
+        {
+            ["deskName"] = "Taxable"
+        };
+
+        Assert.Equal(hasher.ComputeHash(normalized), hasher.ComputeHash(duplicateKeys));
+    }
 }

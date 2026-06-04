@@ -75,6 +75,34 @@ public sealed class WorkflowStartInitialActionTests
         Assert.Empty(dbContext.IdempotencyRecords);
     }
 
+    [Fact]
+    public void StartWithInitialActionMergesDuplicateNotificationContextKeysAfterTrim()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var service = CreateService(dbContext);
+
+        var result = service.Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "PortfolioTrade",
+            "PT-START-CONTEXT",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "SubmitForChecker",
+            StartedByDisplayName: "Maker One",
+            StartedByRoles: ["Maker"],
+            NotificationContext: new Dictionary<string, string?>
+            {
+                ["deskName"] = "Original",
+                [" deskName "] = " Taxable ",
+                ["emptyValue"] = " "
+            }));
+
+        Assert.True(result.Envelope.Result.Success);
+        Assert.Equal("SubmitForChecker", result.Envelope.Result.ActionKey);
+        Assert.Single(dbContext.WorkflowInstances);
+        Assert.Single(dbContext.WorkflowTasks);
+    }
+
     private static StartWorkflowService CreateService(WorkflowDbContext dbContext)
     {
         var timeProvider = new FixedTimeProvider(DateTimeOffset.Parse("2030-01-15T15:30:00Z"));

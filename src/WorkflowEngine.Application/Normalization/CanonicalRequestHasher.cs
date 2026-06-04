@@ -25,12 +25,7 @@ public sealed class CanonicalRequestHasher
             ["dataSave.sectionKey"] = envelope.DataSave?.SectionKey,
             ["workflow.actionKey"] = envelope.Workflow?.ActionKey,
             ["workflow.actionReason"] = envelope.Workflow?.ActionReason,
-            ["workflow.notificationContext"] = envelope.Workflow?.NotificationContext is null
-                ? null
-                : envelope.Workflow.NotificationContext
-                    .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
-                    .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-                    .ToDictionary(pair => pair.Key.Trim(), pair => pair.Value!.Trim(), StringComparer.Ordinal),
+            ["workflow.notificationContext"] = NormalizeNotificationContext(envelope.Workflow?.NotificationContext),
             ["workflow.expectedCurrentState"] = envelope.Workflow?.ExpectedCurrentState,
             ["workflow.expectedCurrentTaskId"] = envelope.Workflow?.ExpectedCurrentTaskId,
             ["workflow.expectedCurrentTaskKey"] = envelope.Workflow?.ExpectedCurrentTaskKey,
@@ -54,6 +49,28 @@ public sealed class CanonicalRequestHasher
         }
 
         return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static Dictionary<string, string?>? NormalizeNotificationContext(
+        IReadOnlyDictionary<string, string?>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return null;
+        }
+
+        var normalized = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var pair in values)
+        {
+            if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
+            {
+                continue;
+            }
+
+            normalized[pair.Key.Trim()] = pair.Value!.Trim();
+        }
+
+        return normalized.Count == 0 ? null : normalized;
     }
 
     private static void WriteCanonical(JsonElement element, Utf8JsonWriter writer)

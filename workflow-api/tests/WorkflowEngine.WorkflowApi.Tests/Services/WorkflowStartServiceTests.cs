@@ -294,6 +294,39 @@ public sealed class WorkflowStartServiceTests
         Assert.Null(applicationStart.LastRequest);
     }
 
+    [Fact]
+    public void StartWorkflowMergesDuplicateNotificationContextKeysAfterTrim()
+    {
+        var expectedContext = new WorkflowContextResponse();
+        expectedContext.WorkflowContext.Workflow.WorkflowInstanceId = "WF-PT-1001";
+        var applicationStart = new RecordingStartWorkflowService(SuccessResult());
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            applicationStart,
+            new RecordingWorkflowContextReader(expectedContext));
+
+        service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
+        {
+            WorkflowKey = "PortfolioTrade",
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-1001",
+            InitialActionKey = "SubmitForChecker",
+            NotificationContext = new Dictionary<string, string?>
+            {
+                ["deskName"] = "Original",
+                [" deskName "] = " Taxable ",
+                ["emptyValue"] = " "
+            }
+        });
+
+        var context = Assert.IsType<Dictionary<string, string?>>(
+            applicationStart.LastRequest?.NotificationContext);
+        var item = Assert.Single(context);
+        Assert.Equal("deskName", item.Key);
+        Assert.Equal("Taxable", item.Value);
+        Assert.False(context.ContainsKey("emptyValue"));
+    }
+
     private static ApiWorkflowStartService CreateService(
         IWorkflowActorResolver actorResolver,
         IStartWorkflowService startWorkflowService,
