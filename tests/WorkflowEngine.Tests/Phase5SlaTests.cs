@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 using WorkflowEngine.Infrastructure.Sla;
@@ -49,15 +51,24 @@ public sealed class Phase5SlaTests
         });
         dbContext.SaveChanges();
 
-        var result = await new RunSlaService(dbContext).RunAsync(new(Now), CancellationToken.None);
+        var result = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Equal(4, result.PendingTasksWithSla);
         Assert.Equal(1, result.AlreadyQueued);
         Assert.Equal([returned.Id, overdue.Id], result.QueuedNotifications.Select(row => row.WorkflowTaskId));
         Assert.All(result.QueuedNotifications, row => Assert.Equal("Active", dbContext.WorkflowInstances.Single(instance => instance.WorkflowInstanceId == row.WorkflowInstanceId).Status));
         Assert.Equal(3, dbContext.NotificationOutbox.Count(row => row.NotificationType == "SlaTaskOverdue"));
+        var overdueNotification = dbContext.NotificationOutbox.Single(row =>
+            row.WorkflowTaskId == overdue.Id && row.NotificationType == "SlaTaskOverdue");
+        Assert.Equal("Overdue: Directed Trade Pending Checker Approval", overdueNotification.Subject);
+        Assert.Contains("Kollipara, Kartheek", overdueNotification.Body, StringComparison.Ordinal);
+        Assert.Contains("Sharepoint link = https://sharepoint.example.test/trades/1050", overdueNotification.Body, StringComparison.Ordinal);
 
-        var second = await new RunSlaService(dbContext).RunAsync(new(Now), CancellationToken.None);
+        var second = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Empty(second.QueuedNotifications);
     }
@@ -94,10 +105,36 @@ public sealed class Phase5SlaTests
             AssignedRoleKey = roleKey,
             Status = status,
             CreatedAtUtc = Now.AddHours(-1),
-            DueAtUtc = dueAtUtc
+            DueAtUtc = dueAtUtc,
+            NotificationRouteKey = taskKey switch
+            {
+                "CheckerReviewTask" => "RouteCheckerAssignedOnSubmit",
+                "TradingDeskReviewTask" => "RouteTradingDeskAssigned",
+                _ => null
+            },
+            NotificationContextJson = dueAtUtc is null ? null : JsonSerializer.Serialize(NotificationContext())
         };
         dbContext.WorkflowTasks.Add(task);
         return task;
+    }
+
+    private static Dictionary<string, string?> NotificationContext()
+    {
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["referenceNumber"] = "1050",
+            ["submitterDisplayName"] = "Kollipara, Kartheek",
+            ["returnedByDisplayName"] = "Kollipara, Kartheek",
+            ["recipientDisplayName"] = "Kollipara, Kartheek",
+            ["traderDisplayName"] = "Kollipara, Kartheek",
+            ["confirmerDisplayName"] = "Kollipara, Kartheek",
+            ["deskName"] = "Taxable",
+            ["securityType"] = "Other",
+            ["accountShortName"] = "EFG",
+            ["accountDisplayName"] = "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+            ["submittedDate"] = "4/24/2026",
+            ["tradeLink"] = "https://sharepoint.example.test/trades/1050"
+        };
     }
 
     private static long PortfolioTradeVersionId(WorkflowDbContext dbContext)

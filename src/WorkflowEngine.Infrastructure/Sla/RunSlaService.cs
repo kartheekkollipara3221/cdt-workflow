@@ -1,13 +1,16 @@
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 
 namespace WorkflowEngine.Infrastructure.Sla;
 
-public sealed class RunSlaService(WorkflowDbContext dbContext) : IRunSlaService
+public sealed class RunSlaService(
+    WorkflowDbContext dbContext,
+    NotificationTemplateRenderer templateRenderer) : IRunSlaService
 {
     public async Task<RunSlaResult> RunAsync(RunSlaRequest request, CancellationToken cancellationToken)
     {
@@ -58,11 +61,13 @@ public sealed class RunSlaService(WorkflowDbContext dbContext) : IRunSlaService
                     item => item.WorkflowInstanceId == task.WorkflowInstanceId,
                     cancellationToken);
 
-                if (task.Status != "Pending" || task.DueAtUtc is null || task.DueAtUtc >= now || instance.Status != "Active")
+                var dueAtUtc = task.DueAtUtc;
+                if (task.Status != "Pending" || dueAtUtc is null || dueAtUtc >= now || instance.Status != "Active")
                 {
                     await transaction.CommitAsync(cancellationToken);
                     continue;
                 }
+                var taskDueAtUtc = dueAtUtc.Value;
 
                 var exists = await dbContext.NotificationOutbox.AnyAsync(outbox =>
                     outbox.WorkflowTaskId == task.Id
@@ -73,12 +78,42 @@ public sealed class RunSlaService(WorkflowDbContext dbContext) : IRunSlaService
                     continue;
                 }
 
-                var route = await dbContext.NotificationRoutes
-                    .AsNoTracking()
-                    .SingleAsync(item =>
+                var route = !string.IsNullOrWhiteSpace(task.NotificationRouteKey)
+                    ? await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
+                        item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                        && item.RouteKey == task.NotificationRouteKey
+                        && item.IsActive, cancellationToken)
+                    : await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
                         item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
                         && item.NotificationType == "SlaTaskOverdue"
                         && item.IsActive, cancellationToken);
+
+                var context = string.IsNullOrWhiteSpace(task.NotificationContextJson)
+                    ? new Dictionary<string, string?>(StringComparer.Ordinal)
+                    : JsonSerializer.Deserialize<Dictionary<string, string?>>(task.NotificationContextJson)
+                        ?? new Dictionary<string, string?>(StringComparer.Ordinal);
+                context["workflowInstanceId"] = instance.WorkflowInstanceId;
+                context["taskKey"] = task.TaskKey;
+                context["assignedRoleKey"] = task.AssignedRoleKey;
+                context["dueAtUtc"] = taskDueAtUtc.ToString("O");
+                context["overdueAtUtc"] = now.ToString("O");
+
+                var renderedSubject = templateRenderer.Render(
+                    route.SubjectTemplate,
+                    context,
+                    "workflow.notificationContext");
+                var renderedBody = templateRenderer.Render(
+                    route.BodyTemplate,
+                    context,
+                    "workflow.notificationContext");
+                var templateErrors = renderedSubject.Errors.Concat(renderedBody.Errors).ToArray();
+                if (templateErrors.Length > 0)
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    warnings.Add(
+                        $"task {task.Id} overdue notification template missing: {string.Join("; ", templateErrors.Select(error => error.Message))}");
+                    continue;
+                }
 
                 var outbox = new NotificationOutbox
                 {
@@ -86,18 +121,12 @@ public sealed class RunSlaService(WorkflowDbContext dbContext) : IRunSlaService
                     WorkflowTaskId = task.Id,
                     BusinessObjectType = instance.BusinessObjectType,
                     BusinessObjectId = instance.BusinessObjectId,
-                    NotificationType = route.NotificationType,
+                    NotificationType = "SlaTaskOverdue",
                     RecipientRoleKey = route.RecipientRoleKey ?? task.AssignedRoleKey,
                     RecipientUserId = route.RecipientUserId,
-                    Subject = route.SubjectTemplate,
-                    PayloadJson = JsonSerializer.Serialize(new
-                    {
-                        workflowInstanceId = instance.WorkflowInstanceId,
-                        taskKey = task.TaskKey,
-                        assignedRoleKey = task.AssignedRoleKey,
-                        dueAtUtc = task.DueAtUtc,
-                        overdueAtUtc = now
-                    }),
+                    Subject = route.OverdueSubjectPrefix + renderedSubject.Rendered,
+                    Body = renderedBody.Rendered,
+                    PayloadJson = JsonSerializer.Serialize(context),
                     Status = "Pending",
                     CorrelationId = $"sla-{task.Id}",
                     CreatedAtUtc = now
@@ -111,7 +140,7 @@ public sealed class RunSlaService(WorkflowDbContext dbContext) : IRunSlaService
                     instance.WorkflowInstanceId,
                     task.TaskKey,
                     task.AssignedRoleKey,
-                    task.DueAtUtc.Value,
+                    taskDueAtUtc,
                     outbox.Id));
             }
             catch (DbUpdateException exception) when (IsSlaOutboxUniqueViolation(exception))
