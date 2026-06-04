@@ -4,6 +4,31 @@
   "actor": { "userId": "trader1", "displayName": "Trading User One", "roles": ["TradingDesk"] },
   "uiAction": { "sectionKey": "TradingDesk", "buttonKey": "TradingPrimary", "buttonLabelShown": "Return to Maker", "saveAsDraft": false },
   "dataSave": { "sectionKey": "TradingDesk", "payload": { "decision": "Return", "comment": "Trading details need correction." } },
-  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "TradingDeskReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "TradingDeskReviewTask", "expectedInstanceVersion": 3, "actionKey": "TradingReturnToMaker", "actionReason": "Trading Desk returned to Maker.", "idempotencyKey": "sample-06-trading-return-to-maker" },
+  "workflow": {
+    "workflowKey": "PortfolioTrade",
+    "workflowInstanceId": "WF-PT-1001",
+    "workflowDefinitionVersion": 1,
+    "expectedCurrentState": "TradingDeskReview",
+    "expectedCurrentTaskId": null,
+    "expectedCurrentTaskKey": "TradingDeskReviewTask",
+    "expectedInstanceVersion": 3,
+    "actionKey": "TradingReturnToMaker",
+    "actionReason": "Trading Desk returned to Maker.",
+    "idempotencyKey": "sample-06-trading-return-to-maker",
+    "notificationContext": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Kollipara, Kartheek",
+      "returnedByDisplayName": "Kollipara, Kartheek",
+      "recipientDisplayName": "Kollipara, Kartheek",
+      "traderDisplayName": "Kollipara, Kartheek",
+      "confirmerDisplayName": "Kollipara, Kartheek",
+      "deskName": "Taxable",
+      "securityType": "Other",
+      "accountShortName": "EFG",
+      "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+      "submittedDate": "4/24/2026",
+      "tradeLink": "https://sharepoint.example.test/trades/1050"
+    }
+  },
   "testExpectations": { "expectedResult": "Success", "expectedOldState": "TradingDeskReview", "expectedNewState": "ReturnedToMaker", "expectedClosedTaskKey": "TradingDeskReviewTask", "expectedCreatedTaskKey": "MakerReworkTask", "expectedAssignedRole": "Maker", "expectedNotificationType": "WorkflowReturnedToMaker", "expectedAuditAction": "TradingReturnToMaker" }
 }

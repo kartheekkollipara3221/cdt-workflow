@@ -4,6 +4,31 @@
   "actor": { "userId": "maker1", "displayName": "Maker User One", "roles": ["Maker"] },
   "uiAction": { "sectionKey": "Maker", "buttonKey": "MakerPrimary", "buttonLabelShown": "Resubmit", "saveAsDraft": false },
   "dataSave": { "sectionKey": "Maker", "payload": { "comment": "Corrections made." } },
-  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "ReturnedToMaker", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "MakerReworkTask", "expectedInstanceVersion": 3, "actionKey": "ResubmitForChecker", "actionReason": "Maker resubmitted after corrections.", "idempotencyKey": "sample-04-maker-resubmit-for-checker" },
+  "workflow": {
+    "workflowKey": "PortfolioTrade",
+    "workflowInstanceId": "WF-PT-1001",
+    "workflowDefinitionVersion": 1,
+    "expectedCurrentState": "ReturnedToMaker",
+    "expectedCurrentTaskId": null,
+    "expectedCurrentTaskKey": "MakerReworkTask",
+    "expectedInstanceVersion": 3,
+    "actionKey": "ResubmitForChecker",
+    "actionReason": "Maker resubmitted after corrections.",
+    "idempotencyKey": "sample-04-maker-resubmit-for-checker",
+    "notificationContext": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Kollipara, Kartheek",
+      "returnedByDisplayName": "Kollipara, Kartheek",
+      "recipientDisplayName": "Kollipara, Kartheek",
+      "traderDisplayName": "Kollipara, Kartheek",
+      "confirmerDisplayName": "Kollipara, Kartheek",
+      "deskName": "Taxable",
+      "securityType": "Other",
+      "accountShortName": "EFG",
+      "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+      "submittedDate": "4/24/2026",
+      "tradeLink": "https://sharepoint.example.test/trades/1050"
+    }
+  },
   "testExpectations": { "expectedResult": "Success", "expectedOldState": "ReturnedToMaker", "expectedNewState": "CheckerReview", "expectedClosedTaskKey": "MakerReworkTask", "expectedCreatedTaskKey": "CheckerReviewTask", "expectedAssignedRole": "Checker", "expectedNotificationType": "WorkflowTaskAssigned", "expectedAuditAction": "ResubmitForChecker" }
 }

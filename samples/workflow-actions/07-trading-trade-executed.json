@@ -4,6 +4,31 @@
   "actor": { "userId": "trader1", "displayName": "Trading User One", "roles": ["TradingDesk"] },
   "uiAction": { "sectionKey": "TradingDesk", "buttonKey": "TradingPrimary", "buttonLabelShown": "Trade Executed", "saveAsDraft": false },
   "dataSave": { "sectionKey": "TradingDesk", "payload": { "executionRef": "EX-1001" } },
-  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "TradingDeskReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "TradingDeskReviewTask", "expectedInstanceVersion": 3, "actionKey": "TradingTradeExecuted", "actionReason": "Trade executed.", "idempotencyKey": "sample-07-trading-trade-executed" },
+  "workflow": {
+    "workflowKey": "PortfolioTrade",
+    "workflowInstanceId": "WF-PT-1001",
+    "workflowDefinitionVersion": 1,
+    "expectedCurrentState": "TradingDeskReview",
+    "expectedCurrentTaskId": null,
+    "expectedCurrentTaskKey": "TradingDeskReviewTask",
+    "expectedInstanceVersion": 3,
+    "actionKey": "TradingTradeExecuted",
+    "actionReason": "Trade executed.",
+    "idempotencyKey": "sample-07-trading-trade-executed",
+    "notificationContext": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Kollipara, Kartheek",
+      "returnedByDisplayName": "Kollipara, Kartheek",
+      "recipientDisplayName": "Kollipara, Kartheek",
+      "traderDisplayName": "Kollipara, Kartheek",
+      "confirmerDisplayName": "Kollipara, Kartheek",
+      "deskName": "Taxable",
+      "securityType": "Other",
+      "accountShortName": "EFG",
+      "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+      "submittedDate": "4/24/2026",
+      "tradeLink": "https://sharepoint.example.test/trades/1050"
+    }
+  },
   "testExpectations": { "expectedResult": "Success", "expectedOldState": "TradingDeskReview", "expectedNewState": "BdrmClientServiceReview", "expectedClosedTaskKey": "TradingDeskReviewTask", "expectedCreatedTaskKey": "BdrmClientServiceReviewTask", "expectedAssignedRole": "BDRMClientService", "expectedNotificationType": "WorkflowTaskAssigned", "expectedAuditAction": "TradingTradeExecuted" }
 }

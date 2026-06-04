@@ -4,6 +4,31 @@
   "actor": { "userId": "checker1", "displayName": "Checker User One", "roles": ["Checker"] },
   "uiAction": { "sectionKey": "Checker", "buttonKey": "CheckerPrimary", "buttonLabelShown": "Return to Maker", "saveAsDraft": false },
   "dataSave": { "sectionKey": "Checker", "payload": { "decision": "Return", "comment": "Please correct details." } },
-  "workflow": { "workflowKey": "PortfolioTrade", "workflowInstanceId": "WF-PT-1001", "workflowDefinitionVersion": 1, "expectedCurrentState": "CheckerReview", "expectedCurrentTaskId": null, "expectedCurrentTaskKey": "CheckerReviewTask", "expectedInstanceVersion": 2, "actionKey": "CheckerReturnToMaker", "actionReason": "Checker returned to Maker.", "idempotencyKey": "sample-03-checker-return-to-maker" },
+  "workflow": {
+    "workflowKey": "PortfolioTrade",
+    "workflowInstanceId": "WF-PT-1001",
+    "workflowDefinitionVersion": 1,
+    "expectedCurrentState": "CheckerReview",
+    "expectedCurrentTaskId": null,
+    "expectedCurrentTaskKey": "CheckerReviewTask",
+    "expectedInstanceVersion": 2,
+    "actionKey": "CheckerReturnToMaker",
+    "actionReason": "Checker returned to Maker.",
+    "idempotencyKey": "sample-03-checker-return-to-maker",
+    "notificationContext": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Kollipara, Kartheek",
+      "returnedByDisplayName": "Kollipara, Kartheek",
+      "recipientDisplayName": "Kollipara, Kartheek",
+      "traderDisplayName": "Kollipara, Kartheek",
+      "confirmerDisplayName": "Kollipara, Kartheek",
+      "deskName": "Taxable",
+      "securityType": "Other",
+      "accountShortName": "EFG",
+      "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+      "submittedDate": "4/24/2026",
+      "tradeLink": "https://sharepoint.example.test/trades/1050"
+    }
+  },
   "testExpectations": { "expectedResult": "Success", "expectedOldState": "CheckerReview", "expectedNewState": "ReturnedToMaker", "expectedClosedTaskKey": "CheckerReviewTask", "expectedCreatedTaskKey": "MakerReworkTask", "expectedAssignedRole": "Maker", "expectedNotificationType": "WorkflowReturnedToMaker", "expectedAuditAction": "CheckerReturnToMaker" }
 }
