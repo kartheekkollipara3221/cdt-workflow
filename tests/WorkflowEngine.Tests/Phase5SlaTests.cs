@@ -111,6 +111,48 @@ public sealed class Phase5SlaTests
         Assert.Equal("Checker", notification.RecipientRoleKey);
     }
 
+    [Fact]
+    public async Task RunSlaWarnsAndContinuesWhenStoredNotificationContextIsInvalid()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-BAD-CONTEXT", "PT-BAD-CONTEXT", "Active", versionId);
+        AddInstance(dbContext, "WF-PT-GOOD-CONTEXT", "PT-GOOD-CONTEXT", "Active", versionId);
+        var malformedContextTask = AddTask(
+            dbContext,
+            "WF-PT-BAD-CONTEXT",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-10),
+            storeNotificationSnapshot: false);
+        malformedContextTask.NotificationRouteKey = "RouteCheckerAssignedOnSubmit";
+        malformedContextTask.NotificationContextJson = "{";
+        var validTask = AddTask(
+            dbContext,
+            "WF-PT-GOOD-CONTEXT",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-5));
+        dbContext.SaveChanges();
+
+        var result = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.StartsWith(
+                $"task {malformedContextTask.Id} overdue notification context invalid:",
+                StringComparison.Ordinal));
+        Assert.Equal([validTask.Id], result.QueuedNotifications.Select(row => row.WorkflowTaskId));
+        Assert.DoesNotContain(
+            dbContext.NotificationOutbox,
+            row => row.WorkflowTaskId == malformedContextTask.Id && row.NotificationType == "SlaTaskOverdue");
+        Assert.Single(
+            dbContext.NotificationOutbox,
+            row => row.WorkflowTaskId == validTask.Id && row.NotificationType == "SlaTaskOverdue");
+    }
+
     private static void AddInstance(WorkflowDbContext dbContext, string workflowInstanceId, string businessObjectId, string status, long versionId)
     {
         dbContext.WorkflowInstances.Add(new WorkflowInstance

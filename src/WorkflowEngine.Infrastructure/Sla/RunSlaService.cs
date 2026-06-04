@@ -88,15 +88,18 @@ public sealed class RunSlaService(
                         && item.RouteKey == "RouteSlaTaskOverdue"
                         && item.IsActive, cancellationToken);
 
-                var context = string.IsNullOrWhiteSpace(task.NotificationContextJson)
-                    ? new Dictionary<string, string?>(StringComparer.Ordinal)
-                    : JsonSerializer.Deserialize<Dictionary<string, string?>>(task.NotificationContextJson)
-                        ?? new Dictionary<string, string?>(StringComparer.Ordinal);
-                context["workflowInstanceId"] = instance.WorkflowInstanceId;
-                context["taskKey"] = task.TaskKey;
-                context["assignedRoleKey"] = task.AssignedRoleKey;
-                context["dueAtUtc"] = taskDueAtUtc.ToString("O");
-                context["overdueAtUtc"] = now.ToString("O");
+                if (!TryBuildNotificationContext(
+                    task,
+                    instance,
+                    taskDueAtUtc,
+                    now,
+                    out var context,
+                    out var contextWarning))
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    warnings.Add(contextWarning);
+                    continue;
+                }
 
                 var renderedSubject = templateRenderer.Render(
                     route.SubjectTemplate,
@@ -151,6 +154,42 @@ public sealed class RunSlaService(
         }
 
         return new RunSlaResult(now, pendingTasksWithSla, alreadyQueued, queued, warnings);
+    }
+
+    private static bool TryBuildNotificationContext(
+        WorkflowTask task,
+        WorkflowInstance instance,
+        DateTimeOffset dueAtUtc,
+        DateTimeOffset overdueAtUtc,
+        out Dictionary<string, string?> context,
+        out string warning)
+    {
+        warning = string.Empty;
+        if (string.IsNullOrWhiteSpace(task.NotificationContextJson))
+        {
+            context = new Dictionary<string, string?>(StringComparer.Ordinal);
+        }
+        else
+        {
+            try
+            {
+                context = JsonSerializer.Deserialize<Dictionary<string, string?>>(task.NotificationContextJson)
+                    ?? new Dictionary<string, string?>(StringComparer.Ordinal);
+            }
+            catch (JsonException exception)
+            {
+                context = new Dictionary<string, string?>(StringComparer.Ordinal);
+                warning = $"task {task.Id} overdue notification context invalid: {exception.Message}";
+                return false;
+            }
+        }
+
+        context["workflowInstanceId"] = instance.WorkflowInstanceId;
+        context["taskKey"] = task.TaskKey;
+        context["assignedRoleKey"] = task.AssignedRoleKey;
+        context["dueAtUtc"] = dueAtUtc.ToString("O");
+        context["overdueAtUtc"] = overdueAtUtc.ToString("O");
+        return true;
     }
 
     private static bool IsSlaOutboxUniqueViolation(DbUpdateException exception)
