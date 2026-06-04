@@ -127,6 +127,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("BusinessObjectId")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -219,10 +223,19 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("BodyTemplate")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<string>("NotificationType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OverdueSubjectPrefix")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -630,6 +643,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset?>("DueAtUtc")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("NotificationContextJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NotificationRouteKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Status")
                         .IsRequired()

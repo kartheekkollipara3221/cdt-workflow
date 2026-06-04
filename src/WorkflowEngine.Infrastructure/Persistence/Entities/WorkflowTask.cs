@@ -13,5 +13,6 @@ public sealed class WorkflowTask
     public DateTimeOffset? CompletedAtUtc { get; set; }
     public string? CompletedByUserId { get; set; }
     public string? ClosedByActionKey { get; set; }
+    public string? NotificationRouteKey { get; set; }
+    public string? NotificationContextJson { get; set; }
 }
-

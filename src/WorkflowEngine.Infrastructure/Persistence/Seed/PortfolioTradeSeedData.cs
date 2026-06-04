@@ -57,17 +57,55 @@ internal static class PortfolioTradeSeedData
         new("MakerReworkTask", "Maker Rework Task", "Maker", null)
     ];
 
+    private const string CheckerAssignedBody = """
+        This is to advise that {{submitterDisplayName}} has submitted a request for the {{deskName}} desk for security type {{securityType}} to execute a trade for account {{accountShortName}}, {{accountDisplayName}}.
+        The trade detail for account information can be accessed by clicking on the following
+        Sharepoint link = {{tradeLink}}
+        """;
+
+    private const string ReturnedToMakerBody = """
+        Reference {{referenceNumber}} was returned from {{returnedByDisplayName}} to {{recipientDisplayName}}.
+        This is for account {{accountShortName}}, {{accountDisplayName}} originally submitted on {{submittedDate}}
+        The account and trade information can be accessed by clicking on the following SharePoint link=> {{tradeLink}}
+        """;
+
+    private const string TradingDeskAssignedBody = """
+        This is to advise that {{submitterDisplayName}} has submitted a request for the {{deskName}} desk for security type {{securityType}} to execute a trade for account {{accountShortName}}, {{accountDisplayName}}.
+        The trade detail for account information can be accessed by clicking on the following Sharepoint link => {{tradeLink}}
+        """;
+
+    private const string BdrmAssignedBody = """
+        This is to confirm that the trade request for account {{accountShortName}}, {{accountDisplayName}} has been completed by trader {{traderDisplayName}} on the {{deskName}} desk for security type {{securityType}}.
+        The trade detail and account information can be accessed by clicking on the following Sharepoint link => {{tradeLink}}
+        """;
+
+    private const string WorkflowCompletedBody = """
+        This is to confirm that {{confirmerDisplayName}} has verified that the trade was executed and settled in account {{accountShortName}}, {{accountDisplayName}}. The trade request on Sharepoint is now closed.
+        The trade detail and account information can be accessed by clicking on the following Sharepoint link => {{tradeLink}}
+        """;
+
+    private const string TradingDeskReworkAssignedBody = """
+        This is to advise that the trade request for account {{accountShortName}}, {{accountDisplayName}} was returned to the {{deskName}} desk for rework.
+        The trade detail and account information can be accessed by clicking on the following Sharepoint link => {{tradeLink}}
+        """;
+
+    private const string SlaTaskOverdueBody = """
+        Workflow instance {{workflowInstanceId}} has an overdue task {{taskKey}} assigned to {{assignedRoleKey}}.
+        Task due date: {{dueAtUtc}}
+        Overdue at: {{overdueAtUtc}}
+        """;
+
     public static readonly NotificationRouteSeed[] NotificationRoutes =
     [
-        new("RouteCheckerAssignedOnSubmit", "WorkflowTaskAssigned", "Checker", "Portfolio Trade submitted for Checker review"),
-        new("RouteCheckerAssignedOnResubmit", "WorkflowTaskAssigned", "Checker", "Portfolio Trade resubmitted for Checker review"),
-        new("RouteReturnedToMakerFromChecker", "WorkflowReturnedToMaker", "Maker", "Portfolio Trade returned by Checker"),
-        new("RouteTradingDeskAssigned", "WorkflowTaskAssigned", null, "Portfolio Trade assigned to Trading Desk"),
-        new("RouteReturnedToMakerFromTradingDesk", "WorkflowReturnedToMaker", "Maker", "Portfolio Trade returned by Trading Desk"),
-        new("RouteBdrmAssigned", "WorkflowTaskAssigned", "BDRMClientService", "Portfolio Trade assigned to BDRM Client Service"),
-        new("RouteWorkflowCompleted", "WorkflowCompleted", "Maker", "Portfolio Trade workflow completed"),
-        new("RouteTradingDeskReworkAssigned", "WorkflowTaskAssigned", "TradingDesk", "Portfolio Trade returned for Trading Desk rework"),
-        new("RouteSlaTaskOverdue", "SlaTaskOverdue", null, "Portfolio Trade workflow task is overdue")
+        new("RouteCheckerAssignedOnSubmit", "WorkflowTaskAssigned", "Checker", "Directed Trade Pending Checker Approval", CheckerAssignedBody, "Overdue: "),
+        new("RouteCheckerAssignedOnResubmit", "WorkflowTaskAssigned", "Checker", "Directed Trade Pending Checker Approval", CheckerAssignedBody, "Overdue: "),
+        new("RouteReturnedToMakerFromChecker", "WorkflowReturnedToMaker", "Maker", "Updates Required to Directed Trade Request", ReturnedToMakerBody, "Overdue: "),
+        new("RouteTradingDeskAssigned", "WorkflowTaskAssigned", null, "Directed Trade Request Pending Execution", TradingDeskAssignedBody, "Overdue: "),
+        new("RouteReturnedToMakerFromTradingDesk", "WorkflowReturnedToMaker", "Maker", "Updates Required to Directed Trade Request", ReturnedToMakerBody, "Overdue: "),
+        new("RouteBdrmAssigned", "WorkflowTaskAssigned", "BDRMClientService", "Trade Execution Pending Confirmation", BdrmAssignedBody, "Overdue: "),
+        new("RouteWorkflowCompleted", "WorkflowCompleted", "Maker", "Confirmation that Trade settled in account", WorkflowCompletedBody, "Overdue: "),
+        new("RouteTradingDeskReworkAssigned", "WorkflowTaskAssigned", "TradingDesk", "Directed Trade Request Pending Rework", TradingDeskReworkAssignedBody, "Overdue: "),
+        new("RouteSlaTaskOverdue", "SlaTaskOverdue", null, "Workflow task overdue", SlaTaskOverdueBody, "Overdue: ")
     ];
 
     public static readonly TaskAssignmentRoleSeed[] TaskAssignmentRoles =
@@ -113,7 +151,13 @@ internal sealed record TaskSeed(string Key, string DisplayName, string OwnerRole
 
 internal sealed record TaskAssignmentRoleSeed(string TaskKey, string RoleKey);
 
-internal sealed record NotificationRouteSeed(string Key, string NotificationType, string? RecipientRoleKey, string SubjectTemplate);
+internal sealed record NotificationRouteSeed(
+    string Key,
+    string NotificationType,
+    string? RecipientRoleKey,
+    string SubjectTemplate,
+    string BodyTemplate,
+    string OverdueSubjectPrefix);
 
 internal sealed record TransitionSeed(
     string FromStateKey,

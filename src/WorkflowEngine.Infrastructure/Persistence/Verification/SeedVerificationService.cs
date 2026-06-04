@@ -209,9 +209,12 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             }
 
             if (!string.Equals(row.NotificationType, seed.NotificationType, StringComparison.Ordinal)
-                || !string.Equals(row.RecipientRoleKey, seed.RecipientRoleKey, StringComparison.Ordinal))
+                || !string.Equals(row.RecipientRoleKey, seed.RecipientRoleKey, StringComparison.Ordinal)
+                || !string.Equals(row.SubjectTemplate, seed.SubjectTemplate, StringComparison.Ordinal)
+                || !string.Equals(row.BodyTemplate, seed.BodyTemplate, StringComparison.Ordinal)
+                || !string.Equals(row.OverdueSubjectPrefix, seed.OverdueSubjectPrefix, StringComparison.Ordinal))
             {
-                errors.Add($"Notification route '{seed.Key}' does not match required type/recipient.");
+                errors.Add($"Notification route '{seed.Key}' does not match required template metadata.");
             }
         }
     }

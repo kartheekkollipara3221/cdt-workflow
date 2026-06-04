@@ -85,6 +85,22 @@ public sealed class SeedDataSmokeTests
     }
 
     [Fact]
+    public void NotificationRoutes_HaveSubjectBodyAndOverduePrefix()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var routes = dbContext.NotificationRoutes.ToDictionary(row => row.RouteKey, StringComparer.Ordinal);
+
+        var submit = routes["RouteCheckerAssignedOnSubmit"];
+        Assert.Equal("Directed Trade Pending Checker Approval", submit.SubjectTemplate);
+        Assert.Contains("{{submitterDisplayName}}", submit.BodyTemplate, StringComparison.Ordinal);
+        Assert.Equal("Overdue: ", submit.OverdueSubjectPrefix);
+
+        var returned = routes["RouteReturnedToMakerFromChecker"];
+        Assert.Equal("Updates Required to Directed Trade Request", returned.SubjectTemplate);
+        Assert.DoesNotContain("returnReason", returned.BodyTemplate, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AdminDemoOverrideIsNotSeededAndMakerReworkHasNoSla()
     {
         using var dbContext = CreateDbContext();

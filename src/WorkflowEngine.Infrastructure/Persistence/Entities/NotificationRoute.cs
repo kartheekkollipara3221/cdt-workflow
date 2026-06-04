@@ -9,6 +9,7 @@ public sealed class NotificationRoute
     public string? RecipientRoleKey { get; set; }
     public string? RecipientUserId { get; set; }
     public string SubjectTemplate { get; set; } = string.Empty;
+    public string BodyTemplate { get; set; } = string.Empty;
+    public string OverdueSubjectPrefix { get; set; } = "Overdue: ";
     public bool IsActive { get; set; }
 }
-

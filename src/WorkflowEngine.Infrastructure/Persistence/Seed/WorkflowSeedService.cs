@@ -177,6 +177,8 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
             row.RecipientRoleKey = seed.RecipientRoleKey;
             row.RecipientUserId = null;
             row.SubjectTemplate = seed.SubjectTemplate;
+            row.BodyTemplate = seed.BodyTemplate;
+            row.OverdueSubjectPrefix = seed.OverdueSubjectPrefix;
             row.IsActive = true;
         }
     }
