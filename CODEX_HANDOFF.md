@@ -1,6 +1,151 @@
 # Codex Handoff
 
-Last updated: 2026-06-01
+Last updated: 2026-06-04
+
+## Current goal: notification template feature
+
+Add generic, SQL-metadata-driven email subject/body templates for workflow notifications while keeping the reusable engine free of Directed Trade hardcoding. The external API supplies business notification values as a generic `notificationContext` dictionary. SLA overdue processing reuses the stored task notification route/context and does not call any external API.
+
+## Notification template feature completed
+
+Commits:
+
+```text
+c26c7ad docs: add notification template design
+b2d66f2 docs: plan notification templates
+c102f32 feat: add notification template renderer
+53fe91b feat: add notification template metadata
+c1713f5 feat: accept workflow notification context
+77a752a fix: handle duplicate notification context keys
+020caae feat: render workflow action notifications
+a475eb8 feat: render overdue notifications from task context
+2f79dc4 fix: use legacy SLA route key fallback
+b98bc17 fix: warn on invalid SLA notification context
+f790bb8 feat: send persisted notification body
+56fcb9c test: add notification context to samples
+927248c test: serialize seed smoke SQL tests
+```
+
+Changed:
+
+- Added route-specific `NotificationRoute.BodyTemplate` and `NotificationRoute.OverdueSubjectPrefix`.
+- Added persisted `NotificationOutbox.Body`.
+- Added `WorkflowTask.NotificationRouteKey` and `WorkflowTask.NotificationContextJson` for task notification snapshots.
+- Seeded approved Directed Trade email templates as Portfolio Trade sample metadata only.
+- Removed `returnReason` from all seeded notification templates.
+- Added a simple generic `{{tokenName}}` renderer in application notifications.
+- Added optional `workflow.notificationContext` to workflow action envelopes and workflow start requests.
+- Added optional `notificationContext` to `POST /v1/WorkflowAction` and `POST /v1/WorkflowStart`.
+- Included notification context in canonical request hashing.
+- Normalized duplicate notification-context keys with a last-wins trim rule instead of throwing.
+- Rendered action-created notification subject/body before outbox persistence.
+- Stored rendered context in `NotificationOutbox.PayloadJson`.
+- Snapshotted created task route/context for later SLA processing.
+- Made missing template tokens return `ValidationFailed` and roll back action side effects.
+- Made SLA overdue notifications render from stored task route/context and prefix the subject, for example `Overdue: Directed Trade Pending Checker Approval`.
+- Preserved legacy `RouteSlaTaskOverdue` fallback for older pending tasks without stored notification snapshots.
+- Made invalid stored SLA notification context warn and continue to later tasks.
+- Added `Body` to `NotificationDelivery`.
+- Made both outbox delivery paths map persisted `Body`.
+- Made SMTP send the persisted body first while preserving legacy key/value payload fallback for rows with empty body.
+- Added `workflow.notificationContext` to sample action JSON files `02` through `10`; `01-save-draft.json` remains unchanged.
+- Added `[Collection("SqlServerWorkflowExecution")]` to `SeedDataSmokeTests` because one new seed test uses the shared phase4 SQL test database.
+
+Files updated for the feature:
+
+```text
+src/WorkflowEngine.Application/Contracts/WorkflowActionEnvelope.cs
+src/WorkflowEngine.Application/Normalization/CanonicalRequestHasher.cs
+src/WorkflowEngine.Application/Notifications/INotificationSender.cs
+src/WorkflowEngine.Application/Notifications/NotificationTemplateRenderer.cs
+src/WorkflowEngine.Application/WorkflowStart/IStartWorkflowService.cs
+src/WorkflowEngine.Infrastructure/DependencyInjection/InfrastructureServiceCollectionExtensions.cs
+src/WorkflowEngine.Infrastructure/Migrations/20260604120000_AddNotificationTemplates.cs
+src/WorkflowEngine.Infrastructure/Migrations/20260604120000_AddNotificationTemplates.Designer.cs
+src/WorkflowEngine.Infrastructure/Migrations/WorkflowDbContextModelSnapshot.cs
+src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs
+src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs
+src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationOutbox.cs
+src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationRoute.cs
+src/WorkflowEngine.Infrastructure/Persistence/Entities/WorkflowTask.cs
+src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs
+src/WorkflowEngine.Infrastructure/Persistence/Seed/WorkflowSeedService.cs
+src/WorkflowEngine.Infrastructure/Persistence/Verification/SeedVerificationService.cs
+src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs
+src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs
+src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs
+src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs
+workflow-api/WORKFLOW_API_BOUNDARIES.md
+workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs
+workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs
+workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs
+workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs
+workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowStartService.cs
+workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionServiceTests.cs
+workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowStartServiceTests.cs
+tests/WorkflowEngine.Tests/NotificationTemplateRendererTests.cs
+tests/WorkflowEngine.Tests/Phase5SlaTests.cs
+tests/WorkflowEngine.Tests/SeedDataSmokeTests.cs
+tests/WorkflowEngine.Tests/SmtpNotificationSenderTests.cs
+tests/WorkflowEngine.Tests/WorkflowActionEnvelopeNormalizationTests.cs
+tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs
+tests/WorkflowEngine.Tests/WorkflowOptionsConflictTests.cs
+tests/WorkflowEngine.Tests/WorkflowStartInitialActionTests.cs
+tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs
+samples/workflow-actions/02-submit-for-checker.json
+samples/workflow-actions/03-checker-return-to-maker.json
+samples/workflow-actions/04-maker-resubmit-for-checker.json
+samples/workflow-actions/05-checker-send-to-trading-desk.json
+samples/workflow-actions/06-trading-return-to-maker.json
+samples/workflow-actions/07-trading-trade-executed.json
+samples/workflow-actions/08-bdrm-trade-fulfilled.json
+samples/workflow-actions/09-bdrm-trade-not-executed-properly.json
+samples/workflow-actions/10-trading-rework-trade-executed.json
+```
+
+Final verification run:
+
+```powershell
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING = 'Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter "NotificationTemplateRendererTests|WorkflowTransitionTests|WorkflowStartInitialActionTests|Phase5SlaTests|SmtpNotificationSenderTests|SeedDataSmokeTests|SampleExpectationTests" /p:UseAppHost=false
+dotnet build src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
+$env:ConnectionStrings__DefaultConnection = 'Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'
+dotnet run --project src\WorkflowEngine.Console -- init-db
+dotnet run --project src\WorkflowEngine.Console -- verify-seed
+dotnet run --project src\WorkflowEngine.Console -- start-workflow PortfolioTrade PT-NOTIFY-TEMPLATE --user maker1 --reset
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\02-submit-for-checker.json --business-object PT-NOTIFY-TEMPLATE --workflow-instance WF-PT-NOTIFY-TEMPLATE
+dotnet run --project src\WorkflowEngine.Console -- show-notifications WF-PT-NOTIFY-TEMPLATE
+```
+
+Final verification results:
+
+- API build passed with 0 warnings and 0 errors.
+- API tests passed: 41 passed, 0 failed, 0 skipped.
+- Initial focused workflow test run hit sandboxed NuGet signature access (`NU1301`) and was rerun outside the sandbox.
+- One focused workflow test rerun exposed a real test isolation issue: `SeedDataSmokeTests.NotificationRoutes_HaveSubjectBodyAndOverduePrefix` used the shared phase4 SQL test database without the `SqlServerWorkflowExecution` collection. Fixed in `927248c`.
+- Final focused workflow test run passed: 30 passed, 0 failed, 0 skipped.
+- Shared `src\WorkflowEngine.sln` build passed with 0 warnings and 0 errors.
+- Console `init-db` passed against `cdt_workflow_api_20260527`.
+- Console `verify-seed` passed.
+- Console sample path passed:
+  - `start-workflow PortfolioTrade PT-NOTIFY-TEMPLATE --user maker1 --reset`: success, workflow `WF-PT-NOTIFY-TEMPLATE` in `Draft`.
+  - `execute-json .\samples\workflow-actions\02-submit-for-checker.json --business-object PT-NOTIFY-TEMPLATE --workflow-instance WF-PT-NOTIFY-TEMPLATE`: success, `Draft -> CheckerReview`, `CheckerReviewTask` created, notification queued.
+  - `show-notifications WF-PT-NOTIFY-TEMPLATE`: showed `WorkflowTaskAssigned`, recipient `Checker`, subject `Directed Trade Pending Checker Approval`.
+
+Known risks / remaining work for this feature:
+
+- The console `show-notifications` command displays subject and recipient, not body. Body rendering is covered by unit/integration tests and persisted `NotificationOutbox.Body`.
+- SMTP delivery sends the persisted plain-text body, but no live smtp4dev run was performed for this feature slice.
+- Existing local uncommitted changes remain in the older `api/src/WorkflowEngine.Api/appsettings*.json` files and unrelated untracked local tool/context folders. They were not modified by this feature.
+- Hosted SLA service integration still needs production hosting decisions, but the reusable `RunSlaService` now has the needed stored-context behavior.
+
+Next-session prompt:
+
+```text
+Continue in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.md, PROJECT.md, CODEX_HANDOFF.md, and workflow-api/WORKFLOW_API_BOUNDARIES.md first. The notification template feature is implemented and verified through API builds/tests, focused workflow tests, seed verification, and a console submit sample. Preserve unrelated local appsettings/tool/context changes. If continuing this area, next useful work is live SMTP verification with smtp4dev or production hosting decisions for SLA/outbox processing.
+```
 
 ## Project goal
 
