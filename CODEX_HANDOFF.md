@@ -1,10 +1,18 @@
 # Codex Handoff
 
-Last updated: 2026-06-05
+Last updated: 2026-06-05T00:02:09-04:00
 
 ## Current Goal
 
-Clean the repository documentation and handoff files after pruning the legacy API host and local/generated folders. The active project shape is now the shared workflow engine under `src/` plus the ASP.NET Core workflow host under `workflow-api/`.
+Continue the external target API integration handoff. The user restored/copied the repo bundle to another machine and is integrating workflow behavior into an IIS-hosted target API that also supports other application APIs.
+
+The immediate design decision from the latest session:
+
+- The target API should send normal action-created notifications when a user action moves a record to the next workflow state.
+- `run-sla` is only for overdue SLA notification creation.
+- Task Scheduler on the target machine should run the separate processor for `run-sla` and `process-notification-outbox`.
+- `process-notification-outbox` remains the retry/backlog path for pending notification rows.
+- Do not place the scheduled SLA/outbox loop inside the IIS target API.
 
 ## Required Reading
 
@@ -97,7 +105,17 @@ X-Workflow-DisplayName
 ```
 
 - `POST /v1/WorkflowAction` commits workflow/task/audit/outbox data before SMTP delivery. If delivery fails, the retry path is `process-notification-outbox`.
-- The hosted SLA service should call `IRunSlaService.RunAsync(...)` against the workflow DB. It should not call an external API to rebuild overdue email context; the task snapshot carries the notification route and context.
+- Normal action notifications are API-owned: after the workflow action execution returns success and queues notification rows, the target API should dispatch the rows created by that action.
+- The action dispatcher should select by `WorkflowInstanceId` plus `CorrelationId`, matching the existing `WorkflowActionNotificationDispatcher` pattern in `workflow-api/src/WorkflowEngine.WorkflowApi/Services/`.
+- The hosted/scheduled SLA service should call `IRunSlaService.RunAsync(...)` against the workflow DB. It should not call an external API to rebuild overdue email context; the task snapshot carries the notification route and context.
+- Task Scheduler is available on the target machine. Preferred processor shape:
+
+```powershell
+dotnet .\WorkflowEngine.Console.dll run-sla
+dotnet .\WorkflowEngine.Console.dll process-notification-outbox
+```
+
+- Keep `RecipientOverride` configured during live SMTP smoke testing so real users do not receive test email.
 
 ## Current Worktree Expectations
 
@@ -145,12 +163,13 @@ Results:
 
 - Decide whether to commit the cleanup and schema fix together or split them.
 - Review `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` SMTP env vars before committing if that file becomes modified again.
-- Decide how SLA/outbox processing will be hosted in the target environment.
+- For the target API integration, add or verify the narrow action-notification dispatch hook immediately after the target service calls workflow execution.
+- For target-machine operations, publish/copy the workflow console processor, configure DB/SMTP settings, and schedule `run-sla` followed by `process-notification-outbox` in Windows Task Scheduler.
 - Replace trusted-header actor resolution with the target auth/claims resolver when integrating into the real host.
 - Integrate EF migrations into the target deployment process.
 
 ## Next Session Prompt
 
 ```text
-Continue in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD, PROJECT.md, context.md, CODEX_HANDOFF.md, and workflow-api/WORKFLOW_API_BOUNDARIES.md first. The active repo shape is src/ plus workflow-api/; the old tracked api/ host, stale generated docs, and stale bundle/restore scripts were removed. Preserve .tools/smtp4dev. Current uncommitted source work includes the dbo schema fix and MigrationSchemaTests. Before editing, inspect git status and diffs, then continue from the user's latest request.
+Continue in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD, PROJECT.md, context.md, CODEX_HANDOFF.md, and workflow-api/WORKFLOW_API_BOUNDARIES.md first. The user is pausing after deciding the external target API should dispatch normal action-created notifications immediately, while Task Scheduler handles run-sla overdue detection and process-notification-outbox retry/backlog processing. Do not put the scheduled loop inside the IIS target API. Before editing, inspect git status and diffs, then continue from the user's latest request.
 ```

@@ -47,6 +47,15 @@ Current feature state:
 - SLA overdue notifications render from stored task notification snapshots and do not call an external API for email data.
 - Portfolio Trade/Directed Trade wording remains seed/sample metadata only.
 
+Latest external target-machine decision:
+
+- The IIS-hosted target API should send normal action-created notifications immediately after the form action executes workflow movement.
+- `run-sla` is only for overdue SLA detection.
+- Windows Task Scheduler is available on the target machine and should run the separate workflow processor for `run-sla` and `process-notification-outbox`.
+- `process-notification-outbox` is still needed for pending-row retry/backlog, including failed action-created SMTP rows and SLA overdue rows.
+- Do not put the scheduled SLA/outbox loop inside the IIS target API.
+- If implementation guidance resumes, keep the target API edit narrow: hook notification dispatch immediately after the service method that calls workflow execution, selecting created rows by `WorkflowInstanceId` + `CorrelationId`.
+
 Useful verification commands:
 
 ```powershell
@@ -115,4 +124,4 @@ X-Workflow-DisplayName: Checker One
 
 Suggested next task:
 
-Review the current diff and either prepare a clean commit split for the schema fix plus repo/docs cleanup, or continue from the highest-priority open item in `TODO_WORKFLOW_API.md`.
+Continue target-machine integration guidance. First clarify whether the user wants one-step-at-a-time target API code changes for immediate action notification dispatch, or Task Scheduler setup steps for SLA/outbox processing. If code guidance resumes, stay destination-first and do not assume the local `workflow-api` host is the target being edited.

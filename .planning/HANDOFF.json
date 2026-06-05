@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-05T00:02:09-04:00",
+  "phase": null,
+  "phase_name": null,
+  "phase_dir": null,
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Clarify restore bundle usage",
+      "status": "done"
+    },
+    {
+      "id": 2,
+      "name": "Provide Swagger payloads for one-record workflow testing",
+      "status": "done"
+    },
+    {
+      "id": 3,
+      "name": "Clarify action notifications versus SLA notifications",
+      "status": "done"
+    },
+    {
+      "id": 4,
+      "name": "Define target-machine Task Scheduler role",
+      "status": "done"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 5,
+      "name": "If requested, guide narrow target API hook for immediate action notification dispatch",
+      "status": "not_started"
+    },
+    {
+      "id": 6,
+      "name": "If requested, guide Task Scheduler setup for run-sla and process-notification-outbox",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {
+      "action": "Choose next slice",
+      "context": "User may want either target API code integration for immediate action notifications or Task Scheduler deployment steps for SLA/outbox retry.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Normal workflow action notifications are API-owned",
+      "rationale": "The notification should be sent when a user action moves the record to the next workflow state."
+    },
+    {
+      "decision": "run-sla is only for overdue detection",
+      "rationale": "SLA monitor creates SlaTaskOverdue rows; it does not handle normal transition notifications."
+    },
+    {
+      "decision": "Task Scheduler should host SLA/outbox processing separately from IIS target API",
+      "rationale": "Avoid broad changes to the IIS-hosted target API and keep retry/backlog processing isolated."
+    }
+  ],
+  "uncommitted_files": [
+    ".gitignore",
+    "context.md",
+    "CODEX_HANDOFF.md",
+    "NEXT_CODEX_PROMPT.md",
+    ".planning/HANDOFF.json",
+    ".planning/.continue-here.md"
+  ],
+  "next_action": "Start by asking whether the user wants one-step-at-a-time target API action-dispatch integration or Task Scheduler setup.",
+  "context_notes": "Target API should dispatch action-created notification rows immediately after workflow execution succeeds, using WorkflowInstanceId plus CorrelationId. Task Scheduler should run run-sla and process-notification-outbox for overdue detection and retry/backlog."
+}

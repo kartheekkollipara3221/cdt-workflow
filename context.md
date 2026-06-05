@@ -1,17 +1,46 @@
 # CDT Workflow Current Context
 
-Last updated: 2026-06-05
+Last updated: 2026-06-05T00:02:09-04:00
 Workspace: `C:\projects\cdt-workflow`
 Branch: `console-code-first-0518`
-Current HEAD before local cleanup/schema edits: `a0e5640`
+Current HEAD observed during pause: `be1aad1`
+
+## Latest Session Context
+
+The current work is an external target-machine integration handoff, not broad source implementation in this repo.
+
+Key conclusion from today's discussion:
+
+- Normal action-created notifications belong in the target API action path. When a user clicks a form action and the target API executes workflow movement, the API should dispatch notification rows created by that same action immediately after workflow execution succeeds.
+- `run-sla` is only for overdue SLA detection. It scans active pending tasks whose `DueAtUtc` has breached and queues `SlaTaskOverdue` rows.
+- Task Scheduler on the target machine should run the separate processor for:
+  - `run-sla`
+  - `process-notification-outbox`
+- `process-notification-outbox` is still needed as the retry/backlog path for pending rows, including failed action-created SMTP rows and SLA overdue rows.
+- Do not put the SLA/outbox polling loop inside the IIS-hosted target API. Use Task Scheduler or a separate worker process.
+- If the target API must send action notifications, it needs only a narrow hook after the service method that calls workflow execution, not a broad target API rewrite.
+
+Target action-notification shape:
+
+```csharp
+var actionResult = workflowExecuteService.Execute(...);
+
+DispatchCreatedNotifications(actionResult);
+
+return actionResult;
+```
+
+The dispatcher should select only rows created by that action, using the action result's `WorkflowInstanceId` and `CorrelationId`.
 
 ## How To Resume
 
 Start a new Codex session in `C:\projects\cdt-workflow` and paste:
 
 ```text
-Read context.md first, then continue the CDT workflow work. The active repo shape is src/ plus workflow-api/. The old tracked api/ host and stale generated docs were removed. Preserve .tools/smtp4dev. Current uncommitted source work includes the dbo schema fix for EF migrations plus MigrationSchemaTests. Keep workflow logic generic and metadata-driven.
+$gsd-resume-work
 ```
+
+If not using GSD, paste the contents of `NEXT_CODEX_PROMPT.md`.
 
 Before editing, run:
 
@@ -148,8 +177,21 @@ overdueAtUtc
 - Do not add a user lookup table or SQL role-to-user mapping.
 - `WorkflowActionRequest.NotificationContext` maps into the internal action envelope.
 - `WorkflowStartRequest.NotificationContext` maps into the application start request and is reused by `initialActionKey` execution.
-- A hosted SLA service should call `IRunSlaService.RunAsync(...)` and then use the existing outbox processing path.
-- The hosted SLA service should not call external-api to fetch overdue email data because the task snapshot already carries the route/context.
+- The target API should send normal action-created notifications immediately after the workflow action commits, by dispatching rows created for the action's workflow instance and correlation id.
+- A scheduled processor should call `IRunSlaService.RunAsync(...)` for overdue detection and then use the existing outbox processing path.
+- The scheduled SLA processor should not call the external API to fetch overdue email data because the task snapshot already carries the route/context.
+- Target-machine Task Scheduler is available and is the preferred no-IIS-change host for SLA and outbox retry processing.
+
+Suggested scheduled wrapper on the target machine:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+Set-Location $PSScriptRoot
+& dotnet .\WorkflowEngine.Console.dll run-sla
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& dotnet .\WorkflowEngine.Console.dll process-notification-outbox
+exit $LASTEXITCODE
+```
 
 ## Verification Already Completed
 

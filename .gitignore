@@ -26,3 +26,4 @@ console-dbfirst-clean/
 
 # Accidental duplicate generated docs under the source tree
 src/docs/workflow-map/
+/.tools/smtp4dev
