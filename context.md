@@ -1,6 +1,6 @@
 # CDT Workflow Current Context
 
-Last updated: 2026-06-05T09:49:45-04:00
+Last updated: 2026-06-05T14:41:30-04:00
 Workspace: `C:\projects\cdt-workflow`
 Branch: `console-code-first-0518`
 Current HEAD before beginner guide commit: `00bcf07`
@@ -8,6 +8,13 @@ Current HEAD before beginner guide commit: `00bcf07`
 ## Latest Session Context
 
 The current work is an external target-machine integration handoff, not broad source implementation in this repo.
+
+Latest recipient decision:
+
+- Maker can vary per business record.
+- SMTP delivery now resolves recipients in this order: `Smtp:RecipientOverride`, then `notificationContext.recipientEmail` persisted in notification `PayloadJson`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
+- The target API should supply `recipientEmail` in `notificationContext` for Return-to-Maker and any other per-record recipient scenario.
+- No workflow SQL user table or role-to-email lookup table was added.
 
 Key conclusion from today's discussion:
 
@@ -79,26 +86,24 @@ Removed by user-approved cleanup:
 
 ## Current Source Changes
 
-### SQL schema fix
+### Per-record SMTP recipient resolution
 
-Target DB problem: `init-db` could create tables under the executing user's default schema instead of `dbo`.
+Return-to-Maker can target a different Maker for each business record, so SMTP recipient resolution no longer depends only on the static `Smtp:RoleEmailMap:Maker` entry.
 
 Implemented fix:
 
-- `WorkflowDbContext` now defines `DefaultSchema = "dbo"` and calls `HasDefaultSchema(DefaultSchema)`.
-- Runtime and design-time SQL Server configuration uses `MigrationsHistoryTable("__EFMigrationsHistory", WorkflowDbContext.DefaultSchema)`.
-- Existing migrations and model snapshot were updated so tables, foreign keys, and migration history use `dbo`.
-- Added `tests/WorkflowEngine.Tests/MigrationSchemaTests.cs`.
+- `SmtpNotificationSender` resolves recipients in this order: `Smtp:RecipientOverride`, then payload `recipientEmail`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
+- Override-mode bodies include original role metadata and, when available, `OriginalRecipientEmail`.
+- `WorkflowExecutionValidationTests.ReturnToMakerPersistsRecipientEmailFromNotificationContext` proves `workflow.notificationContext.recipientEmail` is persisted into `NotificationOutbox.PayloadJson`.
+- `SmtpNotificationSenderTests` covers direct per-notification email, no-role-map delivery, override precedence, and missing-recipient failure.
+- `ConsoleNotificationSenderTests` and `tests/COVERAGE_AUDIT.md` were updated so PROJECT.md section 20 coverage stays complete.
 
-This fix applies to fresh/init migrations. Existing databases with tables already created under a user schema need a controlled cleanup or schema transfer.
+No SQL user table, SQL role-to-email lookup, public API DTO change, or schema migration was added.
 
-### Documentation cleanup
+### Documentation updates
 
-- Rewrote `CODEX_HANDOFF.md`, `NEXT_CODEX_PROMPT.md`, and this `context.md` to match the new shape.
-- Updated `README.md` to describe the current `src/` plus `workflow-api/` shape and current local verification DB.
-- Added `docs/README.md`.
-- Added `docs/beginners-api-console-handoff.html` as a single-file beginner handoff for API, console, and target API integration steps.
-- Removed old generated docs that pointed at the deleted host and old controller names.
+- `PROJECT.md`, `README.md`, and `docs/beginners-api-console-handoff.html` document the recipient resolution order.
+- `CODEX_HANDOFF.md` and this `context.md` record that the target API should supply `notificationContext.recipientEmail` for business-record-specific recipients.
 
 ## Notification Template Feature State
 
@@ -136,6 +141,7 @@ Return-to-Maker tokens:
 referenceNumber
 returnedByDisplayName
 recipientDisplayName
+recipientEmail
 accountShortName
 accountDisplayName
 submittedDate
@@ -196,28 +202,36 @@ exit $LASTEXITCODE
 
 ## Verification Already Completed
 
-After cleanup of the legacy host, stale docs, and handoff files:
+After the per-record recipient change:
 
 ```powershell
-dotnet build src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
-dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
-dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
-dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter MigrationSchemaTests /p:UseAppHost=false
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter SmtpNotificationSenderTests -m:1 /p:UseAppHost=false --no-restore
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter WorkflowExecutionValidationTests -m:1 /p:UseAppHost=false --no-restore
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 /p:UseAppHost=false --no-restore
+dotnet build src\WorkflowEngine.sln -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false --no-restore
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- verify-seed
+git diff --check
 ```
 
 Results:
 
 ```text
-src build passed with 0 warnings/errors.
-workflow-api build passed with 0 warnings/errors.
+SmtpNotificationSenderTests passed: 7 passed.
+WorkflowExecutionValidationTests passed: 19 passed.
+Full core test project passed: 231 passed, 2 skipped SMTP integration tests.
+src warnings-as-errors build passed with 0 warnings/errors.
+workflow-api warnings-as-errors build passed with 0 warnings/errors.
 workflow-api tests passed: 41 passed.
-MigrationSchemaTests passed: 1 passed.
+verify-seed passed.
+git diff --check clean except Git line-ending warnings.
 ```
 
 ## Known Risks And Remaining Work
 
 - Existing target databases with non-`dbo` workflow tables need a controlled migration/cleanup plan.
-- Live smtp4dev verification was not rerun for the notification-template slice; SMTP body delivery is covered by tests and persisted outbox behavior.
+- Live smtp4dev/Tier 2 SMTP verification was not rerun for this slice; default tests skip those integration tests by design.
 - `show-notifications` displays subject/recipient/status, not the persisted body.
 - Hosted SLA/outbox processing still needs a production hosting decision.
 - If the external API omits required `notificationContext` tokens, workflow actions fail validation and roll back.

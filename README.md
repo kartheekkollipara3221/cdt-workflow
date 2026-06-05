@@ -204,7 +204,7 @@ SLA is task-driven. Task definitions may point at an SLA policy; tasks without a
 
 Notifications use an outbox table. Workflow transitions queue rows; `process-notification-outbox` sends pending rows through `INotificationSender`.
 
-Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. SMTP resolves role recipients from configuration only. `Smtp:RecipientOverride` is the smoke-test safety hatch. See `PROJECT.md` §14.
+Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. SMTP resolves recipients from `Smtp:RecipientOverride`, then persisted `notificationContext.recipientEmail`, then `Smtp:RoleEmailMap`. `Smtp:RecipientOverride` is the smoke-test safety hatch. See `PROJECT.md` §14.
 
 ### Configuration
 

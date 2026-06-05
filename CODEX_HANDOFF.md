@@ -1,10 +1,17 @@
 # Codex Handoff
 
-Last updated: 2026-06-05T09:49:45-04:00
+Last updated: 2026-06-05T14:41:30-04:00
 
 ## Current Goal
 
 Continue the external target API integration handoff. The user restored/copied the repo bundle to another machine and is integrating workflow behavior into an IIS-hosted target API that also supports other application APIs.
+
+Latest recipient decision:
+
+- Maker can vary per business record, so Return-to-Maker email cannot rely only on `Smtp:RoleEmailMap:Maker`.
+- SMTP delivery now resolves recipients in this order: `Smtp:RecipientOverride`, then `notificationContext.recipientEmail` persisted in notification `PayloadJson`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
+- Target API integration should provide `notificationContext.recipientEmail` for business-record-specific recipients.
+- This keeps the no SQL user table / no role-to-email lookup table boundary intact.
 
 The immediate design decision from the latest session:
 
@@ -72,21 +79,21 @@ The guide intentionally distinguishes the local `workflow-api/` reference host f
 
 ## Active Code Changes Since Last Commit
 
-### SQL schema ownership fix
+### Per-record SMTP recipient resolution
 
-The target database issue was that `init-db` could create tables under the executing user's default schema instead of `dbo`. The fix pins EF Core to `dbo`:
+The user's latest correction is that the Maker recipient changes per business record. The code now supports that without adding a SQL user table or changing public request DTOs:
 
-- `WorkflowDbContext.DefaultSchema = "dbo"`
-- `modelBuilder.HasDefaultSchema(DefaultSchema)`
-- SQL Server migrations history table configured as `[dbo].[__EFMigrationsHistory]`
-- Existing migrations and model snapshot updated to emit `[dbo]` schema-qualified tables and foreign keys
-- Added `MigrationSchemaTests` to verify the generated migration script uses `dbo`
+- `SmtpNotificationSender` resolves recipients in this order: `Smtp:RecipientOverride`, then payload `recipientEmail`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
+- Override-mode bodies preserve `OriginalRecipientRoleKey` and, when available, `OriginalRecipientEmail`.
+- Return-to-Maker persistence is covered by `WorkflowExecutionValidationTests.ReturnToMakerPersistsRecipientEmailFromNotificationContext`.
+- SMTP recipient behavior is covered by new `SmtpNotificationSenderTests`.
+- `ConsoleNotificationSenderTests` and `tests/COVERAGE_AUDIT.md` were updated because PROJECT.md section 20 coverage audit is enforced by tests.
 
-This affects fresh/init migrations. An existing database that already has user-schema tables still needs a controlled cleanup or schema transfer.
+The target API should populate `workflow.notificationContext.recipientEmail` for Return-to-Maker and any other business-record-specific recipient.
 
-### Legacy host/docs cleanup
+### Documentation updates
 
-The old tracked `api/` host and stale generated docs are deleted in the working tree. The active API host is only `workflow-api/WorkflowEngine.WorkflowApi.slnx`.
+`PROJECT.md`, `README.md`, `docs/beginners-api-console-handoff.html`, `context.md`, and this file now document the recipient resolution order and target API handoff guidance.
 
 ## Notification Template Feature State
 
@@ -133,15 +140,18 @@ dotnet .\WorkflowEngine.Console.dll process-notification-outbox
 
 ## Current Worktree Expectations
 
-Expected local changes include:
+Expected local changes for this recipient slice include:
 
-- Deleted tracked `api/` files.
-- Deleted stale tracked docs and generated bundle artifacts listed above.
-- Modified infrastructure/migration files for the `dbo` schema fix.
-- Added `tests/WorkflowEngine.Tests/MigrationSchemaTests.cs`.
-- Updated `PROJECT.md`, `README.md`, `CODEX_HANDOFF.md`, `NEXT_CODEX_PROMPT.md`, `context.md`, and `docs/README.md`.
-- Untracked `.tools/` for smtp4dev should remain local unless the user asks to track it.
-- Untracked `docs/superpowers/plans/2026-06-01-dynamic-trading-desk-assignment.md` already existed as local planning context.
+- `src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs`
+- `tests/WorkflowEngine.Tests/SmtpNotificationSenderTests.cs`
+- `tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs`
+- `tests/WorkflowEngine.Tests/ConsoleNotificationSenderTests.cs`
+- `tests/COVERAGE_AUDIT.md`
+- `PROJECT.md`
+- `README.md`
+- `docs/beginners-api-console-handoff.html`
+- `context.md`
+- `CODEX_HANDOFF.md`
 
 Run before further edits:
 
@@ -153,31 +163,35 @@ git diff --name-only
 
 ## Verification Status
 
-Latest verification after the legacy host cleanup, stale docs removal, and handoff rewrite:
+Latest verification after the per-record recipient change:
 
 ```powershell
-dotnet build src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
-dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
-dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
-dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter MigrationSchemaTests /p:UseAppHost=false
-dotnet run --project src\WorkflowEngine.Console -- init-db
-dotnet run --project src\WorkflowEngine.Console -- verify-seed
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter SmtpNotificationSenderTests -m:1 /p:UseAppHost=false --no-restore
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter WorkflowExecutionValidationTests -m:1 /p:UseAppHost=false --no-restore
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 /p:UseAppHost=false --no-restore
+dotnet build src\WorkflowEngine.sln -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false --no-restore
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- verify-seed
+git diff --check
 ```
 
 Results:
 
-- Shared solution build passed with 0 warnings/errors.
-- Active workflow API build passed with 0 warnings/errors.
+- `SmtpNotificationSenderTests` passed: 7 passed.
+- `WorkflowExecutionValidationTests` passed: 19 passed.
+- Full core test project passed: 231 passed, 2 skipped SMTP integration tests.
+- Shared solution warnings-as-errors build passed with 0 warnings/errors.
+- Active workflow API warnings-as-errors build passed with 0 warnings/errors.
 - Active workflow API tests passed: 41 passed.
-- Migration schema test passed: 1 passed.
-- `init-db` completed on the configured local DB.
 - `verify-seed` passed.
+- `git diff --check` was clean except Git line-ending warnings.
 
 ## Remaining Work
 
-- Decide whether to commit the cleanup and schema fix together or split them.
-- Review `workflow-api/src/WorkflowEngine.WorkflowApi/Properties/launchSettings.json` SMTP env vars before committing if that file becomes modified again.
-- For the target API integration, add or verify the narrow action-notification dispatch hook immediately after the target service calls workflow execution.
+- Commit and push the per-record recipient slice.
+- For the target API integration, ensure Return-to-Maker request construction includes `notificationContext.recipientEmail`.
+- Keep `Smtp:RecipientOverride` configured during live SMTP smoke testing, then remove it only when ready to send to real per-record or role-map recipients.
 - For target-machine operations, publish/copy the workflow console processor, configure DB/SMTP settings, and schedule `run-sla` followed by `process-notification-outbox` in Windows Task Scheduler.
 - Replace trusted-header actor resolution with the target auth/claims resolver when integrating into the real host.
 - Integrate EF migrations into the target deployment process.

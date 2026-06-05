@@ -69,6 +69,12 @@ public sealed class SmtpNotificationSender : INotificationSender
             return recipientOverride;
         }
 
+        var directRecipient = ResolveRecipientEmailFromPayload(notification.PayloadJson);
+        if (!string.IsNullOrWhiteSpace(directRecipient))
+        {
+            return directRecipient;
+        }
+
         if (string.IsNullOrWhiteSpace(notification.RecipientRoleKey))
         {
             throw new InvalidOperationException($"Notification {notification.Id} has no recipient role and no Smtp:RecipientOverride.");
@@ -83,8 +89,34 @@ public sealed class SmtpNotificationSender : INotificationSender
         return mapped;
     }
 
+    private static string? ResolveRecipientEmailFromPayload(string payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(payloadJson);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("recipientEmail", out var value)
+                || value.ValueKind != JsonValueKind.String)
+            {
+                return null;
+            }
+
+            return EmptyToNull(value.GetString());
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private string BuildBody(NotificationDelivery notification)
     {
+        var originalRecipientEmail = ResolveRecipientEmailFromPayload(notification.PayloadJson);
         if (!string.IsNullOrWhiteSpace(notification.Body))
         {
             if (string.IsNullOrWhiteSpace(recipientOverride))
@@ -92,7 +124,7 @@ public sealed class SmtpNotificationSender : INotificationSender
                 return notification.Body;
             }
 
-            return $"OriginalRecipientRoleKey: {notification.RecipientRoleKey ?? "(none)"}{Environment.NewLine}{notification.Body}";
+            return BuildOverrideHeader(notification, originalRecipientEmail) + notification.Body;
         }
 
         var builder = new StringBuilder();
@@ -103,6 +135,10 @@ public sealed class SmtpNotificationSender : INotificationSender
         if (!string.IsNullOrWhiteSpace(recipientOverride))
         {
             builder.AppendLine($"OriginalRecipientRoleKey: {notification.RecipientRoleKey ?? "(none)"}");
+            if (!string.IsNullOrWhiteSpace(originalRecipientEmail))
+            {
+                builder.AppendLine($"OriginalRecipientEmail: {originalRecipientEmail}");
+            }
         }
 
         try
@@ -123,6 +159,20 @@ public sealed class SmtpNotificationSender : INotificationSender
         }
 
         builder.AppendLine($"Payload: {notification.PayloadJson}");
+        return builder.ToString();
+    }
+
+    private static string BuildOverrideHeader(
+        NotificationDelivery notification,
+        string? originalRecipientEmail)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"OriginalRecipientRoleKey: {notification.RecipientRoleKey ?? "(none)"}");
+        if (!string.IsNullOrWhiteSpace(originalRecipientEmail))
+        {
+            builder.AppendLine($"OriginalRecipientEmail: {originalRecipientEmail}");
+        }
+
         return builder.ToString();
     }
 

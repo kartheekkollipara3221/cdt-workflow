@@ -283,6 +283,33 @@ public sealed class WorkflowExecutionValidationTests
     }
 
     [Fact]
+    public void ReturnToMakerPersistsRecipientEmailFromNotificationContext()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        AddTask(dbContext, "WF-PT-1001", "CheckerReviewTask", "Checker");
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            actionKey: "CheckerReturnToMaker",
+            roles: ["Checker"]);
+        envelope.Workflow!.ExpectedCurrentTaskKey = "CheckerReviewTask";
+        envelope.Workflow.NotificationContext!["recipientEmail"] = "maker.one@example.test";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.True(result.Result.Success);
+        var notification = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal("WorkflowReturnedToMaker", notification.NotificationType);
+        Assert.Equal("Maker", notification.RecipientRoleKey);
+        using var payload = JsonDocument.Parse(notification.PayloadJson);
+        Assert.Equal(
+            "maker.one@example.test",
+            payload.RootElement.GetProperty("recipientEmail").GetString());
+    }
+
+    [Fact]
     public void StateConcurrencyConflictWinsBeforeVersionConflict()
     {
         using var dbContext = CreateSeededContext();

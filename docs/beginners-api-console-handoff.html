@@ -955,7 +955,7 @@ X-Workflow-DisplayName: Checker One
           </tr>
           <tr>
             <td><code>Notifications:Sender = Smtp</code></td>
-            <td>Sends with MailKit using SMTP host/from/role mapping config.</td>
+            <td>Sends with MailKit using SMTP host/from config, per-notification recipient email, or role mapping fallback.</td>
             <td>Target SMTP integration and live smoke testing.</td>
           </tr>
         </tbody>
@@ -987,9 +987,22 @@ X-Workflow-DisplayName: Checker One
         <h3>Smoke-test safety</h3>
         <p>
           Keep <code>Smtp:RecipientOverride</code> set during live SMTP smoke testing. Remove it only when ready to
-          send to configured role recipients.
+          send to real per-record or configured role recipients.
         </p>
       </div>
+
+      <h3>Recipient resolution order</h3>
+      <ol>
+        <li><code>Smtp:RecipientOverride</code> wins for smoke testing and redirects every message.</li>
+        <li><code>notificationContext.recipientEmail</code> is used when the target API supplies a per-record recipient.</li>
+        <li><code>Smtp:RoleEmailMap:{RecipientRoleKey}</code> is the fallback for role/group recipients.</li>
+      </ol>
+
+      <p>
+        For Return to Maker, the Maker can vary by business record, so the target API should include the actual
+        Maker address in <code>notificationContext.recipientEmail</code>. The address is persisted in the
+        notification payload and used by SMTP delivery without adding a workflow user lookup table.
+      </p>
 
       <h3>Common notification context tokens</h3>
       <table>
@@ -1006,7 +1019,7 @@ X-Workflow-DisplayName: Checker One
           </tr>
           <tr>
             <td>Return to Maker</td>
-            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
+            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>recipientEmail</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
           </tr>
           <tr>
             <td>Trading execution to BDRM</td>

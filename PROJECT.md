@@ -1940,7 +1940,11 @@ Required configuration behavior:
 
 Required v1 behavior of `SmtpNotificationSender`:
 
-- Resolves recipient email address from `RecipientRoleKey` using a configured map. v1 **does not** look up users in SQL (consistent with the no-`DemoUser`-table rule in §11). Instead, configuration carries a static map:
+- Resolves recipient email address in this order:
+  1. `Smtp:RecipientOverride`, when configured.
+  2. `recipientEmail` from the notification's persisted `PayloadJson` / `workflow.notificationContext`.
+  3. `RecipientRoleKey` using the configured `Smtp:RoleEmailMap`.
+- v1 **does not** look up users in SQL (consistent with the no-`DemoUser`-table rule in §11). Instead, the target API supplies per-record recipient email addresses through `notificationContext` when needed, and configuration carries a static role fallback map:
 
 ```json
 {
@@ -1955,7 +1959,7 @@ Required v1 behavior of `SmtpNotificationSender`:
 }
 ```
 
-- If `RecipientRoleKey` has no entry in `RoleEmailMap`, throw — the row stays `Pending` and the operator must fix configuration. Do not silently drop the notification.
+- If no `RecipientOverride`, no payload `recipientEmail`, and `RecipientRoleKey` has no entry in `RoleEmailMap`, throw — the row stays `Pending` and the operator must fix configuration or request data. Do not silently drop the notification.
 - Subject is taken from `NotificationOutbox.Subject`. Body is taken from persisted `NotificationOutbox.Body` when present. Older rows without a persisted body fall back to readable key/value lines built from `NotificationOutbox.PayloadJson`.
 - Connect to `Host:Port`, send the message, disconnect. Use MailKit's `SmtpClient.Connect`, `Send`, `Disconnect` lifecycle. Connection per send is acceptable for v1; connection pooling is a v2 optimization.
 - Log the SMTP response code at INFO level. Log failures at ERROR level with full exception detail.
@@ -1986,12 +1990,14 @@ The CDT POC ships with the first two rows working out of the box. The third and 
 
 ### Recipient resolution in v1
 
-All notifications in v1 are queued at the **role group level**, not at the individual user level:
+Notifications in v1 are still routed by workflow metadata to a recipient role, but SMTP delivery can use a per-notification email address when the target API supplies one:
 
 - `NotificationOutbox.RecipientRoleKey` is set from the resolved `NotificationRoute.RecipientRoleKey` (e.g., `Checker`, `TradingDesk`, `BDRMClientService`, `Maker`).
 - `NotificationOutbox.RecipientUserId` is **always null** in v1. The column exists for forward compatibility with future per-user notifications, but the v1 SLA monitor and transition handlers never populate it.
+- `workflow.notificationContext.recipientEmail`, when present, is persisted in `NotificationOutbox.PayloadJson` and is preferred by `SmtpNotificationSender` after `Smtp:RecipientOverride`.
+- `Smtp:RoleEmailMap` remains the fallback for role-group recipients and for notifications where the target API did not supply a per-record email address.
 
-The "Checker group" / "TradingDesk group" language above is descriptive — it means "whoever holds the Checker role at the time of delivery." v1 does not maintain a user-to-role mapping table, so no group expansion happens in `process-notification-outbox`. The console output identifies recipients by `RecipientRoleKey`.
+The "Checker group" / "TradingDesk group" language above is descriptive — it means "whoever holds the Checker role at the time of delivery." v1 does not maintain a user-to-role mapping table, so no group expansion happens in `process-notification-outbox`. For business-record-specific recipients such as the Maker on a returned item, the target API must supply `recipientEmail` in `notificationContext`.
 
 ## 15. Transaction rule
 
@@ -2385,7 +2391,8 @@ Add tests for:
 - `NoOpNotificationSender` returns immediately and does nothing.
 - `RecordingNotificationSender` (test double) captures sent rows in memory for unit-test assertions.
 - `SmtpNotificationSender` throws at startup when `Notifications:Sender = "Smtp"` and `Smtp:Host` is missing or empty.
-- `SmtpNotificationSender` throws when `RecipientRoleKey` is not in `Smtp:RoleEmailMap`; the row remains `Pending`.
+- `SmtpNotificationSender` uses `workflow.notificationContext.recipientEmail` when present and does not require a role map for that row.
+- `SmtpNotificationSender` throws when neither payload `recipientEmail` nor `RecipientRoleKey` role mapping can resolve a recipient; the row remains `Pending`.
 - `SmtpNotificationSender` honors `Smtp:RecipientOverride` and redirects all mail to the override address while preserving original-recipient metadata in the body.
 - `SmtpNotificationSender` integration test (Tier 2, `Category=Smtp`) sends to `smtp4dev`/`Papercut` on `localhost` and asserts the fake server received the email with the expected subject, recipient, and body.
 - Tier 2 SMTP tests are excluded from default `dotnet test` runs and only execute under `dotnet test --filter Category=Smtp`.
@@ -2743,8 +2750,8 @@ This section captures known implementation pitfalls. Coding agents must use this
 | `AlreadyExists` result lacks status information. | The result must include `existingInstanceStatus` (`Active` or `Completed`) and `existingInstanceVersion` so the caller can distinguish "in progress" from "already finished." |
 | Coding agent hardcodes SMTP delivery into `process-notification-outbox`. | Use the `INotificationSender` interface and configuration-driven registration. Hardcoded SMTP defeats the testability and dev-vs-prod separation. |
 | Coding agent uses `System.Net.Mail.SmtpClient` for the SMTP implementation. | Use MailKit. `System.Net.Mail.SmtpClient` is deprecated by Microsoft for new development. MailKit is pre-approved for this project. |
-| Coding agent looks up role recipients from a SQL table. | v1 has no user-to-role mapping in SQL (see §11). `SmtpNotificationSender` resolves role-to-email from `Smtp:RoleEmailMap` configuration only. |
-| `SmtpNotificationSender` silently drops a notification when `RecipientRoleKey` is missing from `RoleEmailMap`. | Throw. The row stays `Pending` and the operator must fix configuration. Silent drops cause undetectable notification loss. |
+| Coding agent looks up role recipients from a SQL table. | v1 has no user-to-role mapping in SQL (see §11). `SmtpNotificationSender` resolves per-record email from persisted notification payload and falls back to `Smtp:RoleEmailMap`. |
+| `SmtpNotificationSender` silently drops a notification when recipient resolution fails. | Throw. The row stays `Pending` and the operator must fix configuration or request data. Silent drops cause undetectable notification loss. |
 | Coding agent enables real SMTP delivery in dev/test default config. | Default `Notifications:Sender` is `"Console"` everywhere except production. Tier 2 SMTP integration tests opt in explicitly via `Category=Smtp` filter and target a local fake server. |
 | Tier 2 SMTP tests run by default and slow down CI or hit a real relay. | Tier 2 tests must be marked with `Category=Smtp` and excluded from default `dotnet test`. They run only when explicitly requested. |
 | Coding agent adds SMTP credential support to enable an authenticated relay. | v1 assumes IP-restricted on-prem relay with no credentials. Adding `Smtp:Username`/`Smtp:Password` requires secret management and is a stop-and-ask change. |
