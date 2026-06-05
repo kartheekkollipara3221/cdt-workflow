@@ -5,6 +5,8 @@ namespace WorkflowEngine.Infrastructure.Persistence;
 
 public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> options) : DbContext(options)
 {
+    public const string DefaultSchema = "dbo";
+
     public DbSet<WorkflowDefinition> WorkflowDefinitions => Set<WorkflowDefinition>();
 
     public DbSet<WorkflowDefinitionVersion> WorkflowDefinitionVersions => Set<WorkflowDefinitionVersion>();
@@ -39,6 +41,8 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema(DefaultSchema);
+
         ConfigureWorkflowDefinition(modelBuilder);
         ConfigureWorkflowDefinitionVersion(modelBuilder);
         ConfigureDefinitions(modelBuilder);

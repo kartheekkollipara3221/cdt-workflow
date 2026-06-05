@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -13,6 +13,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "BodyTemplate",
                 table: "NotificationRoute",
+                schema: "dbo",
                 type: "nvarchar(max)",
                 nullable: false,
                 defaultValue: "");
@@ -20,6 +21,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "OverdueSubjectPrefix",
                 table: "NotificationRoute",
+                schema: "dbo",
                 type: "nvarchar(100)",
                 maxLength: 100,
                 nullable: false,
@@ -28,6 +30,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "Body",
                 table: "NotificationOutbox",
+                schema: "dbo",
                 type: "nvarchar(max)",
                 nullable: false,
                 defaultValue: "");
@@ -35,6 +38,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "NotificationRouteKey",
                 table: "WorkflowTask",
+                schema: "dbo",
                 type: "nvarchar(100)",
                 maxLength: 100,
                 nullable: true);
@@ -42,6 +46,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "NotificationContextJson",
                 table: "WorkflowTask",
+                schema: "dbo",
                 type: "nvarchar(max)",
                 nullable: true);
         }
@@ -51,23 +56,28 @@ namespace WorkflowEngine.Infrastructure.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "BodyTemplate",
-                table: "NotificationRoute");
+                table: "NotificationRoute",
+                schema: "dbo");
 
             migrationBuilder.DropColumn(
                 name: "OverdueSubjectPrefix",
-                table: "NotificationRoute");
+                table: "NotificationRoute",
+                schema: "dbo");
 
             migrationBuilder.DropColumn(
                 name: "Body",
-                table: "NotificationOutbox");
+                table: "NotificationOutbox",
+                schema: "dbo");
 
             migrationBuilder.DropColumn(
                 name: "NotificationRouteKey",
-                table: "WorkflowTask");
+                table: "WorkflowTask",
+                schema: "dbo");
 
             migrationBuilder.DropColumn(
                 name: "NotificationContextJson",
-                table: "WorkflowTask");
+                table: "WorkflowTask",
+                schema: "dbo");
         }
     }
 }

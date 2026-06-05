@@ -15,11 +15,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_IdempotencyRecord_WorkflowInstanceId",
                 table: "IdempotencyRecord",
+                schema: "dbo",
                 column: "WorkflowInstanceId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_NotificationOutbox_WorkflowInstanceId",
                 table: "NotificationOutbox",
+                schema: "dbo",
                 column: "WorkflowInstanceId");
         }
 
@@ -27,11 +29,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
         {
             migrationBuilder.DropIndex(
                 name: "IX_IdempotencyRecord_WorkflowInstanceId",
-                table: "IdempotencyRecord");
+                table: "IdempotencyRecord",
+                schema: "dbo");
 
             migrationBuilder.DropIndex(
                 name: "IX_NotificationOutbox_WorkflowInstanceId",
-                table: "NotificationOutbox");
+                table: "NotificationOutbox",
+                schema: "dbo");
         }
     }
 }

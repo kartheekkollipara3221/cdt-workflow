@@ -23,58 +23,72 @@ namespace WorkflowEngine.Infrastructure.Migrations
         {
             migrationBuilder.DropForeignKey(
                 name: "FK_IdempotencyRecord_WorkflowInstance_WorkflowInstanceId",
-                table: "IdempotencyRecord");
+                table: "IdempotencyRecord",
+                schema: "dbo");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_NotificationOutbox_WorkflowInstance_WorkflowInstanceId",
-                table: "NotificationOutbox");
+                table: "NotificationOutbox",
+                schema: "dbo");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_WorkflowAudit_WorkflowInstance_WorkflowInstanceId",
-                table: "WorkflowAudit");
+                table: "WorkflowAudit",
+                schema: "dbo");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_WorkflowTask_WorkflowInstance_WorkflowInstanceId",
-                table: "WorkflowTask");
+                table: "WorkflowTask",
+                schema: "dbo");
 
             migrationBuilder.DropIndex(
                 name: "IX_WorkflowInstance_WorkflowInstanceId",
-                table: "WorkflowInstance");
+                table: "WorkflowInstance",
+                schema: "dbo");
 
             migrationBuilder.AddUniqueConstraint(
                 name: "AK_WorkflowInstance_WorkflowInstanceId",
                 table: "WorkflowInstance",
+                schema: "dbo",
                 column: "WorkflowInstanceId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_IdempotencyRecord_WorkflowInstance_WorkflowInstanceId",
                 table: "IdempotencyRecord",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_NotificationOutbox_WorkflowInstance_WorkflowInstanceId",
                 table: "NotificationOutbox",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_WorkflowAudit_WorkflowInstance_WorkflowInstanceId",
                 table: "WorkflowAudit",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_WorkflowTask_WorkflowInstance_WorkflowInstanceId",
                 table: "WorkflowTask",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
         }
@@ -83,59 +97,73 @@ namespace WorkflowEngine.Infrastructure.Migrations
         {
             migrationBuilder.DropForeignKey(
                 name: "FK_IdempotencyRecord_WorkflowInstance_WorkflowInstanceId",
-                table: "IdempotencyRecord");
+                table: "IdempotencyRecord",
+                schema: "dbo");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_NotificationOutbox_WorkflowInstance_WorkflowInstanceId",
-                table: "NotificationOutbox");
+                table: "NotificationOutbox",
+                schema: "dbo");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_WorkflowAudit_WorkflowInstance_WorkflowInstanceId",
-                table: "WorkflowAudit");
+                table: "WorkflowAudit",
+                schema: "dbo");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_WorkflowTask_WorkflowInstance_WorkflowInstanceId",
-                table: "WorkflowTask");
+                table: "WorkflowTask",
+                schema: "dbo");
 
             migrationBuilder.DropUniqueConstraint(
                 name: "AK_WorkflowInstance_WorkflowInstanceId",
-                table: "WorkflowInstance");
+                table: "WorkflowInstance",
+                schema: "dbo");
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowInstance_WorkflowInstanceId",
                 table: "WorkflowInstance",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 unique: true);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_IdempotencyRecord_WorkflowInstance_WorkflowInstanceId",
                 table: "IdempotencyRecord",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_NotificationOutbox_WorkflowInstance_WorkflowInstanceId",
                 table: "NotificationOutbox",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_WorkflowAudit_WorkflowInstance_WorkflowInstanceId",
                 table: "WorkflowAudit",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_WorkflowTask_WorkflowInstance_WorkflowInstanceId",
                 table: "WorkflowTask",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 principalTable: "WorkflowInstance",
+                principalSchema: "dbo",
                 principalColumn: "WorkflowInstanceId",
                 onDelete: ReferentialAction.Cascade);
         }

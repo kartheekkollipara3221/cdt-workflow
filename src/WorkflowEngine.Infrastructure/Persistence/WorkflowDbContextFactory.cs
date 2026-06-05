@@ -18,7 +18,11 @@ public sealed class WorkflowDbContextFactory : IDesignTimeDbContextFactory<Workf
         }
 
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
-            .UseSqlServer(connectionString)
+            .UseSqlServer(
+                connectionString,
+                sqlOptions => sqlOptions.MigrationsHistoryTable(
+                    "__EFMigrationsHistory",
+                    WorkflowDbContext.DefaultSchema))
             .Options;
 
         return new WorkflowDbContext(options);

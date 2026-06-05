@@ -44,7 +44,7 @@ The console app is a proof of concept for the reusable workflow engine, not the 
 | WorkflowActionResult | Standard response object returned after processing a `WorkflowActionEnvelope`; it summarizes state/task changes and may include refreshed workflow context. |
 | Workflow instance | A single in-flight workflow record, usually one per business object. |
 | Transition | A metadata row that maps `(fromState, actionKey, allowedRole)` to `(toState, taskClose, taskCreate)`. |
-| Notification outbox | Persisted notification records. The POC does not send real email. |
+| Notification outbox | Persisted notification records. Delivery uses the configured notification sender; dev/test defaults avoid real email, and SMTP can be enabled for fake/local or production relays by configuration. |
 | SLA | Service-level deadline tied to a workflow task's `DueAtUtc`. |
 | Single-active-state | One current workflow state and at most one pending task for a workflow instance in the MVP. |
 | Return to Maker | A workflow route where Checker or Trading Desk sends the request back to Maker for correction/rework. |
@@ -109,7 +109,7 @@ The POC uses SQL Server for schema, seed data, runtime workflow state, task data
 The local SQL Server connection string for this project is:
 
 ```text
-Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False
+Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False
 ```
 
 Required configuration behavior:
@@ -130,7 +130,7 @@ Example `appsettings.Development.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
+    "DefaultConnection": "Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
   }
 }
 ```
@@ -1846,35 +1846,37 @@ run-sla detects overdue task
 
 ### `NotificationOutbox.Status` allowed values
 
-v1 uses two status values:
+v1 uses three status values:
 
 - `Pending` — newly queued. Set on insert by transition execution and SLA monitor.
-- `Sent` — terminal. Set by `process-notification-outbox` after the row has been logged to console. `SentAtUtc` is set at the same time.
+- `Processing` — claimed by `process-notification-outbox` while delivery is in progress. The claim includes `ProcessingToken` and `ProcessingStartedAtUtc` so stale claims can be retried.
+- `Sent` — terminal. Set by `process-notification-outbox` after the configured notification sender succeeds. `SentAtUtc` is set at the same time.
 
-v1 does not implement `Failed` or retry logic. Real SMTP delivery is out of scope (section 4). If `process-notification-outbox` ever encounters an exception while processing a row, the exception aborts the command and the row remains `Pending`. There is no automatic retry, no dead-letter, no failure status.
+v1 does not implement a terminal `Failed` status or dead-letter queue. If `process-notification-outbox` encounters an exception while processing a row, the claim is released, `RetryCount` is incremented, `LastError` is stored, and the row returns to `Pending`. Earlier rows that already committed remain `Sent`; later rows remain available for the next run.
 
 ### `process-notification-outbox` behavior
 
-1. Select all `NotificationOutbox` rows where `Status = 'Pending'`, ordered by `CreatedAtUtc, Id`.
+1. Select all `NotificationOutbox` rows where `Status = 'Pending'`, plus stale `Processing` rows whose processing lease has expired, ordered by `CreatedAtUtc, Id`.
 2. For each row:
+   - Claim the row by setting `Status = 'Processing'`, `ProcessingToken`, and `ProcessingStartedAtUtc`.
    - Call the configured `INotificationSender.SendAsync(notification)` (see "Notification sender abstraction" below).
-   - On success, update `Status = 'Sent'` and `SentAtUtc = TimeProvider.GetUtcNow()` in a per-row transaction.
-   - On exception, the exception aborts the command. The current row remains `Pending`. Earlier rows that already committed remain `Sent`. There is no automatic retry.
+   - On success, update `Status = 'Sent'`, set `SentAtUtc = TimeProvider.GetUtcNow()`, and clear processing claim fields.
+   - On exception, release the claim, increment `RetryCount`, store `LastError`, and abort the command. Earlier rows that already committed remain `Sent`; the failed row and later rows remain available for a later run.
 3. Print a final count summary (`N notifications processed via {senderName}`).
 
-Per-row transactions match the `run-sla` pattern. A failure mid-batch leaves earlier rows correctly marked `Sent` and later rows still `Pending` for the next run.
+Per-row claim/update behavior matches the `run-sla` pattern. A failure mid-batch leaves earlier rows correctly marked `Sent` and later rows still `Pending` for the next run.
 
-Running `process-notification-outbox` with no `Pending` rows is a successful no-op that prints `0 notifications processed`. Running it twice in a row is safe — the second run finds no `Pending` rows.
+Running `process-notification-outbox` with no available rows is a successful no-op that prints `0 notifications processed`. Running it twice in a row is safe — the second run finds no available rows.
 
 ### Notification sender abstraction
 
-The notification sender is an interface, not a hardcoded delivery mechanism. This lets the POC keep "no real email" semantics while leaving the production wiring in place.
+The notification sender is an interface, not a hardcoded delivery mechanism. This keeps dev/test delivery safe while leaving configuration-driven SMTP wiring in place.
 
 ```csharp
 public interface INotificationSender
 {
-    Task SendAsync(NotificationOutboxRow notification, CancellationToken ct);
-    string SenderName { get; } // e.g., "Console", "Smtp", "NoOp" — printed in summaries
+    string SenderName { get; }
+    Task SendAsync(NotificationDelivery notification, CancellationToken cancellationToken);
 }
 ```
 
@@ -1918,18 +1920,21 @@ Configuration shape:
     "Host": "smtp-relay.yourfirm.local",
     "Port": 25,
     "From": "noreply-cdt@yourfirm.com",
-    "FromDisplayName": "CDT Workflow Engine",
     "RecipientOverride": null,
-    "UseTls": false
+    "RoleEmailMap": {
+      "Maker": "cdt-makers@yourfirm.com",
+      "Checker": "cdt-checkers@yourfirm.com",
+      "TradingDesk": "cdt-tradingdesk@yourfirm.com",
+      "BDRMClientService": "cdt-bdrm@yourfirm.com"
+    }
   }
 }
 ```
 
 Required configuration behavior:
 
-- `Smtp:Host` and `Smtp:Port` come from configuration. `Port` defaults to `25`. `UseTls` defaults to `false` (most internal relays do not require TLS; flip to `true` if your relay does).
+- `Smtp:Host` and `Smtp:Port` come from configuration. `Port` defaults to `25`. MailKit uses automatic socket option negotiation in v1; there is no separate TLS flag.
 - `Smtp:From` is the envelope-from and header-from address. Must be a real address your SMTP relay accepts as an authorized sender.
-- `Smtp:FromDisplayName` is the human-readable sender label (e.g., "CDT Workflow Engine").
 - `Smtp:RecipientOverride`, when non-null, **redirects all outgoing emails to this address regardless of the notification's intended recipient**. This is the safety hatch that prevents accidental email floods during integration testing — set `RecipientOverride` to your own mailbox during pre-production smoke tests, then null it out for go-live. The notification body must still include the original intended recipient (e.g., "Original recipient: Checker group") so the test reader knows what would have been delivered.
 - No SMTP credentials. The relay is IP-restricted, not credential-restricted. If your firm's relay does require credentials, that is a stop-and-ask change because it requires secret management (`Smtp:Username` from environment variable, never from `appsettings.json`).
 
@@ -1951,7 +1956,7 @@ Required v1 behavior of `SmtpNotificationSender`:
 ```
 
 - If `RecipientRoleKey` has no entry in `RoleEmailMap`, throw — the row stays `Pending` and the operator must fix configuration. Do not silently drop the notification.
-- Subject is taken from `NotificationOutbox.Subject`. Body is plain text built from `NotificationOutbox.PayloadJson` (formatted as readable key/value lines, not raw JSON).
+- Subject is taken from `NotificationOutbox.Subject`. Body is taken from persisted `NotificationOutbox.Body` when present. Older rows without a persisted body fall back to readable key/value lines built from `NotificationOutbox.PayloadJson`.
 - Connect to `Host:Port`, send the message, disconnect. Use MailKit's `SmtpClient.Connect`, `Send`, `Disconnect` lifecycle. Connection per send is acceptable for v1; connection pooling is a v2 optimization.
 - Log the SMTP response code at INFO level. Log failures at ERROR level with full exception detail.
 
@@ -1963,7 +1968,7 @@ SMTP code must be testable **without a real relay**. Tests run in three tiers:
 
 **Tier 2 — Integration tests against a fake SMTP server.** A small set of tests that exercise `SmtpNotificationSender` directly against a local fake SMTP server. Recommended option: `smtp4dev` running in a Docker container (`docker run -p 3025:25 rnwood/smtp4dev`) or `Papercut SMTP` as a standalone Windows service. The test fixture starts the fake server, points `Smtp:Host` to `localhost:3025`, sends one email, asserts the fake server received it with the expected subject/recipient/body, then tears down. These tests must be marked with a `[Trait("Category", "Smtp")]` attribute (or equivalent for the chosen test framework) and excluded from default `dotnet test` runs. Run them on demand with `dotnet test --filter Category=Smtp`.
 
-**Tier 3 — Live smoke test against the firm's SMTP relay.** Manual only. Not part of automated CI. Operator runs `process-notification-outbox` against a `start-workflow PT-SMOKE` instance with `Smtp:Sender = "Smtp"` and `Smtp:RecipientOverride = "operator-mailbox@yourfirm.com"`. Verifies one email lands in the override mailbox. Used once during UI integration go-live, not during normal development.
+**Tier 3 — Live smoke test against the firm's SMTP relay.** Manual only. Not part of automated CI. Operator runs `process-notification-outbox` against a `start-workflow PT-SMOKE` instance with `Notifications:Sender = "Smtp"` and `Smtp:RecipientOverride = "operator-mailbox@yourfirm.com"`. Verifies one email lands in the override mailbox. Used once during UI integration go-live, not during normal development.
 
 Tier 1 is mandatory for v1. Tier 2 is mandatory for v1 (proves `SmtpNotificationSender` works). Tier 3 is documentation-only in v1; it is run during UI integration, which is out of scope for this project.
 
@@ -2376,7 +2381,7 @@ Add tests for:
 - `--admin-override` with non-empty `actionReason` produces audit `Reason = "[ADMIN OVERRIDE] <reason>"`.
 - `--admin-override` with null or empty `actionReason` produces audit `Reason = "[ADMIN OVERRIDE]"` with no trailing whitespace.
 - `process-notification-outbox` calls the configured `INotificationSender` for each pending row.
-- `ConsoleNotificationSender` prints to console and does not throw for any well-formed `NotificationOutboxRow`.
+- `ConsoleNotificationSender` prints to console and does not throw for any well-formed `NotificationDelivery`.
 - `NoOpNotificationSender` returns immediately and does nothing.
 - `RecordingNotificationSender` (test double) captures sent rows in memory for unit-test assertions.
 - `SmtpNotificationSender` throws at startup when `Notifications:Sender = "Smtp"` and `Smtp:Host` is missing or empty.

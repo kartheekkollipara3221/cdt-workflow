@@ -1,6 +1,6 @@
 # CDT Workflow Engine
 
-Reusable .NET workflow engine proof of concept for replacing SharePoint Designer workflow behavior. Portfolio Trade is the first sample workflow definition; the current interface is a console POC, with the engine boundary designed for a future API/UI integration.
+Reusable .NET workflow engine for replacing SharePoint Designer workflow behavior. Portfolio Trade is the first sample workflow definition. The active repo shape is the reusable engine and console/demo host under `src/`, plus the ASP.NET Core workflow host under `workflow-api/`.
 
 ## Quickstart
 
@@ -9,16 +9,19 @@ Reusable .NET workflow engine proof of concept for replacing SharePoint Designer
 - .NET 10 SDK.
 - SQL Server local instance.
 - Configure `ConnectionStrings__DefaultConnection` or a local, untracked `appsettings.Development.json`.
-- Example local connection string: `Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
+- Current local verification connection string: `Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
 
 ### First run
 
 ```bash
-dotnet build
+dotnet build src/WorkflowEngine.sln
+dotnet build workflow-api/WorkflowEngine.WorkflowApi.slnx
 dotnet run --project src/WorkflowEngine.Console -- init-db
 dotnet run --project src/WorkflowEngine.Console -- verify-seed
 dotnet run --project src/WorkflowEngine.Console -- demo
 ```
+
+The console commands are still the easiest end-to-end demo path. The active workflow API host is `workflow-api/WorkflowEngine.WorkflowApi.slnx`; read `workflow-api/WORKFLOW_API_BOUNDARIES.md` before changing endpoints.
 
 ### Main happy path
 
@@ -111,7 +114,7 @@ The engine does not own form metadata, field-level validation, authentication, r
 
 ### Form-open contract: WorkflowContextResponse
 
-`show-context` returns the same workflow object the future API should return when a form opens. The response contains workflow identity/version/current state, business object identity, actor access, current task, SLA, available actions, and server time.
+`show-context` returns the same workflow object the workflow API returns when a form opens. The response contains workflow identity/version/current state, business object identity, actor access, current task, SLA, available actions, and server time.
 
 Abbreviated shape:
 
@@ -210,7 +213,7 @@ Copy-pasteable `appsettings.json` shape:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=DOLLY;Database=burrito;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
+    "DefaultConnection": "Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
   },
   "Notifications": {
     "Sender": "Console"
@@ -260,3 +263,4 @@ Stop and ask before adding parallel branches, multiple pending tasks, CQRS, Medi
 - Quality gates: `PROJECT.md` §21
 - Demo scripts: `PROJECT.md` §25
 - README guidance: `PROJECT.md` §26
+- Workflow API boundaries: `workflow-api/WORKFLOW_API_BOUNDARIES.md`

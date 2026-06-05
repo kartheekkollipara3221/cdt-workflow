@@ -12,6 +12,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "WorkflowTaskAssignmentRoleDefinition",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -29,6 +30,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowTaskAssignmentRoleDefinition_WorkflowDefinitionVersionId_TaskKey_RoleKey",
                 table: "WorkflowTaskAssignmentRoleDefinition",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "TaskKey", "RoleKey" },
                 unique: true);
         }
@@ -37,7 +39,8 @@ namespace WorkflowEngine.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "WorkflowTaskAssignmentRoleDefinition");
+                name: "WorkflowTaskAssignmentRoleDefinition",
+                schema: "dbo");
         }
     }
 }

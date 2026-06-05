@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -13,6 +13,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "IdempotencyRecord",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -32,6 +33,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "MockSectionData",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -51,6 +53,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "NotificationOutbox",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -76,6 +79,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "NotificationRoute",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -95,6 +99,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "SlaPolicy",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -111,6 +116,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowActionDefinition",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -133,6 +139,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowAudit",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -156,6 +163,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowDefinition",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -171,6 +179,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowInstance",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -194,6 +203,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowRoleDefinition",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -210,6 +220,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowStateDefinition",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -227,6 +238,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowTask",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -249,6 +261,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowTaskDefinition",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -267,6 +280,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowTransitionDefinition",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -289,6 +303,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "WorkflowDefinitionVersion",
+                schema: "dbo",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -305,6 +320,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         name: "FK_WorkflowDefinitionVersion_WorkflowDefinition_WorkflowDefinitionId",
                         column: x => x.WorkflowDefinitionId,
                         principalTable: "WorkflowDefinition",
+                        principalSchema: "dbo",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -312,17 +328,20 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_IdempotencyRecord_IdempotencyKey",
                 table: "IdempotencyRecord",
+                schema: "dbo",
                 column: "IdempotencyKey",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_MockSectionData_BusinessObjectType_BusinessObjectId_SectionKey_SavedAtUtc_Id",
                 table: "MockSectionData",
+                schema: "dbo",
                 columns: new[] { "BusinessObjectType", "BusinessObjectId", "SectionKey", "SavedAtUtc", "Id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_NotificationOutbox_WorkflowTaskId_NotificationType",
                 table: "NotificationOutbox",
+                schema: "dbo",
                 columns: new[] { "WorkflowTaskId", "NotificationType" },
                 unique: true,
                 filter: "[NotificationType] = 'SlaTaskOverdue'");
@@ -330,65 +349,76 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_NotificationRoute_WorkflowDefinitionVersionId_RouteKey",
                 table: "NotificationRoute",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "RouteKey" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_SlaPolicy_WorkflowDefinitionVersionId_SlaPolicyKey",
                 table: "SlaPolicy",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "SlaPolicyKey" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowActionDefinition_WorkflowDefinitionVersionId_ActionKey",
                 table: "WorkflowActionDefinition",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "ActionKey" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowAudit_WorkflowInstanceId",
                 table: "WorkflowAudit",
+                schema: "dbo",
                 column: "WorkflowInstanceId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowDefinition_WorkflowKey",
                 table: "WorkflowDefinition",
+                schema: "dbo",
                 column: "WorkflowKey",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowDefinitionVersion_WorkflowDefinitionId_VersionNumber",
                 table: "WorkflowDefinitionVersion",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionId", "VersionNumber" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowInstance_WorkflowInstanceId",
                 table: "WorkflowInstance",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowInstance_WorkflowKey_BusinessObjectType_BusinessObjectId",
                 table: "WorkflowInstance",
+                schema: "dbo",
                 columns: new[] { "WorkflowKey", "BusinessObjectType", "BusinessObjectId" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowRoleDefinition_WorkflowDefinitionVersionId_RoleKey",
                 table: "WorkflowRoleDefinition",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "RoleKey" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowStateDefinition_WorkflowDefinitionVersionId_StateKey",
                 table: "WorkflowStateDefinition",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "StateKey" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowTask_WorkflowInstanceId",
                 table: "WorkflowTask",
+                schema: "dbo",
                 column: "WorkflowInstanceId",
                 unique: true,
                 filter: "[Status] = 'Pending'");
@@ -396,12 +426,14 @@ namespace WorkflowEngine.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowTaskDefinition_WorkflowDefinitionVersionId_TaskKey",
                 table: "WorkflowTaskDefinition",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "TaskKey" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkflowTransitionDefinition_WorkflowDefinitionVersionId_FromStateKey_ActionKey_AllowedRoleKey",
                 table: "WorkflowTransitionDefinition",
+                schema: "dbo",
                 columns: new[] { "WorkflowDefinitionVersionId", "FromStateKey", "ActionKey", "AllowedRoleKey" },
                 unique: true);
         }
@@ -410,49 +442,64 @@ namespace WorkflowEngine.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "IdempotencyRecord");
+                name: "IdempotencyRecord",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "MockSectionData");
+                name: "MockSectionData",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "NotificationOutbox");
+                name: "NotificationOutbox",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "NotificationRoute");
+                name: "NotificationRoute",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "SlaPolicy");
+                name: "SlaPolicy",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowActionDefinition");
+                name: "WorkflowActionDefinition",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowAudit");
+                name: "WorkflowAudit",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowDefinitionVersion");
+                name: "WorkflowDefinitionVersion",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowInstance");
+                name: "WorkflowInstance",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowRoleDefinition");
+                name: "WorkflowRoleDefinition",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowStateDefinition");
+                name: "WorkflowStateDefinition",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowTask");
+                name: "WorkflowTask",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowTaskDefinition");
+                name: "WorkflowTaskDefinition",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowTransitionDefinition");
+                name: "WorkflowTransitionDefinition",
+                schema: "dbo");
 
             migrationBuilder.DropTable(
-                name: "WorkflowDefinition");
+                name: "WorkflowDefinition",
+                schema: "dbo");
         }
     }
 }

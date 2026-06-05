@@ -33,7 +33,11 @@ public static class InfrastructureServiceCollectionExtensions
 
         ValidateNotificationSenderConfiguration(configuration);
 
-        services.AddDbContext<WorkflowDbContext>(options => options.UseSqlServer(connectionString));
+        services.AddDbContext<WorkflowDbContext>(options => options.UseSqlServer(
+            connectionString,
+            sqlOptions => sqlOptions.MigrationsHistoryTable(
+                "__EFMigrationsHistory",
+                WorkflowDbContext.DefaultSchema)));
         services.AddSingleton<NotificationTemplateRenderer>();
         services.AddScoped<WorkflowSeedService>();
         services.AddScoped<WorkflowDatabaseInitializer>();
