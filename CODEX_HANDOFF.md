@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-06-05T14:41:30-04:00
+Last updated: 2026-06-05T15:09:35-04:00
 
 ## Current Goal
 
@@ -77,11 +77,11 @@ Added `docs/beginners-api-console-handoff.html` as the single-file beginner hand
 
 The guide intentionally distinguishes the local `workflow-api/` reference host from the external target API so future work does not drift back to the removed `api/` host.
 
-## Active Code Changes Since Last Commit
+## Latest Completed Changes
 
 ### Per-record SMTP recipient resolution
 
-The user's latest correction is that the Maker recipient changes per business record. The code now supports that without adding a SQL user table or changing public request DTOs:
+The Maker recipient changes per business record. The code supports that without adding a SQL user table or changing public request DTOs:
 
 - `SmtpNotificationSender` resolves recipients in this order: `Smtp:RecipientOverride`, then payload `recipientEmail`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
 - Override-mode bodies preserve `OriginalRecipientRoleKey` and, when available, `OriginalRecipientEmail`.
@@ -91,9 +91,18 @@ The user's latest correction is that the Maker recipient changes per business re
 
 The target API should populate `workflow.notificationContext.recipientEmail` for Return-to-Maker and any other business-record-specific recipient.
 
+Pushed commits:
+
+- `95c0d4a feat: support per-notification SMTP recipients`
+- `cb0d65b test: verify per-record SMTP recipient with smtp4dev`
+
 ### Documentation updates
 
 `PROJECT.md`, `README.md`, `docs/beginners-api-console-handoff.html`, `context.md`, and this file now document the recipient resolution order and target API handoff guidance.
+
+### Restore bundle
+
+`restore-repo.ps1` is the portable base64 PowerShell bundle for target-api handoff. It restores the repository source/handoff content without `.git`, `bin`, `obj`, `.tools`, local caches, logs, or the bundle script itself.
 
 ## Notification Template Feature State
 
@@ -140,18 +149,10 @@ dotnet .\WorkflowEngine.Console.dll process-notification-outbox
 
 ## Current Worktree Expectations
 
-Expected local changes for this recipient slice include:
+Expected local change for this bundle slice:
 
-- `src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs`
-- `tests/WorkflowEngine.Tests/SmtpNotificationSenderTests.cs`
-- `tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs`
-- `tests/WorkflowEngine.Tests/ConsoleNotificationSenderTests.cs`
-- `tests/COVERAGE_AUDIT.md`
-- `PROJECT.md`
-- `README.md`
-- `docs/beginners-api-console-handoff.html`
-- `context.md`
 - `CODEX_HANDOFF.md`
+- `restore-repo.ps1`
 
 Run before further edits:
 
@@ -187,9 +188,25 @@ Results:
 - `verify-seed` passed.
 - `git diff --check` was clean except Git line-ending warnings.
 
+Latest smtp4dev verification:
+
+```powershell
+RUN_SMTP_TESTS=1 dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter Category=Smtp -m:1 /p:UseAppHost=false --no-restore
+```
+
+Result: 3 passed, 0 failed, including per-record `recipientEmail` delivery to `maker.one@example.test`.
+
+Latest restore-bundle verification:
+
+- `restore-repo.ps1` was generated from commit `cb0d65b`.
+- Restored into a temp folder using `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\restore-repo.ps1 -DestinationPath <temp> -Force`.
+- Restored file count matched source-selected count.
+- Source/restored SHA-256 comparison found no mismatches.
+- Required target-api handoff files were present.
+- Forbidden paths were absent: `.git`, `bin`, `obj`, `.tools`, local caches, logs, temp files, and `restore-repo.ps1`.
+
 ## Remaining Work
 
-- Commit and push the per-record recipient slice.
 - For the target API integration, ensure Return-to-Maker request construction includes `notificationContext.recipientEmail`.
 - Keep `Smtp:RecipientOverride` configured during live SMTP smoke testing, then remove it only when ready to send to real per-record or role-map recipients.
 - For target-machine operations, publish/copy the workflow console processor, configure DB/SMTP settings, and schedule `run-sla` followed by `process-notification-outbox` in Windows Task Scheduler.
