@@ -56,6 +56,34 @@ public sealed class SmtpNotificationSenderIntegrationTests
         Assert.Contains("OriginalRecipientRoleKey: Checker", plaintext, StringComparison.Ordinal);
     }
 
+    [SmtpFact]
+    public async Task RecipientEmailPayloadDeliversToPerRecordRecipientInSmtp4Dev()
+    {
+        await EnsureSmtp4DevAvailableAsync();
+        var subject = "Phase 5 SMTP per record " + Guid.NewGuid().ToString("N");
+        var sender = new SmtpNotificationSender(SmtpNotificationSenderTests.Configuration(new()
+        {
+            ["Smtp:Host"] = "localhost",
+            ["Smtp:Port"] = "3025",
+            ["Smtp:From"] = "workflow@example.test",
+            ["Smtp:RoleEmailMap:Maker"] = "maker-group@example.test"
+        }));
+
+        await sender.SendAsync(SmtpNotificationSenderTests.Delivery(
+            subject,
+            recipientRoleKey: "Maker",
+            payloadJson: """{"recipientEmail":"maker.one@example.test","taskKey":"MakerReworkTask"}"""), CancellationToken.None);
+
+        using var client = new HttpClient { BaseAddress = Smtp4DevApi };
+        var message = await WaitForMessageAsync(client, subject, CancellationToken.None);
+        var plaintext = await client.GetStringAsync($"/api/messages/{message.Id}/plaintext");
+        var rawMessageJson = message.Json.GetRawText();
+
+        Assert.Contains("maker.one@example.test", rawMessageJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("maker-group@example.test", rawMessageJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("taskKey: MakerReworkTask", plaintext, StringComparison.Ordinal);
+    }
+
     private static async Task EnsureSmtp4DevAvailableAsync()
     {
         try
