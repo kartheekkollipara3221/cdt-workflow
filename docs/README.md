@@ -2,6 +2,7 @@
 
 Current documentation kept in this repo:
 
+- `beginners-api-console-handoff.html`: single-file beginner handoff for API, console, and target API integration.
 - `superpowers/specs/`: active design specifications for recent feature work.
 - `superpowers/plans/`: active implementation plans for recent feature work.
 

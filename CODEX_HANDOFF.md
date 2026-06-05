@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-06-05T00:02:09-04:00
+Last updated: 2026-06-05T09:49:45-04:00
 
 ## Current Goal
 
@@ -55,6 +55,20 @@ The old tracked `api/` host has been removed from the working tree by user appro
 - Updated `PROJECT.md` to remove stale notification-delivery wording, align the local SQL database name, and match the current SMTP/outbox implementation shape.
 - Rewrote `CODEX_HANDOFF.md`, `NEXT_CODEX_PROMPT.md`, and `context.md` around the current shape.
 - Added `docs/README.md` to describe the remaining documentation surface.
+
+## Beginner Handoff Guide
+
+Added `docs/beginners-api-console-handoff.html` as the single-file beginner handoff requested for:
+
+- current API and console project layout
+- local console/API smoke-test commands
+- workflow-only API request/response shapes
+- target API integration steps
+- action-created notification dispatch
+- Task Scheduler setup for `run-sla` and `process-notification-outbox`
+- database/migration and SMTP configuration notes
+
+The guide intentionally distinguishes the local `workflow-api/` reference host from the external target API so future work does not drift back to the removed `api/` host.
 
 ## Active Code Changes Since Last Commit
 

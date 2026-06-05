@@ -1,0 +1,1208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CDT Workflow Beginner API and Console Handoff Guide</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2933;
+      --muted: #52606d;
+      --line: #d9e2ec;
+      --soft: #f5f7fa;
+      --soft-2: #eef2f7;
+      --panel: #ffffff;
+      --accent: #0f6b6e;
+      --accent-soft: #e1f4f3;
+      --warn: #8a4b00;
+      --warn-soft: #fff4df;
+      --danger: #8a1f11;
+      --danger-soft: #fdecea;
+      --ok: #17613a;
+      --ok-soft: #e7f6ed;
+      --code-bg: #17212b;
+      --code-ink: #edf2f7;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--ink);
+      background: #fbfcfd;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+    }
+
+    .wrap {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 34px 0 26px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.2;
+      letter-spacing: 0;
+      color: #102a43;
+    }
+
+    h1 {
+      max-width: 860px;
+      margin: 0 0 12px;
+      font-size: 34px;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 24px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    a {
+      color: #0b5cad;
+    }
+
+    .lede {
+      max-width: 920px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: #334e68;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    main {
+      padding: 22px 0 44px;
+    }
+
+    nav.toc {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 8px;
+      margin: 18px 0 28px;
+    }
+
+    nav.toc a {
+      display: block;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      text-decoration: none;
+      color: #183b56;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .card,
+    .callout {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h3,
+    .callout h3 {
+      margin-top: 0;
+    }
+
+    .callout {
+      margin: 14px 0;
+    }
+
+    .callout.info {
+      background: var(--accent-soft);
+      border-color: #a7d8d6;
+    }
+
+    .callout.warn {
+      background: var(--warn-soft);
+      border-color: #f6c56f;
+    }
+
+    .callout.danger {
+      background: var(--danger-soft);
+      border-color: #f4aaa3;
+    }
+
+    .callout.ok {
+      background: var(--ok-soft);
+      border-color: #9bd3b2;
+    }
+
+    .label {
+      display: inline-block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--accent);
+      letter-spacing: 0.03em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--soft-2);
+      color: #243b53;
+      font-size: 13px;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+      background: #eef2f7;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    pre {
+      margin: 10px 0 16px;
+      padding: 14px;
+      overflow-x: auto;
+      border-radius: 8px;
+      background: var(--code-bg);
+      color: var(--code-ink);
+      box-shadow: var(--shadow);
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+      font-size: 13px;
+    }
+
+    ol,
+    ul {
+      margin-top: 8px;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 12px;
+      margin: 14px 0;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 800px) {
+      h1 {
+        font-size: 28px;
+      }
+
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      nav.toc,
+      .pill {
+        box-shadow: none;
+      }
+
+      pre,
+      table,
+      .card,
+      .callout {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap hero">
+      <h1>CDT Workflow Beginner API and Console Handoff Guide</h1>
+      <p class="lede">
+        One-file handoff for a developer integrating the reusable workflow engine, console processor,
+        and workflow API behavior into a target API. This guide is based on the current repository shape:
+        reusable engine and console under <code>src/</code>, active reference API under <code>workflow-api/</code>,
+        and Portfolio Trade only as sample seed metadata.
+      </p>
+      <div class="meta">
+        <span class="pill">Updated: 2026-06-05</span>
+        <span class="pill">.NET 10</span>
+        <span class="pill">SQL Server</span>
+        <span class="pill">EF Core</span>
+        <span class="pill">Active API: workflow-api</span>
+        <span class="pill">Console processor: src/WorkflowEngine.Console</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav class="toc" aria-label="Table of contents">
+      <a href="#first-read">1. First Read</a>
+      <a href="#repo-map">2. Repo Map</a>
+      <a href="#mental-model">3. Mental Model</a>
+      <a href="#local-setup">4. Local Setup</a>
+      <a href="#console">5. Console Commands</a>
+      <a href="#api">6. API Endpoints</a>
+      <a href="#target-api">7. Target API Integration</a>
+      <a href="#notifications">8. Notifications and SMTP</a>
+      <a href="#scheduler">9. Task Scheduler</a>
+      <a href="#database">10. Database and Migrations</a>
+      <a href="#verification">11. Verification</a>
+      <a href="#pitfalls">12. Pitfalls</a>
+    </nav>
+
+    <section id="first-read">
+      <h2>1. First Read</h2>
+      <div class="callout info">
+        <h3>Source of truth</h3>
+        <p>
+          <code>PROJECT.md</code> governs this repository. If this handoff and <code>PROJECT.md</code>
+          ever disagree, follow <code>PROJECT.md</code>.
+        </p>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <span class="label">Start here</span>
+          <p>Read these files before editing code:</p>
+          <ol>
+            <li><code>AGENTS.MD</code></li>
+            <li><code>PROJECT.md</code></li>
+            <li><code>context.md</code></li>
+            <li><code>CODEX_HANDOFF.md</code></li>
+            <li><code>workflow-api/WORKFLOW_API_BOUNDARIES.md</code></li>
+          </ol>
+        </div>
+        <div class="card">
+          <span class="label">Current branch</span>
+          <p>The active working branch at handoff time is:</p>
+          <pre><code>console-code-first-0518</code></pre>
+          <p class="small">Check live git state before editing because the repo has been changing quickly.</p>
+        </div>
+        <div class="card">
+          <span class="label">Do not revive</span>
+          <p>
+            The old tracked <code>api/</code> host was removed. The active local API reference is
+            <code>workflow-api/WorkflowEngine.WorkflowApi.slnx</code>. Do not bring the deleted host back
+            unless the project owner explicitly asks.
+          </p>
+        </div>
+      </div>
+
+      <h3>Before any edit</h3>
+      <pre><code>git status --short --untracked-files=normal
+git diff --stat
+git diff --name-only</code></pre>
+    </section>
+
+    <section id="repo-map">
+      <h2>2. Repo Map</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>What it is</th>
+            <th>When to touch it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>src/WorkflowEngine.Domain</code></td>
+            <td>Small domain constants and reusable workflow concepts.</td>
+            <td>Rarely. Do not add Portfolio Trade business logic here.</td>
+          </tr>
+          <tr>
+            <td><code>src/WorkflowEngine.Application</code></td>
+            <td>Contracts, command handlers, normalization, validation, workflow service interfaces, result builders.</td>
+            <td>Touch when a reusable workflow contract or command behavior changes.</td>
+          </tr>
+          <tr>
+            <td><code>src/WorkflowEngine.Infrastructure</code></td>
+            <td>EF Core, SQL Server schema, migrations, seed data, engine execution, context reader, SLA, notification senders.</td>
+            <td>Touch for schema, seed, execution, SMTP, SLA, and outbox behavior.</td>
+          </tr>
+          <tr>
+            <td><code>src/WorkflowEngine.Console</code></td>
+            <td>Console proof-of-concept and scheduled processor entry point.</td>
+            <td>Use for local demos, seed verification, SLA processing, and outbox retry processing.</td>
+          </tr>
+          <tr>
+            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi</code></td>
+            <td>Active ASP.NET Core workflow API reference host.</td>
+            <td>Use as the copy/reference pattern for target API integration.</td>
+          </tr>
+          <tr>
+            <td><code>samples/workflow-actions</code></td>
+            <td>Portfolio Trade sample action envelopes for console tests and demos.</td>
+            <td>Use as known-good examples. Do not edit sample object IDs per demo; use overrides.</td>
+          </tr>
+          <tr>
+            <td><code>tests/WorkflowEngine.Tests</code></td>
+            <td>Shared engine, console, SQL, seed, notification, and SLA tests.</td>
+            <td>Run when engine or console behavior changes.</td>
+          </tr>
+          <tr>
+            <td><code>workflow-api/tests/WorkflowEngine.WorkflowApi.Tests</code></td>
+            <td>Reference API controller/service tests.</td>
+            <td>Run when API request/response or endpoint behavior changes.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="mental-model">
+      <h2>3. Mental Model</h2>
+
+      <div class="callout ok">
+        <h3>What this project owns</h3>
+        <p>
+          Workflow state, metadata-driven transitions, tasks, SLA due dates, notification outbox rows,
+          SMTP sender abstraction, idempotency, audit history, and workflow context/action result contracts.
+        </p>
+      </div>
+
+      <div class="callout danger">
+        <h3>What this project does not own</h3>
+        <p>
+          Form field validation, real user lookup, role lookup tables, business object lifecycle, UI rendering,
+          JWT policy decisions, or Portfolio Trade field-level business rules.
+        </p>
+      </div>
+
+      <h3>Core flow</h3>
+      <div class="step">
+        <div class="step-number">1</div>
+        <div>
+          <strong>Form/business API creates or loads the business object.</strong>
+          The workflow engine does not create the business record and does not validate form fields.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div>
+          <strong>Workflow starts or moves by action key.</strong>
+          The caller sends <code>workflowKey</code>, business object identity, or a workflow instance ID plus
+          an <code>actionKey</code>. The caller never sends <code>toState</code>.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div>
+          <strong>SQL metadata decides the transition.</strong>
+          The engine matches current state, action key, and allowed role. It closes and creates tasks,
+          writes audit rows, queues notification rows, and updates the workflow instance in one workflow transaction.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div>
+          <strong>The API returns workflow result and context.</strong>
+          The UI uses refreshed workflow context for current state, current task, SLA, and available workflow actions.
+        </div>
+      </div>
+
+      <h3>Portfolio Trade sample only</h3>
+      <p>
+        Portfolio Trade proves the reusable engine. Its states, roles, actions, notification text, and sample JSON
+        are seed/demo metadata. Do not hardcode Portfolio Trade behavior inside the reusable engine.
+      </p>
+    </section>
+
+    <section id="local-setup">
+      <h2>4. Local Setup</h2>
+
+      <h3>Prerequisites</h3>
+      <ul>
+        <li>.NET 10 SDK.</li>
+        <li>SQL Server reachable from the developer machine.</li>
+        <li>Optional fake SMTP server such as smtp4dev for SMTP smoke tests.</li>
+      </ul>
+
+      <h3>Local connection string</h3>
+      <p>The current local verification database used by this repo is:</p>
+      <pre><code>Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False</code></pre>
+
+      <p>It is configured under <code>ConnectionStrings:DefaultConnection</code>. Environment override form:</p>
+      <pre><code>$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'</code></pre>
+
+      <div class="callout warn">
+        <h3>Target API naming mismatch</h3>
+        <p>
+          The target API sample uses an existing app context connection named <code>DBConnection</code>.
+          Workflow infrastructure expects <code>DefaultConnection</code>. Either add
+          <code>ConnectionStrings:DefaultConnection</code> to the target API configuration or intentionally map
+          the same database connection under both names.
+        </p>
+      </div>
+
+      <h3>First build and seed</h3>
+      <pre><code>dotnet build src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet run --project src\WorkflowEngine.Console -- init-db
+dotnet run --project src\WorkflowEngine.Console -- verify-seed</code></pre>
+    </section>
+
+    <section id="console">
+      <h2>5. Console Commands</h2>
+
+      <p>
+        The console is both the proof-of-concept demo harness and the simple processor host for scheduled
+        SLA/outbox work. It is not the final UI.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Command</th>
+            <th>Purpose</th>
+            <th>Use in target environment</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>init-db</code></td>
+            <td>Applies EF migrations and seed data.</td>
+            <td>Local/dev setup. Production needs an approved deployment/migration plan.</td>
+          </tr>
+          <tr>
+            <td><code>verify-seed</code></td>
+            <td>Validates required seed metadata.</td>
+            <td>Run after migration/seed deployment.</td>
+          </tr>
+          <tr>
+            <td><code>start-workflow</code></td>
+            <td>Starts a workflow instance from console.</td>
+            <td>Demo only. Target API should call application services or API endpoint.</td>
+          </tr>
+          <tr>
+            <td><code>execute-json</code></td>
+            <td>Runs a full console <code>WorkflowActionEnvelope</code> sample.</td>
+            <td>Demo/test only. Target API uses workflow-only request shape.</td>
+          </tr>
+          <tr>
+            <td><code>show-context</code></td>
+            <td>Prints workflow context for form-open scenarios.</td>
+            <td>Equivalent to <code>GET /v1/WorkflowContext</code>.</td>
+          </tr>
+          <tr>
+            <td><code>show</code>, <code>show-tasks</code>, <code>show-history</code>, <code>show-notifications</code></td>
+            <td>Read-only inspection commands.</td>
+            <td>Useful for support and smoke testing.</td>
+          </tr>
+          <tr>
+            <td><code>run-sla</code></td>
+            <td>Queues overdue SLA notification rows for pending tasks.</td>
+            <td>Run by Task Scheduler or a separate worker, not inside IIS request flow.</td>
+          </tr>
+          <tr>
+            <td><code>process-notification-outbox</code></td>
+            <td>Sends pending notification rows through configured sender.</td>
+            <td>Run by Task Scheduler or a separate worker for retry/backlog processing.</td>
+          </tr>
+          <tr>
+            <td><code>demo</code></td>
+            <td>Runs the main happy path against reserved <code>PT-DEMO</code>.</td>
+            <td>Local demonstration only.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Happy path smoke test</h3>
+      <pre><code>dotnet run --project src\WorkflowEngine.Console -- init-db
+dotnet run --project src\WorkflowEngine.Console -- verify-seed
+dotnet run --project src\WorkflowEngine.Console -- start-workflow PortfolioTrade PT-1001 --user maker1 --reset
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\01-save-draft.json
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\02-submit-for-checker.json
+dotnet run --project src\WorkflowEngine.Console -- show-context WF-PT-1001 --user checker1 --roles Checker --format json
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\05-checker-send-to-trading-desk.json
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\07-trading-trade-executed.json
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\09-bdrm-trade-not-executed-properly.json
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\10-trading-rework-trade-executed.json
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\08-bdrm-trade-fulfilled.json
+dotnet run --project src\WorkflowEngine.Console -- show-history WF-PT-1001</code></pre>
+
+      <h3>Return-to-Maker branch smoke tests</h3>
+      <pre><code># Checker return to Maker
+dotnet run --project src\WorkflowEngine.Console -- start-workflow PortfolioTrade PT-1002 --user maker1 --reset
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\02-submit-for-checker.json --business-object PT-1002 --workflow-instance WF-PT-1002
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\03-checker-return-to-maker.json --business-object PT-1002 --workflow-instance WF-PT-1002
+dotnet run --project src\WorkflowEngine.Console -- show-tasks WF-PT-1002
+
+# Trading Desk return to Maker
+dotnet run --project src\WorkflowEngine.Console -- start-workflow PortfolioTrade PT-1003 --user maker1 --reset
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\02-submit-for-checker.json --business-object PT-1003 --workflow-instance WF-PT-1003
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\05-checker-send-to-trading-desk.json --business-object PT-1003 --workflow-instance WF-PT-1003
+dotnet run --project src\WorkflowEngine.Console -- execute-json .\samples\workflow-actions\06-trading-return-to-maker.json --business-object PT-1003 --workflow-instance WF-PT-1003
+dotnet run --project src\WorkflowEngine.Console -- show-tasks WF-PT-1003</code></pre>
+
+      <div class="callout danger">
+        <h3>Production warning</h3>
+        <p>
+          <code>--reset</code> is console demo-only. It deletes runtime workflow data for the selected business object.
+          Never use it as a production restart mechanism.
+        </p>
+      </div>
+    </section>
+
+    <section id="api">
+      <h2>6. API Endpoints</h2>
+
+      <p>
+        The active reference API is <code>workflow-api/src/WorkflowEngine.WorkflowApi</code>.
+        It is controller-based ASP.NET Core and keeps controllers thin.
+      </p>
+
+      <h3>Reference routes</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Route</th>
+            <th>Request</th>
+            <th>Response wrapper</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>POST /v1/WorkflowStart</code></td>
+            <td><code>workflowKey</code>, <code>businessObjectType</code>, <code>businessObjectId</code>, optional <code>initialActionKey</code>, optional <code>notificationContext</code></td>
+            <td><code>{ "result": { "actionResult": {}, "workflowContext": {} } }</code></td>
+          </tr>
+          <tr>
+            <td><code>GET /v1/WorkflowContext</code></td>
+            <td>Query string <code>workflowInstanceId</code></td>
+            <td><code>{ "result": { "workflowContext": {} } }</code></td>
+          </tr>
+          <tr>
+            <td><code>POST /v1/WorkflowAction</code></td>
+            <td><code>workflowInstanceId</code>, <code>actionKey</code>, optional <code>assignedRoleKey</code>, optional <code>notificationContext</code></td>
+            <td><code>{ "result": { "actionResult": {}, "workflowContext": {} } }</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Trusted local actor headers</h3>
+      <pre><code>X-Workflow-UserId: maker1
+X-Workflow-Roles: Maker
+X-Workflow-DisplayName: Maker One</code></pre>
+
+      <p>
+        The reference API uses <code>TrustedHeaderWorkflowActorResolver</code> only as a temporary local adapter.
+        In the real target API, map the authenticated user and roles from the target system into the workflow actor.
+      </p>
+
+      <h3>Start and submit in one API call</h3>
+      <pre><code>POST /v1/WorkflowStart
+Content-Type: application/json
+X-Workflow-UserId: maker1
+X-Workflow-Roles: Maker
+X-Workflow-DisplayName: Maker One
+
+{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectType": "PortfolioTrade",
+  "businessObjectId": "PT-123",
+  "initialActionKey": "SubmitForChecker",
+  "notificationContext": {
+    "referenceNumber": "1050",
+    "submitterDisplayName": "Maker One",
+    "recipientDisplayName": "Checker One",
+    "deskName": "Taxable",
+    "securityType": "Other",
+    "accountShortName": "EFG",
+    "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+    "submittedDate": "4/24/2026",
+    "tradeLink": "https://sharepoint.example.test/trades/1050"
+  }
+}</code></pre>
+
+      <h3>Get workflow context on form open</h3>
+      <pre><code>GET /v1/WorkflowContext?workflowInstanceId=WF-PT-123
+X-Workflow-UserId: checker1
+X-Workflow-Roles: Checker
+X-Workflow-DisplayName: Checker One</code></pre>
+
+      <h3>Execute an existing workflow action</h3>
+      <pre><code>POST /v1/WorkflowAction
+Content-Type: application/json
+X-Workflow-UserId: checker1
+X-Workflow-Roles: Checker
+X-Workflow-DisplayName: Checker One
+
+{
+  "workflowInstanceId": "WF-PT-123",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable",
+  "notificationContext": {
+    "referenceNumber": "1050",
+    "submitterDisplayName": "Maker One",
+    "recipientDisplayName": "Trading Desk",
+    "deskName": "Taxable",
+    "securityType": "Other",
+    "accountShortName": "EFG",
+    "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
+    "submittedDate": "4/24/2026",
+    "tradeLink": "https://sharepoint.example.test/trades/1050"
+  }
+}</code></pre>
+
+      <div class="callout warn">
+        <h3>Workflow-only request shape</h3>
+        <p>
+          The API request body intentionally omits console-only <code>dataSave</code>, UI echo fields,
+          expected state guards, idempotency keys, and business object payload. The target form/business API owns
+          form data persistence and should call workflow after its own business save succeeds.
+        </p>
+      </div>
+    </section>
+
+    <section id="target-api">
+      <h2>7. Target API Integration</h2>
+
+      <p>
+        Treat this repo as the workflow reference source. The destination API may have its own project names,
+        DbContext, authentication, controller style, and response wrapper. Keep the integration narrow.
+      </p>
+
+      <h3>Target API goal</h3>
+      <p>
+        On one user action, the target API should save its own form/business data, execute exactly one workflow
+        action, dispatch notification rows created by that action, and return a response to the UI.
+      </p>
+
+      <pre><code>Target API request
+  -> authenticate user in target API
+  -> save target business/form data in target tables
+  -> call workflow execution/start service
+  -> dispatch action-created notification rows for WorkflowInstanceId + CorrelationId
+  -> return actionResult + workflowContext</code></pre>
+
+      <h3>Step-by-step integration plan</h3>
+      <div class="step">
+        <div class="step-number">1</div>
+        <div>
+          <strong>Add workflow project references.</strong>
+          Reference <code>WorkflowEngine.Application</code>, <code>WorkflowEngine.Domain</code>, and
+          <code>WorkflowEngine.Infrastructure</code> from the target API project or copy them into the target solution
+          with the same project boundaries.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div>
+          <strong>Register workflow infrastructure in the target API composition root.</strong>
+          Keep the target API's existing app DbContext registration. Add workflow infrastructure separately.
+          Do not replace the target API's existing database context.
+          <pre><code>builder.Services.AddWorkflowInfrastructure(builder.Configuration);</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div>
+          <strong>Configure workflow database connection.</strong>
+          Add <code>ConnectionStrings:DefaultConnection</code>. It may point to the same SQL Server database as the
+          target API if that is the deployment decision, but the key name must exist for workflow services.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div>
+          <strong>Map target identity to workflow actor.</strong>
+          Use the target API's authenticated LAN ID, display name, and application roles/claims. Do not create a
+          workflow SQL user table.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">5</div>
+        <div>
+          <strong>For new business records, start workflow.</strong>
+          Call the application start workflow service, or expose a thin endpoint equivalent to
+          <code>POST /v1/WorkflowStart</code>. Use <code>initialActionKey</code> when the first user click should
+          submit immediately instead of just creating Draft.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">6</div>
+        <div>
+          <strong>For existing records, execute workflow action.</strong>
+          Build an internal workflow action envelope from target API data, or use the reference
+          <code>WorkflowActionService</code> pattern. Set <code>PersistSectionData = false</code> for API integration
+          because the target API owns form data.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">7</div>
+        <div>
+          <strong>Dispatch action-created notifications immediately.</strong>
+          Copy or adapt <code>IWorkflowActionNotificationDispatcher</code> and
+          <code>WorkflowActionNotificationDispatcher</code>. After a successful workflow action, dispatch pending rows
+          by <code>WorkflowInstanceId</code> plus <code>CorrelationId</code>. Convert dispatch failure to
+          <code>NotificationDeliveryFailed</code> so the UI does not see a false success.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">8</div>
+        <div>
+          <strong>Return workflow result and context.</strong>
+          Preserve the target API's existing wrapper style if needed, but include the workflow action result and
+          refreshed context so the UI can update buttons/state without guessing.
+        </div>
+      </div>
+
+      <h3>Minimal target service pattern</h3>
+      <pre><code>public TargetActionResponse SubmitOrMoveWorkflow(TargetActionRequest request)
+{
+    var actor = ResolveActorFromTargetAuth();
+
+    // Target API owns business/form data.
+    SaveTargetBusinessData(request);
+
+    var workflowResult = ExecuteWorkflowAction(actor, request);
+
+    if (workflowResult.Success && workflowResult.Notification?.Queued == true)
+    {
+        DispatchCreatedNotifications(
+            workflowResult.WorkflowInstanceId,
+            workflowResult.CorrelationId);
+    }
+
+    if (!workflowResult.Success)
+    {
+        return BuildFailureResponse(workflowResult);
+    }
+
+    var context = ReadWorkflowContext(
+        workflowResult.WorkflowInstanceId,
+        actor.UserId,
+        actor.Roles);
+
+    return BuildSuccessResponse(workflowResult, context);
+}</code></pre>
+
+      <h3>Files to copy or mirror from the reference API</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Reference file</th>
+            <th>Why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs</code></td>
+            <td>Shows how the public workflow-only request is normalized into engine execution with section data persistence disabled.</td>
+          </tr>
+          <tr>
+            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowStartService.cs</code></td>
+            <td>Shows start plus optional initial action and initial-action notification dispatch.</td>
+          </tr>
+          <tr>
+            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs</code></td>
+            <td>Shows how to claim, send, mark sent, or release pending notification rows selected by workflow instance and correlation id.</td>
+          </tr>
+          <tr>
+            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/TrustedHeaderWorkflowActorResolver.cs</code></td>
+            <td>Local-only actor adapter. Replace its inputs with target auth/claims in the real API.</td>
+          </tr>
+          <tr>
+            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs</code></td>
+            <td>Reference workflow-only POST body shape.</td>
+          </tr>
+          <tr>
+            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs</code></td>
+            <td>Reference start request shape.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout danger">
+        <h3>Do not make the target API a scheduler</h3>
+        <p>
+          Do not put a polling loop for <code>run-sla</code> or <code>process-notification-outbox</code> inside IIS.
+          Use Task Scheduler or a separate worker process for recurring background work.
+        </p>
+      </div>
+    </section>
+
+    <section id="notifications">
+      <h2>8. Notifications and SMTP</h2>
+
+      <h3>Notification model</h3>
+      <ul>
+        <li>Workflow transitions queue rows in <code>NotificationOutbox</code>.</li>
+        <li>Rows are rendered from SQL metadata templates and caller-provided <code>notificationContext</code>.</li>
+        <li>Action-created rows are dispatched by the API immediately after the workflow transaction commits.</li>
+        <li>Pending rows remain available for retry through <code>process-notification-outbox</code>.</li>
+        <li>SLA overdue rows are created by <code>run-sla</code>, not by form buttons.</li>
+      </ul>
+
+      <h3>Sender options</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Value</th>
+            <th>Behavior</th>
+            <th>Use</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Notifications:Sender = Console</code></td>
+            <td>Writes notification output to console.</td>
+            <td>Console demo default.</td>
+          </tr>
+          <tr>
+            <td><code>Notifications:Sender = NoOp</code></td>
+            <td>Does not send real email.</td>
+            <td>Reference API default.</td>
+          </tr>
+          <tr>
+            <td><code>Notifications:Sender = Smtp</code></td>
+            <td>Sends with MailKit using SMTP host/from/role mapping config.</td>
+            <td>Target SMTP integration and live smoke testing.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>SMTP configuration shape</h3>
+      <pre><code>{
+  "Notifications": {
+    "Sender": "Smtp"
+  },
+  "Smtp": {
+    "Host": "smtp.your-firm.example",
+    "Port": 25,
+    "From": "workflow@example.test",
+    "RecipientOverride": "operator@example.test",
+    "RoleEmailMap": {
+      "Maker": "maker-group@example.test",
+      "Checker": "checker-group@example.test",
+      "TradingDesk": "trading-group@example.test",
+      "TradingDeskTaxable": "trading-taxable@example.test",
+      "TradingDeskTaxExempt": "trading-tax-exempt@example.test",
+      "TradingDeskEquity": "trading-equity@example.test",
+      "BDRMClientService": "bdrm-group@example.test"
+    }
+  }
+}</code></pre>
+
+      <div class="callout warn">
+        <h3>Smoke-test safety</h3>
+        <p>
+          Keep <code>Smtp:RecipientOverride</code> set during live SMTP smoke testing. Remove it only when ready to
+          send to configured role recipients.
+        </p>
+      </div>
+
+      <h3>Common notification context tokens</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Useful tokens</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Task assignment</td>
+            <td><code>referenceNumber</code>, <code>submitterDisplayName</code>, <code>recipientDisplayName</code>, <code>deskName</code>, <code>securityType</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
+          </tr>
+          <tr>
+            <td>Return to Maker</td>
+            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
+          </tr>
+          <tr>
+            <td>Trading execution to BDRM</td>
+            <td><code>traderDisplayName</code>, <code>deskName</code>, <code>securityType</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>tradeLink</code></td>
+          </tr>
+          <tr>
+            <td>Workflow completion</td>
+            <td><code>confirmerDisplayName</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>tradeLink</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        If required template tokens are missing, workflow execution returns validation failure and rolls back workflow
+        side effects. The target API should build <code>notificationContext</code> from data it already owns.
+      </p>
+    </section>
+
+    <section id="scheduler">
+      <h2>9. Task Scheduler</h2>
+
+      <p>
+        Use a separate scheduled processor on the target machine for SLA overdue detection and notification retry.
+        The processor can be the published console app.
+      </p>
+
+      <h3>Recommended wrapper script</h3>
+      <pre><code>$ErrorActionPreference = 'Stop'
+Set-Location $PSScriptRoot
+
+&amp; dotnet .\WorkflowEngine.Console.dll run-sla
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+&amp; dotnet .\WorkflowEngine.Console.dll process-notification-outbox
+exit $LASTEXITCODE</code></pre>
+
+      <h3>What each scheduled run does</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Effect</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>run-sla</code></td>
+            <td>Scans pending tasks with overdue <code>DueAtUtc</code> and queues one overdue notification per task.</td>
+          </tr>
+          <tr>
+            <td><code>process-notification-outbox</code></td>
+            <td>Sends pending notification rows, including failed action-created rows and SLA overdue rows.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <h3>Why the scheduler still matters</h3>
+        <p>
+          The target API sends normal action-created notifications immediately, but if SMTP fails the row is released
+          back to <code>Pending</code>. The scheduled outbox processor is the retry/backlog path.
+        </p>
+      </div>
+    </section>
+
+    <section id="database">
+      <h2>10. Database and Migrations</h2>
+
+      <h3>Schema ownership</h3>
+      <p>
+        Workflow EF Core is pinned to the <code>dbo</code> schema through <code>WorkflowDbContext.DefaultSchema</code>,
+        <code>HasDefaultSchema("dbo")</code>, and migration history table configuration for
+        <code>[dbo].[__EFMigrationsHistory]</code>.
+      </p>
+
+      <h3>Deployment decision needed</h3>
+      <p>
+        Decide how the target machine applies workflow migrations. Options include a deployment pipeline step,
+        a controlled admin migration run, or a one-time DBA-reviewed script. Do not use the console demo
+        <code>--reset</code> behavior as a production data management tool.
+      </p>
+
+      <h3>Fresh local setup</h3>
+      <pre><code>dotnet run --project src\WorkflowEngine.Console -- init-db
+dotnet run --project src\WorkflowEngine.Console -- verify-seed</code></pre>
+
+      <h3>If tables were created under the wrong schema</h3>
+      <p>
+        Existing databases that already contain workflow tables under a user default schema need a controlled cleanup
+        or schema transfer. The current code fixes fresh migrations; it does not automatically move old incorrectly
+        owned tables.
+      </p>
+    </section>
+
+    <section id="verification">
+      <h2>11. Verification</h2>
+
+      <h3>Build and test commands</h3>
+      <pre><code>dotnet build src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter MigrationSchemaTests /p:UseAppHost=false</code></pre>
+
+      <h3>Seed verification</h3>
+      <pre><code>dotnet run --project src\WorkflowEngine.Console -- init-db
+dotnet run --project src\WorkflowEngine.Console -- verify-seed</code></pre>
+
+      <h3>API smoke test sequence</h3>
+      <ol>
+        <li>Run <code>init-db</code> and <code>verify-seed</code>.</li>
+        <li>Start the reference API on the <code>http</code> profile.</li>
+        <li>Call <code>POST /v1/WorkflowStart</code> with a unique <code>businessObjectId</code>.</li>
+        <li>Call <code>GET /v1/WorkflowContext</code> for the returned workflow instance.</li>
+        <li>Call <code>POST /v1/WorkflowAction</code> for the next metadata-valid action.</li>
+        <li>Inspect the database or use console inspection commands to confirm state, task, audit, and notification rows.</li>
+      </ol>
+
+      <h3>SMTP smoke test</h3>
+      <pre><code># Start a local fake SMTP server such as smtp4dev on port 3025.
+# Then use the reference API http launch profile or equivalent env vars:
+$env:Notifications__Sender='Smtp'
+$env:Smtp__Host='localhost'
+$env:Smtp__Port='3025'
+$env:Smtp__From='workflow@example.test'
+$env:Smtp__RecipientOverride='operator@example.test'</code></pre>
+
+      <p>
+        For automated Tier 2 SMTP tests, run only when a fake SMTP server is ready:
+      </p>
+      <pre><code>dotnet test --filter Category=Smtp</code></pre>
+    </section>
+
+    <section id="pitfalls">
+      <h2>12. Pitfalls</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Pitfall</th>
+            <th>Correct behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Adding <code>toState</code> to request JSON.</td>
+            <td>Do not. SQL transition metadata decides next state.</td>
+          </tr>
+          <tr>
+            <td>Hardcoding Portfolio Trade transitions in services.</td>
+            <td>Do not. Portfolio Trade is seed/sample metadata only.</td>
+          </tr>
+          <tr>
+            <td>Using the target API as the SLA/outbox scheduler.</td>
+            <td>Do not. Use Task Scheduler or a separate worker process.</td>
+          </tr>
+          <tr>
+            <td>Creating a workflow user or role mapping table.</td>
+            <td>Do not. User identity and roles come from target auth/claims or trusted integration boundary.</td>
+          </tr>
+          <tr>
+            <td>Letting <code>workflow.options</code> override metadata.</td>
+            <td>Do not. Options are advisory; metadata wins.</td>
+          </tr>
+          <tr>
+            <td>Calling <code>DateTime.UtcNow</code> inside workflow services.</td>
+            <td>Use injected <code>TimeProvider</code>.</td>
+          </tr>
+          <tr>
+            <td>Using <code>System.Net.Mail.SmtpClient</code>.</td>
+            <td>Use MailKit. It is the only pre-approved third-party package for SMTP.</td>
+          </tr>
+          <tr>
+            <td>Adding SMTP credentials in appsettings.</td>
+            <td>Do not. v1 assumes IP-restricted relay. Credential support needs a secret-management decision.</td>
+          </tr>
+          <tr>
+            <td>Declaring the target service itself as <code>IWorkflowActionNotificationDispatcher</code>.</td>
+            <td>Keep the dispatcher as a separate class and register it separately.</td>
+          </tr>
+          <tr>
+            <td>Reusing a completed business object ID in production.</td>
+            <td>Do not. v1 has one workflow lifetime per business object identifier.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout ok">
+        <h3>Quick handoff summary</h3>
+        <p>
+          Use <code>src/</code> for the reusable engine and console processor. Use <code>workflow-api/</code> as the
+          active API reference. In the target API, save business data first, execute workflow second, dispatch
+          action-created notifications by workflow instance plus correlation id, and schedule console
+          <code>run-sla</code> plus <code>process-notification-outbox</code> outside IIS.
+        </p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

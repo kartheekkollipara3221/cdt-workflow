@@ -1,9 +1,9 @@
 # CDT Workflow Current Context
 
-Last updated: 2026-06-05T00:02:09-04:00
+Last updated: 2026-06-05T09:49:45-04:00
 Workspace: `C:\projects\cdt-workflow`
 Branch: `console-code-first-0518`
-Current HEAD observed during pause: `be1aad1`
+Current HEAD before beginner guide commit: `00bcf07`
 
 ## Latest Session Context
 
@@ -97,6 +97,7 @@ This fix applies to fresh/init migrations. Existing databases with tables alread
 - Rewrote `CODEX_HANDOFF.md`, `NEXT_CODEX_PROMPT.md`, and this `context.md` to match the new shape.
 - Updated `README.md` to describe the current `src/` plus `workflow-api/` shape and current local verification DB.
 - Added `docs/README.md`.
+- Added `docs/beginners-api-console-handoff.html` as a single-file beginner handoff for API, console, and target API integration steps.
 - Removed old generated docs that pointed at the deleted host and old controller names.
 
 ## Notification Template Feature State
