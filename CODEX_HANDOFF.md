@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-06-05T15:09:35-04:00
+Last updated: 2026-06-09T10:09:43-04:00
 
 ## Current Goal
 
@@ -79,6 +79,21 @@ The guide intentionally distinguishes the local `workflow-api/` reference host f
 
 ## Latest Completed Changes
 
+### Frontend workflow API handoff
+
+Added `docs/frontend-workflow-api-handoff.html` as a frontend-focused handoff for the current reference API in `workflow-api/WorkflowEngine.WorkflowApi.slnx`.
+
+The guide documents:
+
+- `POST /v1/WorkflowStart`, `GET /v1/WorkflowContext`, and `POST /v1/WorkflowAction`.
+- Required trusted actor headers.
+- Current API JSON casing: lower-case wrapper properties with PascalCase model fields.
+- Input and output parameter tables.
+- The approved full happy path: Maker submit, Checker reject, Maker resubmit, Checker approve, Trading Desk reject, Maker save draft, Maker submit again, Checker approve, Trading Desk approve, BDRM approve/complete.
+- The reference API boundary that `WorkflowAction` is workflow-only and does not save form payload data.
+
+Updated `docs/README.md` so the new frontend handoff is discoverable.
+
 ### Per-record SMTP recipient resolution
 
 The Maker recipient changes per business record. The code supports that without adding a SQL user table or changing public request DTOs:
@@ -149,10 +164,11 @@ dotnet .\WorkflowEngine.Console.dll process-notification-outbox
 
 ## Current Worktree Expectations
 
-Expected local change for this bundle slice:
+Expected local changes for this frontend handoff slice:
 
 - `CODEX_HANDOFF.md`
-- `restore-repo.ps1`
+- `docs/README.md`
+- `docs/frontend-workflow-api-handoff.html`
 
 Run before further edits:
 
@@ -163,6 +179,11 @@ git diff --name-only
 ```
 
 ## Verification Status
+
+Latest verification for the frontend handoff documentation slice:
+
+- `dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false --no-restore` passed: 41 passed, 0 failed, 0 skipped.
+- `git diff --check` reported only Git line-ending warnings for edited markdown files, with no whitespace errors.
 
 Latest verification after the per-record recipient change:
 
