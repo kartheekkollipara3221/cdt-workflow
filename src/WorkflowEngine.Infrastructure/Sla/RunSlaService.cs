@@ -109,7 +109,14 @@ public sealed class RunSlaService(
                     route.BodyTemplate,
                     context,
                     "workflow.notificationContext");
-                var templateErrors = renderedSubject.Errors.Concat(renderedBody.Errors).ToArray();
+                var renderedHtmlBody = templateRenderer.RenderHtml(
+                    route.HtmlBodyTemplate,
+                    context,
+                    "workflow.notificationContext");
+                var templateErrors = renderedSubject.Errors
+                    .Concat(renderedBody.Errors)
+                    .Concat(renderedHtmlBody.Errors)
+                    .ToArray();
                 if (templateErrors.Length > 0)
                 {
                     await transaction.RollbackAsync(CancellationToken.None);
@@ -129,6 +136,7 @@ public sealed class RunSlaService(
                     RecipientUserId = route.RecipientUserId,
                     Subject = route.OverdueSubjectPrefix + renderedSubject.Rendered,
                     Body = renderedBody.Rendered,
+                    HtmlBody = renderedHtmlBody.Rendered,
                     PayloadJson = JsonSerializer.Serialize(context),
                     Status = "Pending",
                     CorrelationId = $"sla-{task.Id}",

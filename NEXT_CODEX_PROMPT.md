@@ -43,13 +43,17 @@ Current uncommitted source work:
 Current feature state:
 
 - Notification templates are implemented through SQL metadata and persisted outbox body content.
+- Notification templates now persist both plain-text and HTML email bodies through `NotificationRoute.HtmlBodyTemplate` and `NotificationOutbox.HtmlBody`.
 - The workflow API accepts optional `notificationContext` on action and start requests.
 - SLA overdue notifications render from stored task notification snapshots and do not call an external API for email data.
 - Portfolio Trade/Directed Trade wording remains seed/sample metadata only.
+- The UI/target API should send plain values in `notificationContext`; the engine HTML-escapes caller-provided values, bolds important seeded values, and renders `tradeLink` as a clickable HTML email link.
 
 Latest external target-machine decision:
 
 - The IIS-hosted target API should send normal action-created notifications immediately after the form action executes workflow movement.
+- SMTP delivery uses persisted plain text and HTML bodies; when `HtmlBody` is present, `SmtpNotificationSender` sends multipart text/html email.
+- `notificationContext.ccEmailAddresses` is persisted for action-created notifications and snapshotted for SLA overdue notifications.
 - `run-sla` is only for overdue SLA detection.
 - Windows Task Scheduler is available on the target machine and should run the separate workflow processor for `run-sla` and `process-notification-outbox`.
 - `process-notification-outbox` is still needed for pending-row retry/backlog, including failed action-created SMTP rows and SLA overdue rows.

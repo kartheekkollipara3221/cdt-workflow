@@ -212,6 +212,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
                 || !string.Equals(row.RecipientRoleKey, seed.RecipientRoleKey, StringComparison.Ordinal)
                 || !string.Equals(row.SubjectTemplate, seed.SubjectTemplate, StringComparison.Ordinal)
                 || !string.Equals(row.BodyTemplate, seed.BodyTemplate, StringComparison.Ordinal)
+                || !string.Equals(row.HtmlBodyTemplate, seed.HtmlBodyTemplate, StringComparison.Ordinal)
                 || !string.Equals(row.OverdueSubjectPrefix, seed.OverdueSubjectPrefix, StringComparison.Ordinal))
             {
                 errors.Add($"Notification route '{seed.Key}' does not match required template metadata.");

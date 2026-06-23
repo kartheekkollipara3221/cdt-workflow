@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-06-09T10:09:43-04:00
+Last updated: 2026-06-22T23:03:47-04:00
 
 ## Current Goal
 
@@ -11,6 +11,10 @@ Latest recipient decision:
 - Maker can vary per business record, so Return-to-Maker email cannot rely only on `Smtp:RoleEmailMap:Maker`.
 - SMTP delivery now resolves recipients in this order: `Smtp:RecipientOverride`, then `notificationContext.recipientEmail` persisted in notification `PayloadJson`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
 - Target API integration should provide `notificationContext.recipientEmail` for business-record-specific recipients.
+- UI-provided copied recipients go in `notificationContext.ccEmailAddresses` as a comma- or semicolon-separated string.
+- `ccEmailAddresses` is persisted in `NotificationOutbox.PayloadJson`; for task-created notifications it is also snapshotted in `WorkflowTask.NotificationContextJson`, so SLA overdue emails include the same copied recipients.
+- When `Smtp:RecipientOverride` is configured for smoke testing, real CC delivery is suppressed and the intended CC list is written into the override email body.
+- Notification emails now persist both plain text and HTML bodies. The target API/UI should keep sending plain data in `notificationContext`; the engine HTML-escapes caller-provided values, bolds important seeded values, and renders `tradeLink` as a clickable link in HTML emails.
 - This keeps the no SQL user table / no role-to-email lookup table boundary intact.
 
 The immediate design decision from the latest session:
@@ -99,12 +103,28 @@ Updated `docs/README.md` so the new frontend handoff is discoverable.
 The Maker recipient changes per business record. The code supports that without adding a SQL user table or changing public request DTOs:
 
 - `SmtpNotificationSender` resolves recipients in this order: `Smtp:RecipientOverride`, then payload `recipientEmail`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
-- Override-mode bodies preserve `OriginalRecipientRoleKey` and, when available, `OriginalRecipientEmail`.
+- `SmtpNotificationSender` adds SMTP CC recipients from payload `ccEmailAddresses`, split by comma or semicolon.
+- Override-mode bodies preserve `OriginalRecipientRoleKey`, `OriginalRecipientEmail`, and `OriginalCcEmailAddresses` when available.
+- `Smtp:RecipientOverride` suppresses real CC delivery during smoke tests.
 - Return-to-Maker persistence is covered by `WorkflowExecutionValidationTests.ReturnToMakerPersistsRecipientEmailFromNotificationContext`.
-- SMTP recipient behavior is covered by new `SmtpNotificationSenderTests`.
+- SMTP recipient and CC behavior is covered by `SmtpNotificationSenderTests`.
+- SLA CC persistence is covered by `Phase5SlaTests.RunSlaQueuesOnlyOverduePendingTasksWithoutExistingOverdueNotification`.
 - `ConsoleNotificationSenderTests` and `tests/COVERAGE_AUDIT.md` were updated because PROJECT.md section 20 coverage audit is enforced by tests.
 
-The target API should populate `workflow.notificationContext.recipientEmail` for Return-to-Maker and any other business-record-specific recipient.
+The target API should populate `workflow.notificationContext.recipientEmail` for Return-to-Maker and any other business-record-specific recipient. If the UI supplies copied recipients, the target API should pass them through as `workflow.notificationContext.ccEmailAddresses` so action-created and SLA overdue emails share the same CC list.
+
+### HTML notification email rendering
+
+The email format change is implemented in schema-backed metadata, not hardcoded Portfolio Trade logic:
+
+- `NotificationRoute` now has `HtmlBodyTemplate`.
+- `NotificationOutbox` now has rendered `HtmlBody`.
+- Migration `20260620130000_AddHtmlNotificationBodies` adds both columns under schema `dbo`.
+- The renderer has `RenderHtml(...)`, which HTML-escapes token values while preserving template-owned markup.
+- Seeded notification templates include plain text and HTML versions for action-created and SLA overdue routes.
+- Important UI-provided values are wrapped with `<strong>...</strong>` in seeded HTML templates, and `tradeLink` renders as `<a href="...">Open trade</a>`.
+- `SmtpNotificationSender` sends `multipart/alternative` email when `HtmlBody` is present, with text/plain and text/html parts.
+- Override-mode SMTP still suppresses real CC delivery and records original recipient/CC metadata in the test email body.
 
 Pushed commits:
 
@@ -114,6 +134,8 @@ Pushed commits:
 ### Documentation updates
 
 `PROJECT.md`, `README.md`, `docs/beginners-api-console-handoff.html`, `context.md`, and this file now document the recipient resolution order and target API handoff guidance.
+
+Added `docs/target-api-notification-changes-handoff.html` as the precise target API integration checklist for the last two notification changes: per-record SMTP recipients/copied recipients and persisted HTML notification bodies. It lists target API files to update, corresponding source files in this repo, SQL column changes, request DTO shape, dispatch pattern, SMTP configuration, and verification steps.
 
 ### Restore bundle
 
@@ -179,6 +201,95 @@ git diff --name-only
 ```
 
 ## Verification Status
+
+Latest bundle and push-prep verification on 2026-06-22:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\restore-repo.ps1 -DestinationPath .\.bundle-test\restore-20260622-225258 -Force
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -warnaserror -m:1 /p:UseAppHost=false
+git diff --check
+dotnet build src\WorkflowEngine.sln -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false --no-restore
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter "Category!=FreshClone" -m:1 /p:UseAppHost=false --no-restore
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- verify-seed
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- start-workflow PortfolioTrade PT-1001 --user maker1 --reset
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- execute-json .\samples\workflow-actions\02-submit-for-checker.json
+```
+
+Results:
+
+- `restore-repo.ps1` regenerated as a base64 ZIP PowerShell restore bundle.
+- Bundle selected 294 files and excluded `.git`, `.tools`, `.bundle-test`, `.bundle-work`, build outputs, caches, and the previous restore script.
+- Bundle SHA-256 verified: `d6ca44471252e6af0a7a6753dc7f8a6521531ce61795fe0fe11c118b0005d85b`.
+- Restored file count matched: 294 files.
+- Required target API handoff/source files were present in the restored tree; forbidden paths were absent.
+- Restored `workflow-api\WorkflowEngine.WorkflowApi.slnx` warnings-as-errors build passed with 0 warnings/errors.
+- Main tree `git diff --check` was clean except Git line-ending warnings.
+- Main tree shared solution warnings-as-errors build passed with 0 warnings/errors.
+- Main tree workflow API warnings-as-errors build passed with 0 warnings/errors.
+- Workflow API tests passed: 41 passed.
+- Core tests excluding known long `FreshClone` walkthrough category passed: 229 passed, 3 skipped SMTP integration tests.
+- Full unfiltered core test command timed out under the tool after 5 minutes and left stale test processes; those PIDs were stopped before rerunning the filtered core suite.
+- `verify-seed` passed.
+- Sample JSON `samples/workflow-actions/02-submit-for-checker.json` executed successfully and queued a notification.
+
+Latest retest of the last two notification changes on 2026-06-22:
+
+```powershell
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter "NotificationTemplateRendererTests|SmtpNotificationSenderTests|CoverageAuditTests" -m:1 /p:UseAppHost=false --no-restore
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter "SeedDataSmokeTests|WorkflowTransitionTests|Phase5SlaTests" -m:1 /p:UseAppHost=false --no-restore
+dotnet build src\WorkflowEngine.sln -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false --no-restore
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- init-db
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- verify-seed
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- start-workflow PortfolioTrade PT-1001 --user maker1 --reset
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- execute-json .\samples\workflow-actions\02-submit-for-checker.json
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 /p:UseAppHost=false --no-restore
+git diff --check
+```
+
+Results:
+
+- Focused renderer/SMTP/audit tests passed: 19 passed.
+- SQL-backed seed/transition/SLA tests passed: 19 passed when run outside the sandbox with normal Windows credentials.
+- Shared solution warnings-as-errors build passed with 0 warnings/errors.
+- Active workflow API warnings-as-errors build passed with 0 warnings/errors.
+- Active workflow API tests passed: 41 passed.
+- `init-db` applied the schema and Portfolio Trade seed data.
+- `verify-seed` passed.
+- Sample JSON `samples/workflow-actions/02-submit-for-checker.json` executed successfully and queued a notification.
+- Full core test project passed: 235 passed, 3 skipped SMTP integration tests.
+- `git diff --check` was clean except Git line-ending warnings.
+- Note: SQL-backed commands fail under the sandbox identity `dolly\codexsandboxoffline` with `Cannot generate SSPI context`; run SQL Integrated Security gates outside the sandbox.
+
+Latest verification after the HTML notification email change:
+
+```powershell
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter "NotificationTemplateRendererTests|SmtpNotificationSenderTests|CoverageAuditTests" -m:1 /p:UseAppHost=false --no-restore
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj --filter "SeedDataSmokeTests|WorkflowTransitionTests|Phase5SlaTests" -m:1 /p:UseAppHost=false --no-restore
+dotnet build src\WorkflowEngine.sln -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -warnaserror -m:1 /p:UseAppHost=false --no-restore
+dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false --no-restore
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- init-db
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- verify-seed
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- start-workflow PortfolioTrade PT-1001 --user maker1 --reset
+$env:ConnectionStrings__DefaultConnection='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet run --project src\WorkflowEngine.Console --no-restore -- execute-json .\samples\workflow-actions\02-submit-for-checker.json
+$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'; dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 /p:UseAppHost=false --no-restore
+```
+
+Results:
+
+- Focused renderer/SMTP/audit tests passed: 19 passed.
+- SQL-backed seed/transition/SLA tests passed: 19 passed.
+- Shared solution warnings-as-errors build passed with 0 warnings/errors.
+- Active workflow API warnings-as-errors build passed with 0 warnings/errors.
+- Active workflow API tests passed: 41 passed.
+- `init-db` applied the schema and seed.
+- `verify-seed` passed.
+- Sample JSON `samples/workflow-actions/02-submit-for-checker.json` executed successfully and queued a notification.
+- Full core test project passed: 235 passed, 3 skipped SMTP integration tests.
 
 Latest verification for the frontend handoff documentation slice:
 

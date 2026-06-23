@@ -64,6 +64,9 @@ public sealed class WorkflowTransitionTests
         Assert.Contains("Kollipara, Kartheek", notification.Body, StringComparison.Ordinal);
         Assert.Contains("Taxable desk", notification.Body, StringComparison.Ordinal);
         Assert.Contains("Sharepoint link = https://sharepoint.example.test/trades/1050", notification.Body, StringComparison.Ordinal);
+        Assert.Contains("<strong>Kollipara, Kartheek</strong>", notification.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains("<strong>Taxable</strong>", notification.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains("""<a href="https://sharepoint.example.test/trades/1050">Open trade</a>""", notification.HtmlBody, StringComparison.Ordinal);
         Assert.Contains("\"submitterDisplayName\":\"Kollipara, Kartheek\"", notification.PayloadJson, StringComparison.Ordinal);
         var createdTask = Assert.Single(dbContext.WorkflowTasks);
         Assert.Equal("RouteCheckerAssignedOnSubmit", createdTask.NotificationRouteKey);

@@ -86,7 +86,7 @@ public sealed class SeedDataSmokeTests
     }
 
     [Fact]
-    public void NotificationRoutes_HaveSubjectBodyAndOverduePrefix()
+    public void NotificationRoutes_HaveSubjectBodyHtmlBodyAndOverduePrefix()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
         var routes = dbContext.NotificationRoutes.ToDictionary(row => row.RouteKey, StringComparer.Ordinal);
@@ -94,11 +94,14 @@ public sealed class SeedDataSmokeTests
         var submit = routes["RouteCheckerAssignedOnSubmit"];
         Assert.Equal("Directed Trade Pending Checker Approval", submit.SubjectTemplate);
         Assert.Contains("{{submitterDisplayName}}", submit.BodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("<strong>{{submitterDisplayName}}</strong>", submit.HtmlBodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("""<a href="{{tradeLink}}">Open trade</a>""", submit.HtmlBodyTemplate, StringComparison.Ordinal);
         Assert.Equal("Overdue: ", submit.OverdueSubjectPrefix);
 
         var returned = routes["RouteReturnedToMakerFromChecker"];
         Assert.Equal("Updates Required to Directed Trade Request", returned.SubjectTemplate);
         Assert.DoesNotContain("returnReason", returned.BodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("<strong>{{recipientDisplayName}}</strong>", returned.HtmlBodyTemplate, StringComparison.Ordinal);
     }
 
     [Fact]

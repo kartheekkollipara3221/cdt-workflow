@@ -148,6 +148,8 @@ Existing intended endpoints:
   - Optional request input `initialActionKey` starts the workflow and immediately executes one metadata-valid first action from the newly-created workflow state.
   - Optional `notificationContext`, a string key/value dictionary supplied by the upstream external API for email template rendering.
   - `notificationContext` is notification data only. It is not form payload, is not persisted as form data, and does not drive workflow transitions.
+  - If the UI supplies copied recipients, keep them inside `notificationContext.ccEmailAddresses`; do not add a separate public DTO field.
+  - Send values as plain data, not HTML. The workflow engine HTML-escapes `notificationContext` values when rendering HTML email bodies, bolds important seeded template values, and turns `tradeLink` into a clickable link.
   - Actor identity comes from the temporary trusted-header adapter and is recorded as the starting user.
   - The endpoint does not accept `reset`.
   - The endpoint does not require `SaveDraft`; `SaveDraft` and submit actions are ordinary metadata actions from `Draft` when seeded.
@@ -181,6 +183,8 @@ Existing intended endpoints:
   - `assignedRoleKey` is accepted only for transitions whose created task supports dynamic assignment metadata; for `CheckerSendToTradingDesk`, the upstream form/business API supplies one of `TradingDeskTaxable`, `TradingDeskTaxExempt`, or `TradingDeskEquity`.
   - Optional `notificationContext`, a string key/value dictionary supplied by the upstream external API for email template rendering.
   - `notificationContext` is notification data only. It is not form payload, is not persisted as form data, and does not drive workflow transitions.
+  - If the UI supplies copied recipients, keep them inside `notificationContext.ccEmailAddresses`; do not add a separate public DTO field.
+  - Send values as plain data, not HTML. The workflow engine HTML-escapes `notificationContext` values when rendering HTML email bodies, bolds important seeded template values, and turns `tradeLink` into a clickable link.
   - `workflowInstanceId` is the lookup key.
   - Workflow key and workflow definition version are derived from persisted workflow metadata, not echoed by the request.
   - Business object identity is derived from the persisted workflow instance, not echoed by the request.
@@ -191,7 +195,7 @@ Existing intended endpoints:
   - Workflow-level failures return custom error code `500` rather than HTTP 200 with `result.success = false`.
   - If a successful action queues a metadata notification, the endpoint delivers only the notification rows created by that action before returning success.
   - The action-created notification rows are selected by the action result workflow instance ID and correlation ID.
-  - Delivery uses the configured `INotificationSender`; in a real SMTP environment `Notifications:Sender = "Smtp"` resolves recipients through `Smtp:RoleEmailMap:{RecipientRoleKey}`.
+  - Delivery uses the configured `INotificationSender`; in a real SMTP environment `Notifications:Sender = "Smtp"` resolves recipients from `notificationContext.recipientEmail`, adds copied recipients from `notificationContext.ccEmailAddresses`, and falls back to `Smtp:RoleEmailMap:{RecipientRoleKey}`.
   - If action-created SMTP delivery fails, the workflow action response is converted to `result.success = false`, `result.resultCode = "NotificationDeliveryFailed"`, and the controller returns HTTP 500.
   - Successful responses use the target wrapper shape:
     - top-level `result`

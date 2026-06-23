@@ -101,6 +101,7 @@ public sealed class WorkflowActionNotificationDispatcher(
             row.RecipientUserId,
             row.Subject,
             row.Body,
+            row.HtmlBody,
             row.PayloadJson,
             row.Status,
             row.CorrelationId,

@@ -18,6 +18,7 @@ public sealed record NotificationDelivery(
     string? RecipientUserId,
     string Subject,
     string Body,
+    string HtmlBody,
     string PayloadJson,
     string Status,
     string CorrelationId,

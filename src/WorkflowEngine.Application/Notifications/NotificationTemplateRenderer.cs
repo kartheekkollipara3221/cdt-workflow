@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Text.Encodings.Web;
 using WorkflowEngine.Application.Validation;
 
 namespace WorkflowEngine.Application.Notifications;
@@ -10,9 +11,27 @@ public sealed partial class NotificationTemplateRenderer
         IReadOnlyDictionary<string, string?> values,
         string fieldPrefix)
     {
+        return RenderCore(template, values, fieldPrefix, static value => value);
+    }
+
+    public NotificationTemplateRenderResult RenderHtml(
+        string template,
+        IReadOnlyDictionary<string, string?> values,
+        string fieldPrefix)
+    {
+        return RenderCore(template, values, fieldPrefix, HtmlEncoder.Default.Encode);
+    }
+
+    private static NotificationTemplateRenderResult RenderCore(
+        string template,
+        IReadOnlyDictionary<string, string?> values,
+        string fieldPrefix,
+        Func<string, string> encode)
+    {
         ArgumentNullException.ThrowIfNull(template);
         ArgumentNullException.ThrowIfNull(values);
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldPrefix);
+        ArgumentNullException.ThrowIfNull(encode);
 
         var errors = new List<WorkflowValidationError>();
         var rendered = TokenRegex().Replace(template, match =>
@@ -26,7 +45,7 @@ public sealed partial class NotificationTemplateRenderer
                 return match.Value;
             }
 
-            return value.Trim();
+            return encode(value.Trim());
         });
 
         return new NotificationTemplateRenderResult(errors.Count == 0, rendered, errors);

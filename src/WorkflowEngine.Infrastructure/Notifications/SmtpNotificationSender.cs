@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Configuration;
@@ -54,11 +55,16 @@ public sealed class SmtpNotificationSender : INotificationSender
         var message = new MimeMessage();
         message.From.Add(MailboxAddress.Parse(from));
         message.To.Add(MailboxAddress.Parse(ResolveRecipient(notification)));
-        message.Subject = notification.Subject;
-        message.Body = new TextPart("plain")
+        if (string.IsNullOrWhiteSpace(recipientOverride))
         {
-            Text = BuildBody(notification)
-        };
+            foreach (var ccAddress in ResolveCcEmailAddressesFromPayload(notification.PayloadJson))
+            {
+                message.Cc.Add(MailboxAddress.Parse(ccAddress));
+            }
+        }
+
+        message.Subject = notification.Subject;
+        message.Body = BuildMessageBody(notification);
         return message;
     }
 
@@ -91,6 +97,24 @@ public sealed class SmtpNotificationSender : INotificationSender
 
     private static string? ResolveRecipientEmailFromPayload(string payloadJson)
     {
+        return ResolveStringFromPayload(payloadJson, "recipientEmail");
+    }
+
+    private static string[] ResolveCcEmailAddressesFromPayload(string payloadJson)
+    {
+        var raw = ResolveStringFromPayload(payloadJson, "ccEmailAddresses");
+        if (raw is null)
+        {
+            return [];
+        }
+
+        return raw.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(address => !string.IsNullOrWhiteSpace(address))
+            .ToArray();
+    }
+
+    private static string? ResolveStringFromPayload(string payloadJson, string propertyName)
+    {
         if (string.IsNullOrWhiteSpace(payloadJson))
         {
             return null;
@@ -100,7 +124,7 @@ public sealed class SmtpNotificationSender : INotificationSender
         {
             using var document = JsonDocument.Parse(payloadJson);
             if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty("recipientEmail", out var value)
+                || !document.RootElement.TryGetProperty(propertyName, out var value)
                 || value.ValueKind != JsonValueKind.String)
             {
                 return null;
@@ -114,9 +138,34 @@ public sealed class SmtpNotificationSender : INotificationSender
         }
     }
 
+    private MimeEntity BuildMessageBody(NotificationDelivery notification)
+    {
+        var plainBody = BuildBody(notification);
+        if (string.IsNullOrWhiteSpace(notification.HtmlBody))
+        {
+            return new TextPart("plain")
+            {
+                Text = plainBody
+            };
+        }
+
+        return new MultipartAlternative
+        {
+            new TextPart("plain")
+            {
+                Text = plainBody
+            },
+            new TextPart("html")
+            {
+                Text = BuildHtmlBody(notification)
+            }
+        };
+    }
+
     private string BuildBody(NotificationDelivery notification)
     {
         var originalRecipientEmail = ResolveRecipientEmailFromPayload(notification.PayloadJson);
+        var originalCcEmailAddresses = ResolveStringFromPayload(notification.PayloadJson, "ccEmailAddresses");
         if (!string.IsNullOrWhiteSpace(notification.Body))
         {
             if (string.IsNullOrWhiteSpace(recipientOverride))
@@ -124,7 +173,7 @@ public sealed class SmtpNotificationSender : INotificationSender
                 return notification.Body;
             }
 
-            return BuildOverrideHeader(notification, originalRecipientEmail) + notification.Body;
+            return BuildOverrideHeader(notification, originalRecipientEmail, originalCcEmailAddresses) + notification.Body;
         }
 
         var builder = new StringBuilder();
@@ -138,6 +187,11 @@ public sealed class SmtpNotificationSender : INotificationSender
             if (!string.IsNullOrWhiteSpace(originalRecipientEmail))
             {
                 builder.AppendLine($"OriginalRecipientEmail: {originalRecipientEmail}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(originalCcEmailAddresses))
+            {
+                builder.AppendLine($"OriginalCcEmailAddresses: {originalCcEmailAddresses}");
             }
         }
 
@@ -162,15 +216,57 @@ public sealed class SmtpNotificationSender : INotificationSender
         return builder.ToString();
     }
 
+    private string BuildHtmlBody(NotificationDelivery notification)
+    {
+        if (string.IsNullOrWhiteSpace(recipientOverride))
+        {
+            return notification.HtmlBody;
+        }
+
+        return BuildHtmlOverrideHeader(notification) + notification.HtmlBody;
+    }
+
     private static string BuildOverrideHeader(
         NotificationDelivery notification,
-        string? originalRecipientEmail)
+        string? originalRecipientEmail,
+        string? originalCcEmailAddresses)
     {
         var builder = new StringBuilder();
         builder.AppendLine($"OriginalRecipientRoleKey: {notification.RecipientRoleKey ?? "(none)"}");
         if (!string.IsNullOrWhiteSpace(originalRecipientEmail))
         {
             builder.AppendLine($"OriginalRecipientEmail: {originalRecipientEmail}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(originalCcEmailAddresses))
+        {
+            builder.AppendLine($"OriginalCcEmailAddresses: {originalCcEmailAddresses}");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string BuildHtmlOverrideHeader(NotificationDelivery notification)
+    {
+        var builder = new StringBuilder();
+        builder.Append("<p><strong>OriginalRecipientRoleKey:</strong> ")
+            .Append(HtmlEncoder.Default.Encode(notification.RecipientRoleKey ?? "(none)"))
+            .AppendLine("</p>");
+
+        var originalRecipientEmail = ResolveRecipientEmailFromPayload(notification.PayloadJson);
+        if (!string.IsNullOrWhiteSpace(originalRecipientEmail))
+        {
+            builder.Append("<p><strong>OriginalRecipientEmail:</strong> ")
+                .Append(HtmlEncoder.Default.Encode(originalRecipientEmail))
+                .AppendLine("</p>");
+        }
+
+        var originalCcEmailAddresses = ResolveStringFromPayload(notification.PayloadJson, "ccEmailAddresses");
+        if (!string.IsNullOrWhiteSpace(originalCcEmailAddresses))
+        {
+            builder.Append("<p><strong>OriginalCcEmailAddresses:</strong> ")
+                .Append(HtmlEncoder.Default.Encode(originalCcEmailAddresses))
+                .AppendLine("</p>");
         }
 
         return builder.ToString();

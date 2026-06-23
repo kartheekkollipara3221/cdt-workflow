@@ -501,7 +501,7 @@
             <td><code>NotificationContext</code></td>
             <td>Only when the action queues a templated notification</td>
             <td>Dictionary of string keys and values</td>
-            <td>Provides template values and, for Return to Maker, <code>recipientEmail</code>.</td>
+            <td>Provides template values, per-record <code>recipientEmail</code>, and optional <code>ccEmailAddresses</code>. Values are rendered into text and HTML emails by the workflow engine.</td>
           </tr>
         </tbody>
       </table>
@@ -577,6 +577,7 @@
   "returnedByDisplayName": "Checker One",
   "recipientDisplayName": "Maker One",
   "recipientEmail": "maker.one@example.test",
+  "ccEmailAddresses": "manager.one@example.test; audit.one@example.test",
   "traderDisplayName": "Trader One",
   "confirmerDisplayName": "BDRM One",
   "deskName": "Taxable",
@@ -586,6 +587,18 @@
   "submittedDate": "2026-06-09",
   "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
 }</code></pre>
+
+      <div class="callout info">
+        <code>ccEmailAddresses</code> accepts comma- or semicolon-separated addresses. The workflow engine persists it
+        with the notification context, so the same copied recipients are included on immediate action emails and later
+        SLA overdue emails for the created task.
+      </div>
+
+      <div class="callout info">
+        Send notification values as plain data, not HTML. The engine renders both text and HTML email bodies from SQL
+        templates, HTML-escapes caller-provided values, bolds important values from
+        <code>notificationContext</code>, and renders <code>tradeLink</code> as a clickable email link.
+      </div>
 
       <table>
         <thead>

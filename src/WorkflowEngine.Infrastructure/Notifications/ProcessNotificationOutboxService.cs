@@ -138,6 +138,7 @@ public sealed class ProcessNotificationOutboxService(
             row.RecipientUserId,
             row.Subject,
             row.Body,
+            row.HtmlBody,
             row.PayloadJson,
             row.Status,
             row.CorrelationId,

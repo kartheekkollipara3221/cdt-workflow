@@ -65,6 +65,12 @@ public sealed class Phase5SlaTests
         Assert.Equal("Overdue: Directed Trade Pending Checker Approval", overdueNotification.Subject);
         Assert.Contains("Kollipara, Kartheek", overdueNotification.Body, StringComparison.Ordinal);
         Assert.Contains("Sharepoint link = https://sharepoint.example.test/trades/1050", overdueNotification.Body, StringComparison.Ordinal);
+        Assert.Contains("<strong>Kollipara, Kartheek</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains("""<a href="https://sharepoint.example.test/trades/1050">Open trade</a>""", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        using var payload = JsonDocument.Parse(overdueNotification.PayloadJson);
+        Assert.Equal(
+            "cc.one@example.test; cc.two@example.test",
+            payload.RootElement.GetProperty("ccEmailAddresses").GetString());
 
         var second = await new RunSlaService(
             dbContext,
@@ -218,7 +224,8 @@ public sealed class Phase5SlaTests
             ["accountShortName"] = "EFG",
             ["accountDisplayName"] = "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
             ["submittedDate"] = "4/24/2026",
-            ["tradeLink"] = "https://sharepoint.example.test/trades/1050"
+            ["tradeLink"] = "https://sharepoint.example.test/trades/1050",
+            ["ccEmailAddresses"] = "cc.one@example.test; cc.two@example.test"
         };
     }
 

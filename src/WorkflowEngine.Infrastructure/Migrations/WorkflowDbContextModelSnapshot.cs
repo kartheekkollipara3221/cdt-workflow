@@ -133,6 +133,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("HtmlBody")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("BusinessObjectId")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -226,6 +230,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("BodyTemplate")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HtmlBodyTemplate")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

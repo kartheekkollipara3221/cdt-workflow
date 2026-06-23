@@ -928,6 +928,7 @@ X-Workflow-DisplayName: Checker One
       <ul>
         <li>Workflow transitions queue rows in <code>NotificationOutbox</code>.</li>
         <li>Rows are rendered from SQL metadata templates and caller-provided <code>notificationContext</code>.</li>
+        <li>Rows store both plain text and HTML bodies; HTML values from <code>notificationContext</code> are escaped by the engine.</li>
         <li>Action-created rows are dispatched by the API immediately after the workflow transaction commits.</li>
         <li>Pending rows remain available for retry through <code>process-notification-outbox</code>.</li>
         <li>SLA overdue rows are created by <code>run-sla</code>, not by form buttons.</li>
@@ -955,7 +956,7 @@ X-Workflow-DisplayName: Checker One
           </tr>
           <tr>
             <td><code>Notifications:Sender = Smtp</code></td>
-            <td>Sends with MailKit using SMTP host/from config, per-notification recipient email, or role mapping fallback.</td>
+            <td>Sends multipart text and HTML email with MailKit using SMTP host/from config, per-notification recipient email, or role mapping fallback.</td>
             <td>Target SMTP integration and live smoke testing.</td>
           </tr>
         </tbody>
@@ -995,6 +996,7 @@ X-Workflow-DisplayName: Checker One
       <ol>
         <li><code>Smtp:RecipientOverride</code> wins for smoke testing and redirects every message.</li>
         <li><code>notificationContext.recipientEmail</code> is used when the target API supplies a per-record recipient.</li>
+        <li><code>notificationContext.ccEmailAddresses</code> adds comma- or semicolon-separated CC recipients.</li>
         <li><code>Smtp:RoleEmailMap:{RecipientRoleKey}</code> is the fallback for role/group recipients.</li>
       </ol>
 
@@ -1002,6 +1004,17 @@ X-Workflow-DisplayName: Checker One
         For Return to Maker, the Maker can vary by business record, so the target API should include the actual
         Maker address in <code>notificationContext.recipientEmail</code>. The address is persisted in the
         notification payload and used by SMTP delivery without adding a workflow user lookup table.
+      </p>
+      <p>
+        If the UI has additional copied recipients, include them as
+        <code>notificationContext.ccEmailAddresses</code>. The value is persisted with the notification context, so
+        both action-created emails and later SLA overdue emails for that task include the same copied recipients.
+        When <code>Smtp:RecipientOverride</code> is configured for smoke testing, real CC delivery is suppressed and
+        the intended CC list is written into the test email body.
+      </p>
+      <p>
+        Send notification values as plain data, not HTML. Seeded templates bold important values in the HTML email
+        body and render <code>tradeLink</code> as a clickable link.
       </p>
 
       <h3>Common notification context tokens</h3>
@@ -1019,7 +1032,7 @@ X-Workflow-DisplayName: Checker One
           </tr>
           <tr>
             <td>Return to Maker</td>
-            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>recipientEmail</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
+            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>recipientEmail</code>, optional <code>ccEmailAddresses</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
           </tr>
           <tr>
             <td>Trading execution to BDRM</td>

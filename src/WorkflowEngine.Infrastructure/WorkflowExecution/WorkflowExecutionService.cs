@@ -318,6 +318,13 @@ public sealed class WorkflowExecutionService(
         return templateRenderer.Render(template, context, "workflow.notificationContext");
     }
 
+    private NotificationTemplateRenderResult RenderHtmlTemplate(
+        string template,
+        IReadOnlyDictionary<string, string?> context)
+    {
+        return templateRenderer.RenderHtml(template, context, "workflow.notificationContext");
+    }
+
     private static Dictionary<string, string?> BuildNotificationContext(
         WorkflowActionEnvelope envelope,
         WorkflowInstance instance,
@@ -536,7 +543,11 @@ public sealed class WorkflowExecutionService(
                         recipientRoleKey);
                     var renderedSubject = RenderTemplate(route.SubjectTemplate, notificationContext);
                     var renderedBody = RenderTemplate(route.BodyTemplate, notificationContext);
-                    var templateErrors = renderedSubject.Errors.Concat(renderedBody.Errors).ToArray();
+                    var renderedHtmlBody = RenderHtmlTemplate(route.HtmlBodyTemplate, notificationContext);
+                    var templateErrors = renderedSubject.Errors
+                        .Concat(renderedBody.Errors)
+                        .Concat(renderedHtmlBody.Errors)
+                        .ToArray();
                     if (templateErrors.Length > 0)
                     {
                         transaction?.Rollback();
@@ -563,6 +574,7 @@ public sealed class WorkflowExecutionService(
                         RecipientUserId = null,
                         Subject = renderedSubject.Rendered,
                         Body = renderedBody.Rendered,
+                        HtmlBody = renderedHtmlBody.Rendered,
                         PayloadJson = JsonSerializer.Serialize(notificationContext),
                         Status = "Pending",
                         CorrelationId = normalized.EffectiveCorrelationId,

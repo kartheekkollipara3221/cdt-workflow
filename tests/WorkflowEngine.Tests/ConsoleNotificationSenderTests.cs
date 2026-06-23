@@ -21,6 +21,7 @@ public sealed class ConsoleNotificationSenderTests
             null,
             "Task assigned",
             "Rendered body",
+            "<p>Rendered body</p>",
             """{"referenceNumber":"1050"}""",
             "Pending",
             "corr-1",
