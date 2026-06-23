@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-06-22T23:03:47-04:00
+Last updated: 2026-06-22T23:16:22-04:00
 
 ## Current Goal
 
@@ -137,6 +137,20 @@ Pushed commits:
 
 Added `docs/target-api-notification-changes-handoff.html` as the precise target API integration checklist for the last two notification changes: per-record SMTP recipients/copied recipients and persisted HTML notification bodies. It lists target API files to update, corresponding source files in this repo, SQL column changes, request DTO shape, dispatch pattern, SMTP configuration, and verification steps.
 
+### API JSON body and console real-usage handoff
+
+Added `docs/api-json-bodies-and-console-real-usage.html` as the current one-file reference for:
+
+- all public workflow API JSON body shapes for `POST /v1/WorkflowStart` and `POST /v1/WorkflowAction`;
+- the no-body shape for `GET /v1/WorkflowContext`;
+- trusted actor headers;
+- the Portfolio Trade sample action flow and dynamic trading desk role keys;
+- action-specific `notificationContext` examples;
+- fields the target API must not send, including `toState`, form payload, UI echo fields, expected state/task/version guards, and generated IDs;
+- console commands classified as real operational use, support diagnostics, or demo-only.
+
+Updated `docs/README.md` so the new API JSON body handoff is discoverable.
+
 ### Restore bundle
 
 `restore-repo.ps1` is the portable base64 PowerShell bundle for target-api handoff. It restores the repository source/handoff content without `.git`, `bin`, `obj`, `.tools`, local caches, logs, or the bundle script itself.
@@ -186,11 +200,11 @@ dotnet .\WorkflowEngine.Console.dll process-notification-outbox
 
 ## Current Worktree Expectations
 
-Expected local changes for this frontend handoff slice:
+Expected local changes for this API JSON body and console real-usage documentation slice:
 
 - `CODEX_HANDOFF.md`
 - `docs/README.md`
-- `docs/frontend-workflow-api-handoff.html`
+- `docs/api-json-bodies-and-console-real-usage.html`
 
 Run before further edits:
 
@@ -295,6 +309,11 @@ Latest verification for the frontend handoff documentation slice:
 
 - `dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false --no-restore` passed: 41 passed, 0 failed, 0 skipped.
 - `git diff --check` reported only Git line-ending warnings for edited markdown files, with no whitespace errors.
+
+Latest verification for the API JSON body and console real-usage documentation slice:
+
+- Targeted text check confirmed the new HTML contains the current endpoints, key action names, dynamic Trading Desk role key, and console outbox command.
+- `git diff --check` passed with no whitespace errors; it reported only Git line-ending warnings for edited files.
 
 Latest verification after the per-record recipient change:
 
