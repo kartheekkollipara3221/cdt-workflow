@@ -1,13 +1,61 @@
 # CDT Workflow Current Context
 
-Last updated: 2026-06-20T13:19:41-04:00
+Last updated: 2026-07-21T23:06:04-04:00
 Workspace: `C:\projects\cdt-workflow`
 Branch: `console-code-first-0518`
-Current HEAD before beginner guide commit: `00bcf07`
+Current HEAD: `b39a84d api-integration`
 
 ## Latest Session Context
 
-The current work is an external target-machine integration handoff, not broad source implementation in this repo.
+External target integration is complete. The new work is discovery/design for adding workflow coverage for the new `SQMS` module, described by the user as Secondary Sales Qualified Matching Service.
+
+The user has added the first SQMS source reference at:
+
+```text
+SQMS/Opportunity status.txt
+```
+
+Current live `git status --short --untracked-files=normal` before saving this handoff showed:
+
+```text
+?? SQMS/
+```
+
+No SQMS workflow implementation has started. Do not edit code until the remaining SQMS files are added and the new workflow steps are understood.
+
+What was learned from the first SQMS file:
+
+- It is legacy SharePoint-style source/reference material, not clean integrated .NET workflow-engine code.
+- It appears centered on opportunity status behavior for secondary sales.
+- Visible concepts include `Pending Seller Approval`, open-to-bidding notification/reminder, `CLOSED TO BIDDING`, bid updates to `NOT ALLOCATED`, and bid updates to `IPG REVIEW`.
+- Some behavior looks user workflow-like, especially `OpportunityStatusChangePendingSellerApproval`.
+- Some behavior looks scheduled/job-like, especially daily open-to-bidding notifications and automatic close-to-bidding processing.
+- The current engine can host another workflow definition through SQL metadata, but current seed/verification code is PortfolioTrade-specific.
+
+Important current decision:
+
+- Pause now. The user will add the remaining SQMS-related code files and revisit.
+- On resume, reread the entire `SQMS/` folder first. Do not rely only on `Opportunity status.txt`.
+- Before implementation, continue the design/brainstorming flow and identify exactly which two SQMS workflow steps are being added.
+- Keep SQMS metadata-driven. Do not hardcode SQMS business behavior inside the reusable workflow engine.
+- Separate true workflow steps/actions from scheduled/background status jobs.
+
+First unresolved clarification for the next session:
+
+```text
+Which two SQMS workflow steps should be added after the full SQMS source is available?
+```
+
+Initial candidate steps inferred from the first file were:
+
+1. `PendingSellerApproval`
+2. `OpenToBidding`
+
+This is only an inference and must be verified against the remaining SQMS files and the user's intent.
+
+## Prior Target Integration Context
+
+The previous work was an external target-machine integration handoff, not broad source implementation in this repo.
 
 Latest recipient decision:
 
@@ -67,8 +115,10 @@ git diff --name-only
 2. `AGENTS.MD`
 3. `PROJECT.md`
 4. `CODEX_HANDOFF.md`
-5. `workflow-api/WORKFLOW_API_BOUNDARIES.md`
-6. `TODO_WORKFLOW_API.md` only when continuing API migration or operational tasks
+5. `NEXT_CODEX_PROMPT.md`
+6. `SQMS/` after the user adds the remaining SQMS files
+7. `workflow-api/WORKFLOW_API_BOUNDARIES.md` if API contract questions come up
+8. `TODO_WORKFLOW_API.md` only when continuing API migration or operational tasks
 
 ## Active Repo Shape
 
@@ -79,6 +129,7 @@ git diff --name-only
 - `samples/workflow-actions`: Portfolio Trade sample requests.
 - `docs/superpowers`: active specs/plans.
 - `.tools/smtp4dev`: retained local SMTP test tool.
+- `SQMS/`: currently untracked SQMS reference/source material; first observed file is `Opportunity status.txt`. More files are expected from the user before design resumes.
 
 Removed by user-approved cleanup:
 
@@ -254,6 +305,11 @@ Full core test project passed: 235 passed, 3 skipped SMTP integration tests.
 
 ## Known Risks And Remaining Work
 
+- SQMS discovery is incomplete until the user adds the remaining SQMS files.
+- Do not design or implement the two SQMS workflow steps from `Opportunity status.txt` alone.
+- The inferred SQMS statuses/actions may be wrong until the full module is inspected.
+- The reusable engine should remain generic; SQMS should be seeded metadata and samples, not engine-specific branches.
+- Separate user-driven workflow transitions from scheduled jobs such as daily reminders or automatic close-to-bidding behavior.
 - Existing target databases with non-`dbo` workflow tables need a controlled migration/cleanup plan.
 - Live smtp4dev/Tier 2 SMTP verification was not rerun for this slice; default tests skip those integration tests by design.
 - `show-notifications` displays subject/recipient/status, not the persisted body.

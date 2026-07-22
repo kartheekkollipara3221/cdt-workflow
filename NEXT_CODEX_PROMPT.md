@@ -2,14 +2,15 @@
 
 You are working in `C:\projects\cdt-workflow` on branch `console-code-first-0518`.
 
+Target API integration is complete. The current paused work is discovery for adding two workflow steps for the new `SQMS` module, described by the user as Secondary Sales Qualified Matching Service.
+
 Before planning or editing:
 
 1. Read `AGENTS.MD`.
 2. Read `PROJECT.md`; it is the source of truth.
 3. Read `context.md`.
 4. Read `CODEX_HANDOFF.md`.
-5. Read `workflow-api/WORKFLOW_API_BOUNDARIES.md`.
-6. Inspect the current worktree:
+5. Inspect the current worktree:
 
 ```powershell
 git status --short --untracked-files=normal
@@ -17,115 +18,52 @@ git diff --stat
 git diff --name-only
 ```
 
+6. Read all files currently under `SQMS/`.
+
+Current known SQMS state:
+
+- The first observed file is `SQMS/Opportunity status.txt`.
+- More SQMS files are expected from the user before work resumes.
+- No code implementation has started.
+- The first file appears to be legacy SharePoint-style reference code around opportunity status changes.
+- Visible concepts include `Pending Seller Approval`, open-to-bidding notifications/reminders, `CLOSED TO BIDDING`, bid status `NOT ALLOCATED`, and bid status `IPG REVIEW`.
+- Some logic appears user-workflow-like; some logic appears scheduled/background-job-like.
+
 Current repo shape:
 
 - `src/WorkflowEngine.sln` is the reusable workflow engine and console/demo host.
-- `workflow-api/WorkflowEngine.WorkflowApi.slnx` is the active ASP.NET Core workflow API host.
+- `workflow-api/WorkflowEngine.WorkflowApi.slnx` is the active ASP.NET Core workflow API reference host.
 - `tests/WorkflowEngine.Tests` and `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests` are the active test suites.
 - `samples/workflow-actions` contains Portfolio Trade sample action JSON.
-- `docs/superpowers` contains current design/planning docs.
-- `.tools/smtp4dev` is intentionally retained for local SMTP verification.
+- `SQMS/` is currently reference/source material for the new module and may be untracked.
 
-Important cleanup state:
+Important boundaries:
 
-- The old tracked `api/` host has been removed by user approval.
-- Stale generated/historical docs for the old host were removed.
-- Stale generated bundle/restore scripts were removed.
-- Do not restore the deleted host, deleted docs, or deleted bundle scripts unless the user explicitly asks.
-- Do not add `.tools/` unless the user asks to track the local smtp4dev tool.
+- Do not make code changes until the SQMS workflow steps are understood and the user approves a design.
+- Keep the engine generic and metadata-driven.
+- Do not hardcode SQMS behavior inside the reusable engine.
+- SQMS should be represented as workflow metadata, samples, and tests where possible.
+- Separate true user workflow steps/actions from scheduled jobs such as reminders or automatic close-to-bidding processing.
+- Do not add new public DTO fields unless the user explicitly approves the contract change.
 
-Current uncommitted source work:
+First question to answer after reading the full `SQMS/` folder:
 
-- EF Core is pinned to the `dbo` schema through `WorkflowDbContext.DefaultSchema`, `HasDefaultSchema("dbo")`, and `MigrationsHistoryTable("__EFMigrationsHistory", "dbo")`.
-- Existing migrations and the model snapshot were updated to schema-qualify tables and foreign keys.
-- `tests/WorkflowEngine.Tests/MigrationSchemaTests.cs` verifies generated migration SQL uses `[dbo]`.
+```text
+Which exact two SQMS workflow steps should be added?
+```
 
-Current feature state:
+Initial unconfirmed candidates inferred from `Opportunity status.txt`:
 
-- Notification templates are implemented through SQL metadata and persisted outbox body content.
-- Notification templates now persist both plain-text and HTML email bodies through `NotificationRoute.HtmlBodyTemplate` and `NotificationOutbox.HtmlBody`.
-- The workflow API accepts optional `notificationContext` on action and start requests.
-- SLA overdue notifications render from stored task notification snapshots and do not call an external API for email data.
-- Portfolio Trade/Directed Trade wording remains seed/sample metadata only.
-- The UI/target API should send plain values in `notificationContext`; the engine HTML-escapes caller-provided values, bolds important seeded values, and renders `tradeLink` as a clickable HTML email link.
+1. `PendingSellerApproval`
+2. `OpenToBidding`
 
-Latest external target-machine decision:
+Do not assume those are correct. Verify against the full SQMS source and the user's intent.
 
-- The IIS-hosted target API should send normal action-created notifications immediately after the form action executes workflow movement.
-- SMTP delivery uses persisted plain text and HTML bodies; when `HtmlBody` is present, `SmtpNotificationSender` sends multipart text/html email.
-- `notificationContext.ccEmailAddresses` is persisted for action-created notifications and snapshotted for SLA overdue notifications.
-- `run-sla` is only for overdue SLA detection.
-- Windows Task Scheduler is available on the target machine and should run the separate workflow processor for `run-sla` and `process-notification-outbox`.
-- `process-notification-outbox` is still needed for pending-row retry/backlog, including failed action-created SMTP rows and SLA overdue rows.
-- Do not put the scheduled SLA/outbox loop inside the IIS target API.
-- If implementation guidance resumes, keep the target API edit narrow: hook notification dispatch immediately after the service method that calls workflow execution, selecting created rows by `WorkflowInstanceId` + `CorrelationId`.
-
-Useful verification commands:
+Useful verification commands once implementation eventually starts:
 
 ```powershell
-dotnet build src\WorkflowEngine.sln -m:1 /p:UseAppHost=false
-dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
+dotnet build src\WorkflowEngine.sln -warnaserror -m:1 /p:UseAppHost=false
+dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -warnaserror -m:1 /p:UseAppHost=false
 dotnet test workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 /p:UseAppHost=false
-dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 --filter MigrationSchemaTests /p:UseAppHost=false
+dotnet test tests\WorkflowEngine.Tests\WorkflowEngine.Tests.csproj -m:1 /p:UseAppHost=false
 ```
-
-Current endpoint contracts:
-
-`POST /v1/WorkflowStart`
-
-```json
-{
-  "workflowKey": "PortfolioTrade",
-  "businessObjectType": "PortfolioTrade",
-  "businessObjectId": "PT-123",
-  "initialActionKey": "SubmitForChecker",
-  "notificationContext": {
-    "submitterDisplayName": "Maker One",
-    "deskName": "Taxable",
-    "securityType": "Other",
-    "accountShortName": "EFG",
-    "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
-    "tradeLink": "https://sharepoint.example/trades/PT-123"
-  }
-}
-```
-
-`GET /v1/WorkflowContext?workflowInstanceId=WF-PT-123`
-
-`POST /v1/WorkflowAction`
-
-```json
-{
-  "workflowInstanceId": "WF-PT-123",
-  "actionKey": "CheckerSendToTradingDesk",
-  "assignedRoleKey": "TradingDeskTaxable",
-  "notificationContext": {
-    "submitterDisplayName": "Maker One",
-    "deskName": "Taxable",
-    "securityType": "Other",
-    "accountShortName": "EFG",
-    "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
-    "tradeLink": "https://sharepoint.example/trades/PT-123"
-  }
-}
-```
-
-Headers for local testing:
-
-```text
-X-Workflow-UserId: maker1
-X-Workflow-Roles: Maker
-X-Workflow-DisplayName: Maker One
-```
-
-For Checker actions:
-
-```text
-X-Workflow-UserId: checker1
-X-Workflow-Roles: Checker
-X-Workflow-DisplayName: Checker One
-```
-
-Suggested next task:
-
-Continue target-machine integration guidance. First clarify whether the user wants one-step-at-a-time target API code changes for immediate action notification dispatch, or Task Scheduler setup steps for SLA/outbox processing. If code guidance resumes, stay destination-first and do not assume the local `workflow-api` host is the target being edited.

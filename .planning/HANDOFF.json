@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-06-05T00:02:09-04:00",
+  "timestamp": "2026-07-21T23:06:04-04:00",
   "phase": null,
   "phase_name": null,
   "phase_dir": null,
@@ -11,67 +11,77 @@
   "completed_tasks": [
     {
       "id": 1,
-      "name": "Clarify restore bundle usage",
+      "name": "Confirm target API integration is complete",
       "status": "done"
     },
     {
       "id": 2,
-      "name": "Provide Swagger payloads for one-record workflow testing",
+      "name": "Inspect first SQMS reference file",
       "status": "done"
     },
     {
       "id": 3,
-      "name": "Clarify action notifications versus SLA notifications",
+      "name": "Identify initial SQMS workflow/status candidates without coding",
       "status": "done"
     },
     {
       "id": 4,
-      "name": "Define target-machine Task Scheduler role",
+      "name": "Pause for user to add remaining SQMS files",
       "status": "done"
     }
   ],
   "remaining_tasks": [
     {
       "id": 5,
-      "name": "If requested, guide narrow target API hook for immediate action notification dispatch",
+      "name": "Reread the complete SQMS folder after user adds remaining files",
       "status": "not_started"
     },
     {
       "id": 6,
-      "name": "If requested, guide Task Scheduler setup for run-sla and process-notification-outbox",
+      "name": "Separate SQMS user workflow steps from scheduled/background jobs",
+      "status": "not_started"
+    },
+    {
+      "id": 7,
+      "name": "Confirm the exact two SQMS workflow steps with the user",
+      "status": "not_started"
+    },
+    {
+      "id": 8,
+      "name": "Propose metadata-driven implementation approaches before coding",
       "status": "not_started"
     }
   ],
   "blockers": [],
   "human_actions_pending": [
     {
-      "action": "Choose next slice",
-      "context": "User may want either target API code integration for immediate action notifications or Task Scheduler deployment steps for SLA/outbox retry.",
-      "blocking": false
+      "action": "Add remaining SQMS code files",
+      "context": "Only SQMS/Opportunity status.txt is currently available. The user said they will add all remaining SQMS files and revisit.",
+      "blocking": true
+    },
+    {
+      "action": "Confirm exact SQMS workflow steps",
+      "context": "PendingSellerApproval and OpenToBidding are only inferred candidates from the first file.",
+      "blocking": true
     }
   ],
   "decisions": [
     {
-      "decision": "Normal workflow action notifications are API-owned",
-      "rationale": "The notification should be sent when a user action moves the record to the next workflow state."
+      "decision": "Target API integration is complete",
+      "rationale": "User stated integration to target is complete."
     },
     {
-      "decision": "run-sla is only for overdue detection",
-      "rationale": "SLA monitor creates SlaTaskOverdue rows; it does not handle normal transition notifications."
+      "decision": "Pause SQMS work before implementation",
+      "rationale": "User will add remaining SQMS source files before revisiting."
     },
     {
-      "decision": "Task Scheduler should host SLA/outbox processing separately from IIS target API",
-      "rationale": "Avoid broad changes to the IIS-hosted target API and keep retry/backlog processing isolated."
+      "decision": "SQMS work must remain metadata-driven",
+      "rationale": "PROJECT.md requires the reusable workflow engine to stay generic and not hardcode workflow-specific behavior."
     }
   ],
   "uncommitted_files": [
-    ".gitignore",
-    "context.md",
-    "CODEX_HANDOFF.md",
-    "NEXT_CODEX_PROMPT.md",
-    ".planning/HANDOFF.json",
-    ".planning/.continue-here.md"
+    "SQMS/"
   ],
-  "next_action": "Start by asking whether the user wants one-step-at-a-time target API action-dispatch integration or Task Scheduler setup.",
-  "context_notes": "Target API should dispatch action-created notification rows immediately after workflow execution succeeds, using WorkflowInstanceId plus CorrelationId. Task Scheduler should run run-sla and process-notification-outbox for overdue detection and retry/backlog."
+  "next_action": "After the user adds the remaining SQMS files, inspect git status and read every file under SQMS/ before asking which exact two workflow steps should be added.",
+  "context_notes": "The first SQMS file is legacy SharePoint-style reference code. It mentions Pending Seller Approval, open-to-bidding notifications/reminders, CLOSED TO BIDDING, NOT ALLOCATED, and IPG REVIEW. Treat these as clues only. Separate true workflow actions from scheduled/background processing before designing any metadata."
 }

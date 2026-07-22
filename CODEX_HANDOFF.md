@@ -1,29 +1,36 @@
 # Codex Handoff
 
-Last updated: 2026-06-22T23:16:22-04:00
+Last updated: 2026-07-21T23:06:04-04:00
 
 ## Current Goal
 
-Continue the external target API integration handoff. The user restored/copied the repo bundle to another machine and is integrating workflow behavior into an IIS-hosted target API that also supports other application APIs.
+Target API integration is complete. The current work is paused before implementing a new workflow definition/step slice for the `SQMS` module, described by the user as Secondary Sales Qualified Matching Service.
 
-Latest recipient decision:
+Current SQMS state:
 
-- Maker can vary per business record, so Return-to-Maker email cannot rely only on `Smtp:RoleEmailMap:Maker`.
-- SMTP delivery now resolves recipients in this order: `Smtp:RecipientOverride`, then `notificationContext.recipientEmail` persisted in notification `PayloadJson`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
-- Target API integration should provide `notificationContext.recipientEmail` for business-record-specific recipients.
-- UI-provided copied recipients go in `notificationContext.ccEmailAddresses` as a comma- or semicolon-separated string.
-- `ccEmailAddresses` is persisted in `NotificationOutbox.PayloadJson`; for task-created notifications it is also snapshotted in `WorkflowTask.NotificationContextJson`, so SLA overdue emails include the same copied recipients.
-- When `Smtp:RecipientOverride` is configured for smoke testing, real CC delivery is suppressed and the intended CC list is written into the override email body.
-- Notification emails now persist both plain text and HTML bodies. The target API/UI should keep sending plain data in `notificationContext`; the engine HTML-escapes caller-provided values, bolds important seeded values, and renders `tradeLink` as a clickable link in HTML emails.
-- This keeps the no SQL user table / no role-to-email lookup table boundary intact.
+- The user added the first SQMS reference file under `SQMS/Opportunity status.txt`.
+- The user said they will add all remaining SQMS code files and revisit.
+- Do not make code changes yet.
+- Continue discovery first once the remaining files are present.
 
-The immediate design decision from the latest session:
+Initial observations from `SQMS/Opportunity status.txt`:
 
-- The target API should send normal action-created notifications when a user action moves a record to the next workflow state.
-- `run-sla` is only for overdue SLA notification creation.
-- Task Scheduler on the target machine should run the separate processor for `run-sla` and `process-notification-outbox`.
-- `process-notification-outbox` remains the retry/backlog path for pending notification rows.
-- Do not place the scheduled SLA/outbox loop inside the IIS target API.
+- The file is legacy SharePoint-style reference code.
+- It appears to describe opportunity status behavior, not already-integrated workflow-engine metadata.
+- Visible concepts include `Pending Seller Approval`, open-to-bidding notification/reminder behavior, `CLOSED TO BIDDING`, bid status `NOT ALLOCATED`, and bid status `IPG REVIEW`.
+- Some behavior appears user workflow-like; some appears scheduled/background-job-like.
+- The current reusable engine can support another workflow definition through metadata, but the current seed and verification services are still PortfolioTrade-specific.
+
+Unresolved next clarification:
+
+- After all SQMS files are added, identify the exact two workflow steps the user wants.
+- Initial inferred candidates were `PendingSellerApproval` and `OpenToBidding`, but this is not confirmed.
+
+Boundary for the next session:
+
+- Keep SQMS metadata-driven.
+- Do not hardcode SQMS business behavior inside the reusable workflow engine.
+- Separate true user workflow steps/actions from scheduled jobs such as daily notifications or automatic close-to-bidding processing.
 
 ## Required Reading
 
@@ -31,8 +38,10 @@ The immediate design decision from the latest session:
 2. `PROJECT.md`
 3. `context.md`
 4. `CODEX_HANDOFF.md`
-5. `workflow-api/WORKFLOW_API_BOUNDARIES.md`
-6. `TODO_WORKFLOW_API.md` when continuing API migration or operational follow-up
+5. `NEXT_CODEX_PROMPT.md`
+6. `SQMS/` after the user adds the remaining SQMS files
+7. `workflow-api/WORKFLOW_API_BOUNDARIES.md` if API contract questions come up
+8. `TODO_WORKFLOW_API.md` when continuing API migration or operational follow-up
 
 ## Active Repo Shape
 
@@ -43,6 +52,7 @@ The immediate design decision from the latest session:
 - `samples/workflow-actions`: Portfolio Trade sample action JSON.
 - `docs/superpowers`: active design and implementation plans/specs.
 - `.tools/smtp4dev`: retained local SMTP test tool folder.
+- `SQMS/`: currently untracked SQMS reference/source material. First observed file is `Opportunity status.txt`; more files are expected before design resumes.
 
 The old tracked `api/` host has been removed from the working tree by user approval. Do not bring it back unless the user explicitly asks.
 
@@ -82,6 +92,18 @@ Added `docs/beginners-api-console-handoff.html` as the single-file beginner hand
 The guide intentionally distinguishes the local `workflow-api/` reference host from the external target API so future work does not drift back to the removed `api/` host.
 
 ## Latest Completed Changes
+
+### SQMS discovery pause
+
+No code was changed for SQMS.
+
+The only current SQMS artifact is an untracked folder:
+
+```text
+SQMS/Opportunity status.txt
+```
+
+The first pass identified likely status/workflow concepts but did not confirm the two new workflow steps. The user will add the remaining SQMS files and revisit. The next session should inspect all files under `SQMS/` before asking the next clarifying question.
 
 ### Frontend workflow API handoff
 
@@ -200,11 +222,11 @@ dotnet .\WorkflowEngine.Console.dll process-notification-outbox
 
 ## Current Worktree Expectations
 
-Expected local changes for this API JSON body and console real-usage documentation slice:
+Expected local state after this pause:
 
-- `CODEX_HANDOFF.md`
-- `docs/README.md`
-- `docs/api-json-bodies-and-console-real-usage.html`
+- `SQMS/` may be untracked while the user is adding remaining source files.
+- No SQMS implementation edits should exist yet.
+- Handoff/context files may contain this SQMS pause state.
 
 Run before further edits:
 
@@ -358,6 +380,11 @@ Latest restore-bundle verification:
 
 ## Remaining Work
 
+- Wait for the user to add the remaining SQMS files.
+- Reread the complete `SQMS/` folder.
+- Understand the new module's status/action flow before coding.
+- Confirm the exact two SQMS workflow steps with the user.
+- Propose metadata-driven approaches and get design approval before implementation.
 - For the target API integration, ensure Return-to-Maker request construction includes `notificationContext.recipientEmail`.
 - Keep `Smtp:RecipientOverride` configured during live SMTP smoke testing, then remove it only when ready to send to real per-record or role-map recipients.
 - For target-machine operations, publish/copy the workflow console processor, configure DB/SMTP settings, and schedule `run-sla` followed by `process-notification-outbox` in Windows Task Scheduler.
@@ -367,5 +394,5 @@ Latest restore-bundle verification:
 ## Next Session Prompt
 
 ```text
-Continue in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD, PROJECT.md, context.md, CODEX_HANDOFF.md, and workflow-api/WORKFLOW_API_BOUNDARIES.md first. The user is pausing after deciding the external target API should dispatch normal action-created notifications immediately, while Task Scheduler handles run-sla overdue detection and process-notification-outbox retry/backlog processing. Do not put the scheduled loop inside the IIS target API. Before editing, inspect git status and diffs, then continue from the user's latest request.
+Continue in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD, PROJECT.md, context.md, CODEX_HANDOFF.md, NEXT_CODEX_PROMPT.md, and then inspect the full SQMS/ folder. Target API integration is complete. The user is adding remaining SQMS files before revisiting a request to add two workflow steps for the Secondary Sales Qualified Matching Service module. Do not edit code yet. First understand the SQMS source/status flow, separate workflow actions from scheduled/background jobs, and confirm the exact two workflow steps with the user before proposing a metadata-driven design.
 ```
