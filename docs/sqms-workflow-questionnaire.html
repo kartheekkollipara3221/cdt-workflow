@@ -1,0 +1,1773 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQMS Workflow Discovery Questionnaire</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --heading: #102a43;
+      --muted: #52606d;
+      --line: #d8e2ec;
+      --line-strong: #b8c8d8;
+      --page: #f4f7fa;
+      --panel: #ffffff;
+      --soft: #eef3f8;
+      --accent: #0f6b6e;
+      --accent-dark: #0a5053;
+      --accent-soft: #e3f5f4;
+      --navy: #102a43;
+      --navy-soft: #eaf0f6;
+      --warn: #7a4a00;
+      --warn-soft: #fff4db;
+      --danger: #8a1f11;
+      --danger-soft: #fdecea;
+      --ok: #17613a;
+      --ok-soft: #e7f6ed;
+      --shadow: 0 12px 30px rgba(15, 42, 67, 0.08);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    button,
+    input,
+    textarea,
+    select { font: inherit; }
+
+    button,
+    a,
+    input,
+    textarea { transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+
+    a { color: var(--accent-dark); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 1000;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--navy);
+      transform: translateY(-160%);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .hero {
+      color: #fff;
+      background:
+        radial-gradient(circle at 85% 20%, rgba(74, 201, 198, 0.22), transparent 32%),
+        linear-gradient(135deg, #102a43 0%, #173f5f 58%, #0f6b6e 100%);
+      border-bottom: 4px solid #67c7c4;
+    }
+
+    .hero-inner {
+      width: min(1440px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 34px 0 30px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: #aee6e3;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 { line-height: 1.2; }
+
+    h1 {
+      max-width: 850px;
+      margin: 0;
+      font-size: clamp(30px, 4vw, 48px);
+      letter-spacing: -0.025em;
+    }
+
+    .lede {
+      max-width: 900px;
+      margin: 14px 0 0;
+      color: #dbe9f2;
+      font-size: 17px;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 11px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+      color: #edf8fa;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 26px;
+      width: min(1440px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 26px 0 80px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .progress-panel {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--accent-soft), #fff);
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: var(--heading);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .progress-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dbe5ec;
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), #49a7a6);
+      transition: width 0.25s ease;
+    }
+
+    .save-state {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .side-nav {
+      display: grid;
+      gap: 3px;
+      padding: 12px;
+    }
+
+    .side-nav a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      color: #334e68;
+      font-size: 14px;
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .side-nav a:hover,
+    .side-nav a.active {
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+    }
+
+    .nav-count {
+      min-width: 34px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--soft);
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .side-actions {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 8px 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: #243b53;
+      background: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 14px rgba(15, 107, 110, 0.12);
+    }
+
+    .btn.primary {
+      border-color: var(--accent);
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .btn.primary:hover { background: var(--accent-dark); }
+
+    .btn.danger {
+      border-color: #e6aaa3;
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .content { min-width: 0; }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto;
+      gap: 12px;
+      margin: -8px 0 20px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 8px 22px rgba(15, 42, 67, 0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .search-wrap { position: relative; }
+
+    .search-wrap input {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 12px 8px 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .search-wrap::before {
+      position: absolute;
+      top: 9px;
+      left: 13px;
+      content: "⌕";
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .filter-btn {
+      min-height: 38px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: #486581;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      border-color: var(--accent);
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+    }
+
+    .intro-card,
+    .confirmed-card,
+    .section-shell,
+    .summary-card {
+      margin-bottom: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .intro-card,
+    .confirmed-card,
+    .summary-card { padding: 22px; }
+
+    .intro-card h2,
+    .confirmed-card h2,
+    .summary-card h2,
+    .section-heading h2 {
+      margin: 0;
+      color: var(--heading);
+      font-size: 24px;
+    }
+
+    .callout {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border: 1px solid #f2c66d;
+      border-left: 5px solid #d79019;
+      border-radius: 8px;
+      color: #5d3a00;
+      background: var(--warn-soft);
+    }
+
+    .confirmed-card {
+      border-color: #a7d8bb;
+      background: linear-gradient(180deg, var(--ok-soft), #fff 48%);
+    }
+
+    .decision-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .decision {
+      display: flex;
+      gap: 10px;
+      padding: 11px 12px;
+      border: 1px solid #bcdcc8;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .decision-mark {
+      flex: 0 0 auto;
+      color: var(--ok);
+      font-weight: 900;
+    }
+
+    .section-shell {
+      overflow: clip;
+      scroll-margin-top: 90px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #f8fafc, #fff);
+    }
+
+    .section-heading p {
+      max-width: 820px;
+      margin: 7px 0 0;
+      color: var(--muted);
+    }
+
+    .section-progress {
+      flex: 0 0 auto;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #334e68;
+      background: var(--soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .question-list {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .question-card {
+      scroll-margin-top: 100px;
+      border: 1px solid var(--line);
+      border-left: 5px solid #8da6ba;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .question-card.blocking { border-left-color: #d79019; }
+    .question-card.answered { border-left-color: #45a36b; }
+    .question-card.hidden { display: none; }
+
+    .question-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      padding: 16px 16px 14px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+    }
+
+    .question-head:hover { background: #fbfcfd; }
+
+    .question-id {
+      min-width: 42px;
+      padding: 4px 7px;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--navy);
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .question-title {
+      margin: 0;
+      color: var(--heading);
+      font-size: 18px;
+    }
+
+    .question-prompt {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-chip {
+      white-space: nowrap;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--warn);
+      background: var(--warn-soft);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .answered .status-chip {
+      color: var(--ok);
+      background: var(--ok-soft);
+    }
+
+    .question-body { padding: 16px; }
+
+    .question-card.collapsed .question-body { display: none; }
+
+    .evidence,
+    .recommendation {
+      margin-bottom: 14px;
+      padding: 11px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .evidence {
+      border: 1px solid #c6d6e5;
+      color: #334e68;
+      background: var(--navy-soft);
+    }
+
+    .recommendation {
+      border: 1px solid #9bd7d5;
+      color: #124e50;
+      background: var(--accent-soft);
+    }
+
+    .field {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #edf1f4;
+    }
+
+    .field:first-of-type {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #243b53;
+      font-weight: 750;
+    }
+
+    .required-mark { color: var(--danger); }
+
+    .field-help {
+      margin: -3px 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .choices {
+      display: grid;
+      gap: 8px;
+    }
+
+    .choice {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .choice:hover {
+      border-color: #91c9c7;
+      background: #f8fdfd;
+    }
+
+    .choice:has(input:checked) {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: 0 0 0 1px rgba(15, 107, 110, 0.08);
+    }
+
+    .choice input {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+    }
+
+    .choice-copy { min-width: 0; }
+    .choice-copy strong { color: #243b53; }
+
+    .recommended-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      color: var(--accent-dark);
+      background: #cdeceb;
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    textarea,
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 98px;
+      padding: 10px 11px;
+      resize: vertical;
+    }
+
+    input[type="text"] {
+      min-height: 42px;
+      padding: 8px 11px;
+    }
+
+    textarea:focus,
+    input[type="text"]:focus,
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      outline: 0;
+      box-shadow: 0 0 0 3px rgba(15, 107, 110, 0.14);
+    }
+
+    .empty-filter {
+      display: none;
+      padding: 24px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .summary-card textarea {
+      min-height: 280px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .summary-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 500;
+      max-width: min(420px, calc(100% - 40px));
+      padding: 11px 14px;
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(16, 42, 67, 0.96);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .mobile-nav {
+      display: none;
+      margin-bottom: 12px;
+    }
+
+    .mobile-nav select {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    footer {
+      padding: 24px 20px 38px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .mobile-nav { display: block; }
+      .toolbar { top: 0; }
+    }
+
+    @media (max-width: 700px) {
+      .hero-inner,
+      .layout { width: min(100% - 24px, 1440px); }
+      .toolbar { grid-template-columns: 1fr; }
+      .question-head { grid-template-columns: auto minmax(0, 1fr); }
+      .status-chip { grid-column: 2; justify-self: start; }
+      .section-heading { display: block; }
+      .section-progress { display: inline-block; margin-top: 10px; }
+      .question-list { padding: 10px; }
+      .intro-card,
+      .confirmed-card,
+      .summary-card { padding: 16px; }
+    }
+
+    @media print {
+      :root { --page: #fff; }
+      body { font-size: 10pt; }
+      .hero { color: #000; background: #fff; border-bottom: 2px solid #000; }
+      .hero-inner { width: 100%; padding: 0 0 16px; }
+      .hero .eyebrow,
+      .hero .lede,
+      .hero-pill { color: #222; }
+      .layout { display: block; width: 100%; padding: 14px 0 0; }
+      .sidebar,
+      .toolbar,
+      .mobile-nav,
+      .side-actions,
+      .summary-actions,
+      .toast,
+      footer { display: none !important; }
+      .intro-card,
+      .confirmed-card,
+      .section-shell,
+      .summary-card { box-shadow: none; break-inside: avoid; }
+      .question-card,
+      .question-card.hidden { display: block !important; break-inside: avoid; }
+      .question-card.collapsed .question-body { display: block; }
+      .choice { padding: 5px 7px; }
+      textarea { min-height: 60px; border-color: #777; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to questionnaire</a>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Requirements discovery · No implementation yet</p>
+      <h1>SQMS Workflow Discovery Questionnaire</h1>
+      <p class="lede">
+        Use this document to close the remaining opportunity, bid, authorization, notification, and operational
+        questions before the SQMS workflow design is frozen or any code is written.
+      </p>
+      <div class="hero-meta">
+        <span class="hero-pill">Prepared 2026-07-27</span>
+        <span class="hero-pill">Opportunity + independent bid workflows</span>
+        <span class="hero-pill">Answers stay in this browser until exported</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" aria-label="Questionnaire navigation">
+      <div class="progress-panel">
+        <div class="progress-label">
+          <span>Review progress</span>
+          <span id="progress-text">0 / 0</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="save-state" id="save-state">Answers autosave locally.</div>
+      </div>
+      <nav class="side-nav" id="side-nav"></nav>
+      <div class="side-actions">
+        <button class="btn primary" type="button" data-action="copy">Copy answer summary</button>
+        <button class="btn" type="button" data-action="download">Download answers</button>
+        <button class="btn" type="button" data-action="print">Print questionnaire</button>
+        <button class="btn danger" type="button" data-action="reset">Clear saved answers</button>
+      </div>
+    </aside>
+
+    <main class="content" id="main-content">
+      <div class="mobile-nav">
+        <label class="field-label" for="mobile-section">Jump to section</label>
+        <select id="mobile-section"></select>
+      </div>
+
+      <div class="toolbar" aria-label="Question filters">
+        <div class="search-wrap">
+          <label class="sr-only" for="search-input">Search questionnaire</label>
+          <input id="search-input" type="text" placeholder="Search questions, states, roles, or topics…">
+        </div>
+        <div class="filter-group" role="group" aria-label="Filter questions">
+          <button class="filter-btn active" type="button" data-filter="all">All</button>
+          <button class="filter-btn" type="button" data-filter="open">Unanswered</button>
+          <button class="filter-btn" type="button" data-filter="answered">Answered</button>
+          <button class="filter-btn" type="button" data-filter="blocking">Blocking</button>
+        </div>
+      </div>
+
+      <section class="intro-card" id="overview">
+        <h2>How to use this questionnaire</h2>
+        <ol>
+          <li>Review the confirmed decisions first; they are not being reopened unless business evidence changes.</li>
+          <li>Complete the blocking questions before the supporting implementation-detail questions.</li>
+          <li>Use recommendations where they match the business process, but replace them when SharePoint evidence says otherwise.</li>
+          <li>Export or copy the answer summary and return it for consolidation into the final design.</li>
+        </ol>
+        <div class="callout">
+          <strong>Hard gate:</strong> this questionnaire is requirements discovery. No code, seed metadata, migrations,
+          or implementation plan should be created until the blocking questions are resolved and the transition
+          matrices are reviewed as a whole.
+        </div>
+      </section>
+
+      <section class="confirmed-card" id="confirmed">
+        <h2>Confirmed decisions</h2>
+        <div class="decision-grid" id="confirmed-decisions"></div>
+      </section>
+
+      <div id="question-sections"></div>
+
+      <section class="summary-card" id="answer-summary">
+        <h2>Answer summary</h2>
+        <p>The summary updates automatically. Copy or download it when the review is ready to return.</p>
+        <div class="summary-actions">
+          <button class="btn primary" type="button" data-action="copy">Copy summary</button>
+          <button class="btn" type="button" data-action="download">Download .txt</button>
+          <button class="btn" type="button" data-action="print">Print</button>
+        </div>
+        <label class="field-label" for="summary-output">Collected responses</label>
+        <textarea id="summary-output" readonly></textarea>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    SQMS workflow discovery artifact · Self-contained HTML · No external scripts, fonts, or network access required
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    const STORAGE_KEY = "cdt-workflow.sqms-questionnaire.v1";
+
+    const confirmedDecisions = [
+      "Opportunity and bids use independent workflow instances.",
+      "Each bid is linked to exactly one parent opportunity.",
+      "The UI displays metadata-derived available actions and submits actionKey, never toState.",
+      "OpenToBidding and ClosedToBidding are opportunity workflow states.",
+      "System automatically closes bidding after the 15-calendar-day deadline; IPG does not close it manually.",
+      "Closing automatically classifies submitted bids as NotAllocated or IpgReview using the legacy calculation.",
+      "Draft bids remain Draft, become read-only at close, and are excluded from classification.",
+      "MFO is the broad submitting group; IPG is the checker/operations group.",
+      "Seller is contextual: the opportunity owner plus MFO users explicitly delegated by that owner.",
+      "Bid editing is limited to the MFO user/team that submitted the bid.",
+      "System is the audited actor for timed and calculated transitions.",
+      "Opportunity setup and AddVantage account synchronization are outside workflow scope."
+    ];
+
+    const sectionDefinitions = [
+      { id: "opportunity", title: "A. Opportunity workflow", description: "State entry, return paths, bidding deadline, automatic closure, allocation outcomes, and completion." },
+      { id: "bid", title: "B. Bid workflow", description: "Bid creation, ownership, editing, automatic classification, IPG review, and Seller disposition." },
+      { id: "authorization", title: "C. Authorization", description: "Trusted sources for group membership, record-specific roles, delegation changes, and System identity." },
+      { id: "notifications", title: "D. Notifications and tasks", description: "Events, recipients, human tasks, SLA deadlines, reminders, and escalation expectations." },
+      { id: "integration", title: "E. Integration and operations", description: "Business-data source, parent-child lookup, scheduler placement, scan frequency, migration, and API boundary." },
+      { id: "scope", title: "F. Explicit scope", description: "Confirm excluded behavior so the implementation does not silently expand." }
+    ];
+
+    const questions = [
+      {
+        id: "O1", section: "opportunity", blocking: false,
+        title: "Opportunity workflow start",
+        prompt: "When should the opportunity workflow instance be created?",
+        recommendation: "Start on the first draft save so Draft is a real workflow state and context is available before submission.",
+        fields: [
+          { id: "start", label: "Choose the workflow start event", type: "choice", options: [
+            { value: "first-draft-save", label: "First draft save", recommended: true },
+            { value: "submission", label: "MFO submission" },
+            { value: "other", label: "Another event" }
+          ]},
+          { id: "draft-audit", label: "Should repeated draft saves create workflow audit entries, or remain only in application/form history?", type: "text" }
+        ]
+      },
+      {
+        id: "O2", section: "opportunity", blocking: true,
+        title: "Opportunity ownership and transfer",
+        prompt: "Define who owns the opportunity and whether ownership can change.",
+        fields: [
+          { id: "owner", label: "Ownership rule", type: "choice", options: [
+            { value: "creator-remains-owner", label: "Original creator remains owner", recommended: true },
+            { value: "transferable", label: "Ownership can be transferred" }
+          ]},
+          { id: "transfer-details", label: "If transferable, who may transfer it, what happens to Seller delegates, and where is the transfer audited?", type: "text", required: false }
+        ]
+      },
+      {
+        id: "O3", section: "opportunity", blocking: true,
+        title: "Return Submitted opportunity to Draft",
+        prompt: "Define the IPG return behavior and the resubmission path.",
+        fields: [
+          { id: "return-reason", label: "Is a return reason mandatory?", type: "choice", options: [
+            { value: "yes", label: "Yes", recommended: true },
+            { value: "no", label: "No" }
+          ]},
+          { id: "notification", label: "Who is notified when IPG returns the opportunity?", type: "short" },
+          { id: "resubmit-state", label: "After MFO corrections, where does resubmission go?", type: "choice", options: [
+            { value: "submitted", label: "Back to Submitted", recommended: true },
+            { value: "pending", label: "Directly to Pending" },
+            { value: "other", label: "Another state" }
+          ]}
+        ]
+      },
+      {
+        id: "O4", section: "opportunity", blocking: false,
+        title: "Submitted to Pending",
+        prompt: "Confirm the IPG augmentation boundary.",
+        recommendation: "IPG performs augmentation in the existing application, then executes MarkPending. The workflow engine does not inspect augmentation fields.",
+        fields: [
+          { id: "rule", label: "Describe or confirm the exact Submitted → Pending rule", type: "text" },
+          { id: "other-roles", label: "Can any role other than IPG execute this transition?", type: "choice", options: [
+            { value: "no", label: "No; IPG only", recommended: true },
+            { value: "yes", label: "Yes; describe below" }
+          ]},
+          { id: "other-role-details", label: "Additional role details", type: "text", required: false }
+        ]
+      },
+      {
+        id: "O5", section: "opportunity", blocking: true,
+        title: "Pending to OpenToBidding",
+        prompt: "Confirm distribution, deadline creation, and any backward path.",
+        fields: [
+          { id: "open-rule", label: "Describe or confirm the IPG OpenBidding action and when MFO bidding access begins", type: "text" },
+          { id: "backward", label: "Can IPG move Pending backward?", type: "choice", options: [
+            { value: "none", label: "No backward transition", recommended: true },
+            { value: "submitted", label: "Return to Submitted" },
+            { value: "draft", label: "Return to Draft" },
+            { value: "both", label: "Allow both return paths" }
+          ]}
+        ]
+      },
+      {
+        id: "O6", section: "opportunity", blocking: true,
+        title: "Fifteen-calendar-day deadline",
+        prompt: "Define the exact close time. The legacy code uses local dates and adds configured days plus one, so this cannot be assumed.",
+        fields: [
+          { id: "timezone", label: "Authoritative timezone", type: "short", help: "For example: America/New_York or UTC." },
+          { id: "counting", label: "How are the 15 days counted?", type: "choice", options: [
+            { value: "exact-360-hours", label: "Exactly 15 × 24 hours from OpenBidding", recommended: true },
+            { value: "opening-day-day-one", label: "Opening calendar date counts as day 1" },
+            { value: "next-day-day-one", label: "The following calendar date counts as day 1" },
+            { value: "other", label: "Another rule" }
+          ]},
+          { id: "example", label: "Provide an example: if opened July 1 at 3:00 PM, when exactly should it close?", type: "short" },
+          { id: "exceptions", label: "Can IPG extend the deadline, can an administrator close early, or can a closed opportunity reopen?", type: "text" }
+        ]
+      },
+      {
+        id: "O7", section: "opportunity", blocking: true,
+        title: "Close-to-bidding comparison",
+        prompt: "Confirm the threshold used to mark discount bids NotAllocated.",
+        evidence: "Legacy rule: sum fair-value and premium bids; if the total is in excess of the committed sale amount, discount bids become NotAllocated.",
+        fields: [
+          { id: "comparison", label: "Threshold", type: "choice", options: [
+            { value: "greater-than", label: "Strictly greater than (>)", recommended: true },
+            { value: "greater-or-equal", label: "Greater than or equal (>=)" }
+          ]},
+          { id: "equal-case", label: "Confirm what happens when the total exactly equals the committed sale amount", type: "text" }
+        ]
+      },
+      {
+        id: "O8", section: "opportunity", blocking: true,
+        title: "Invalid bid data during closure",
+        prompt: "Decide what automatic processing does when a submitted bid has missing or invalid amount/classification data.",
+        fields: [
+          { id: "policy", label: "Failure policy", type: "choice", options: [
+            { value: "block-close", label: "Do not close the opportunity" },
+            { value: "close-leave-unclassified", label: "Close, leave invalid bids unclassified, and retry/report them", recommended: true },
+            { value: "close-send-ipg", label: "Close and send invalid bids to IpgReview" },
+            { value: "other", label: "Another policy" }
+          ]},
+          { id: "visibility", label: "Who must be notified or shown the processing error?", type: "short" }
+        ]
+      },
+      {
+        id: "O9", section: "opportunity", blocking: true,
+        title: "Partial child-bid failure",
+        prompt: "Choose recovery behavior when the opportunity closes but one child-bid workflow action fails.",
+        fields: [
+          { id: "recovery", label: "Recovery model", type: "choice", options: [
+            { value: "retry-unfinished", label: "Retry only unfinished bids idempotently", recommended: true },
+            { value: "rollback-parent", label: "Roll back the entire opportunity closure" },
+            { value: "manual-repair", label: "Require manual repair" }
+          ]},
+          { id: "operator", label: "Who owns operational follow-up for repeated failures?", type: "short" }
+        ]
+      },
+      {
+        id: "O10", section: "opportunity", blocking: true,
+        title: "Enter PendingSellerApprovalIpg",
+        prompt: "Define how opportunity-level seller review relates to child bids.",
+        fields: [
+          { id: "selection", label: "How do bids enter UnderReviewBySeller?", type: "choice", options: [
+            { value: "individual", label: "IPG selects individual bids", recommended: true },
+            { value: "all", label: "All IpgReview bids move automatically" },
+            { value: "batch-selection", label: "IPG selects a batch and confirms once" }
+          ]},
+          { id: "opportunity-timing", label: "When does the opportunity itself enter PendingSellerApprovalIpg?", type: "choice", options: [
+            { value: "before-selection", label: "Before bid selection" },
+            { value: "with-first-selection", label: "With the first selected bid" },
+            { value: "after-confirmation", label: "When IPG confirms selection is complete", recommended: true }
+          ]},
+          { id: "later-changes", label: "Can IPG add or remove bids after seller review begins?", type: "text" }
+        ]
+      },
+      {
+        id: "O11", section: "opportunity", blocking: true,
+        title: "Allocation-result states",
+        prompt: "Supply the SharePoint rules for AwaitingAllocation, PartiallyAllocated, and NotFulfilled.",
+        evidence: "These rules are not present in the supplied SQMS code files and must be gathered from SharePoint configuration/workflow or business owners.",
+        fields: [
+          { id: "inputs", label: "Which bids and amounts are included in the calculation?", type: "text", help: "Submitted, reviewed, accepted, allocated, accepted partial amount, or another set." },
+          { id: "awaiting", label: "Exact rule for AwaitingAllocation", type: "text" },
+          { id: "partial", label: "Exact rule for PartiallyAllocated", type: "text" },
+          { id: "not-fulfilled", label: "Exact rule for NotFulfilled", type: "text" },
+          { id: "trigger", label: "Who or what initiates the calculation?", type: "choice", options: [
+            { value: "system", label: "System after Seller decisions" },
+            { value: "ipg", label: "IPG manually requests evaluation" },
+            { value: "manual-status", label: "IPG manually selects the result" },
+            { value: "other", label: "Another trigger" }
+          ]},
+          { id: "recalculation", label: "Can the result be recalculated or reversed if a bid decision changes?", type: "text" }
+        ]
+      },
+      {
+        id: "O12", section: "opportunity", blocking: true,
+        title: "Opportunity completion",
+        prompt: "Define who completes the opportunity and the required preconditions.",
+        fields: [
+          { id: "actor", label: "Who executes CompleteOpportunity?", type: "choice", options: [
+            { value: "ipg", label: "IPG", recommended: true },
+            { value: "seller", label: "Seller" },
+            { value: "mfo-owner", label: "MFO opportunity owner" },
+            { value: "system", label: "System" },
+            { value: "other", label: "Another actor" }
+          ]},
+          { id: "documents", label: "What documentation must exist and which application validates it?", type: "text" },
+          { id: "bid-preconditions", label: "Must every related bid be in a final status?", type: "text" },
+          { id: "terminal", label: "Is Completed terminal, or can the opportunity reopen?", type: "choice", options: [
+            { value: "terminal", label: "Terminal; no reopen", recommended: true },
+            { value: "reopen", label: "Reopen is allowed" }
+          ]}
+        ]
+      },
+
+      {
+        id: "B1", section: "bid", blocking: false,
+        title: "Bid workflow start",
+        prompt: "When should an independent bid workflow instance be created?",
+        fields: [
+          { id: "start", label: "Choose the start event", type: "choice", options: [
+            { value: "first-draft-save", label: "First draft save", recommended: true },
+            { value: "submission", label: "Bid submission" },
+            { value: "other", label: "Another event" }
+          ]}
+        ]
+      },
+      {
+        id: "B2", section: "bid", blocking: true,
+        title: "Bid owner/team definition",
+        prompt: "Define the record-specific BidOwner/BidEditor identity.",
+        fields: [
+          { id: "owner-source", label: "Is the owner one user, an application team/group, or both?", type: "text" },
+          { id: "transfer", label: "Can ownership transfer or can the owner delegate editing?", type: "text" },
+          { id: "storage", label: "Where is bid ownership currently stored?", type: "short" }
+        ]
+      },
+      {
+        id: "B3", section: "bid", blocking: true,
+        title: "Bid creation eligibility",
+        prompt: "Define which MFO users can create bids while the opportunity is open.",
+        fields: [
+          { id: "eligibility", label: "Who may create a bid?", type: "choice", options: [
+            { value: "any-mfo", label: "Any MFO user" },
+            { value: "selected-mfo", label: "Only selected/invited MFO users" },
+            { value: "team-based", label: "Only eligible MFO teams" },
+            { value: "other", label: "Another rule" }
+          ]},
+          { id: "self-bid", label: "Can the opportunity owner/Seller submit a bid on their own opportunity?", type: "choice", options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" }
+          ]},
+          { id: "limits", label: "Can one user/team submit multiple bids, and is there a maximum?", type: "text" }
+        ]
+      },
+      {
+        id: "B4", section: "bid", blocking: true,
+        title: "Editing a submitted bid",
+        prompt: "Define allowed behavior while the parent opportunity remains OpenToBidding.",
+        fields: [
+          { id: "fields", label: "Can the bid owner edit all fields or only selected fields?", type: "text" },
+          { id: "state", label: "Does an edit retain Submitted status?", type: "choice", options: [
+            { value: "retain-submitted", label: "Yes; remain Submitted", recommended: true },
+            { value: "return-draft", label: "No; return to Draft" },
+            { value: "other", label: "Another behavior" }
+          ]},
+          { id: "audit", label: "Should every save be workflow-audited, or only submission/status actions?", type: "choice", options: [
+            { value: "status-only", label: "Only submission and status actions", recommended: true },
+            { value: "every-save", label: "Every save" },
+            { value: "application-audit", label: "Application audit records saves; workflow does not" }
+          ]},
+          { id: "withdraw", label: "Can a submitted bid be withdrawn or deleted before close?", type: "text" }
+        ]
+      },
+      {
+        id: "B5", section: "bid", blocking: true,
+        title: "Automatic close classification",
+        prompt: "Confirm terminality and override rules after System classifies submitted bids.",
+        fields: [
+          { id: "confirm", label: "Confirm the close behavior", type: "multichoice", options: [
+            { value: "submitted-only", label: "Only Submitted bids are evaluated" },
+            { value: "draft-readonly", label: "Draft bids remain Draft and read-only" },
+            { value: "discount-not-allocated", label: "Qualifying discount bids become NotAllocated" },
+            { value: "remaining-ipg", label: "Every remaining Submitted bid becomes IpgReview" }
+          ]},
+          { id: "terminal", label: "Is NotAllocated terminal?", type: "choice", options: [
+            { value: "yes", label: "Yes", recommended: true },
+            { value: "no", label: "No" }
+          ]},
+          { id: "override", label: "Can IPG override or reverse an automatic NotAllocated result?", type: "text" }
+        ]
+      },
+      {
+        id: "B6", section: "bid", blocking: true,
+        title: "IpgReview to UnderReviewBySeller",
+        prompt: "Confirm bid selection and review-note behavior.",
+        fields: [
+          { id: "selection", label: "How are bids selected?", type: "choice", options: [
+            { value: "individual", label: "IPG selects individual bids", recommended: true },
+            { value: "all", label: "All IpgReview bids" },
+            { value: "batch", label: "IPG selects a batch" }
+          ]},
+          { id: "once", label: "Can a bid be sent to Seller more than once?", type: "choice", options: [
+            { value: "once", label: "Only once", recommended: true },
+            { value: "repeat", label: "Repeat/rework is allowed" }
+          ]},
+          { id: "note", label: "Must IPG provide a note or recommendation to Seller?", type: "text" }
+        ]
+      },
+      {
+        id: "B7", section: "bid", blocking: true,
+        title: "Seller disposition rules",
+        prompt: "Define validation and reversibility for full acceptance, partial acceptance, and rejection.",
+        fields: [
+          { id: "reason", label: "Which decisions require a reason?", type: "text" },
+          { id: "partial-amount", label: "For partial acceptance, define the required amount and validation rules", type: "text" },
+          { id: "delegate-authority", label: "May any selected Seller delegate decide, or must the opportunity owner decide?", type: "choice", options: [
+            { value: "any-delegate", label: "Owner or any selected delegate" },
+            { value: "owner-only", label: "Opportunity owner only" },
+            { value: "delegate-propose", label: "Delegate proposes; owner confirms" }
+          ]},
+          { id: "change-decision", label: "Can a disposition be changed or reversed after submission?", type: "text" },
+          { id: "terminal", label: "Are Accepted, PartiallyAccepted, and NotAccepted terminal?", type: "choice", options: [
+            { value: "all-terminal", label: "All are terminal", recommended: true },
+            { value: "not-terminal", label: "One or more can transition again" }
+          ]}
+        ]
+      },
+      {
+        id: "B8", section: "bid", blocking: true,
+        title: "Close-versus-submit race",
+        prompt: "Choose the authoritative behavior when a stale UI submits or edits a bid as the opportunity closes.",
+        fields: [
+          { id: "policy", label: "Concurrency policy", type: "choice", options: [
+            { value: "close-wins", label: "Reject the bid action once closure commits", recommended: true },
+            { value: "request-arrival", label: "Allow requests received before the scheduled job finishes" },
+            { value: "other", label: "Another cutoff rule" }
+          ]},
+          { id: "message", label: "What should the user-facing rejection explain?", type: "short" }
+        ]
+      },
+
+      {
+        id: "A1", section: "authorization", blocking: true,
+        title: "Trusted authorization sources",
+        prompt: "Identify where the API resolves broad and record-specific roles.",
+        recommendation: "Use existing authentication claims plus existing application data; do not add a workflow user/group table.",
+        fields: [
+          { id: "mfo", label: "Source for MFO membership", type: "short" },
+          { id: "ipg", label: "Source for IPG membership", type: "short" },
+          { id: "opportunity-owner", label: "Source for opportunity owner and Seller delegates", type: "short" },
+          { id: "bid-owner", label: "Source for bid owner/team", type: "short" }
+        ]
+      },
+      {
+        id: "A2", section: "authorization", blocking: true,
+        title: "Seller delegation changes",
+        prompt: "Define who manages delegates and when access changes take effect.",
+        fields: [
+          { id: "manager", label: "Who can add or remove Seller delegates?", type: "short" },
+          { id: "timing", label: "Can delegates change after seller review begins, and is removal immediate?", type: "text" },
+          { id: "audit", label: "Where are delegation changes audited?", type: "choice", options: [
+            { value: "application", label: "Existing application audit", recommended: true },
+            { value: "workflow", label: "Workflow audit" },
+            { value: "both", label: "Both" }
+          ]}
+        ]
+      },
+      {
+        id: "A3", section: "authorization", blocking: false,
+        title: "System actor identity",
+        prompt: "Confirm the audited identity used for timed and calculation-driven actions.",
+        recommendation: "Use userId sqms-system with role System unless operations requires an existing service-account identifier.",
+        fields: [
+          { id: "user-id", label: "System user ID", type: "short" },
+          { id: "role", label: "System role key", type: "short" }
+        ]
+      },
+
+      {
+        id: "N1", section: "notifications", blocking: true,
+        title: "Notification events",
+        prompt: "Select every event that must create an email/outbox notification.",
+        fields: [
+          { id: "events", label: "Required events", type: "multichoice", options: [
+            { value: "opportunity-submitted", label: "Opportunity submitted to IPG" },
+            { value: "opportunity-returned", label: "Opportunity returned to MFO" },
+            { value: "bidding-opened", label: "Opportunity opened to bidding" },
+            { value: "bidding-original", label: "Open-bidding original distribution" },
+            { value: "bidding-reminder", label: "Open-bidding reminder" },
+            { value: "bidding-closed", label: "Opportunity closed" },
+            { value: "bid-submitted", label: "Bid submitted" },
+            { value: "bid-ipg-review", label: "Bid moved to IpgReview" },
+            { value: "bid-seller-review", label: "Bid sent to Seller" },
+            { value: "bid-disposition", label: "Bid accepted, partially accepted, or rejected" },
+            { value: "allocation-outcome", label: "Opportunity allocation outcome" },
+            { value: "opportunity-completed", label: "Opportunity completed" },
+            { value: "automation-failed", label: "Automatic-processing failure" }
+          ]},
+          { id: "other", label: "Additional notification events", type: "text", required: false }
+        ]
+      },
+      {
+        id: "N2", section: "notifications", blocking: true,
+        title: "Notification recipients",
+        prompt: "Map each selected event to its recipients and copied recipients.",
+        fields: [
+          { id: "mapping", label: "Event → To/CC/BCC mapping", type: "text", help: "Potential recipients: opportunity owner, Seller delegates, bid owner/team, IPG, broader MFO distribution, operational support." }
+        ]
+      },
+      {
+        id: "N3", section: "notifications", blocking: true,
+        title: "Tasks, SLA, reminders, and escalation",
+        prompt: "Identify which workflow states create tasks and any service-level deadlines.",
+        fields: [
+          { id: "tasks", label: "State/action → task owner mapping", type: "text", help: "Candidates: Submitted opportunity, IpgReview bid, UnderReviewBySeller bid, PendingSellerApprovalIpg opportunity, and the System bidding window." },
+          { id: "sla", label: "SLA duration for each human task", type: "text" },
+          { id: "escalation", label: "Reminder and escalation rules", type: "text" }
+        ]
+      },
+
+      {
+        id: "I1", section: "integration", blocking: true,
+        title: "Business-data source",
+        prompt: "Identify where automatic close processing reads opportunity, bid, ownership, and classification data.",
+        fields: [
+          { id: "source", label: "Primary source", type: "choice", options: [
+            { value: "existing-sql", label: "Existing application SQL tables" },
+            { value: "existing-api", label: "Existing application API" },
+            { value: "other", label: "Another source" }
+          ]},
+          { id: "details", label: "Provide table/API ownership and field names for committed sale amount, related bid IDs, bid amount, valuation classification, and ownership/delegation", type: "text" }
+        ]
+      },
+      {
+        id: "I2", section: "integration", blocking: false,
+        title: "Opportunity-to-bid relationship",
+        prompt: "Confirm the authoritative parent-child lookup.",
+        recommendation: "Keep OpportunityId → BidIds in the existing application and avoid a new workflow parent/child foreign key.",
+        fields: [
+          { id: "authority", label: "Relationship authority", type: "choice", options: [
+            { value: "application", label: "Existing application", recommended: true },
+            { value: "workflow-db", label: "Workflow database" },
+            { value: "both", label: "Both systems" }
+          ]},
+          { id: "identifier", label: "Stable opportunity and bid identifier format", type: "short" }
+        ]
+      },
+      {
+        id: "I3", section: "integration", blocking: true,
+        title: "Automatic coordinator placement",
+        prompt: "Choose where the 15-day scan and child-bid orchestration run.",
+        fields: [
+          { id: "placement", label: "Execution host", type: "choice", options: [
+            { value: "target-task-scheduler", label: "Target integration service/console launched by Windows Task Scheduler", recommended: true },
+            { value: "reference-api", label: "Current reference API host" },
+            { value: "worker", label: "Separate worker executable/service" },
+            { value: "enterprise-scheduler", label: "Existing enterprise scheduler" }
+          ]},
+          { id: "constraints", label: "Operational/deployment constraints", type: "text", required: false }
+        ]
+      },
+      {
+        id: "I4", section: "integration", blocking: true,
+        title: "Close scan frequency",
+        prompt: "Choose how often automatic closure runs.",
+        fields: [
+          { id: "frequency", label: "Frequency", type: "choice", options: [
+            { value: "hourly", label: "Hourly", recommended: true },
+            { value: "daily", label: "Daily" },
+            { value: "frequent", label: "More frequently than hourly" },
+            { value: "fixed-time", label: "Once at a fixed business time" },
+            { value: "other", label: "Another schedule" }
+          ]},
+          { id: "schedule", label: "Exact schedule and timezone", type: "short" }
+        ]
+      },
+      {
+        id: "I5", section: "integration", blocking: true,
+        title: "Existing SharePoint records",
+        prompt: "Define whether migration is part of this effort.",
+        fields: [
+          { id: "migration", label: "Record scope", type: "choice", options: [
+            { value: "new-only", label: "New opportunities and bids only", recommended: true },
+            { value: "in-flight", label: "Existing in-flight SharePoint records plus new records" },
+            { value: "historical", label: "Historical records and audit history as well" }
+          ]},
+          { id: "details", label: "Migration cutover requirements", type: "text", required: false }
+        ]
+      },
+      {
+        id: "I6", section: "integration", blocking: true,
+        title: "Public API contract",
+        prompt: "Confirm whether the existing generic workflow API surface is sufficient.",
+        recommendation: "Retain Start workflow, Get workflow context, and Execute action. Do not add toState or SQMS business fields to public workflow DTOs.",
+        fields: [
+          { id: "contract", label: "API direction", type: "choice", options: [
+            { value: "existing-generic", label: "Existing generic operations are sufficient", recommended: true },
+            { value: "additional-endpoint", label: "An additional public endpoint is required" }
+          ]},
+          { id: "endpoint", label: "If additional, describe the endpoint and why the generic operations cannot cover it", type: "text", required: false }
+        ]
+      },
+
+      {
+        id: "S1", section: "scope", blocking: true,
+        title: "Explicit exclusions",
+        prompt: "Select every item that remains outside this SQMS workflow implementation.",
+        fields: [
+          { id: "exclusions", label: "Out-of-scope behavior", type: "multichoice", options: [
+            { value: "opportunity-cancel", label: "Opportunity cancellation or withdrawal" },
+            { value: "bid-withdraw", label: "Bid withdrawal" },
+            { value: "reopen-opportunity", label: "Reopening completed opportunities" },
+            { value: "reopen-bid", label: "Reopening terminal bid decisions" },
+            { value: "historical-audit", label: "Migrating historical SharePoint audit history" },
+            { value: "sharepoint-provisioning", label: "SharePoint view/web-part provisioning" },
+            { value: "addvantage", label: "AddVantage account synchronization" },
+            { value: "ui", label: "UI implementation" },
+            { value: "field-validation", label: "Field-level form validation inside the workflow engine" }
+          ]},
+          { id: "additional", label: "Additional exclusions or exceptions", type: "text", required: false }
+        ]
+      }
+    ];
+
+    let activeFilter = "all";
+    let saveTimer;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderConfirmedDecisions() {
+      document.getElementById("confirmed-decisions").innerHTML = confirmedDecisions.map(decision => `
+        <div class="decision">
+          <span class="decision-mark" aria-hidden="true">✓</span>
+          <span>${escapeHtml(decision)}</span>
+        </div>`).join("");
+    }
+
+    function renderField(question, field) {
+      const inputName = `${question.id}.${field.id}`;
+      const required = field.required !== false;
+      const requiredText = required ? '<span class="required-mark" aria-label="required">*</span>' : "";
+      const help = field.help ? `<p class="field-help">${escapeHtml(field.help)}</p>` : "";
+
+      if (field.type === "choice" || field.type === "multichoice") {
+        const inputType = field.type === "choice" ? "radio" : "checkbox";
+        const choices = field.options.map((option, index) => {
+          const choice = typeof option === "string" ? { value: option, label: option } : option;
+          const recommended = choice.recommended ? '<span class="recommended-tag">Recommended</span>' : "";
+          const id = `${question.id}-${field.id}-${index}`;
+          return `
+            <label class="choice" for="${escapeHtml(id)}">
+              <input id="${escapeHtml(id)}" type="${inputType}" name="${escapeHtml(inputName)}" value="${escapeHtml(choice.value)}" data-question="${escapeHtml(question.id)}">
+              <span class="choice-copy"><strong>${escapeHtml(choice.label)}</strong>${recommended}</span>
+            </label>`;
+        }).join("");
+        return `
+          <div class="field" data-field="${escapeHtml(inputName)}" data-required="${required}">
+            <span class="field-label">${escapeHtml(field.label)} ${requiredText}</span>
+            ${help}
+            <div class="choices">${choices}</div>
+          </div>`;
+      }
+
+      if (field.type === "short") {
+        return `
+          <div class="field" data-field="${escapeHtml(inputName)}" data-required="${required}">
+            <label class="field-label" for="${escapeHtml(inputName)}">${escapeHtml(field.label)} ${requiredText}</label>
+            ${help}
+            <input id="${escapeHtml(inputName)}" type="text" name="${escapeHtml(inputName)}" data-question="${escapeHtml(question.id)}">
+          </div>`;
+      }
+
+      return `
+        <div class="field" data-field="${escapeHtml(inputName)}" data-required="${required}">
+          <label class="field-label" for="${escapeHtml(inputName)}">${escapeHtml(field.label)} ${requiredText}</label>
+          ${help}
+          <textarea id="${escapeHtml(inputName)}" name="${escapeHtml(inputName)}" data-question="${escapeHtml(question.id)}"></textarea>
+        </div>`;
+    }
+
+    function renderQuestion(question) {
+      const blockingClass = question.blocking ? " blocking" : "";
+      const evidence = question.evidence ? `<div class="evidence"><strong>Source evidence:</strong> ${escapeHtml(question.evidence)}</div>` : "";
+      const recommendation = question.recommendation ? `<div class="recommendation"><strong>Recommended direction:</strong> ${escapeHtml(question.recommendation)}</div>` : "";
+      return `
+        <article class="question-card${blockingClass}" id="question-${escapeHtml(question.id)}" data-question-id="${escapeHtml(question.id)}" data-blocking="${question.blocking}">
+          <div class="question-head" role="button" tabindex="0" aria-expanded="true">
+            <span class="question-id">${escapeHtml(question.id)}</span>
+            <div>
+              <h3 class="question-title">${escapeHtml(question.title)}</h3>
+              <p class="question-prompt">${escapeHtml(question.prompt)}</p>
+            </div>
+            <span class="status-chip">Unanswered</span>
+          </div>
+          <div class="question-body">
+            ${evidence}
+            ${recommendation}
+            ${question.fields.map(field => renderField(question, field)).join("")}
+          </div>
+        </article>`;
+    }
+
+    function renderSections() {
+      const host = document.getElementById("question-sections");
+      host.innerHTML = sectionDefinitions.map(section => {
+        const sectionQuestions = questions.filter(question => question.section === section.id);
+        return `
+          <section class="section-shell" id="section-${escapeHtml(section.id)}" data-section="${escapeHtml(section.id)}">
+            <div class="section-heading">
+              <div>
+                <h2>${escapeHtml(section.title)}</h2>
+                <p>${escapeHtml(section.description)}</p>
+              </div>
+              <span class="section-progress" id="section-progress-${escapeHtml(section.id)}">0 / ${sectionQuestions.length}</span>
+            </div>
+            <div class="question-list">
+              ${sectionQuestions.map(renderQuestion).join("")}
+              <div class="empty-filter">No questions in this section match the current search/filter.</div>
+            </div>
+          </section>`;
+      }).join("");
+    }
+
+    function renderNavigation() {
+      const sideNav = document.getElementById("side-nav");
+      const mobile = document.getElementById("mobile-section");
+      const fixed = [
+        { id: "overview", title: "Overview" },
+        { id: "confirmed", title: "Confirmed decisions" }
+      ];
+      const questionLinks = sectionDefinitions.map(section => ({ id: `section-${section.id}`, title: section.title }));
+      const links = [...fixed, ...questionLinks, { id: "answer-summary", title: "Answer summary" }];
+
+      sideNav.innerHTML = links.map(link => {
+        const section = link.id.startsWith("section-") ? link.id.replace("section-", "") : null;
+        const count = section ? questions.filter(q => q.section === section).length : "";
+        return `<a href="#${escapeHtml(link.id)}" data-nav="${escapeHtml(link.id)}"><span>${escapeHtml(link.title)}</span>${count !== "" ? `<span class="nav-count" id="nav-count-${escapeHtml(section)}">0/${count}</span>` : ""}</a>`;
+      }).join("");
+
+      mobile.innerHTML = links.map(link => `<option value="${escapeHtml(link.id)}">${escapeHtml(link.title)}</option>`).join("");
+    }
+
+    function getStoredAnswers() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      } catch {
+        document.getElementById("save-state").textContent = "Local autosave is unavailable; export answers manually.";
+        return {};
+      }
+    }
+
+    function collectAnswers() {
+      const answers = {};
+      document.querySelectorAll("[data-question]").forEach(input => {
+        const questionId = input.dataset.question;
+        answers[questionId] ??= {};
+        const fieldId = input.name.split(".").slice(1).join(".");
+        if (input.type === "radio") {
+          if (input.checked) answers[questionId][fieldId] = input.value;
+        } else if (input.type === "checkbox") {
+          answers[questionId][fieldId] ??= [];
+          if (input.checked) answers[questionId][fieldId].push(input.value);
+        } else {
+          answers[questionId][fieldId] = input.value.trim();
+        }
+      });
+      return answers;
+    }
+
+    function restoreAnswers() {
+      const answers = getStoredAnswers();
+      Object.entries(answers).forEach(([questionId, fields]) => {
+        Object.entries(fields || {}).forEach(([fieldId, value]) => {
+          const name = `${questionId}.${fieldId}`;
+          const inputs = document.querySelectorAll(`[name="${CSS.escape(name)}"]`);
+          inputs.forEach(input => {
+            if (input.type === "radio") input.checked = input.value === value;
+            else if (input.type === "checkbox") input.checked = Array.isArray(value) && value.includes(input.value);
+            else input.value = value ?? "";
+          });
+        });
+      });
+    }
+
+    function saveAnswers() {
+      clearTimeout(saveTimer);
+      document.getElementById("save-state").textContent = "Saving locally…";
+      saveTimer = setTimeout(() => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(collectAnswers()));
+          document.getElementById("save-state").textContent = `Saved locally at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`;
+        } catch {
+          document.getElementById("save-state").textContent = "Local autosave unavailable; use Download answers.";
+        }
+      }, 180);
+    }
+
+    function isFieldAnswered(fieldElement) {
+      if (fieldElement.dataset.required !== "true") return true;
+      const inputs = fieldElement.querySelectorAll("input, textarea");
+      if (!inputs.length) return true;
+      const first = inputs[0];
+      if (first.type === "radio" || first.type === "checkbox") return [...inputs].some(input => input.checked);
+      return [...inputs].some(input => input.value.trim().length > 0);
+    }
+
+    function isQuestionAnswered(card) {
+      const requiredFields = [...card.querySelectorAll('.field[data-required="true"]')];
+      return requiredFields.length > 0 && requiredFields.every(isFieldAnswered);
+    }
+
+    function updateProgress() {
+      const cards = [...document.querySelectorAll(".question-card")];
+      const answered = cards.filter(card => isQuestionAnswered(card));
+      cards.forEach(card => {
+        const complete = isQuestionAnswered(card);
+        card.classList.toggle("answered", complete);
+        card.querySelector(".status-chip").textContent = complete ? "Answered" : "Unanswered";
+      });
+
+      const percent = cards.length ? Math.round((answered.length / cards.length) * 100) : 0;
+      document.getElementById("progress-text").textContent = `${answered.length} / ${cards.length}`;
+      document.getElementById("progress-bar").style.width = `${percent}%`;
+
+      sectionDefinitions.forEach(section => {
+        const sectionCards = cards.filter(card => questions.find(q => q.id === card.dataset.questionId)?.section === section.id);
+        const completeCount = sectionCards.filter(card => isQuestionAnswered(card)).length;
+        document.getElementById(`section-progress-${section.id}`).textContent = `${completeCount} / ${sectionCards.length}`;
+        document.getElementById(`nav-count-${section.id}`).textContent = `${completeCount}/${sectionCards.length}`;
+      });
+      updateSummary();
+      applyFilters();
+    }
+
+    function answerLabel(question, field, rawValue) {
+      if (!rawValue || (Array.isArray(rawValue) && rawValue.length === 0)) return "[Unanswered]";
+      if (field.type !== "choice" && field.type !== "multichoice") return String(rawValue);
+      const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+      return values.map(value => {
+        const option = field.options.find(item => (typeof item === "string" ? item : item.value) === value);
+        return option ? (typeof option === "string" ? option : option.label) : value;
+      }).join(", ");
+    }
+
+    function buildSummary() {
+      const answers = collectAnswers();
+      const lines = [
+        "SQMS WORKFLOW DISCOVERY QUESTIONNAIRE",
+        `Exported: ${new Date().toLocaleString()}`,
+        "",
+        "CONFIRMED DECISIONS",
+        ...confirmedDecisions.map(item => `- ${item}`),
+        ""
+      ];
+
+      sectionDefinitions.forEach(section => {
+        lines.push(section.title.toUpperCase(), "-".repeat(section.title.length));
+        questions.filter(question => question.section === section.id).forEach(question => {
+          const card = document.getElementById(`question-${question.id}`);
+          lines.push(`${question.id}. ${question.title} [${isQuestionAnswered(card) ? "Answered" : "Unanswered"}]`);
+          question.fields.forEach(field => {
+            lines.push(`  ${field.label}: ${answerLabel(question, field, answers[question.id]?.[field.id])}`);
+          });
+          lines.push("");
+        });
+      });
+
+      return lines.join("\n");
+    }
+
+    function updateSummary() {
+      document.getElementById("summary-output").value = buildSummary();
+    }
+
+    function applyFilters() {
+      const term = document.getElementById("search-input").value.trim().toLowerCase();
+      document.querySelectorAll(".question-card").forEach(card => {
+        const matchesSearch = !term || card.textContent.toLowerCase().includes(term);
+        const answered = isQuestionAnswered(card);
+        const matchesFilter =
+          activeFilter === "all" ||
+          (activeFilter === "open" && !answered) ||
+          (activeFilter === "answered" && answered) ||
+          (activeFilter === "blocking" && card.dataset.blocking === "true");
+        card.classList.toggle("hidden", !(matchesSearch && matchesFilter));
+      });
+
+      document.querySelectorAll(".section-shell").forEach(section => {
+        const visible = section.querySelectorAll(".question-card:not(.hidden)").length;
+        section.querySelector(".empty-filter").style.display = visible ? "none" : "block";
+      });
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    async function copySummary() {
+      const summary = buildSummary();
+      try {
+        await navigator.clipboard.writeText(summary);
+      } catch {
+        const output = document.getElementById("summary-output");
+        output.focus();
+        output.select();
+        document.execCommand("copy");
+      }
+      showToast("Answer summary copied.");
+    }
+
+    function downloadSummary() {
+      const blob = new Blob([buildSummary()], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "sqms-workflow-questionnaire-answers.txt";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast("Answer file downloaded.");
+    }
+
+    function resetAnswers() {
+      if (!confirm("Clear every answer saved in this browser? This cannot be undone unless you exported a copy.")) return;
+      document.querySelectorAll("[data-question]").forEach(input => {
+        if (input.type === "radio" || input.type === "checkbox") input.checked = false;
+        else input.value = "";
+      });
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* no-op */ }
+      document.getElementById("save-state").textContent = "Saved answers cleared.";
+      updateProgress();
+      showToast("All answers cleared.");
+    }
+
+    function setupEvents() {
+      document.addEventListener("input", event => {
+        if (event.target.matches("[data-question]")) {
+          saveAnswers();
+          updateProgress();
+        }
+        if (event.target.id === "search-input") applyFilters();
+      });
+
+      document.addEventListener("change", event => {
+        if (event.target.matches("[data-question]")) {
+          saveAnswers();
+          updateProgress();
+        }
+      });
+
+      document.querySelectorAll(".filter-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          activeFilter = button.dataset.filter;
+          document.querySelectorAll(".filter-btn").forEach(item => item.classList.toggle("active", item === button));
+          applyFilters();
+        });
+      });
+
+      document.querySelectorAll(".question-head").forEach(head => {
+        const toggle = () => {
+          const card = head.closest(".question-card");
+          const collapsed = card.classList.toggle("collapsed");
+          head.setAttribute("aria-expanded", String(!collapsed));
+        };
+        head.addEventListener("click", event => {
+          if (!event.target.closest("input, textarea, label")) toggle();
+        });
+        head.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggle();
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-action]").forEach(button => {
+        button.addEventListener("click", () => {
+          if (button.dataset.action === "copy") copySummary();
+          if (button.dataset.action === "download") downloadSummary();
+          if (button.dataset.action === "print") window.print();
+          if (button.dataset.action === "reset") resetAnswers();
+        });
+      });
+
+      document.getElementById("mobile-section").addEventListener("change", event => {
+        document.getElementById(event.target.value)?.scrollIntoView({ behavior: "smooth" });
+      });
+
+      const observer = new IntersectionObserver(entries => {
+        const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        document.querySelectorAll("[data-nav]").forEach(link => link.classList.toggle("active", link.dataset.nav === visible.target.id));
+        document.getElementById("mobile-section").value = visible.target.id;
+      }, { rootMargin: "-15% 0px -70% 0px", threshold: [0.01, 0.2] });
+
+      ["overview", "confirmed", ...sectionDefinitions.map(section => `section-${section.id}`), "answer-summary"].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) observer.observe(element);
+      });
+    }
+
+    function init() {
+      renderConfirmedDecisions();
+      renderSections();
+      renderNavigation();
+      restoreAnswers();
+      setupEvents();
+      updateProgress();
+    }
+
+    init();
+  </script>
+</body>
+</html>
