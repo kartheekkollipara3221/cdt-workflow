@@ -1,30 +1,264 @@
 # Codex Handoff
 
-Last updated: 2026-07-21T23:06:04-04:00
+Last updated: 2026-08-06T04:52:30.135Z
+
+## 2026-08-06 Session Pause Status
+
+### Active branch and remote state
+
+- Active checkout: `C:\projects\cdt-workflow`
+- Active branch: `console-code-first-0518`
+- Latest pushed product/bundle commit: `92c42de chore: update portable repository bundle`.
+- This pause handoff is committed locally after `92c42de`; unless separately pushed, the active branch will be one handoff-only commit ahead of `origin/console-code-first-0518`.
+- The completed feature worktree still exists at `.worktrees/multiple-notification-recipients` on `feature/multiple-notification-recipients` at `f60f40e`; its commits are already merged into the active branch, so it is retained only as an optional cleanup item.
+
+### Work completed today
+
+- Completed and verified typed multiple-`To`/multiple-`Cc` recipient support across workflow start/action contracts, task and outbox snapshots, SLA reminder processing, console inspection, SMTP delivery, and Workflow API dispatch.
+- Preserved one outbox row and one message-level retry lifecycle for all recipients; per-recipient delivery tracking was intentionally not added.
+- Kept recipient selection and email-address validation in CDT/SQMS/calling applications. The generic engine preserves the supplied ordered arrays and does not normalize, deduplicate, resolve, or validate them.
+- Merged `feature/multiple-notification-recipients` into `console-code-first-0518` as `f55470d merge: multiple notification recipients`.
+- Validated `restore-repo.ps1`: PowerShell syntax passed, 312 files restored, and SHA-256 `f0582eb80a27b08ab462d443ba9613959789ff60eee644839ea1a66d00827968` matched.
+- Committed and pushed the bundle as `92c42de chore: update portable repository bundle`.
+- Post-merge engine and Workflow API builds passed with 0 warnings and 0 errors.
+
+### SQMS integration status
+
+- SQMS integration is **not implemented yet**. There are no SQMS-specific engine code, seed, migration, contract, sample, or test changes.
+- All five source files are present under the untracked `SQMS/` folder and were previously reviewed as business-rule evidence.
+- The current source-backed direction is two metadata-driven workflow definitions, `SqmsOpportunity` and `SqmsBid`, plus a thin coordinator for timed close, submitted-bid classification, aggregation, and normal `System` workflow actions.
+- The existing SQMS application remains responsible for opportunity/bid business records, parent-child queries, field validation, contextual authorization, Seller delegation, allocation-state selection, and recipient validation.
+- The generic engine remains responsible for metadata transitions, context, tasks/SLA, outbox, audit, idempotency, and concurrency.
+- The detailed Opportunity/Bid transition flow still needs explicit user review/confirmation before an SQMS implementation plan or code work begins.
+- The multiple-recipient work completed today is a generic prerequisite SQMS can use later; it is not the SQMS integration itself.
+
+### Verification and workspace state at pause
+
+- Latest verified feature suites before merge: engine 252 passed, 3 smtp4dev-gated skipped; SQL-enabled Workflow API 50 passed.
+- Latest post-merge builds: both solutions passed with 0 warnings/errors.
+- No `dotnet` or `testhost` process is running at pause.
+- Local uncommitted/untracked material to preserve: `SQMS/` and `tareget-api-integration/`.
+- Known separate dependency issue: normal audited Workflow API restore reports transitive `Microsoft.OpenApi 2.4.1` advisory `NU1903` through `Swashbuckle.AspNetCore 10.1.7`.
+
+### Next-session prompt
+
+```text
+Continue in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD and PROJECT.md first, then CODEX_HANDOFF.md and .planning/.continue-here.md. The multiple-To/multiple-Cc feature and base64 bundle are merged and pushed through 92c42de; a later local commit may contain only this pause handoff. Do not redo the recipient feature. SQMS-specific integration has not started. Review the source-derived SqmsOpportunity/SqmsBid transition flow and thin-coordinator boundary recorded in CODEX_HANDOFF.md with the user. Do not create SQMS code, seeds, migrations, contracts, samples, tests, or an implementation plan until the user explicitly confirms the detailed flow and authorizes implementation. Preserve the untracked SQMS/ and tareget-api-integration/ folders.
+```
+
+## 2026-08-05 Multiple-Recipient Implementation Status
+
+### Current goal
+
+The approved typed multiple-To/multiple-Cc notification design has now been implemented and verified. The work is isolated from the original checkout on:
+
+- Branch: `feature/multiple-notification-recipients`
+- Worktree: `C:\projects\cdt-workflow\.worktrees\multiple-notification-recipients`
+- GSD summary: `.planning/quick/260803-vp1-implement-typed-multiple-to-and-cc-notif/260803-vp1-SUMMARY.md`
+
+The original `console-code-first-0518` checkout still contains the user's unrelated `CODEX_HANDOFF.md` edits and untracked `SQMS/` and `tareget-api-integration/` material. Do not discard or overwrite those changes when integrating the feature branch.
+
+### Completed changes
+
+- Added typed ordered `notificationRecipients.toEmailAddresses` and `ccEmailAddresses` arrays to workflow start/action contracts and the canonical idempotency hash.
+- Added required `NotificationRecipientsJson` snapshots to `WorkflowTask` and `NotificationOutbox` with migration `20260803120000_AddNotificationRecipientSnapshots`.
+- Stored one exact snapshot on the created task and initial outbox row; `run-sla` copies the task snapshot unchanged into its reminder row.
+- Removed runtime singular/delimited/payload/SMTP-role-map recipient fallback. CDT/SQMS own address selection and validation.
+- Updated MailKit delivery to add every To/Cc address to one message with one outbox status/retry lifecycle. `Smtp:RecipientOverride` suppresses original recipients and records intended lists diagnostically.
+- Updated Workflow API models/services/dispatcher, console inspection, samples 02-10, PROJECT.md, README/context, target/API handoffs, migration deployment guidance, and regression tests.
+- Fixed explicit-null recipient arrays so malformed caller shapes reach message-level retry rather than crashing workflow start.
+- Fixed the FreshClone test harness to build into isolated temporary artifacts instead of overwriting DLLs loaded by Windows testhost.
+
+### Changed files and commits
+
+The implementation changes 67 files. Commits after the plan commit `dc0c8fb`:
+
+```text
+8089ffd feat: support multiple notification recipients
+ce0cca1 test: strengthen recipient snapshot diagnostics
+db46e0c feat: expose multiple recipients through API
+4bc34e4 test: cover API notification dispatch
+790569c fix: preserve malformed recipient snapshots on start
+bd106a0 test: correct recipient integration assertions
+172b8f3 test: isolate fresh clone build artifacts
+f60f40e docs: complete multiple recipient quick task
+```
+
+### Build and test status
+
+- `dotnet restore src\WorkflowEngine.sln -m:1`: passed.
+- `dotnet build src\WorkflowEngine.sln -m:1 --no-restore`: passed, 0 warnings/errors.
+- `dotnet build workflow-api\WorkflowEngine.WorkflowApi.slnx -m:1 --no-restore`: passed, 0 warnings/errors.
+- Full SQL-backed engine suite: 252 passed, 0 failed, 3 skipped smtp4dev-gated tests.
+- SQL-enabled Workflow API suite: 50 passed, 0 failed, 0 skipped.
+- Both formerly failing SQL recipient tests and both return-branch recipient assertions pass.
+- Normal Workflow API restore reports existing transitive `Microsoft.OpenApi 2.4.1` advisory `NU1903` through `Swashbuckle.AspNetCore 10.1.7`. This feature added no packages; dependency remediation remains separate work.
+
+### Seed and sample verification
+
+Used dedicated database `cdt_workflow_multiple_recipient_verify`, leaving the existing application database unchanged:
+
+- `init-db`: passed.
+- `verify-seed`: passed.
+- Started `WF-PT-1001` and executed `samples\workflow-actions\02-submit-for-checker.json`: passed.
+- Initial `WorkflowTaskAssigned` row persisted two ordered To and two ordered Cc addresses.
+- `run-sla --now "2030-01-15T16:00:00Z"` queued one `SlaTaskOverdue` row with the identical task snapshot.
+- `process-notification-outbox` with `Notifications__Sender=NoOp` processed both messages.
+- Final inspection showed both rows `Sent` with the same ordered recipient arrays.
+
+### Remaining tasks and known risks
+
+- Choose how to integrate `feature/multiple-notification-recipients` into `console-code-first-0518` without disturbing the original checkout's user changes.
+- Remediate the transitive `Microsoft.OpenApi 2.4.1` advisory separately if a clean audited Workflow API restore is required.
+- Run the three opt-in `Category=Smtp` tests only when the local smtp4dev gate is enabled; automated MailKit construction, override, and malformed-address retry tests already pass.
+- Before deploying the target API, apply the new EF migration; it intentionally deletes disposable `NotificationOutbox` and `WorkflowTask` runtime rows as previously approved.
+
+### Next-session prompt
+
+```text
+Continue in C:\projects\cdt-workflow. Read AGENTS.MD and PROJECT.md first, then this handoff. The typed multiple-To/multiple-Cc notification implementation is complete on feature/multiple-notification-recipients in .worktrees/multiple-notification-recipients, with summary f60f40e. Engine tests are 252 passed/3 smtp4dev-gated skipped; SQL-enabled API tests are 50 passed. Decide how to integrate the feature branch while preserving the original checkout's modified CODEX_HANDOFF.md and untracked SQMS/ and tareget-api-integration/ content. Do not discard those user changes. The only verification issue is the pre-existing transitive Microsoft.OpenApi 2.4.1 NU1903 on normal Workflow API restore.
+```
 
 ## Current Goal
 
-Target API integration is complete. The current work is paused before implementing a new workflow definition/step slice for the `SQMS` module, described by the user as Secondary Sales Qualified Matching Service.
+Target API integration is complete. The overall objective is to integrate `SQMS` behavior into the existing generic workflow engine, adding only the thin layers genuinely needed around it. SQMS is not a new engine or standalone platform. No SQMS implementation is approved yet.
+
+Approved generic notification recipient design:
+
+- The approved specification is `docs/superpowers/specs/2026-08-03-multiple-notification-recipients-design.md`.
+- CDT, SQMS, and future calling applications supply and validate concrete recipient lists.
+- One notification supports multiple `To` and multiple `Cc` addresses in a single outbox message.
+- The engine stores the exact recipient snapshot on the created task and reuses it for the initial notification and later SLA reminder.
+- The SLA monitor does not refresh recipients from CDT, SQMS, a directory, or another external API.
+- The engine does not validate, normalize, deduplicate, resolve, or look up recipient addresses.
+- Per-recipient delivery tracking is not required; delivery and retry status remain message-level.
+- No backward compatibility or legacy runtime-data migration is required for singular recipients, delimited CC strings, or SMTP role-map resolution.
+- Existing notification and in-flight task data may be discarded when the future implementation changes the contract/schema.
+- The design was subsequently authorized, implemented, and verified on `feature/multiple-notification-recipients`; the status section above supersedes the earlier design-only gate.
 
 Current SQMS state:
 
-- The user added the first SQMS reference file under `SQMS/Opportunity status.txt`.
-- The user said they will add all remaining SQMS code files and revisit.
-- Do not make code changes yet.
-- Continue discovery first once the remaining files are present.
+- All five current files under `SQMS/` were reread on 2026-07-29.
+- `SQMS/Opportunity status.txt`, `SQMS/BidWorkflow.cs.txt`, and `SQMS/Bidstatus change.txt` are business-rule evidence for the discovery.
+- `SQMS/Advantage data info.txt` and `SQMS/Opportunity setup.txt` remain explicitly excluded from workflow scope.
+- `docs/sqms-workflow-questionnaire.html` is a discovery reference, not a requirement that the user answer all 33 questions. On 2026-07-29 the user clarified that the supplied SharePoint source and status flow should answer the design wherever they provide evidence.
+- Derive the workflow from those sources first. Ask only about a contradiction or a rule that materially changes the transition matrix and is genuinely absent from the supplied evidence.
+- Do not make code, seed, migration, contract, or implementation-plan changes until the source-derived transition matrices are reviewed and approved.
+- Prefer an integration-only slice: SQMS metadata definitions, existing generic API usage, scheduled coordination where the legacy behavior is time-driven, samples, and tests.
+- Add or generalize engine capabilities only when a source-backed SQMS requirement cannot be expressed through the existing generic metadata and execution contracts. Any such change must remain workflow-generic.
+- Keep SQMS business records, field validation, record ownership, and opportunity-to-bid relationships in the existing application unless the supplied behavior proves the workflow engine must own something.
+- Do not create SQMS-specific branches inside the reusable transition engine.
 
-Initial observations from `SQMS/Opportunity status.txt`:
+Current source classification:
 
-- The file is legacy SharePoint-style reference code.
-- It appears to describe opportunity status behavior, not already-integrated workflow-engine metadata.
-- Visible concepts include `Pending Seller Approval`, open-to-bidding notification/reminder behavior, `CLOSED TO BIDDING`, bid status `NOT ALLOCATED`, and bid status `IPG REVIEW`.
-- Some behavior appears user workflow-like; some appears scheduled/background-job-like.
+- The files are legacy SharePoint/batch snippets with syntax and OCR defects. Treat them as business-rule evidence, not copyable implementation.
+- `Opportunity status.txt` is the strongest status source. It covers the Pending Seller Approval notification path, open-to-bidding notifications/reminders, automatic close to bidding, and automatic bid classification to `NOT ALLOCATED` or `IPG REVIEW`.
+- `BidWorkflow.cs.txt` performs bid/person synchronization and aggregate calculations; it is background processing rather than a user workflow transition.
+- `Bidstatus change.txt` sends bid-disposition email and refreshes opportunity bid statistics. It does not establish the full authorization, reversibility, or opportunity-allocation rules.
+- Scheduled reminders, automatic close, classification, and aggregation must remain distinct from human actions.
 - The current reusable engine can support another workflow definition through metadata, but the current seed and verification services are still PortfolioTrade-specific.
 
-Unresolved next clarification:
+Current discussion state:
 
-- After all SQMS files are added, identify the exact two workflow steps the user wants.
-- Initial inferred candidates were `PendingSellerApproval` and `OpenToBidding`, but this is not confirmed.
+- Confirmed integration architecture: add two metadata-driven workflow definitions, `SqmsOpportunity` and `SqmsBid`, to the existing generic engine, plus a thin SQMS coordinator for time-driven parent/child processing.
+- The generic engine continues to own transition resolution, workflow context, tasks/SLA, notification outbox, audit, idempotency, and concurrency. The coordinator uses normal workflow actions; it does not update workflow state directly.
+- The existing application remains authoritative for SQMS opportunity/bid records, parent-child lookup, contextual MFO/IPG/Seller authorization, field validation, and form behavior.
+- Allocation-state selection is application/IPG-owned. The application validates its allocation data and submits the appropriate metadata action (`MarkAwaitingAllocation`, `MarkPartiallyAllocated`, or `MarkNotFulfilled`); neither the generic engine nor the SQMS coordinator calculates this outcome.
+- The committed questionnaire over-expanded the discovery into 33 questions. Do not walk the user through it as an interview.
+- Build a compact, source-derived Opportunity and Bid flow from the supplied status information and legacy code.
+- Resolve project-level defaults from `PROJECT.md` and treat unsupported optional capabilities as out of scope rather than asking about them.
+- Map each SQMS behavior onto an existing generic engine capability: definition metadata, start, context, execute action, task/SLA, notification outbox, audit, or scheduled coordinator.
+- The architecture and ownership split looked good to the user. The detailed flow below was then presented for confirmation. No code changes are authorized yet.
+
+## SQMS Flow Presented for Confirmation
+
+### Opportunity workflow
+
+```text
+Draft
+  -- MFO / SubmitOpportunity --> Submitted
+
+Submitted
+  -- IPG / ReturnToDraft --> Draft
+  -- IPG / MarkPending --> Pending
+
+Pending
+  -- IPG / OpenBidding --> OpenToBidding
+
+OpenToBidding
+  -- System / CloseBidding after 15 calendar days --> ClosedToBidding
+
+ClosedToBidding
+  -- IPG / BeginSellerApproval --> PendingSellerApprovalIpg
+
+PendingSellerApprovalIpg
+  -- IPG via existing app / MarkAwaitingAllocation --> AwaitingAllocation
+  -- IPG via existing app / MarkPartiallyAllocated --> PartiallyAllocated
+  -- IPG via existing app / MarkNotFulfilled --> NotFulfilled
+
+AwaitingAllocation, PartiallyAllocated, or NotFulfilled
+  -- IPG / CompleteOpportunity --> Completed
+```
+
+- The existing application validates SQMS fields and sends only `actionKey`; metadata resolves the destination state.
+- `ReturnToDraft` completes the IPG task, creates an MFO correction task, and queues a notification. Resubmission returns the opportunity to `Submitted`.
+- The existing application/IPG owns the allocation outcome. Neither the workflow engine nor the SQMS coordinator calculates whether the opportunity is awaiting allocation, partially allocated, or not fulfilled.
+
+### Bid workflow
+
+```text
+Draft
+  -- MFO / SaveBid --> Draft
+  -- MFO / SubmitBid --> Submitted
+
+Submitted
+  -- System during parent close / MarkNotAllocated --> NotAllocated
+  -- System during parent close / MarkIpgReview --> IpgReview
+
+IpgReview
+  -- IPG / SendToSeller --> UnderReviewBySeller
+
+UnderReviewBySeller
+  -- Seller / AcceptBid --> Accepted
+  -- Seller / PartiallyAcceptBid --> PartiallyAccepted
+  -- Seller / RejectBid --> NotAccepted
+```
+
+- Each bid is an independent workflow instance linked to its opportunity through the existing application.
+- Bid edits do not change workflow state. The submitting MFO/team can edit while the parent opportunity is open.
+- When the parent closes, unsubmitted `Draft` bids stay `Draft`, become read-only in the existing application, and are excluded from automatic classification.
+- Seller disposition is independent per bid. The existing application validates disposition data such as a partial-acceptance amount before invoking the action.
+
+### Automatic close coordinator
+
+1. Find `OpenToBidding` opportunities whose 15-calendar-day deadline has passed.
+2. Read the application-owned opportunity and child-bid data.
+3. Validate the committed amount, bid amounts, and classifications before moving workflow state.
+4. Execute `CloseBidding` as `System` through the normal workflow action path.
+5. Classify only `Submitted` bids.
+6. Sum fair-value and premium bid amounts.
+7. If that total is strictly greater than the committed sale amount, execute `MarkNotAllocated` for discount bids.
+8. Execute `MarkIpgReview` for every submitted bid not marked `NotAllocated`.
+9. Leave `Draft` bids unchanged.
+10. Queue the close summary through the notification outbox.
+
+The coordinator must use deterministic idempotency keys and normal workflow actions. It must never update workflow state tables directly. If the parent close succeeds and some child actions fail, the opportunity remains closed and a retry processes only unfinished child actions.
+
+### Notifications and ownership
+
+- Action-created notifications are persisted to the existing outbox; the coordinator does not send email directly.
+- The original open-to-bidding notice and reminder are scheduled notifications, not workflow transitions.
+- `BeginSellerApproval` queues the Seller notification. Seller disposition queues the bid-owner/team notification.
+- The existing engine owns transition resolution, context, tasks/SLA, outbox, audit, idempotency, and concurrency.
+- The existing application owns SQMS records, parent-child lookup, form behavior, field validation, contextual authorization, Seller delegation, and allocation-state selection.
+- The thin SQMS coordinator owns only timed close/classification orchestration and invokes metadata-defined `System` actions.
+- `SQMS/Advantage data info.txt` and `SQMS/Opportunity setup.txt` remain excluded.
+
+### Current gate
+
+- No material business-rule question remains identified from the supplied sources and decisions.
+- The detailed flow above is awaiting explicit confirmation after being explained to the user.
+- Do not write a design spec, implementation plan, seed data, migrations, contracts, tests, or code until the user confirms the flow and authorizes the next artifact.
 
 Boundary for the next session:
 
@@ -39,9 +273,10 @@ Boundary for the next session:
 3. `context.md`
 4. `CODEX_HANDOFF.md`
 5. `NEXT_CODEX_PROMPT.md`
-6. `SQMS/` after the user adds the remaining SQMS files
-7. `workflow-api/WORKFLOW_API_BOUNDARIES.md` if API contract questions come up
-8. `TODO_WORKFLOW_API.md` when continuing API migration or operational follow-up
+6. `SQMS/`
+7. `docs/sqms-workflow-questionnaire.html`
+8. `workflow-api/WORKFLOW_API_BOUNDARIES.md` if API contract questions come up
+9. `TODO_WORKFLOW_API.md` when continuing API migration or operational follow-up
 
 ## Active Repo Shape
 
@@ -52,7 +287,8 @@ Boundary for the next session:
 - `samples/workflow-actions`: Portfolio Trade sample action JSON.
 - `docs/superpowers`: active design and implementation plans/specs.
 - `.tools/smtp4dev`: retained local SMTP test tool folder.
-- `SQMS/`: currently untracked SQMS reference/source material. First observed file is `Opportunity status.txt`; more files are expected before design resumes.
+- `SQMS/`: currently untracked legacy SQMS reference/source material; all five current files were reviewed on 2026-07-29.
+- `docs/sqms-workflow-questionnaire.html`: committed requirements-discovery questionnaire and current decision surface.
 
 The old tracked `api/` host has been removed from the working tree by user approval. Do not bring it back unless the user explicitly asks.
 
@@ -93,17 +329,21 @@ The guide intentionally distinguishes the local `workflow-api/` reference host f
 
 ## Latest Completed Changes
 
-### SQMS discovery pause
+### SQMS discovery resumed
 
-No code was changed for SQMS.
+No workflow implementation code was changed for SQMS.
 
-The only current SQMS artifact is an untracked folder:
+The current untracked SQMS source folder contains:
 
 ```text
+SQMS/Advantage data info.txt
+SQMS/Bidstatus change.txt
+SQMS/BidWorkflow.cs.txt
+SQMS/Opportunity setup.txt
 SQMS/Opportunity status.txt
 ```
 
-The first pass identified likely status/workflow concepts but did not confirm the two new workflow steps. The user will add the remaining SQMS files and revisit. The next session should inspect all files under `SQMS/` before asking the next clarifying question.
+The full source pass is complete. The questionnaire is now a reference checklist only. Derive the flow from the supplied statuses and code, apply repository defaults, and surface only material rules that cannot be established from either source.
 
 ### Frontend workflow API handoff
 
@@ -380,11 +620,9 @@ Latest restore-bundle verification:
 
 ## Remaining Work
 
-- Wait for the user to add the remaining SQMS files.
-- Reread the complete `SQMS/` folder.
-- Understand the new module's status/action flow before coding.
-- Confirm the exact two SQMS workflow steps with the user.
-- Propose metadata-driven approaches and get design approval before implementation.
+- Obtain explicit user confirmation or corrections for the SQMS flow recorded above.
+- After confirmation, update the written SQMS design/decision artifact only if the user authorizes that documentation step.
+- Do not create an implementation plan or touch code, seed data, migrations, contracts, samples, or tests until separately authorized.
 - For the target API integration, ensure Return-to-Maker request construction includes `notificationContext.recipientEmail`.
 - Keep `Smtp:RecipientOverride` configured during live SMTP smoke testing, then remove it only when ready to send to real per-record or role-map recipients.
 - For target-machine operations, publish/copy the workflow console processor, configure DB/SMTP settings, and schedule `run-sla` followed by `process-notification-outbox` in Windows Task Scheduler.
@@ -394,5 +632,5 @@ Latest restore-bundle verification:
 ## Next Session Prompt
 
 ```text
-Continue in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD, PROJECT.md, context.md, CODEX_HANDOFF.md, NEXT_CODEX_PROMPT.md, and then inspect the full SQMS/ folder. Target API integration is complete. The user is adding remaining SQMS files before revisiting a request to add two workflow steps for the Secondary Sales Qualified Matching Service module. Do not edit code yet. First understand the SQMS source/status flow, separate workflow actions from scheduled/background jobs, and confirm the exact two workflow steps with the user before proposing a metadata-driven design.
+Continue the SQMS design discussion in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD and PROJECT.md first, then CODEX_HANDOFF.md. The supplied SQMS sources have already been reviewed; do not restart the 33-question questionnaire or re-derive settled decisions unless a source conflict appears. The approved direction is integration-only: two metadata-driven definitions (`SqmsOpportunity` and `SqmsBid`) plus a thin timed-close coordinator around the existing generic engine. The existing application/IPG owns allocation-state selection. Review the exact opportunity, bid, automatic-close, notification, and ownership flow in `CODEX_HANDOFF.md` with me. Make no code, seed, migration, contract, test, sample, or implementation-plan changes unless I explicitly authorize them.
 ```
