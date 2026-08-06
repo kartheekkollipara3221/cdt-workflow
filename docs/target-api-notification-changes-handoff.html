@@ -368,19 +368,31 @@
           <tr>
             <td><span class="tag required">Required</span><br>EF entities and mapping</td>
             <td>
-              Add <code>NotificationRoute.HtmlBodyTemplate</code> and <code>NotificationOutbox.HtmlBody</code>.
-              Mark both required.
+              Keep required <code>NotificationRoute.HtmlBodyTemplate</code> and
+              <code>NotificationOutbox.HtmlBody</code>. Add required <code>nvarchar(max)</code>
+              <code>WorkflowTask.NotificationRecipientsJson</code> and
+              <code>NotificationOutbox.NotificationRecipientsJson</code>. Remove obsolete
+              <code>NotificationOutbox.RecipientRoleKey</code> and <code>RecipientUserId</code>; the similarly named
+              <code>NotificationRoute</code> fields remain dormant metadata only.
             </td>
             <td>
               <code>src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationRoute.cs</code><br>
+              <code>src/WorkflowEngine.Infrastructure/Persistence/Entities/WorkflowTask.cs</code><br>
               <code>src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationOutbox.cs</code><br>
               <code>src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs</code>
             </td>
           </tr>
           <tr>
             <td><span class="tag required">Required</span><br>EF migration or SQL deployment script</td>
-            <td>Add the two HTML body columns to SQL Server.</td>
-            <td><code>src/WorkflowEngine.Infrastructure/Migrations/20260620130000_AddHtmlNotificationBodies.cs</code></td>
+            <td>
+              Apply the HTML-body migration and then the recipient-snapshot migration in chronological order. The
+              latter deliberately deletes existing outbox rows and then task rows because legacy runtime rows have no
+              trustworthy typed recipient snapshot; it does not backfill them.
+            </td>
+            <td>
+              <code>src/WorkflowEngine.Infrastructure/Migrations/20260620130000_AddHtmlNotificationBodies.cs</code><br>
+              <code>src/WorkflowEngine.Infrastructure/Migrations/20260803120000_AddNotificationRecipientSnapshots.cs</code>
+            </td>
           </tr>
           <tr>
             <td><span class="tag required">Required</span><br>Seed and seed verification</td>
@@ -422,8 +434,13 @@
     </section>
 
     <section id="database">
-      <h2>Database Update</h2>
-      <p>Add these columns before deploying code that reads or writes HTML email bodies.</p>
+      <h2>Database Updates</h2>
+
+      <h3>Historical HTML-body migration</h3>
+      <p>
+        Apply the older <code>20260620130000_AddHtmlNotificationBodies</code> migration before deploying code that
+        reads or writes HTML email bodies. Its equivalent SQL is:
+      </p>
       <pre><code>IF COL_LENGTH('dbo.NotificationRoute', 'HtmlBodyTemplate') IS NULL
 BEGIN
     ALTER TABLE dbo.NotificationRoute
@@ -442,6 +459,40 @@ END;</code></pre>
         If your target API uses EF migrations, prefer an EF migration equivalent to
         <code>20260620130000_AddHtmlNotificationBodies</code>. If deployment is DBA-controlled, use the SQL above
         as the implementation shape.
+      </div>
+
+      <h3>Recipient-snapshot migration</h3>
+      <p>
+        Next apply <code>20260803120000_AddNotificationRecipientSnapshots</code>. It adds required
+        <code>nvarchar(max)</code> recipient snapshots to both runtime tables and removes the obsolete recipient role
+        and user columns from <code>NotificationOutbox</code>. For a DBA-controlled deployment, use this one-time SQL
+        in the same order as the EF migration:
+      </p>
+      <pre><code>BEGIN TRANSACTION;
+
+DELETE FROM [dbo].[NotificationOutbox];
+DELETE FROM [dbo].[WorkflowTask];
+
+ALTER TABLE [dbo].[WorkflowTask]
+    ADD [NotificationRecipientsJson] nvarchar(max) NOT NULL;
+
+ALTER TABLE [dbo].[NotificationOutbox]
+    ADD [NotificationRecipientsJson] nvarchar(max) NOT NULL;
+
+ALTER TABLE [dbo].[NotificationOutbox]
+    DROP COLUMN [RecipientRoleKey];
+
+ALTER TABLE [dbo].[NotificationOutbox]
+    DROP COLUMN [RecipientUserId];
+
+COMMIT TRANSACTION;</code></pre>
+
+      <div class="callout danger">
+        <strong>Approved disposal boundary:</strong> delete <code>NotificationOutbox</code> rows first and
+        <code>WorkflowTask</code> rows second. Do not delete workflow instances, workflow audit, mock section data,
+        workflow definitions, transitions, routes, or other metadata. Do not invent a legacy backfill: old runtime
+        rows do not contain an authoritative ordered typed To/Cc snapshot. Back up and obtain the target-system data
+        owner's approval before applying this destructive migration outside a disposable environment.
       </div>
     </section>
 
