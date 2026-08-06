@@ -40,6 +40,31 @@ public sealed class SchemaConstraintTests
     }
 
     [Theory]
+    [InlineData(typeof(WorkflowTask))]
+    [InlineData(typeof(NotificationOutbox))]
+    public void NotificationRecipientSnapshotsAreRequiredUnboundedJsonColumns(Type entityClrType)
+    {
+        var entityType = dbContext.Model.FindEntityType(entityClrType);
+        Assert.NotNull(entityType);
+
+        var property = entityType.FindProperty("NotificationRecipientsJson");
+
+        Assert.NotNull(property);
+        Assert.False(property.IsNullable);
+        Assert.Equal("nvarchar(max)", property.GetColumnType());
+    }
+
+    [Fact]
+    public void NotificationOutboxDoesNotMapLegacyRecipientScalarColumns()
+    {
+        var entityType = dbContext.Model.FindEntityType(typeof(NotificationOutbox));
+        Assert.NotNull(entityType);
+
+        Assert.Null(entityType.FindProperty("RecipientRoleKey"));
+        Assert.Null(entityType.FindProperty("RecipientUserId"));
+    }
+
+    [Theory]
     [InlineData(typeof(WorkflowInstance), "CK_WorkflowInstance_Status")]
     [InlineData(typeof(WorkflowTask), "CK_WorkflowTask_Status")]
     [InlineData(typeof(NotificationOutbox), "CK_NotificationOutbox_Status")]

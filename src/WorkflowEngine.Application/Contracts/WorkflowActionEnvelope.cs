@@ -94,6 +94,8 @@ public sealed class WorkflowActionBlock
 
     public Dictionary<string, string?>? NotificationContext { get; set; }
 
+    public NotificationRecipients? NotificationRecipients { get; set; }
+
     public string? IdempotencyKey { get; set; }
 
     public WorkflowActionOptions? Options { get; set; }

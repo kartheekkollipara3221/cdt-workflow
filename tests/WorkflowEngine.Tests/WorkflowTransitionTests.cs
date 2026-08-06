@@ -71,8 +71,9 @@ public sealed class WorkflowTransitionTests
         var createdTask = Assert.Single(dbContext.WorkflowTasks);
         Assert.Equal("RouteCheckerAssignedOnSubmit", createdTask.NotificationRouteKey);
         Assert.Contains("\"deskName\":\"Taxable\"", createdTask.NotificationContextJson, StringComparison.Ordinal);
+        AssertRecipientSnapshot(createdTask.NotificationRecipientsJson);
         Assert.Equal("WorkflowTaskAssigned", notification.NotificationType);
-        Assert.Equal("Checker", notification.RecipientRoleKey);
+        Assert.Equal(createdTask.NotificationRecipientsJson, notification.NotificationRecipientsJson);
         Assert.Single(dbContext.WorkflowAudits);
         Assert.Single(dbContext.MockSectionData);
         Assert.Single(dbContext.IdempotencyRecords);
@@ -135,8 +136,10 @@ public sealed class WorkflowTransitionTests
         var rework = Assert.Single(dbContext.WorkflowTasks.Where(row => row.TaskKey == "MakerReworkTask"));
         Assert.Equal("Pending", rework.Status);
         Assert.Null(rework.DueAtUtc);
-        Assert.Equal("WorkflowReturnedToMaker", dbContext.NotificationOutbox.Single().NotificationType);
-        Assert.Equal("Maker", dbContext.NotificationOutbox.Single().RecipientRoleKey);
+        var notification = dbContext.NotificationOutbox.Single();
+        Assert.Equal("WorkflowReturnedToMaker", notification.NotificationType);
+        AssertRecipientSnapshot(rework.NotificationRecipientsJson);
+        Assert.Equal(rework.NotificationRecipientsJson, notification.NotificationRecipientsJson);
     }
 
     [Theory]
@@ -179,9 +182,9 @@ public sealed class WorkflowTransitionTests
         Assert.Equal(assignedRoleKey, tradingTask.AssignedRoleKey);
         var notification = Assert.Single(dbContext.NotificationOutbox);
         Assert.Equal("WorkflowTaskAssigned", notification.NotificationType);
-        Assert.Equal(assignedRoleKey, notification.RecipientRoleKey);
+        AssertRecipientSnapshot(tradingTask.NotificationRecipientsJson);
+        Assert.Equal(tradingTask.NotificationRecipientsJson, notification.NotificationRecipientsJson);
         Assert.Equal(assignedRoleKey, result.Result.CreatedTask?.AssignedRole);
-        Assert.Equal(assignedRoleKey, result.Result.Notification?.RecipientRole);
     }
 
     [Fact]
@@ -290,6 +293,20 @@ public sealed class WorkflowTransitionTests
         Assert.Empty(dbContext.WorkflowAudits);
         Assert.Empty(dbContext.MockSectionData);
         Assert.Empty(dbContext.IdempotencyRecords);
+    }
+
+    private static void AssertRecipientSnapshot(string notificationRecipientsJson)
+    {
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            notificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(
+            ["checker.primary@example.com", "checker.secondary@example.com"],
+            recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["maker.manager@example.com", "workflow.operations@example.com"],
+            recipients.CcEmailAddresses);
     }
 
     private static WorkflowExecutionService CreateService(WorkflowDbContext dbContext)

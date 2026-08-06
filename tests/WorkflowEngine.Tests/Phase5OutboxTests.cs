@@ -10,6 +10,7 @@ namespace WorkflowEngine.Tests;
 public sealed class Phase5OutboxTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
+    private const string RecipientSnapshot = """{"toEmailAddresses":["first@example.test","second@example.test"],"ccEmailAddresses":["manager@example.test","operations@example.test"]}""";
 
     [Fact]
     public async Task ProcessNotificationOutboxSendsPendingRowsInCreatedThenIdOrder()
@@ -25,6 +26,11 @@ public sealed class Phase5OutboxTests
         Assert.Null(result.Failure);
         Assert.Equal(2, result.PendingCount);
         Assert.Equal(["First", "Second"], sender.SentRows.Select(row => row.Subject));
+        Assert.All(sender.SentRows, row =>
+        {
+            Assert.Equal(["first@example.test", "second@example.test"], row.ToEmailAddresses);
+            Assert.Equal(["manager@example.test", "operations@example.test"], row.CcEmailAddresses);
+        });
         dbContext.ChangeTracker.Clear();
         Assert.All(dbContext.NotificationOutbox, row =>
         {
@@ -48,6 +54,8 @@ public sealed class Phase5OutboxTests
 
         Assert.NotNull(result.Failure);
         Assert.Equal(secondId, result.Failure.Id);
+        Assert.Equal(["first@example.test", "second@example.test"], result.Failure.ToEmailAddresses);
+        Assert.Equal(["manager@example.test", "operations@example.test"], result.Failure.CcEmailAddresses);
         Assert.Single(result.Processed);
         Assert.Equal(1, result.NotAttemptedCount);
         dbContext.ChangeTracker.Clear();
@@ -56,6 +64,33 @@ public sealed class Phase5OutboxTests
         Assert.Equal(1, dbContext.NotificationOutbox.Single(row => row.Subject == "Second").RetryCount);
         Assert.Contains("send failed", dbContext.NotificationOutbox.Single(row => row.Subject == "Second").LastError, StringComparison.Ordinal);
         Assert.Equal("Pending", dbContext.NotificationOutbox.Single(row => row.Subject == "Third").Status);
+    }
+
+    [Fact]
+    public async Task MalformedRecipientSnapshotReleasesClaimAndAbortsBeforeSending()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-PT-1", "Malformed", Now);
+        dbContext.NotificationOutbox.Single().NotificationRecipientsJson = "{";
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+
+        var result = await new ProcessNotificationOutboxService(
+            dbContext,
+            sender,
+            new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
+
+        Assert.NotNull(result.Failure);
+        Assert.Empty(result.Failure.ToEmailAddresses);
+        Assert.Empty(result.Failure.CcEmailAddresses);
+        Assert.Empty(sender.SentRows);
+        dbContext.ChangeTracker.Clear();
+        var row = dbContext.NotificationOutbox.Single();
+        Assert.Equal("Pending", row.Status);
+        Assert.Equal(1, row.RetryCount);
+        Assert.Contains("recipient snapshot is invalid", row.LastError, StringComparison.Ordinal);
+        Assert.Null(row.ProcessingToken);
+        Assert.Null(row.ProcessingStartedAtUtc);
     }
 
     [Fact]
@@ -114,7 +149,7 @@ public sealed class Phase5OutboxTests
             BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = workflowInstanceId,
             NotificationType = "WorkflowTaskAssigned",
-            RecipientRoleKey = "Checker",
+            NotificationRecipientsJson = RecipientSnapshot,
             Subject = subject,
             PayloadJson = "{}",
             Status = "Pending",

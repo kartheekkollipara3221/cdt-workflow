@@ -18,14 +18,16 @@ public sealed record ProcessNotificationOutboxResult(
 public sealed record ProcessedNotification(
     long Id,
     string NotificationType,
-    string? RecipientRoleKey,
+    IReadOnlyList<string> ToEmailAddresses,
+    IReadOnlyList<string> CcEmailAddresses,
     string Subject,
     string WorkflowInstanceId);
 
 public sealed record NotificationOutboxFailure(
     long Id,
     string NotificationType,
-    string? RecipientRoleKey,
+    IReadOnlyList<string> ToEmailAddresses,
+    IReadOnlyList<string> CcEmailAddresses,
     string Subject,
     string WorkflowInstanceId,
     Exception Exception);

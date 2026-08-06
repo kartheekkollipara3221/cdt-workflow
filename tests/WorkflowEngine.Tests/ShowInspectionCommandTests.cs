@@ -51,7 +51,8 @@ public sealed class ShowInspectionCommandTests
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("WorkflowReturnedToMaker", result.Message, StringComparison.Ordinal);
-        Assert.Contains("recipient=Maker", result.Message, StringComparison.Ordinal);
+        Assert.Contains("to=[maker.one@example.test, maker.two@example.test]", result.Message, StringComparison.Ordinal);
+        Assert.Contains("cc=[manager@example.test, operations@example.test]", result.Message, StringComparison.Ordinal);
         Assert.Contains("status=Pending", result.Message, StringComparison.Ordinal);
     }
 
@@ -122,7 +123,8 @@ public sealed class ShowInspectionCommandTests
             DueAtUtc = Now.AddMinutes(40),
             CompletedAtUtc = Now.AddMinutes(-10),
             CompletedByUserId = "checker1",
-            ClosedByActionKey = "CheckerReturnToMaker"
+            ClosedByActionKey = "CheckerReturnToMaker",
+            NotificationRecipientsJson = """{"toEmailAddresses":["maker.one@example.test","maker.two@example.test"],"ccEmailAddresses":["manager@example.test","operations@example.test"]}"""
         });
         dbContext.WorkflowTasks.Add(new WorkflowTask
         {
@@ -130,7 +132,8 @@ public sealed class ShowInspectionCommandTests
             TaskKey = "MakerReworkTask",
             AssignedRoleKey = "Maker",
             Status = "Pending",
-            CreatedAtUtc = Now.AddMinutes(-10)
+            CreatedAtUtc = Now.AddMinutes(-10),
+            NotificationRecipientsJson = """{"toEmailAddresses":["maker.one@example.test","maker.two@example.test"],"ccEmailAddresses":["manager@example.test","operations@example.test"]}"""
         });
         dbContext.WorkflowAudits.Add(new WorkflowAudit
         {
@@ -152,7 +155,7 @@ public sealed class ShowInspectionCommandTests
             BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-SHOW",
             NotificationType = "WorkflowReturnedToMaker",
-            RecipientRoleKey = "Maker",
+            NotificationRecipientsJson = """{"toEmailAddresses":["maker.one@example.test","maker.two@example.test"],"ccEmailAddresses":["manager@example.test","operations@example.test"]}""",
             Subject = "Returned to Maker",
             PayloadJson = "{}",
             Status = "Pending",

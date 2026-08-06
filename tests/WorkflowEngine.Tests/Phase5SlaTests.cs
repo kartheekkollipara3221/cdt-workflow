@@ -11,6 +11,7 @@ namespace WorkflowEngine.Tests;
 public sealed class Phase5SlaTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
+    private const string RecipientSnapshot = """{"toEmailAddresses":["primary@example.test","secondary@example.test"],"ccEmailAddresses":["cc.one@example.test","cc.two@example.test"]}""";
 
     [Fact]
     public async Task RunSlaQueuesOnlyOverduePendingTasksWithoutExistingOverdueNotification()
@@ -41,7 +42,7 @@ public sealed class Phase5SlaTests
             BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-2",
             NotificationType = "SlaTaskOverdue",
-            RecipientRoleKey = "Checker",
+            NotificationRecipientsJson = RecipientSnapshot,
             Subject = "Task overdue",
             PayloadJson = "{}",
             Status = "Sent",
@@ -67,10 +68,9 @@ public sealed class Phase5SlaTests
         Assert.Contains("Sharepoint link = https://sharepoint.example.test/trades/1050", overdueNotification.Body, StringComparison.Ordinal);
         Assert.Contains("<strong>Kollipara, Kartheek</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
         Assert.Contains("""<a href="https://sharepoint.example.test/trades/1050">Open trade</a>""", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Equal(RecipientSnapshot, overdueNotification.NotificationRecipientsJson);
         using var payload = JsonDocument.Parse(overdueNotification.PayloadJson);
-        Assert.Equal(
-            "cc.one@example.test; cc.two@example.test",
-            payload.RootElement.GetProperty("ccEmailAddresses").GetString());
+        Assert.False(payload.RootElement.TryGetProperty("ccEmailAddresses", out _));
 
         var second = await new RunSlaService(
             dbContext,
@@ -80,7 +80,7 @@ public sealed class Phase5SlaTests
     }
 
     [Fact]
-    public async Task RunSlaUsesLegacySlaRouteKeyWhenTaskHasNoStoredNotificationSnapshot()
+    public async Task RunSlaWarnsAndSkipsTaskWithMissingRecipientSnapshotWithoutRoleFallback()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
         var versionId = PortfolioTradeVersionId(dbContext);
@@ -91,30 +91,61 @@ public sealed class Phase5SlaTests
             "CheckerReviewTask",
             "Checker",
             Now.AddMinutes(-5),
-            storeNotificationSnapshot: false);
-        dbContext.NotificationRoutes.Add(new NotificationRoute
-        {
-            WorkflowDefinitionVersionId = versionId,
-            RouteKey = "RouteOtherSlaTaskOverdue",
-            NotificationType = "SlaTaskOverdue",
-            RecipientRoleKey = "Maker",
-            SubjectTemplate = "Wrong SLA overdue route",
-            BodyTemplate = "Wrong SLA overdue route for {{workflowInstanceId}}",
-            OverdueSubjectPrefix = "Wrong: ",
-            IsActive = true
-        });
+            storeNotificationSnapshot: false,
+            notificationRecipientsJson: null);
+        var route = dbContext.NotificationRoutes.Single(row => row.RouteKey == "RouteSlaTaskOverdue");
+        route.RecipientRoleKey = "Maker";
         dbContext.SaveChanges();
 
         var result = await new RunSlaService(
             dbContext,
             new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
 
-        var notification = dbContext.NotificationOutbox.Single(row =>
-            row.WorkflowTaskId == legacyTask.Id && row.NotificationType == "SlaTaskOverdue");
-        Assert.Empty(result.Warnings);
-        Assert.Equal([legacyTask.Id], result.QueuedNotifications.Select(row => row.WorkflowTaskId));
-        Assert.Equal("Overdue: Workflow task overdue", notification.Subject);
-        Assert.Equal("Checker", notification.RecipientRoleKey);
+        Assert.Contains(
+            result.Warnings,
+            warning => warning == $"task {legacyTask.Id} overdue notification recipients snapshot missing");
+        Assert.Empty(result.QueuedNotifications);
+        Assert.DoesNotContain(
+            dbContext.NotificationOutbox,
+            row => row.WorkflowTaskId == legacyTask.Id && row.NotificationType == "SlaTaskOverdue");
+    }
+
+    [Fact]
+    public async Task RunSlaWarnsAndContinuesWhenRecipientSnapshotIsMalformed()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-BAD-RECIPIENTS", "PT-BAD-RECIPIENTS", "Active", versionId);
+        AddInstance(dbContext, "WF-PT-GOOD-RECIPIENTS", "PT-GOOD-RECIPIENTS", "Active", versionId);
+        var malformed = AddTask(
+            dbContext,
+            "WF-PT-BAD-RECIPIENTS",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-10),
+            notificationRecipientsJson: "{");
+        var valid = AddTask(
+            dbContext,
+            "WF-PT-GOOD-RECIPIENTS",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-5));
+        dbContext.SaveChanges();
+
+        var result = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.StartsWith(
+                $"task {malformed.Id} overdue notification recipients snapshot invalid:",
+                StringComparison.Ordinal));
+        Assert.Equal([valid.Id], result.QueuedNotifications.Select(row => row.WorkflowTaskId));
+        var notification = Assert.Single(
+            dbContext.NotificationOutbox,
+            row => row.WorkflowTaskId == valid.Id && row.NotificationType == "SlaTaskOverdue");
+        Assert.Equal(RecipientSnapshot, notification.NotificationRecipientsJson);
     }
 
     [Fact]
@@ -183,7 +214,8 @@ public sealed class Phase5SlaTests
         string roleKey,
         DateTimeOffset? dueAtUtc,
         string status = "Pending",
-        bool storeNotificationSnapshot = true)
+        bool storeNotificationSnapshot = true,
+        string? notificationRecipientsJson = RecipientSnapshot)
     {
         var task = new WorkflowTask
         {
@@ -203,7 +235,8 @@ public sealed class Phase5SlaTests
                 : null,
             NotificationContextJson = storeNotificationSnapshot && dueAtUtc is not null
                 ? JsonSerializer.Serialize(NotificationContext())
-                : null
+                : null,
+            NotificationRecipientsJson = notificationRecipientsJson ?? string.Empty
         };
         dbContext.WorkflowTasks.Add(task);
         return task;
@@ -224,8 +257,7 @@ public sealed class Phase5SlaTests
             ["accountShortName"] = "EFG",
             ["accountDisplayName"] = "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
             ["submittedDate"] = "4/24/2026",
-            ["tradeLink"] = "https://sharepoint.example.test/trades/1050",
-            ["ccEmailAddresses"] = "cc.one@example.test; cc.two@example.test"
+            ["tradeLink"] = "https://sharepoint.example.test/trades/1050"
         };
     }
 

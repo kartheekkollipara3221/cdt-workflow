@@ -17,8 +17,8 @@ public sealed class ConsoleNotificationSenderTests
             "PortfolioTrade",
             "PT-1001",
             "WorkflowTaskAssigned",
-            "Checker",
-            null,
+            ["checker.one@example.test", "checker.two@example.test"],
+            ["manager@example.test", "operations@example.test"],
             "Task assigned",
             "Rendered body",
             "<p>Rendered body</p>",
@@ -31,7 +31,8 @@ public sealed class ConsoleNotificationSenderTests
 
         var output = writer.ToString();
         Assert.Contains("[Sent] WorkflowTaskAssigned", output, StringComparison.Ordinal);
-        Assert.Contains("Checker", output, StringComparison.Ordinal);
+        Assert.Contains("To: checker.one@example.test, checker.two@example.test", output, StringComparison.Ordinal);
+        Assert.Contains("Cc: manager@example.test, operations@example.test", output, StringComparison.Ordinal);
         Assert.Contains("Task assigned", output, StringComparison.Ordinal);
         Assert.Contains("WF-PT-1001", output, StringComparison.Ordinal);
     }

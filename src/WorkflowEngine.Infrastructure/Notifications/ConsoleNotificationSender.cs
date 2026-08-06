@@ -23,9 +23,10 @@ public sealed class ConsoleNotificationSender : INotificationSender
     {
         writer.WriteLine(string.Format(
             CultureInfo.InvariantCulture,
-            "[Sent] {0,-24} | {1,-14} | {2,-35} | {3}",
+            "[Sent] {0,-24} | To: {1} | Cc: {2} | {3,-35} | {4}",
             notification.NotificationType,
-            notification.RecipientRoleKey ?? "(none)",
+            string.Join(", ", notification.ToEmailAddresses),
+            string.Join(", ", notification.CcEmailAddresses),
             notification.Subject,
             notification.WorkflowInstanceId));
         return Task.CompletedTask;

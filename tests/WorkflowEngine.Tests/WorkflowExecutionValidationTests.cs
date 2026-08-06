@@ -283,7 +283,7 @@ public sealed class WorkflowExecutionValidationTests
     }
 
     [Fact]
-    public void ReturnToMakerPersistsRecipientEmailFromNotificationContext()
+    public void ReturnToMakerPersistsExactRecipientSnapshotSeparatelyFromTemplateContext()
     {
         using var dbContext = CreateSeededContext();
         AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
@@ -295,17 +295,33 @@ public sealed class WorkflowExecutionValidationTests
             actionKey: "CheckerReturnToMaker",
             roles: ["Checker"]);
         envelope.Workflow!.ExpectedCurrentTaskKey = "CheckerReviewTask";
-        envelope.Workflow.NotificationContext!["recipientEmail"] = "maker.one@example.test";
+        envelope.Workflow.NotificationRecipients = new NotificationRecipients
+        {
+            ToEmailAddresses = [" maker.one@example.test ", "maker.one@example.test"],
+            CcEmailAddresses = ["manager@example.test", "operations@example.test"]
+        };
+        envelope.Workflow.NotificationContext!["recipientEmail"] = "template-context-only@example.test";
 
         var result = CreateService(dbContext).Execute(Request(envelope));
 
         Assert.True(result.Result.Success);
         var notification = Assert.Single(dbContext.NotificationOutbox);
         Assert.Equal("WorkflowReturnedToMaker", notification.NotificationType);
-        Assert.Equal("Maker", notification.RecipientRoleKey);
+        var createdTask = dbContext.WorkflowTasks.Single(row => row.TaskKey == "MakerReworkTask");
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            createdTask.NotificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(
+            [" maker.one@example.test ", "maker.one@example.test"],
+            recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["manager@example.test", "operations@example.test"],
+            recipients.CcEmailAddresses);
+        Assert.Equal(createdTask.NotificationRecipientsJson, notification.NotificationRecipientsJson);
         using var payload = JsonDocument.Parse(notification.PayloadJson);
         Assert.Equal(
-            "maker.one@example.test",
+            "template-context-only@example.test",
             payload.RootElement.GetProperty("recipientEmail").GetString());
     }
 

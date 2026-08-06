@@ -1,3 +1,4 @@
+using System.Text.Json;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Notifications;
@@ -28,7 +29,12 @@ public sealed class WorkflowStartInitialActionTests
             InitialActionKey: "SubmitForChecker",
             StartedByDisplayName: "Maker One",
             StartedByRoles: ["Maker"],
-            NotificationContext: NotificationContext()));
+            NotificationContext: NotificationContext(),
+            NotificationRecipients: new NotificationRecipients
+            {
+                ToEmailAddresses = [" checker.one@example.test ", "checker.one@example.test"],
+                CcEmailAddresses = ["manager@example.test", "operations@example.test"]
+            }));
 
         Assert.True(result.Envelope.Result.Success);
         Assert.Equal("SubmitForChecker", result.Envelope.Result.ActionKey);
@@ -43,10 +49,20 @@ public sealed class WorkflowStartInitialActionTests
         var task = Assert.Single(dbContext.WorkflowTasks);
         Assert.Equal("CheckerReviewTask", task.TaskKey);
         Assert.Equal("Pending", task.Status);
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            task.NotificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(
+            [" checker.one@example.test ", "checker.one@example.test"],
+            recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["manager@example.test", "operations@example.test"],
+            recipients.CcEmailAddresses);
 
         var notification = Assert.Single(dbContext.NotificationOutbox);
         Assert.Equal("WorkflowTaskAssigned", notification.NotificationType);
-        Assert.Equal("Checker", notification.RecipientRoleKey);
+        Assert.Equal(task.NotificationRecipientsJson, notification.NotificationRecipientsJson);
 
         Assert.Single(dbContext.WorkflowAudits);
         Assert.Empty(dbContext.MockSectionData);

@@ -1,6 +1,8 @@
 namespace WorkflowEngine.Infrastructure.WorkflowInspection;
 
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Inspection;
 using WorkflowEngine.Infrastructure.Persistence;
 
@@ -67,24 +69,56 @@ public sealed class WorkflowInspectionReader(WorkflowDbContext dbContext) : IWor
                 audit.CreatedAtUtc))
             .ToList();
 
-        var notifications = dbContext.NotificationOutbox
+        var notificationRows = dbContext.NotificationOutbox
             .AsNoTracking()
             .Where(notification => notification.WorkflowInstanceId == workflowInstanceId)
             .OrderBy(notification => notification.CreatedAtUtc)
             .ThenBy(notification => notification.Id)
-            .Select(notification => new NotificationInspection(
-                notification.Id,
-                notification.WorkflowTaskId,
-                notification.NotificationType,
-                notification.RecipientRoleKey,
-                notification.RecipientUserId,
-                notification.Subject,
-                notification.Status,
-                notification.CorrelationId,
-                notification.CreatedAtUtc,
-                notification.SentAtUtc))
+            .ToList();
+        var notifications = notificationRows
+            .Select(notification =>
+            {
+                var recipients = ReadRecipients(notification.NotificationRecipientsJson);
+
+                return new NotificationInspection(
+                    notification.Id,
+                    notification.WorkflowTaskId,
+                    notification.NotificationType,
+                    recipients.ToEmailAddresses,
+                    recipients.CcEmailAddresses,
+                    notification.Subject,
+                    notification.Status,
+                    notification.CorrelationId,
+                    notification.CreatedAtUtc,
+                    notification.SentAtUtc);
+            })
             .ToList();
 
         return new WorkflowInspectionSnapshot(instance, tasks, history, notifications);
+    }
+
+    private static NotificationRecipients ReadRecipients(string notificationRecipientsJson)
+    {
+        if (string.IsNullOrWhiteSpace(notificationRecipientsJson))
+        {
+            return new NotificationRecipients();
+        }
+
+        try
+        {
+            var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+                notificationRecipientsJson,
+                WorkflowJson.Options);
+
+            return recipients is null
+                || recipients.ToEmailAddresses is null
+                || recipients.CcEmailAddresses is null
+                ? new NotificationRecipients()
+                : recipients;
+        }
+        catch (JsonException)
+        {
+            return new NotificationRecipients();
+        }
     }
 }

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
@@ -49,6 +51,7 @@ public sealed class ProcessNotificationOutboxService(
         {
             var row = pendingRows[index];
             var processingToken = Guid.NewGuid().ToString("N");
+            NotificationDelivery? delivery = null;
             try
             {
                 var claimedAtUtc = timeProvider.GetUtcNow();
@@ -75,7 +78,8 @@ public sealed class ProcessNotificationOutboxService(
                     .AsNoTracking()
                     .SingleAsync(item => item.Id == row.Id && item.ProcessingToken == processingToken, cancellationToken);
 
-                await notificationSender.SendAsync(ToDelivery(claimedRow), cancellationToken);
+                delivery = ToDelivery(claimedRow);
+                await notificationSender.SendAsync(delivery, cancellationToken);
                 var sentAtUtc = timeProvider.GetUtcNow();
                 var markedSent = await dbContext.NotificationOutbox
                     .Where(item => item.Id == row.Id && item.Status == "Processing" && item.ProcessingToken == processingToken)
@@ -95,7 +99,8 @@ public sealed class ProcessNotificationOutboxService(
                 processed.Add(new ProcessedNotification(
                     row.Id,
                     row.NotificationType,
-                    row.RecipientRoleKey,
+                    delivery.ToEmailAddresses,
+                    delivery.CcEmailAddresses,
                     row.Subject,
                     row.WorkflowInstanceId));
             }
@@ -110,7 +115,8 @@ public sealed class ProcessNotificationOutboxService(
                     new NotificationOutboxFailure(
                         row.Id,
                         row.NotificationType,
-                        row.RecipientRoleKey,
+                        delivery?.ToEmailAddresses ?? [],
+                        delivery?.CcEmailAddresses ?? [],
                         row.Subject,
                         row.WorkflowInstanceId,
                         exception));
@@ -127,6 +133,32 @@ public sealed class ProcessNotificationOutboxService(
 
     private static NotificationDelivery ToDelivery(NotificationOutbox row)
     {
+        if (string.IsNullOrWhiteSpace(row.NotificationRecipientsJson))
+        {
+            throw new InvalidOperationException($"Notification {row.Id} recipient snapshot is missing.");
+        }
+
+        NotificationRecipients? recipients;
+        try
+        {
+            recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+                row.NotificationRecipientsJson,
+                WorkflowJson.Options);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException(
+                $"Notification {row.Id} recipient snapshot is invalid.",
+                exception);
+        }
+
+        if (recipients is null
+            || recipients.ToEmailAddresses is null
+            || recipients.CcEmailAddresses is null)
+        {
+            throw new InvalidOperationException($"Notification {row.Id} recipient snapshot is invalid.");
+        }
+
         return new NotificationDelivery(
             row.Id,
             row.WorkflowInstanceId,
@@ -134,8 +166,8 @@ public sealed class ProcessNotificationOutboxService(
             row.BusinessObjectType,
             row.BusinessObjectId,
             row.NotificationType,
-            row.RecipientRoleKey,
-            row.RecipientUserId,
+            recipients.ToEmailAddresses,
+            recipients.CcEmailAddresses,
             row.Subject,
             row.Body,
             row.HtmlBody,

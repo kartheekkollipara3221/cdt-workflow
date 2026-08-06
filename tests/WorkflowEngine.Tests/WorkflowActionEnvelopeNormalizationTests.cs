@@ -68,6 +68,48 @@ public sealed class WorkflowActionEnvelopeNormalizationTests
     }
 
     [Fact]
+    public void HashChangesWhenNotificationRecipientValueChanges()
+    {
+        var left = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var right = WorkflowActionEnvelopeTestData.DeserializeValid();
+        right.Workflow!.NotificationRecipients!.ToEmailAddresses[1] = "different@example.com";
+
+        Assert.NotEqual(hasher.ComputeHash(left), hasher.ComputeHash(right));
+    }
+
+    [Fact]
+    public void HashPreservesNotificationRecipientArrayOrder()
+    {
+        var left = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var right = WorkflowActionEnvelopeTestData.DeserializeValid();
+        right.Workflow!.NotificationRecipients!.ToEmailAddresses.Reverse();
+
+        Assert.NotEqual(hasher.ComputeHash(left), hasher.ComputeHash(right));
+    }
+
+    [Fact]
+    public void HashDistinguishesToAndCcRecipientPlacement()
+    {
+        var left = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var right = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var moved = right.Workflow!.NotificationRecipients!.ToEmailAddresses[0];
+        right.Workflow.NotificationRecipients.ToEmailAddresses.RemoveAt(0);
+        right.Workflow.NotificationRecipients.CcEmailAddresses.Insert(0, moved);
+
+        Assert.NotEqual(hasher.ComputeHash(left), hasher.ComputeHash(right));
+    }
+
+    [Fact]
+    public void HashDoesNotNormalizeNotificationRecipientValues()
+    {
+        var left = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var right = WorkflowActionEnvelopeTestData.DeserializeValid();
+        right.Workflow!.NotificationRecipients!.ToEmailAddresses[0] = " checker.primary@example.com ";
+
+        Assert.NotEqual(hasher.ComputeHash(left), hasher.ComputeHash(right));
+    }
+
+    [Fact]
     public void HashMergesDuplicateNotificationContextKeysAfterTrim()
     {
         var duplicateKeys = WorkflowActionEnvelopeTestData.DeserializeValid();
