@@ -239,7 +239,7 @@
       <h1>Target API Notification Change Handoff</h1>
       <p class="lede">
         Use this checklist to apply the last two workflow notification changes to your target API:
-        per-record SMTP recipients with copied recipients, and persisted HTML email bodies.
+        caller-supplied typed multiple To/Cc recipient snapshots, and persisted HTML email bodies.
       </p>
       <nav aria-label="Document sections">
         <a href="#summary">Summary</a>
@@ -258,18 +258,13 @@
       <h2>Summary</h2>
       <div class="grid">
         <div class="box">
-          <h3>Change 1: per-record SMTP recipients</h3>
+          <h3>Change 1: typed recipient snapshots</h3>
           <p>
-            SMTP delivery now resolves the recipient from the notification payload before falling back
-            to a static role map. This lets Return-to-Maker emails go to the Maker email for the current
-            business record.
+            The target API selects and validates ordered To/Cc addresses from the business data it owns, then sends
+            them in a dedicated <code>notificationRecipients</code> object. The reusable engine preserves the exact
+            values, order, whitespace, and duplicates without lookup or normalization.
           </p>
-          <p>Resolution order:</p>
-          <ol>
-            <li><code>Smtp:RecipientOverride</code></li>
-            <li><code>notificationContext.recipientEmail</code> persisted in <code>NotificationOutbox.PayloadJson</code></li>
-            <li><code>Smtp:RoleEmailMap:{RecipientRoleKey}</code></li>
-          </ol>
+          <p>The created task and initial outbox row store the same recipient snapshot. SLA reminders copy the task snapshot unchanged.</p>
         </div>
         <div class="box">
           <h3>Change 2: HTML notification bodies</h3>
@@ -284,8 +279,9 @@
       </div>
 
       <div class="callout warning">
-        <strong>Keep this boundary:</strong> do not add a SQL user table, do not add SQL role-to-email mapping,
-        and do not let the UI send HTML. The business/API layer supplies plain notification values.
+        <strong>Keep this boundary:</strong> do not add recipient validation, trimming, deduplication, role/directory
+        resolution, SQL/config address maps, singular fields, or delimited parsing to the engine. Do not let the UI
+        send HTML. The business/API layer supplies validated recipient arrays and plain template values.
       </div>
     </section>
 
@@ -318,8 +314,9 @@
           <tr>
             <td><span class="tag required">Required</span><br>Workflow start/action DTOs</td>
             <td>
-              Ensure request bodies accept <code>Dictionary&lt;string, string?&gt;? NotificationContext</code>.
-              Keep recipient and CC values inside this dictionary.
+              Ensure request bodies accept the shared typed <code>NotificationRecipients</code> contract outside
+              <code>NotificationContext</code>. The target API owns business recipient selection and address
+              validation; <code>NotificationContext</code> contains template data only.
             </td>
             <td>
               <code>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs</code><br>
@@ -329,8 +326,9 @@
           <tr>
             <td><span class="tag required">Required</span><br>Target API service that executes workflow action</td>
             <td>
-              Pass <code>notificationContext</code> into workflow execution. After a successful action queues a
-              notification, dispatch rows for the same <code>WorkflowInstanceId</code> and <code>CorrelationId</code>.
+              Pass <code>notificationRecipients</code> unchanged and separately from <code>notificationContext</code>
+              into workflow execution. After a successful action queues a notification, dispatch rows for the same
+              <code>WorkflowInstanceId</code> and <code>CorrelationId</code>.
             </td>
             <td>
               <code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs</code><br>
@@ -340,22 +338,25 @@
           <tr>
             <td><span class="tag required">Required</span><br>Notification dispatcher service</td>
             <td>
-              Add a dispatcher that claims pending outbox rows, sends them, marks them <code>Sent</code>, and releases
-              them back to <code>Pending</code> on failure. Include <code>HtmlBody</code> when building
-              <code>NotificationDelivery</code>.
+              Add a dispatcher that claims pending outbox rows, deserializes persisted
+              <code>NotificationRecipientsJson</code> into typed ordered To/Cc lists, sends one message, marks the row
+              <code>Sent</code>, and releases the complete row to <code>Pending</code> on failure. Include
+              <code>HtmlBody</code> when building <code>NotificationDelivery</code>.
             </td>
             <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs</code></td>
           </tr>
           <tr>
             <td><span class="tag required">Required</span><br>Notification delivery contract</td>
-            <td>Add <code>HtmlBody</code> to the notification delivery object passed into senders.</td>
+            <td>Carry typed ordered To/Cc lists and <code>HtmlBody</code> in the delivery object passed into senders.</td>
             <td><code>src/WorkflowEngine.Application/Notifications/INotificationSender.cs</code></td>
           </tr>
           <tr>
             <td><span class="tag required">Required</span><br>SMTP sender</td>
             <td>
-              Resolve direct recipients and CCs from payload JSON. Send multipart text/plain plus text/html when
-              <code>HtmlBody</code> exists.
+              Send the typed To/Cc lists reconstructed from persisted <code>NotificationRecipientsJson</code>. Never
+              fall back to payload/template context, route roles, singular fields, or delimited address parsing.
+              One outbox row has one message-level send/retry lifecycle. Send multipart text/plain plus text/html
+              when <code>HtmlBody</code> exists.
             </td>
             <td><code>src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs</code></td>
           </tr>
@@ -395,16 +396,16 @@
           <tr>
             <td><span class="tag required">Required</span><br>Workflow execution service</td>
             <td>
-              Render and persist subject, plain body, HTML body, and payload JSON when action-created notifications
-              are queued.
+              Persist the caller's exact typed recipient snapshot separately from rendered subject, plain body,
+              HTML body, and template-only payload JSON when action-created notifications are queued.
             </td>
             <td><code>src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs</code></td>
           </tr>
           <tr>
             <td><span class="tag required">Required for SLA</span><br>SLA overdue service</td>
             <td>
-              Render and persist HTML body for SLA overdue rows. Use stored task notification context so copied
-              recipients carry forward.
+              Render and persist HTML body for SLA overdue rows. Copy the stored task recipient snapshot unchanged;
+              use stored notification context only for template rendering.
             </td>
             <td><code>src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs</code></td>
           </tr>
@@ -448,25 +449,34 @@ END;</code></pre>
       <h2>Target API Changes</h2>
 
       <h3>Request DTO shape</h3>
-      <p>Keep copied recipients and direct recipient email inside <code>notificationContext</code>.</p>
+      <p>Reuse the shared application recipient contract; keep addresses outside <code>notificationContext</code>.</p>
       <pre><code>public sealed class WorkflowActionRequest
 {
     public string? WorkflowInstanceId { get; set; }
     public string? ActionKey { get; set; }
     public string? AssignedRoleKey { get; set; }
     public Dictionary&lt;string, string?&gt;? NotificationContext { get; set; }
+    public NotificationRecipients? NotificationRecipients { get; set; }
+}
+
+public sealed class NotificationRecipients
+{
+    public List&lt;string&gt; ToEmailAddresses { get; set; } = [];
+    public List&lt;string&gt; CcEmailAddresses { get; set; } = [];
 }</code></pre>
 
       <h3>Target API payload example</h3>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1050",
   "actionKey": "CheckerReturnToMaker",
+  "notificationRecipients": {
+    "toEmailAddresses": ["maker.one@example.com", "maker.delegate@example.com"],
+    "ccEmailAddresses": ["supervisor@example.com", "ops@example.com"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "returnedByDisplayName": "Checker One",
     "recipientDisplayName": "Maker One",
-    "recipientEmail": "maker.one@example.com",
-    "ccEmailAddresses": "supervisor@example.com;ops@example.com",
     "accountShortName": "EFG",
     "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
     "submittedDate": "4/24/2026",
@@ -523,8 +533,7 @@ var templateErrors = renderedSubject.Errors
     BusinessObjectType = instance.BusinessObjectType,
     BusinessObjectId = instance.BusinessObjectId,
     NotificationType = route.NotificationType,
-    RecipientRoleKey = recipientRoleKey,
-    RecipientUserId = route.RecipientUserId,
+    NotificationRecipientsJson = notificationRecipientsJson,
     Subject = renderedSubject.Rendered,
     Body = renderedBody.Rendered,
     HtmlBody = renderedHtmlBody.Rendered,
@@ -537,12 +546,18 @@ var templateErrors = renderedSubject.Errors
       <h3>SMTP sender behavior</h3>
       <p>The sender should:</p>
       <ul>
-        <li>Use <code>Smtp:RecipientOverride</code> first.</li>
-        <li>Use <code>recipientEmail</code> from payload JSON second.</li>
-        <li>Use <code>Smtp:RoleEmailMap:{RecipientRoleKey}</code> last.</li>
-        <li>Add CC recipients from <code>ccEmailAddresses</code> only when no recipient override is active.</li>
+        <li>Without an override, add every persisted To and Cc item to one message in caller order.</li>
+        <li>Never resolve addresses from payload/template context, route roles, SQL, directories, or configuration maps.</li>
+        <li>Treat any MailKit parse/send failure as failure of the complete outbox row; retry is message-level.</li>
+        <li>With <code>Smtp:RecipientOverride</code>, send only to the override mailbox, suppress intended envelope recipients, and include both ordered intended lists in controlled diagnostics.</li>
         <li>Send multipart email when <code>HtmlBody</code> is not blank.</li>
       </ul>
+
+      <p>
+        Persist the exact same <code>notificationRecipientsJson</code> on the created task and initial outbox row.
+        <code>PayloadJson</code> remains template context only. SLA reads and copies the task snapshot unchanged;
+        missing or malformed task snapshots are warned and skipped rather than reconstructed.
+      </p>
     </section>
 
     <section id="config">
@@ -556,19 +571,13 @@ var templateErrors = renderedSubject.Errors
     "Host": "smtp-relay.yourfirm.local",
     "Port": "25",
     "From": "workflow@yourfirm.com",
-    "RecipientOverride": "operator-smoke-test@yourfirm.com",
-    "RoleEmailMap": {
-      "Checker": "checker-team@yourfirm.com",
-      "TradingDesk": "trading-desk@yourfirm.com",
-      "BDRMClientService": "bdrm-client-service@yourfirm.com",
-      "Maker": "fallback-maker@yourfirm.com"
-    }
+    "RecipientOverride": "operator-smoke-test@yourfirm.com"
   }
 }</code></pre>
 
       <div class="callout">
-        <code>Maker</code> in <code>RoleEmailMap</code> is only a fallback. For Return-to-Maker, the target API should
-        supply <code>notificationContext.recipientEmail</code> from the business record.
+        <code>Smtp:RecipientOverride</code> is the only delivery-address override. Remove it only when every
+        notification-producing caller supplies validated To/Cc arrays.
       </div>
     </section>
 
@@ -579,9 +588,9 @@ var templateErrors = renderedSubject.Errors
         <li>Run seed or metadata update so every notification route has <code>HtmlBodyTemplate</code>.</li>
         <li>Build the target API with warnings as errors.</li>
         <li>Start a workflow and execute an action that queues a notification.</li>
-        <li>Confirm <code>NotificationOutbox.PayloadJson</code> contains <code>recipientEmail</code> and optional <code>ccEmailAddresses</code>.</li>
+        <li>Confirm the created task and initial outbox row contain identical ordered <code>NotificationRecipientsJson</code> while <code>PayloadJson</code> contains template values only.</li>
         <li>Confirm <code>NotificationOutbox.HtmlBody</code> is not blank.</li>
-        <li>With <code>Smtp:RecipientOverride</code> enabled, confirm the smoke mailbox receives the email and sees original recipient/CC values in the body.</li>
+        <li>With <code>Smtp:RecipientOverride</code> enabled, confirm the smoke mailbox is the only envelope recipient and sees both original ordered To/Cc lists in the body.</li>
         <li>Remove <code>RecipientOverride</code> only when ready to send real mail.</li>
         <li>Run the scheduled processor path for overdue and retry processing.</li>
       </ol>

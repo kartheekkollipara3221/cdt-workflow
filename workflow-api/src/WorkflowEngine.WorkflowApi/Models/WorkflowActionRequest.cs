@@ -1,3 +1,5 @@
+using WorkflowEngine.Application.Contracts;
+
 namespace WorkflowEngine.WorkflowApi.Models;
 
 public sealed class WorkflowActionRequest
@@ -9,4 +11,6 @@ public sealed class WorkflowActionRequest
     public string? AssignedRoleKey { get; set; }
 
     public Dictionary<string, string?>? NotificationContext { get; set; }
+
+    public NotificationRecipients? NotificationRecipients { get; set; }
 }

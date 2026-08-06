@@ -28,6 +28,37 @@ public sealed class WorkflowSamplesTests
         }
     }
 
+    [Fact]
+    public void NotificationProducingSamplesUseOrderedTypedRecipientArrays()
+    {
+        var sampleDirectory = Path.Combine(FindRepoRoot(), "samples", "workflow-actions");
+
+        var saveDraft = ReadEnvelope(Path.Combine(sampleDirectory, "01-save-draft.json"));
+        Assert.Null(saveDraft.Workflow?.NotificationRecipients);
+
+        foreach (var path in Directory.GetFiles(sampleDirectory, "*.json")
+                     .Where(path => !path.EndsWith("01-save-draft.json", StringComparison.OrdinalIgnoreCase))
+                     .Order(StringComparer.Ordinal))
+        {
+            var envelope = ReadEnvelope(path);
+            var recipients = Assert.IsType<NotificationRecipients>(envelope.Workflow?.NotificationRecipients);
+            Assert.Equal(
+                ["workflow.primary@example.test", "workflow.secondary@example.test"],
+                recipients.ToEmailAddresses);
+            Assert.Equal(
+                ["workflow.manager@example.test", "workflow.operations@example.test"],
+                recipients.CcEmailAddresses);
+            Assert.False(envelope.Workflow?.NotificationContext?.ContainsKey("recipientEmail") ?? false);
+            Assert.False(envelope.Workflow?.NotificationContext?.ContainsKey("ccEmailAddresses") ?? false);
+        }
+    }
+
+    private static WorkflowActionEnvelope ReadEnvelope(string path)
+    {
+        return JsonSerializer.Deserialize<WorkflowActionEnvelope>(File.ReadAllText(path), WorkflowJson.Options)
+            ?? throw new InvalidOperationException($"Could not deserialize workflow sample '{path}'.");
+    }
+
     private static string FindRepoRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

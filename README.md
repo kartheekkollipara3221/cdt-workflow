@@ -204,7 +204,18 @@ SLA is task-driven. Task definitions may point at an SLA policy; tasks without a
 
 Notifications use an outbox table. Workflow transitions queue rows; `process-notification-outbox` sends pending rows through `INotificationSender`.
 
-Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. SMTP resolves recipients from `Smtp:RecipientOverride`, then persisted `notificationContext.recipientEmail`, then `Smtp:RoleEmailMap`. It adds copied recipients from persisted `notificationContext.ccEmailAddresses`, including SLA overdue emails because task notification context is snapshotted. Email rows persist both plain text and HTML bodies; the HTML templates bold important UI-supplied values and turn `tradeLink` into a clickable link. The UI should send data values only, not HTML. `Smtp:RecipientOverride` is the smoke-test safety hatch and suppresses real CC delivery. See `PROJECT.md` §14.
+Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. Workflow start/action callers supply ordered typed recipient arrays outside `notificationContext`:
+
+```json
+{
+  "notificationRecipients": {
+    "toEmailAddresses": ["primary@example.test", "secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  }
+}
+```
+
+The caller owns address selection and validation. The engine does not trim, normalize, deduplicate, parse delimited strings, or resolve roles/directories. It stores the exact snapshot on the task and initial outbox row; SLA reminders reuse the task snapshot unchanged. One outbox row is one email with all To/Cc recipients and one message-level retry lifecycle. Email rows persist both plain text and HTML bodies; `notificationContext` remains template data only. `Smtp:RecipientOverride` sends only to the override mailbox, suppresses intended envelope recipients, and adds the intended ordered To/Cc lists to diagnostic content. See `PROJECT.md` §14.
 
 ### Configuration
 
@@ -222,13 +233,7 @@ Copy-pasteable `appsettings.json` shape:
     "Host": "localhost",
     "Port": 25,
     "From": "workflow-demo@example.test",
-    "RecipientOverride": "",
-    "RoleEmailMap": {
-      "Maker": "maker@example.test",
-      "Checker": "checker@example.test",
-      "TradingDesk": "trading@example.test",
-      "BDRMClientService": "bdrm@example.test"
-    }
+    "RecipientOverride": ""
   }
 }
 ```
@@ -237,7 +242,7 @@ Environment overrides use .NET configuration keys, for example `ConnectionString
 
 ### Going to production
 
-Switch `Notifications:Sender` from `Console` to `Smtp`. Configure `Smtp:Host`, `Smtp:From`, and `Smtp:RoleEmailMap`. Use `Smtp:RecipientOverride` during UI integration smoke tests.
+Switch `Notifications:Sender` from `Console` to `Smtp`. Configure `Smtp:Host` and `Smtp:From`; callers supply To/Cc arrays on each notification-producing request. Use `Smtp:RecipientOverride` during UI integration smoke tests.
 
 Never use `--reset` in production. One business object identifier means one workflow lifetime ever in v1. Assign a new `BusinessObjectId` for a new business lifetime.
 

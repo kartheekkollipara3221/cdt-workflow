@@ -59,12 +59,11 @@ The previous work was an external target-machine integration handoff, not broad 
 
 Latest recipient decision:
 
-- Maker can vary per business record.
-- SMTP delivery now resolves recipients in this order: `Smtp:RecipientOverride`, then `notificationContext.recipientEmail` persisted in notification `PayloadJson`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
-- The target API should supply `recipientEmail` in `notificationContext` for Return-to-Maker and any other per-record recipient scenario.
-- The UI can supply copied recipients as `notificationContext.ccEmailAddresses`, using comma- or semicolon-separated addresses.
-- `ccEmailAddresses` is persisted in notification payloads and snapshotted on created workflow tasks, so both immediate action-created emails and later SLA overdue emails use the same copied recipients.
-- `Smtp:RecipientOverride` suppresses real CC delivery during smoke tests and records the intended copied recipients in the email body.
+- The target API selects and validates per-record addresses, then supplies ordered typed `notificationRecipients.toEmailAddresses` and `ccEmailAddresses` arrays outside `notificationContext`.
+- The engine preserves recipient values, order, whitespace, and duplicates without validation, trimming, normalization, deduplication, role/directory lookup, or singular/delimited parsing.
+- Notification-producing transitions store the same exact recipient snapshot on the created task and initial outbox row. SLA reminders copy the task snapshot unchanged.
+- One outbox row represents one message containing all To/Cc recipients and one message-level retry lifecycle.
+- `Smtp:RecipientOverride` sends only to the override mailbox, suppresses intended envelope recipients, and records both intended ordered lists in controlled diagnostic content.
 - Notification emails now persist both plain text and HTML bodies. The target API/UI should keep sending plain data in `notificationContext`; the engine HTML-escapes caller-provided values, bolds important seeded values, and renders `tradeLink` as a clickable link in HTML emails.
 - No workflow SQL user table or role-to-email lookup table was added.
 
@@ -141,21 +140,20 @@ Removed by user-approved cleanup:
 
 ## Current Source Changes
 
-### Per-record SMTP recipient resolution
+### Typed per-record SMTP recipient snapshots
 
-Return-to-Maker can target a different Maker for each business record, so SMTP recipient resolution no longer depends only on the static `Smtp:RoleEmailMap:Maker` entry.
+Return-to-Maker can target a different Maker for each business record, so the target API owns recipient selection from the business record.
 
 Implemented fix:
 
-- `SmtpNotificationSender` resolves recipients in this order: `Smtp:RecipientOverride`, then payload `recipientEmail`, then `Smtp:RoleEmailMap:{RecipientRoleKey}`.
-- `SmtpNotificationSender` adds CC recipients from payload `ccEmailAddresses`, split by comma or semicolon.
-- Override-mode bodies include original role metadata and, when available, `OriginalRecipientEmail` and `OriginalCcEmailAddresses`.
-- `WorkflowExecutionValidationTests.ReturnToMakerPersistsRecipientEmailFromNotificationContext` proves `workflow.notificationContext.recipientEmail` is persisted into `NotificationOutbox.PayloadJson`.
-- `SmtpNotificationSenderTests` covers direct per-notification email, CC delivery, no-role-map delivery, override precedence, override CC suppression, and missing-recipient failure.
-- `Phase5SlaTests.RunSlaQueuesOnlyOverduePendingTasksWithoutExistingOverdueNotification` proves SLA overdue payloads preserve `ccEmailAddresses` from the task notification snapshot.
+- Workflow start and action contracts accept one shared typed recipient object with ordered multiple To/Cc arrays.
+- Task and outbox rows persist required `NotificationRecipientsJson` snapshots separate from template-only `PayloadJson`.
+- `SmtpNotificationSender` adds the persisted lists to one message; MailKit parse/send failures retry the whole row.
+- Override-mode bodies include both intended ordered To/Cc lists while suppressing intended envelope recipients.
+- Focused execution, SLA, outbox, SMTP, API, inspection, and sample tests cover exact snapshot preservation and message-level retry.
 - `ConsoleNotificationSenderTests` and `tests/COVERAGE_AUDIT.md` were updated so PROJECT.md section 20 coverage stays complete.
 
-No SQL user table, SQL role-to-email lookup, public API DTO change, or schema migration was added.
+No SQL user table, SQL role-to-email lookup, directory integration, or recipient validation was added.
 
 ### HTML notification email rendering
 
@@ -173,7 +171,7 @@ The UI or target API should never send HTML in `notificationContext`; send the s
 ### Documentation updates
 
 - `PROJECT.md`, `README.md`, `docs/frontend-workflow-api-handoff.html`, and `docs/beginners-api-console-handoff.html` document the recipient, CC, and HTML email behavior.
-- `workflow-api/WORKFLOW_API_BOUNDARIES.md`, `CODEX_HANDOFF.md`, and this `context.md` record that the target API should supply `notificationContext.recipientEmail` for business-record-specific recipients and `notificationContext.ccEmailAddresses` for UI-provided copied recipients, while leaving HTML rendering to the engine.
+- `workflow-api/WORKFLOW_API_BOUNDARIES.md` and this `context.md` record that the target API supplies validated typed recipient arrays separately from plain template values, while leaving HTML rendering to the engine.
 
 ## Notification Template Feature State
 
@@ -213,7 +211,6 @@ Return-to-Maker tokens:
 referenceNumber
 returnedByDisplayName
 recipientDisplayName
-recipientEmail
 accountShortName
 accountDisplayName
 submittedDate

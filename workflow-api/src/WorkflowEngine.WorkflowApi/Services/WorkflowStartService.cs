@@ -39,7 +39,8 @@ public sealed class WorkflowStartService(
             InitialActionKey: initialActionKey,
             StartedByDisplayName: actor.DisplayName,
             StartedByRoles: actor.Roles,
-            NotificationContext: NormalizeNotificationContext(request.NotificationContext)));
+            NotificationContext: NormalizeNotificationContext(request.NotificationContext),
+            NotificationRecipients: request.NotificationRecipients));
 
         var actionResult = startResult.Envelope.Result;
         var workflowContext = actionResult.Success

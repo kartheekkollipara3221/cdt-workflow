@@ -15,6 +15,10 @@
     "actionKey": "TradingReturnToMaker",
     "actionReason": "Trading Desk returned to Maker.",
     "idempotencyKey": "sample-06-trading-return-to-maker",
+    "notificationRecipients": {
+      "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+      "ccEmailAddresses": ["workflow.manager@example.test", "workflow.operations@example.test"]
+    },
     "notificationContext": {
       "referenceNumber": "1050",
       "submitterDisplayName": "Kollipara, Kartheek",
