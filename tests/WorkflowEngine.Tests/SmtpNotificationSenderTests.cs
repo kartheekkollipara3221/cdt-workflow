@@ -21,46 +21,27 @@ public sealed class SmtpNotificationSenderTests
     }
 
     [Fact]
-    public async Task MissingRoleMappingThrowsBeforeSmtpConnection()
+    public void TypedRecipientsBuildOneMessageWithOrderedToAndCcCollections()
     {
-        var sender = new SmtpNotificationSender(Configuration(new()
-        {
-            ["Smtp:Host"] = "localhost",
-            ["Smtp:From"] = "workflow@example.test"
-        }));
+        var sender = Sender();
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sender.SendAsync(Delivery(), CancellationToken.None));
+        using var message = sender.BuildMessage(Delivery(
+            toEmailAddresses: ["first@example.test", "second@example.test", "first@example.test"],
+            ccEmailAddresses: ["manager@example.test", "operations@example.test"]));
 
-        Assert.Contains("No SMTP recipient mapping", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void RoleMappingBuildsMessageFromPersistedBody()
-    {
-        var sender = new SmtpNotificationSender(Configuration(new()
-        {
-            ["Smtp:Host"] = "localhost",
-            ["Smtp:From"] = "workflow@example.test",
-            ["Smtp:RoleEmailMap:Checker"] = "cdt-checkers@example.test"
-        }));
-
-        using var message = sender.BuildMessage(Delivery(body: "Rendered email body"));
-
+        Assert.Equal(
+            ["first@example.test", "second@example.test", "first@example.test"],
+            message.To.Mailboxes.Select(address => address.Address));
+        Assert.Equal(
+            ["manager@example.test", "operations@example.test"],
+            message.Cc.Mailboxes.Select(address => address.Address));
         Assert.Equal("Task overdue", message.Subject);
-        Assert.Contains("cdt-checkers@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
-        Assert.Equal("Rendered email body", message.TextBody);
     }
 
     [Fact]
     public void HtmlBodyBuildsMultipartAlternativeMessage()
     {
-        var sender = new SmtpNotificationSender(Configuration(new()
-        {
-            ["Smtp:Host"] = "localhost",
-            ["Smtp:From"] = "workflow@example.test",
-            ["Smtp:RoleEmailMap:Checker"] = "cdt-checkers@example.test"
-        }));
+        var sender = Sender();
 
         using var message = sender.BuildMessage(Delivery(
             body: "Plain email body",
@@ -74,97 +55,30 @@ public sealed class SmtpNotificationSenderTests
     }
 
     [Fact]
-    public void RecipientEmailInPayloadWinsOverRoleMapping()
+    public void PayloadRecipientFieldsAndRoleMapDoNotAffectTypedRecipients()
     {
         var sender = new SmtpNotificationSender(Configuration(new()
         {
             ["Smtp:Host"] = "localhost",
             ["Smtp:From"] = "workflow@example.test",
-            ["Smtp:RoleEmailMap:Maker"] = "maker-group@example.test"
+            ["Smtp:RoleEmailMap:Checker"] = "role-map@example.test"
         }));
 
         using var message = sender.BuildMessage(Delivery(
-            recipientRoleKey: "Maker",
-            payloadJson: """{"recipientEmail":"maker.one@example.test"}"""));
+            toEmailAddresses: ["typed.to@example.test"],
+            ccEmailAddresses: ["typed.cc@example.test"],
+            payloadJson: """{"recipientEmail":"payload@example.test","ccEmailAddresses":"payload.cc@example.test"}"""));
 
-        Assert.Contains("maker.one@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
-        Assert.DoesNotContain("maker-group@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
+        Assert.Equal(["typed.to@example.test"], message.To.Mailboxes.Select(address => address.Address));
+        Assert.Equal(["typed.cc@example.test"], message.Cc.Mailboxes.Select(address => address.Address));
+        var allRecipients = string.Join(",", message.To.Concat(message.Cc).Select(address => address.ToString()));
+        Assert.DoesNotContain("payload@example.test", allRecipients, StringComparison.Ordinal);
+        Assert.DoesNotContain("payload.cc@example.test", allRecipients, StringComparison.Ordinal);
+        Assert.DoesNotContain("role-map@example.test", allRecipients, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void RecipientEmailInPayloadDoesNotRequireRoleMapping()
-    {
-        var sender = new SmtpNotificationSender(Configuration(new()
-        {
-            ["Smtp:Host"] = "localhost",
-            ["Smtp:From"] = "workflow@example.test"
-        }));
-
-        using var message = sender.BuildMessage(Delivery(
-            recipientRoleKey: "Maker",
-            payloadJson: """{"recipientEmail":"maker.one@example.test"}"""));
-
-        Assert.Contains("maker.one@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void CcEmailAddressesInPayloadAddsCcRecipients()
-    {
-        var sender = new SmtpNotificationSender(Configuration(new()
-        {
-            ["Smtp:Host"] = "localhost",
-            ["Smtp:From"] = "workflow@example.test"
-        }));
-
-        using var message = sender.BuildMessage(Delivery(
-            recipientRoleKey: "Maker",
-            payloadJson: """{"recipientEmail":"maker.one@example.test","ccEmailAddresses":"cc.one@example.test; cc.two@example.test, cc.three@example.test"}"""));
-
-        var ccRecipients = string.Join(",", message.Cc.Select(address => address.ToString()));
-        Assert.Contains("cc.one@example.test", ccRecipients, StringComparison.Ordinal);
-        Assert.Contains("cc.two@example.test", ccRecipients, StringComparison.Ordinal);
-        Assert.Contains("cc.three@example.test", ccRecipients, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void RecipientOverrideWinsAndBodyRecordsOriginalRole()
-    {
-        var sender = new SmtpNotificationSender(Configuration(new()
-        {
-            ["Smtp:Host"] = "localhost",
-            ["Smtp:From"] = "workflow@example.test",
-            ["Smtp:RecipientOverride"] = "operator@example.test",
-            ["Smtp:RoleEmailMap:Checker"] = "cdt-checkers@example.test"
-        }));
-
-        using var message = sender.BuildMessage(Delivery());
-
-        Assert.Contains("operator@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
-        Assert.Contains("OriginalRecipientRoleKey: Checker", message.TextBody, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void RecipientOverrideWinsOverRecipientEmailInPayload()
-    {
-        var sender = new SmtpNotificationSender(Configuration(new()
-        {
-            ["Smtp:Host"] = "localhost",
-            ["Smtp:From"] = "workflow@example.test",
-            ["Smtp:RecipientOverride"] = "operator@example.test"
-        }));
-
-        using var message = sender.BuildMessage(Delivery(
-            recipientRoleKey: "Maker",
-            payloadJson: """{"recipientEmail":"maker.one@example.test"}"""));
-
-        Assert.Contains("operator@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
-        Assert.DoesNotContain("maker.one@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
-        Assert.Contains("OriginalRecipientRoleKey: Maker", message.TextBody, StringComparison.Ordinal);
-        Assert.Contains("OriginalRecipientEmail: maker.one@example.test", message.TextBody, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void RecipientOverrideSuppressesCcAndBodyRecordsOriginalCc()
+    public void RecipientOverrideSuppressesOriginalsAndAddsOrderedPlainAndHtmlDiagnostics()
     {
         var sender = new SmtpNotificationSender(Configuration(new()
         {
@@ -176,15 +90,28 @@ public sealed class SmtpNotificationSenderTests
         using var message = sender.BuildMessage(Delivery(
             body: "Rendered email body",
             htmlBody: "<p>Rendered email body</p>",
-            recipientRoleKey: "Maker",
-            payloadJson: """{"recipientEmail":"maker.one@example.test","ccEmailAddresses":"cc.one@example.test; cc.two@example.test"}"""));
+            toEmailAddresses: ["first@example.test", "second@example.test"],
+            ccEmailAddresses: ["manager@example.test", "operations@example.test"]));
 
-        Assert.Contains("operator@example.test", string.Join(",", message.To.Select(address => address.ToString())), StringComparison.Ordinal);
+        Assert.Equal(["operator@example.test"], message.To.Mailboxes.Select(address => address.Address));
         Assert.Empty(message.Cc);
-        Assert.Contains("OriginalRecipientEmail: maker.one@example.test", message.TextBody, StringComparison.Ordinal);
-        Assert.Contains("OriginalCcEmailAddresses: cc.one@example.test; cc.two@example.test", message.TextBody, StringComparison.Ordinal);
+        Assert.Contains(
+            "IntendedToEmailAddresses: first@example.test; second@example.test",
+            message.TextBody,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "IntendedCcEmailAddresses: manager@example.test; operations@example.test",
+            message.TextBody,
+            StringComparison.Ordinal);
         Assert.Contains("Rendered email body", message.TextBody, StringComparison.Ordinal);
-        Assert.Contains("<strong>OriginalCcEmailAddresses:</strong> cc.one@example.test; cc.two@example.test", message.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains(
+            "<strong>IntendedToEmailAddresses:</strong> first@example.test; second@example.test",
+            message.HtmlBody,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<strong>IntendedCcEmailAddresses:</strong> manager@example.test; operations@example.test",
+            message.HtmlBody,
+            StringComparison.Ordinal);
         Assert.Contains("<p>Rendered email body</p>", message.HtmlBody, StringComparison.Ordinal);
     }
 
@@ -192,7 +119,8 @@ public sealed class SmtpNotificationSenderTests
         string subject = "Task overdue",
         string body = "",
         string htmlBody = "",
-        string? recipientRoleKey = "Checker",
+        IReadOnlyList<string>? toEmailAddresses = null,
+        IReadOnlyList<string>? ccEmailAddresses = null,
         string payloadJson = """{"taskKey":"CheckerReviewTask","dueAtUtc":"2030-01-15T16:00:00Z"}""")
     {
         return new NotificationDelivery(
@@ -202,8 +130,8 @@ public sealed class SmtpNotificationSenderTests
             "PortfolioTrade",
             "PT-1001",
             "SlaTaskOverdue",
-            recipientRoleKey,
-            null,
+            toEmailAddresses ?? ["first@example.test", "second@example.test"],
+            ccEmailAddresses ?? ["manager@example.test", "operations@example.test"],
             subject,
             body,
             htmlBody,
@@ -218,5 +146,14 @@ public sealed class SmtpNotificationSenderTests
         return new ConfigurationBuilder()
             .AddInMemoryCollection(values)
             .Build();
+    }
+
+    private static SmtpNotificationSender Sender()
+    {
+        return new SmtpNotificationSender(Configuration(new()
+        {
+            ["Smtp:Host"] = "localhost",
+            ["Smtp:From"] = "workflow@example.test"
+        }));
     }
 }

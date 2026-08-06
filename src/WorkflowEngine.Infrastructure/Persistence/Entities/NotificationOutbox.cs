@@ -8,8 +8,7 @@ public sealed class NotificationOutbox
     public string BusinessObjectType { get; set; } = string.Empty;
     public string BusinessObjectId { get; set; } = string.Empty;
     public string NotificationType { get; set; } = string.Empty;
-    public string? RecipientRoleKey { get; set; }
-    public string? RecipientUserId { get; set; }
+    public string NotificationRecipientsJson { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public string HtmlBody { get; set; } = string.Empty;

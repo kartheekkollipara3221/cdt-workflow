@@ -51,6 +51,7 @@ public sealed class WorkflowActionService(
                 ActionKey = actionKey,
                 AssignedRoleKey = assignedRoleKey,
                 NotificationContext = NormalizeNotificationContext(request.NotificationContext),
+                NotificationRecipients = request.NotificationRecipients,
                 IdempotencyKey = generatedId
             }
         };

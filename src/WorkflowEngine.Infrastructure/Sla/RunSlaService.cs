@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -78,6 +79,13 @@ public sealed class RunSlaService(
                     continue;
                 }
 
+                if (!TryValidateNotificationRecipientsSnapshot(task, out var recipientsWarning))
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    warnings.Add(recipientsWarning);
+                    continue;
+                }
+
                 var route = !string.IsNullOrWhiteSpace(task.NotificationRouteKey)
                     ? await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
                         item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
@@ -132,8 +140,7 @@ public sealed class RunSlaService(
                     BusinessObjectType = instance.BusinessObjectType,
                     BusinessObjectId = instance.BusinessObjectId,
                     NotificationType = "SlaTaskOverdue",
-                    RecipientRoleKey = route.RecipientRoleKey ?? task.AssignedRoleKey,
-                    RecipientUserId = route.RecipientUserId,
+                    NotificationRecipientsJson = task.NotificationRecipientsJson,
                     Subject = route.OverdueSubjectPrefix + renderedSubject.Rendered,
                     Body = renderedBody.Rendered,
                     HtmlBody = renderedHtmlBody.Rendered,
@@ -162,6 +169,39 @@ public sealed class RunSlaService(
         }
 
         return new RunSlaResult(now, pendingTasksWithSla, alreadyQueued, queued, warnings);
+    }
+
+    private static bool TryValidateNotificationRecipientsSnapshot(
+        WorkflowTask task,
+        out string warning)
+    {
+        if (string.IsNullOrWhiteSpace(task.NotificationRecipientsJson))
+        {
+            warning = $"task {task.Id} overdue notification recipients snapshot missing";
+            return false;
+        }
+
+        try
+        {
+            var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+                task.NotificationRecipientsJson,
+                WorkflowJson.Options);
+            if (recipients is null
+                || recipients.ToEmailAddresses is null
+                || recipients.CcEmailAddresses is null)
+            {
+                warning = $"task {task.Id} overdue notification recipients snapshot invalid: typed recipient arrays are required";
+                return false;
+            }
+        }
+        catch (JsonException exception)
+        {
+            warning = $"task {task.Id} overdue notification recipients snapshot invalid: {exception.Message}";
+            return false;
+        }
+
+        warning = string.Empty;
+        return true;
     }
 
     private static bool TryBuildNotificationContext(

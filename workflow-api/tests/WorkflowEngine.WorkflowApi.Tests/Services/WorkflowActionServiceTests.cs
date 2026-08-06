@@ -9,6 +9,61 @@ namespace WorkflowEngine.WorkflowApi.Tests.Services;
 public sealed class WorkflowActionServiceTests
 {
     [Fact]
+    public void ExecuteWorkflowActionPreservesNotificationRecipientsAndUsesTrustedActor()
+    {
+        var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = true,
+                ResultCode = "Success",
+                WorkflowInstanceId = "WF-PT-1001",
+                ActionKey = "SubmitForChecker",
+                CorrelationId = "api-action-recipients"
+            },
+            WorkflowContext = new WorkflowContext()
+        });
+        var recipients = new NotificationRecipients
+        {
+            ToEmailAddresses =
+            [
+                " primary@example.com ",
+                "duplicate@example.com",
+                "duplicate@example.com"
+            ],
+            CcEmailAddresses =
+            [
+                " copied-first@example.com ",
+                "copied-second@example.com"
+            ]
+        };
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("trusted-user", "Trusted User", ["Maker"])),
+            executionService);
+
+        service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ActionKey = "SubmitForChecker",
+            NotificationRecipients = recipients
+        });
+
+        var envelope = Assert.IsType<WorkflowActionEnvelope>(
+            executionService.LastRequest?.Normalized.Envelope);
+        Assert.Same(recipients, envelope.Workflow?.NotificationRecipients);
+        Assert.Equal(
+            [" primary@example.com ", "duplicate@example.com", "duplicate@example.com"],
+            envelope.Workflow?.NotificationRecipients?.ToEmailAddresses);
+        Assert.Equal(
+            [" copied-first@example.com ", "copied-second@example.com"],
+            envelope.Workflow?.NotificationRecipients?.CcEmailAddresses);
+        Assert.Equal("trusted-user", envelope.Actor?.UserId);
+        Assert.Equal("Trusted User", envelope.Actor?.DisplayName);
+        Assert.Equal(["Maker"], envelope.Actor?.Roles);
+        Assert.Null(envelope.Workflow?.NotificationContext);
+    }
+
+    [Fact]
     public void ExecuteWorkflowActionBuildsWorkflowOnlyExecutionRequest()
     {
         var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope

@@ -330,8 +330,7 @@ public sealed class WorkflowExecutionService(
         WorkflowInstance instance,
         WorkflowTransitionDefinition transition,
         string oldState,
-        WorkflowTaskChange? createdTask,
-        string? recipientRoleKey)
+        WorkflowTaskChange? createdTask)
     {
         var context = envelope.Workflow?.NotificationContext is null
             ? new Dictionary<string, string?>(StringComparer.Ordinal)
@@ -342,7 +341,6 @@ public sealed class WorkflowExecutionService(
         context["oldState"] = oldState;
         context["newState"] = transition.ToStateKey;
         context["taskKey"] = createdTask?.TaskKey ?? transition.TaskToCreateKey ?? string.Empty;
-        context["recipientRoleKey"] = recipientRoleKey ?? string.Empty;
         return context;
     }
 
@@ -410,6 +408,9 @@ public sealed class WorkflowExecutionService(
         var envelope = normalized.Envelope;
         var workflow = envelope.Workflow!;
         var now = timeProvider.GetUtcNow();
+        var notificationRecipientsJson = JsonSerializer.Serialize(
+            workflow.NotificationRecipients ?? new NotificationRecipients(),
+            WorkflowJson.Options);
         WorkflowTaskChange? closedTask = null;
         WorkflowTaskChange? createdTask = null;
         WorkflowNotificationSummary? notification = null;
@@ -514,7 +515,8 @@ public sealed class WorkflowExecutionService(
                         AssignedUserId = null,
                         Status = "Pending",
                         CreatedAtUtc = now,
-                        DueAtUtc = dueAtUtc
+                        DueAtUtc = dueAtUtc,
+                        NotificationRecipientsJson = notificationRecipientsJson
                     };
                     dbContext.WorkflowTasks.Add(created);
                     dbContext.SaveChanges();
@@ -533,14 +535,12 @@ public sealed class WorkflowExecutionService(
                         row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
                         && row.RouteKey == transition.NotificationRouteKey
                         && row.IsActive);
-                    var recipientRoleKey = route.RecipientRoleKey ?? createdTask?.AssignedRole;
                     var notificationContext = BuildNotificationContext(
                         envelope,
                         instance,
                         transition,
                         oldState,
-                        createdTask,
-                        recipientRoleKey);
+                        createdTask);
                     var renderedSubject = RenderTemplate(route.SubjectTemplate, notificationContext);
                     var renderedBody = RenderTemplate(route.BodyTemplate, notificationContext);
                     var renderedHtmlBody = RenderHtmlTemplate(route.HtmlBodyTemplate, notificationContext);
@@ -570,8 +570,7 @@ public sealed class WorkflowExecutionService(
                         BusinessObjectType = envelope.BusinessObject?.ObjectType ?? string.Empty,
                         BusinessObjectId = envelope.BusinessObject?.ObjectId ?? string.Empty,
                         NotificationType = route.NotificationType,
-                        RecipientRoleKey = recipientRoleKey,
-                        RecipientUserId = null,
+                        NotificationRecipientsJson = notificationRecipientsJson,
                         Subject = renderedSubject.Rendered,
                         Body = renderedBody.Rendered,
                         HtmlBody = renderedHtmlBody.Rendered,
@@ -584,8 +583,7 @@ public sealed class WorkflowExecutionService(
                     notification = new WorkflowNotificationSummary
                     {
                         Queued = true,
-                        NotificationType = route.NotificationType,
-                        RecipientRole = recipientRoleKey
+                        NotificationType = route.NotificationType
                     };
                 }
             }

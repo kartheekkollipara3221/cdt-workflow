@@ -49,6 +49,16 @@ internal static class WorkflowActionEnvelopeTestData
             "expectedInstanceVersion": 1,
             "actionKey": "SubmitForChecker",
             "actionReason": "Maker submitted the portfolio trade for Checker review.",
+            "notificationRecipients": {
+              "toEmailAddresses": [
+                "checker.primary@example.com",
+                "checker.secondary@example.com"
+              ],
+              "ccEmailAddresses": [
+                "maker.manager@example.com",
+                "workflow.operations@example.com"
+              ]
+            },
             "idempotencyKey": "idem-submit-1"
           }
         }

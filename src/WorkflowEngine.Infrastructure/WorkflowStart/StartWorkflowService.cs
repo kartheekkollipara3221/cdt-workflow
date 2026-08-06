@@ -209,6 +209,7 @@ public sealed class StartWorkflowService(
                 WorkflowInstanceId = workflowInstanceId,
                 ActionKey = request.InitialActionKey,
                 NotificationContext = CopyNotificationContext(request.NotificationContext),
+                NotificationRecipients = CopyNotificationRecipients(request.NotificationRecipients),
                 IdempotencyKey = generatedId
             }
         };
@@ -366,6 +367,21 @@ public sealed class StartWorkflowService(
         }
 
         return copied.Count == 0 ? null : copied;
+    }
+
+    private static NotificationRecipients? CopyNotificationRecipients(NotificationRecipients? recipients)
+    {
+        return recipients is null
+            ? null
+            : new NotificationRecipients
+            {
+                ToEmailAddresses = recipients.ToEmailAddresses is null
+                    ? null!
+                    : [.. recipients.ToEmailAddresses],
+                CcEmailAddresses = recipients.CcEmailAddresses is null
+                    ? null!
+                    : [.. recipients.CcEmailAddresses]
+            };
     }
 
     private static bool IsWorkflowInstanceUniqueViolation(DbUpdateException exception)

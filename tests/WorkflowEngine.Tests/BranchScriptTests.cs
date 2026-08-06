@@ -1,3 +1,5 @@
+using System.Text.Json;
+using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Demo;
 
 namespace WorkflowEngine.Tests;
@@ -64,6 +66,16 @@ public sealed class BranchScriptTests
 
         Assert.Contains(host.DbContext.WorkflowTasks, row => row.WorkflowInstanceId == workflowInstanceId && row.Status == "Completed");
         var notification = Assert.Single(host.DbContext.NotificationOutbox.Where(row => row.WorkflowInstanceId == workflowInstanceId && row.NotificationType == "WorkflowReturnedToMaker"));
-        Assert.Equal("Maker", notification.RecipientRoleKey);
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            pending.NotificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(
+            ["workflow.primary@example.test", "workflow.secondary@example.test"],
+            recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["workflow.manager@example.test", "workflow.operations@example.test"],
+            recipients.CcEmailAddresses);
+        Assert.Equal(pending.NotificationRecipientsJson, notification.NotificationRecipientsJson);
     }
 }

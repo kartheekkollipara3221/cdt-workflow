@@ -435,6 +435,12 @@
             <td>Dictionary of string keys and values</td>
             <td>Blank keys and blank values are ignored. Keys and values are trimmed.</td>
           </tr>
+          <tr>
+            <td><code>NotificationRecipients</code></td>
+            <td>When the initial action creates a task/notification</td>
+            <td>Ordered <code>ToEmailAddresses</code> and <code>CcEmailAddresses</code> arrays</td>
+            <td>The caller selects and validates addresses; the workflow API preserves values, order, whitespace, and duplicates.</td>
+          </tr>
         </tbody>
       </table>
 
@@ -501,7 +507,13 @@
             <td><code>NotificationContext</code></td>
             <td>Only when the action queues a templated notification</td>
             <td>Dictionary of string keys and values</td>
-            <td>Provides template values, per-record <code>recipientEmail</code>, and optional <code>ccEmailAddresses</code>. Values are rendered into text and HTML emails by the workflow engine.</td>
+            <td>Provides template values only. Values are rendered into text and HTML emails by the workflow engine.</td>
+          </tr>
+          <tr>
+            <td><code>NotificationRecipients</code></td>
+            <td>When the action creates a task/notification</td>
+            <td>Ordered <code>ToEmailAddresses</code> and <code>CcEmailAddresses</code> arrays</td>
+            <td>Separate from template context; the caller owns selection and validation.</td>
           </tr>
         </tbody>
       </table>
@@ -569,15 +581,17 @@
         <code>PT-FE-1001</code>, which creates workflow instance <code>WF-PT-FE-1001</code>.
       </div>
 
-      <h3>Shared notification context values</h3>
-      <p>Reuse these values in the sample bodies below.</p>
+      <h3>Shared notification data</h3>
+      <p>Reuse these separate recipient arrays and template-context values in the sample bodies below.</p>
+      <pre><code>"NotificationRecipients": {
+  "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+  "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+}</code></pre>
       <pre><code>{
   "referenceNumber": "1050",
   "submitterDisplayName": "Maker One",
   "returnedByDisplayName": "Checker One",
   "recipientDisplayName": "Maker One",
-  "recipientEmail": "maker.one@example.test",
-  "ccEmailAddresses": "manager.one@example.test; audit.one@example.test",
   "traderDisplayName": "Trader One",
   "confirmerDisplayName": "BDRM One",
   "deskName": "Taxable",
@@ -589,9 +603,12 @@
 }</code></pre>
 
       <div class="callout info">
-        <code>ccEmailAddresses</code> accepts comma- or semicolon-separated addresses. The workflow engine persists it
-        with the notification context, so the same copied recipients are included on immediate action emails and later
-        SLA overdue emails for the created task.
+        The frontend/business API owns recipient selection and email validation. The workflow API replaces only actor
+        identity from trusted headers and passes recipient strings unchanged. The engine performs no trimming,
+        normalization, deduplication, role/directory lookup, singular-field fallback, or delimited parsing. It stores
+        the exact snapshot on the created task and initial outbox row; SLA reminders copy the task snapshot unchanged.
+        One outbox row is one complete message and one retry lifecycle. <code>Smtp:RecipientOverride</code> sends only
+        to the override mailbox and includes the intended ordered To/Cc lists in controlled diagnostics.
       </div>
 
       <div class="callout info">
@@ -696,6 +713,10 @@ X-Workflow-DisplayName: Maker One
   "BusinessObjectType": "PortfolioTrade",
   "BusinessObjectId": "PT-FE-1001",
   "InitialActionKey": "SubmitForChecker",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "submitterDisplayName": "Maker One",
     "deskName": "Taxable",
@@ -722,11 +743,14 @@ X-Workflow-DisplayName: Checker One
 {
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "CheckerReturnToMaker",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "referenceNumber": "1050",
     "returnedByDisplayName": "Checker One",
     "recipientDisplayName": "Maker One",
-    "recipientEmail": "maker.one@example.test",
     "accountShortName": "ABC123",
     "accountDisplayName": "ABC Growth Account",
     "submittedDate": "2026-06-09",
@@ -744,6 +768,10 @@ X-Workflow-DisplayName: Maker One
 {
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "ResubmitForChecker",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "submitterDisplayName": "Maker One",
     "deskName": "Taxable",
@@ -765,6 +793,10 @@ X-Workflow-DisplayName: Checker One
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "CheckerSendToTradingDesk",
   "AssignedRoleKey": "TradingDeskTaxable",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "submitterDisplayName": "Maker One",
     "deskName": "Taxable",
@@ -785,11 +817,14 @@ X-Workflow-DisplayName: Trader One
 {
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "TradingReturnToMaker",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "referenceNumber": "1050",
     "returnedByDisplayName": "Trader One",
     "recipientDisplayName": "Maker One",
-    "recipientEmail": "maker.one@example.test",
     "accountShortName": "ABC123",
     "accountDisplayName": "ABC Growth Account",
     "submittedDate": "2026-06-09",
@@ -819,6 +854,10 @@ X-Workflow-DisplayName: Maker One
 {
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "ResubmitForChecker",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "submitterDisplayName": "Maker One",
     "deskName": "Taxable",
@@ -840,6 +879,10 @@ X-Workflow-DisplayName: Checker One
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "CheckerSendToTradingDesk",
   "AssignedRoleKey": "TradingDeskTaxable",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "submitterDisplayName": "Maker One",
     "deskName": "Taxable",
@@ -860,6 +903,10 @@ X-Workflow-DisplayName: Trader One
 {
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "TradingTradeExecuted",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "traderDisplayName": "Trader One",
     "deskName": "Taxable",
@@ -880,6 +927,10 @@ X-Workflow-DisplayName: BDRM One
 {
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "BdrmTradeFulfilled",
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
+  },
   "NotificationContext": {
     "confirmerDisplayName": "BDRM One",
     "accountShortName": "ABC123",
@@ -989,8 +1040,8 @@ X-Workflow-DisplayName: BDRM One
       <div class="callout warn">
         <code>RequestDefaults</code> are useful display/debug context in this reference API, but
         <code>POST /v1/WorkflowAction</code> does not accept those guard fields. Send only
-        <code>WorkflowInstanceId</code>, <code>ActionKey</code>, optional <code>AssignedRoleKey</code>, and optional
-        <code>NotificationContext</code>.
+        <code>WorkflowInstanceId</code>, <code>ActionKey</code>, optional <code>AssignedRoleKey</code>, optional
+        <code>NotificationContext</code>, and optional typed <code>NotificationRecipients</code>.
       </div>
 
       <div class="callout info">

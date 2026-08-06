@@ -15,6 +15,10 @@
     "actionKey": "BdrmTradeNotExecutedProperly",
     "actionReason": "BDRM found execution issue.",
     "idempotencyKey": "sample-09-bdrm-trade-not-executed-properly",
+    "notificationRecipients": {
+      "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+      "ccEmailAddresses": ["workflow.manager@example.test", "workflow.operations@example.test"]
+    },
     "notificationContext": {
       "referenceNumber": "1050",
       "submitterDisplayName": "Kollipara, Kartheek",

@@ -16,6 +16,10 @@
     "actionReason": "Checker sent to Trading Desk.",
     "assignedRoleKey": "TradingDeskTaxable",
     "idempotencyKey": "sample-05-checker-send-to-trading-desk",
+    "notificationRecipients": {
+      "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+      "ccEmailAddresses": ["workflow.manager@example.test", "workflow.operations@example.test"]
+    },
     "notificationContext": {
       "referenceNumber": "1050",
       "submitterDisplayName": "Kollipara, Kartheek",

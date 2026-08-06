@@ -662,7 +662,7 @@ dotnet run --project src\WorkflowEngine.Console -- show-tasks WF-PT-1003</code><
         <tbody>
           <tr>
             <td><code>POST /v1/WorkflowStart</code></td>
-            <td><code>workflowKey</code>, <code>businessObjectType</code>, <code>businessObjectId</code>, optional <code>initialActionKey</code>, optional <code>notificationContext</code></td>
+            <td><code>workflowKey</code>, <code>businessObjectType</code>, <code>businessObjectId</code>, optional <code>initialActionKey</code>, optional <code>notificationRecipients</code>, optional <code>notificationContext</code></td>
             <td><code>{ "result": { "actionResult": {}, "workflowContext": {} } }</code></td>
           </tr>
           <tr>
@@ -672,7 +672,7 @@ dotnet run --project src\WorkflowEngine.Console -- show-tasks WF-PT-1003</code><
           </tr>
           <tr>
             <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>workflowInstanceId</code>, <code>actionKey</code>, optional <code>assignedRoleKey</code>, optional <code>notificationContext</code></td>
+            <td><code>workflowInstanceId</code>, <code>actionKey</code>, optional <code>assignedRoleKey</code>, optional <code>notificationRecipients</code>, optional <code>notificationContext</code></td>
             <td><code>{ "result": { "actionResult": {}, "workflowContext": {} } }</code></td>
           </tr>
         </tbody>
@@ -688,6 +688,13 @@ X-Workflow-DisplayName: Maker One</code></pre>
         In the real target API, map the authenticated user and roles from the target system into the workflow actor.
       </p>
 
+      <p>
+        For every start or action that can create a task or notification, the caller selects and validates ordered
+        To/Cc addresses and supplies the shared typed <code>notificationRecipients</code> arrays outside
+        <code>notificationContext</code>. <code>NotificationContext</code> contains template data only. A genuinely
+        non-notifying <code>SaveDraft</code> request remains recipient-free.
+      </p>
+
       <h3>Start and submit in one API call</h3>
       <pre><code>POST /v1/WorkflowStart
 Content-Type: application/json
@@ -700,6 +707,10 @@ X-Workflow-DisplayName: Maker One
   "businessObjectType": "PortfolioTrade",
   "businessObjectId": "PT-123",
   "initialActionKey": "SubmitForChecker",
+  "notificationRecipients": {
+    "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "ccEmailAddresses": ["workflow.manager@example.test", "workflow.operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "submitterDisplayName": "Maker One",
@@ -730,6 +741,10 @@ X-Workflow-DisplayName: Checker One
   "workflowInstanceId": "WF-PT-123",
   "actionKey": "CheckerSendToTradingDesk",
   "assignedRoleKey": "TradingDeskTaxable",
+  "notificationRecipients": {
+    "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+    "ccEmailAddresses": ["workflow.manager@example.test", "workflow.operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "submitterDisplayName": "Maker One",
@@ -929,7 +944,10 @@ X-Workflow-DisplayName: Checker One
         <li>Workflow transitions queue rows in <code>NotificationOutbox</code>.</li>
         <li>Rows are rendered from SQL metadata templates and caller-provided <code>notificationContext</code>.</li>
         <li>Rows store both plain text and HTML bodies; HTML values from <code>notificationContext</code> are escaped by the engine.</li>
+        <li>Recipients are separate typed <code>notificationRecipients</code> To/Cc arrays supplied and validated by the caller.</li>
+        <li>The exact recipient snapshot is stored on the task and initial outbox row; SLA reminders reuse the task snapshot unchanged.</li>
         <li>Action-created rows are dispatched by the API immediately after the workflow transaction commits.</li>
+        <li>One outbox row is one complete email and one message-level retry lifecycle; there is no partial recipient status.</li>
         <li>Pending rows remain available for retry through <code>process-notification-outbox</code>.</li>
         <li>SLA overdue rows are created by <code>run-sla</code>, not by form buttons.</li>
       </ul>
@@ -956,7 +974,7 @@ X-Workflow-DisplayName: Checker One
           </tr>
           <tr>
             <td><code>Notifications:Sender = Smtp</code></td>
-            <td>Sends multipart text and HTML email with MailKit using SMTP host/from config, per-notification recipient email, or role mapping fallback.</td>
+            <td>Sends one multipart text and HTML email with MailKit using SMTP host/from config and the row's exact typed To/Cc snapshot.</td>
             <td>Target SMTP integration and live smoke testing.</td>
           </tr>
         </tbody>
@@ -971,16 +989,7 @@ X-Workflow-DisplayName: Checker One
     "Host": "smtp.your-firm.example",
     "Port": 25,
     "From": "workflow@example.test",
-    "RecipientOverride": "operator@example.test",
-    "RoleEmailMap": {
-      "Maker": "maker-group@example.test",
-      "Checker": "checker-group@example.test",
-      "TradingDesk": "trading-group@example.test",
-      "TradingDeskTaxable": "trading-taxable@example.test",
-      "TradingDeskTaxExempt": "trading-tax-exempt@example.test",
-      "TradingDeskEquity": "trading-equity@example.test",
-      "BDRMClientService": "bdrm-group@example.test"
-    }
+    "RecipientOverride": "operator@example.test"
   }
 }</code></pre>
 
@@ -988,29 +997,24 @@ X-Workflow-DisplayName: Checker One
         <h3>Smoke-test safety</h3>
         <p>
           Keep <code>Smtp:RecipientOverride</code> set during live SMTP smoke testing. Remove it only when ready to
-          send to real per-record or configured role recipients.
+          send to the caller-supplied recipients.
         </p>
       </div>
 
-      <h3>Recipient resolution order</h3>
-      <ol>
-        <li><code>Smtp:RecipientOverride</code> wins for smoke testing and redirects every message.</li>
-        <li><code>notificationContext.recipientEmail</code> is used when the target API supplies a per-record recipient.</li>
-        <li><code>notificationContext.ccEmailAddresses</code> adds comma- or semicolon-separated CC recipients.</li>
-        <li><code>Smtp:RoleEmailMap:{RecipientRoleKey}</code> is the fallback for role/group recipients.</li>
-      </ol>
-
+      <h3>Caller-supplied typed recipients</h3>
+      <pre><code>"notificationRecipients": {
+  "toEmailAddresses": ["primary@example.test", "secondary@example.test"],
+  "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+}</code></pre>
       <p>
-        For Return to Maker, the Maker can vary by business record, so the target API should include the actual
-        Maker address in <code>notificationContext.recipientEmail</code>. The address is persisted in the
-        notification payload and used by SMTP delivery without adding a workflow user lookup table.
+        The target API builds and validates both ordered arrays from business data it already owns. The workflow API
+        replaces only actor identity from trusted headers and passes recipient strings unchanged. The engine does not
+        trim, normalize, validate, deduplicate, resolve roles/directories, or parse singular/delimited recipient fields.
       </p>
       <p>
-        If the UI has additional copied recipients, include them as
-        <code>notificationContext.ccEmailAddresses</code>. The value is persisted with the notification context, so
-        both action-created emails and later SLA overdue emails for that task include the same copied recipients.
-        When <code>Smtp:RecipientOverride</code> is configured for smoke testing, real CC delivery is suppressed and
-        the intended CC list is written into the test email body.
+        The created task and initial outbox row store the same exact recipient snapshot. SLA overdue rows copy the task
+        snapshot unchanged. <code>Smtp:RecipientOverride</code> sends only to the override mailbox, suppresses intended
+        To/Cc envelope recipients, and writes both ordered intended lists into the controlled diagnostic body.
       </p>
       <p>
         Send notification values as plain data, not HTML. Seeded templates bold important values in the HTML email
@@ -1032,7 +1036,7 @@ X-Workflow-DisplayName: Checker One
           </tr>
           <tr>
             <td>Return to Maker</td>
-            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>recipientEmail</code>, optional <code>ccEmailAddresses</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
+            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
           </tr>
           <tr>
             <td>Trading execution to BDRM</td>

@@ -200,7 +200,8 @@ public sealed class StartWorkflowServiceTests
             TaskKey = "CheckerReviewTask",
             AssignedRoleKey = "Checker",
             Status = "Pending",
-            CreatedAtUtc = Now
+            CreatedAtUtc = Now,
+            NotificationRecipientsJson = """{"toEmailAddresses":[],"ccEmailAddresses":[]}"""
         });
         dbContext.WorkflowAudits.Add(new WorkflowAudit
         {
@@ -221,7 +222,7 @@ public sealed class StartWorkflowServiceTests
             BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = businessObjectId,
             NotificationType = "WorkflowTaskAssigned",
-            RecipientRoleKey = "Checker",
+            NotificationRecipientsJson = """{"toEmailAddresses":[],"ccEmailAddresses":[]}""",
             Subject = "subject",
             PayloadJson = "{}",
             Status = "Pending",

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
@@ -90,6 +92,32 @@ public sealed class WorkflowActionNotificationDispatcher(
 
     private static NotificationDelivery ToDelivery(NotificationOutbox row)
     {
+        if (string.IsNullOrWhiteSpace(row.NotificationRecipientsJson))
+        {
+            throw new InvalidOperationException($"Notification {row.Id} recipient snapshot is missing.");
+        }
+
+        NotificationRecipients? recipients;
+        try
+        {
+            recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+                row.NotificationRecipientsJson,
+                WorkflowJson.Options);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException(
+                $"Notification {row.Id} recipient snapshot is invalid.",
+                exception);
+        }
+
+        if (recipients is null
+            || recipients.ToEmailAddresses is null
+            || recipients.CcEmailAddresses is null)
+        {
+            throw new InvalidOperationException($"Notification {row.Id} recipient snapshot is invalid.");
+        }
+
         return new NotificationDelivery(
             row.Id,
             row.WorkflowInstanceId,
@@ -97,8 +125,8 @@ public sealed class WorkflowActionNotificationDispatcher(
             row.BusinessObjectType,
             row.BusinessObjectId,
             row.NotificationType,
-            row.RecipientRoleKey,
-            row.RecipientUserId,
+            recipients.ToEmailAddresses,
+            recipients.CcEmailAddresses,
             row.Subject,
             row.Body,
             row.HtmlBody,

@@ -502,7 +502,7 @@ Content-Type: application/json</code></pre>
             <strong>Execute an action.</strong>
             Call <code>POST /v1/WorkflowAction</code> with <code>workflowInstanceId</code>,
             <code>actionKey</code>, optional <code>assignedRoleKey</code>, and optional
-            <code>notificationContext</code>.
+            <code>notificationContext</code> plus typed <code>notificationRecipients</code> for notification-producing actions.
           </div>
         </div>
         <div class="flow-step">
@@ -623,7 +623,8 @@ Content-Type: application/json</code></pre>
       <p>
         <code>POST /v1/WorkflowStart</code> requires <code>workflowKey</code>,
         <code>businessObjectType</code>, and <code>businessObjectId</code>. It accepts optional
-        <code>initialActionKey</code> and optional <code>notificationContext</code>.
+        <code>initialActionKey</code>, optional <code>notificationContext</code>, and optional typed
+        <code>notificationRecipients</code>.
       </p>
 
       <h3>Start only: create Draft workflow</h3>
@@ -655,6 +656,10 @@ Content-Type: application/json</code></pre>
   "businessObjectType": "PortfolioTrade",
   "businessObjectId": "PT-1001",
   "initialActionKey": "SubmitForChecker",
+  "notificationRecipients": {
+    "toEmailAddresses": ["checker.primary@example.test", "checker.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "submitterDisplayName": "Maker User One",
@@ -694,7 +699,8 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <p>
         <code>POST /v1/WorkflowAction</code> requires <code>workflowInstanceId</code> and <code>actionKey</code>.
         It accepts optional <code>assignedRoleKey</code> for metadata-defined dynamic task assignment and optional
-        <code>notificationContext</code> for email rendering.
+        <code>notificationContext</code> for email rendering. Notification-producing actions also accept typed
+        <code>notificationRecipients</code> with ordered To/Cc arrays.
       </p>
 
       <h3>Save draft from Draft</h3>
@@ -713,6 +719,10 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "SubmitForChecker",
+  "notificationRecipients": {
+    "toEmailAddresses": ["checker.primary@example.test", "checker.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "submitterDisplayName": "Maker User One",
@@ -730,6 +740,10 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "ResubmitForChecker",
+  "notificationRecipients": {
+    "toEmailAddresses": ["checker.primary@example.test", "checker.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "submitterDisplayName": "Maker User One",
@@ -747,12 +761,14 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "CheckerReturnToMaker",
+  "notificationRecipients": {
+    "toEmailAddresses": ["maker.primary@example.test", "maker.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "returnedByDisplayName": "Checker User One",
     "recipientDisplayName": "Maker User One",
-    "recipientEmail": "maker.user.one@example.test",
-    "ccEmailAddresses": "manager@example.test;ops@example.test",
     "accountShortName": "EFG",
     "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
     "submittedDate": "4/24/2026",
@@ -770,6 +786,10 @@ X-Workflow-DisplayName: Checker User One</code></pre>
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "CheckerSendToTradingDesk",
   "assignedRoleKey": "TradingDeskTaxable",
+  "notificationRecipients": {
+    "toEmailAddresses": ["trading.primary@example.test", "trading.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "submitterDisplayName": "Maker User One",
@@ -787,12 +807,14 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "TradingReturnToMaker",
+  "notificationRecipients": {
+    "toEmailAddresses": ["maker.primary@example.test", "maker.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "returnedByDisplayName": "Trading User One",
     "recipientDisplayName": "Maker User One",
-    "recipientEmail": "maker.user.one@example.test",
-    "ccEmailAddresses": "manager@example.test;ops@example.test",
     "accountShortName": "EFG",
     "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
     "submittedDate": "4/24/2026",
@@ -804,6 +826,10 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "TradingTradeExecuted",
+  "notificationRecipients": {
+    "toEmailAddresses": ["bdrm.primary@example.test", "bdrm.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "traderDisplayName": "Trading User One",
@@ -823,6 +849,10 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "TradingTradeExecuted",
+  "notificationRecipients": {
+    "toEmailAddresses": ["bdrm.primary@example.test", "bdrm.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "traderDisplayName": "Trading User One",
@@ -838,6 +868,10 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "BdrmTradeFulfilled",
+  "notificationRecipients": {
+    "toEmailAddresses": ["maker.primary@example.test", "maker.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "confirmerDisplayName": "BDRM User One",
@@ -851,6 +885,10 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <pre><code>{
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "BdrmTradeNotExecutedProperly",
+  "notificationRecipients": {
+    "toEmailAddresses": ["trading.primary@example.test", "trading.secondary@example.test"],
+    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  },
   "notificationContext": {
     "referenceNumber": "1050",
     "deskName": "Taxable",
@@ -885,7 +923,7 @@ X-Workflow-DisplayName: Checker User One</code></pre>
           <tr>
             <td>Return to Maker</td>
             <td><code>CheckerReturnToMaker</code>, <code>TradingReturnToMaker</code></td>
-            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>recipientEmail</code>, <code>ccEmailAddresses</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
+            <td><code>referenceNumber</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, <code>tradeLink</code></td>
           </tr>
           <tr>
             <td>Task assigned to Trading Desk</td>
@@ -913,9 +951,16 @@ X-Workflow-DisplayName: Checker User One</code></pre>
       <div class="callout ok">
         <h3>Recipient handling</h3>
         <p>
-          For per-record Maker emails, include <code>recipientEmail</code>. For copied recipients, include
-          <code>ccEmailAddresses</code> as comma- or semicolon-separated addresses. Keep both inside
-          <code>notificationContext</code>; do not add a new public DTO field.
+          Put recipients in the separate <code>notificationRecipients</code> object as ordered
+          <code>toEmailAddresses</code> and <code>ccEmailAddresses</code> arrays. The caller owns selection and validation;
+          the API/engine preserves values, order, whitespace, and duplicates without lookup or normalization.
+          <code>notificationContext</code> remains template data only.
+        </p>
+        <p>
+          The engine snapshots the same typed object on the task and initial outbox row. SLA reminders reuse the task
+          snapshot unchanged. One outbox row represents one email and one message-level retry lifecycle.
+          <code>Smtp:RecipientOverride</code> suppresses all intended envelope recipients and includes both intended
+          ordered lists in controlled diagnostic content.
         </p>
       </div>
     </section>

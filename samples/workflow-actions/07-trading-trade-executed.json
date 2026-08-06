@@ -15,6 +15,10 @@
     "actionKey": "TradingTradeExecuted",
     "actionReason": "Trade executed.",
     "idempotencyKey": "sample-07-trading-trade-executed",
+    "notificationRecipients": {
+      "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+      "ccEmailAddresses": ["workflow.manager@example.test", "workflow.operations@example.test"]
+    },
     "notificationContext": {
       "referenceNumber": "1050",
       "submitterDisplayName": "Kollipara, Kartheek",

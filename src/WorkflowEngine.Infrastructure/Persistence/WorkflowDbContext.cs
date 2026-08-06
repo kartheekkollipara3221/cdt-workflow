@@ -200,6 +200,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.ClosedByActionKey).HasMaxLength(100);
             entity.Property(row => row.NotificationRouteKey).HasMaxLength(100);
             entity.Property(row => row.NotificationContextJson);
+            entity.Property(row => row.NotificationRecipientsJson).IsRequired();
             entity.HasIndex(row => row.WorkflowInstanceId)
                 .IsUnique()
                 .HasFilter("[Status] = 'Pending'");
@@ -254,8 +255,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.BusinessObjectType).HasMaxLength(100).IsRequired();
             entity.Property(row => row.BusinessObjectId).HasMaxLength(150).IsRequired();
             entity.Property(row => row.NotificationType).HasMaxLength(100).IsRequired();
-            entity.Property(row => row.RecipientRoleKey).HasMaxLength(100);
-            entity.Property(row => row.RecipientUserId).HasMaxLength(200);
+            entity.Property(row => row.NotificationRecipientsJson).IsRequired();
             entity.Property(row => row.Subject).HasMaxLength(300).IsRequired();
             entity.Property(row => row.Body).IsRequired();
             entity.Property(row => row.HtmlBody).IsRequired();

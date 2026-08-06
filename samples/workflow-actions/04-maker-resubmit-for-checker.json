@@ -15,6 +15,10 @@
     "actionKey": "ResubmitForChecker",
     "actionReason": "Maker resubmitted after corrections.",
     "idempotencyKey": "sample-04-maker-resubmit-for-checker",
+    "notificationRecipients": {
+      "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
+      "ccEmailAddresses": ["workflow.manager@example.test", "workflow.operations@example.test"]
+    },
     "notificationContext": {
       "referenceNumber": "1050",
       "submitterDisplayName": "Kollipara, Kartheek",

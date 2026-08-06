@@ -26,6 +26,7 @@ public sealed class CanonicalRequestHasher
             ["workflow.actionKey"] = envelope.Workflow?.ActionKey,
             ["workflow.actionReason"] = envelope.Workflow?.ActionReason,
             ["workflow.notificationContext"] = NormalizeNotificationContext(envelope.Workflow?.NotificationContext),
+            ["workflow.notificationRecipients"] = SnapshotNotificationRecipients(envelope.Workflow?.NotificationRecipients),
             ["workflow.expectedCurrentState"] = envelope.Workflow?.ExpectedCurrentState,
             ["workflow.expectedCurrentTaskId"] = envelope.Workflow?.ExpectedCurrentTaskId,
             ["workflow.expectedCurrentTaskKey"] = envelope.Workflow?.ExpectedCurrentTaskKey,
@@ -37,6 +38,21 @@ public sealed class CanonicalRequestHasher
 
         var json = SerializeCanonical(canonical);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+    }
+
+    private static IReadOnlyDictionary<string, object?>? SnapshotNotificationRecipients(
+        NotificationRecipients? recipients)
+    {
+        if (recipients is null)
+        {
+            return null;
+        }
+
+        return new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["toEmailAddresses"] = recipients.ToEmailAddresses,
+            ["ccEmailAddresses"] = recipients.CcEmailAddresses
+        };
     }
 
     private static string SerializeCanonical(object? value)

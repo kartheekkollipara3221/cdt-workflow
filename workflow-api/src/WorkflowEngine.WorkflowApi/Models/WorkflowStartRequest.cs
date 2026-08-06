@@ -1,3 +1,5 @@
+using WorkflowEngine.Application.Contracts;
+
 namespace WorkflowEngine.WorkflowApi.Models;
 
 public sealed class WorkflowStartRequest
@@ -11,4 +13,6 @@ public sealed class WorkflowStartRequest
     public string? InitialActionKey { get; set; }
 
     public Dictionary<string, string?>? NotificationContext { get; set; }
+
+    public NotificationRecipients? NotificationRecipients { get; set; }
 }

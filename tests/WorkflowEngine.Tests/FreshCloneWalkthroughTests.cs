@@ -20,7 +20,7 @@ public sealed class FreshCloneWalkthroughTests
     [Fact]
     public void BuildSucceedsWithWarningsAsErrors()
     {
-        var result = Run("dotnet", "build src\\WorkflowEngine.sln -warnaserror -m:1");
+        var result = RunBuild();
 
         AssertSuccess(result);
     }
@@ -67,7 +67,7 @@ public sealed class FreshCloneWalkthroughTests
         using var dbContext = CreateBurritoContext();
         dbContext.Database.EnsureDeleted();
 
-        AssertSuccess(Run("dotnet", "build src\\WorkflowEngine.sln -warnaserror -m:1"));
+        AssertSuccess(RunBuild());
         var init = Run("dotnet", "run --project src\\WorkflowEngine.Console -- init-db");
         AssertSuccess(init);
         Assert.Contains("Database initialized", init.Stdout, StringComparison.Ordinal);
@@ -110,6 +110,28 @@ public sealed class FreshCloneWalkthroughTests
         var stderr = process.StandardError.ReadToEnd();
         process.WaitForExit();
         return new ProcessResult(process.ExitCode, stdout, stderr);
+    }
+
+    private static ProcessResult RunBuild()
+    {
+        var artifactsPath = Path.Combine(
+            Path.GetTempPath(),
+            "cdt-workflow-build-tests",
+            Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            return Run(
+                "dotnet",
+                $"build src\\WorkflowEngine.sln -warnaserror -m:1 --artifacts-path \"{artifactsPath}\"");
+        }
+        finally
+        {
+            if (Directory.Exists(artifactsPath))
+            {
+                Directory.Delete(artifactsPath, recursive: true);
+            }
+        }
     }
 
     private static void AssertSuccess(ProcessResult result)

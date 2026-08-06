@@ -1,5 +1,6 @@
 using System.Text.Json;
 using WorkflowEngine.Application.Contracts;
+using WorkflowEngine.Application.WorkflowStart;
 
 namespace WorkflowEngine.Tests;
 
@@ -16,6 +17,54 @@ public sealed class WorkflowActionEnvelopeSerializationTests
         Assert.Equal("MakerPrimary", envelope.UiAction?.ButtonKey);
         Assert.Equal("SubmitForChecker", envelope.Workflow?.ActionKey);
         Assert.Equal(JsonValueKind.Object, envelope.DataSave?.Payload.ValueKind);
+        Assert.Equal(
+            ["checker.primary@example.com", "checker.secondary@example.com"],
+            envelope.Workflow?.NotificationRecipients?.ToEmailAddresses);
+        Assert.Equal(
+            ["maker.manager@example.com", "workflow.operations@example.com"],
+            envelope.Workflow?.NotificationRecipients?.CcEmailAddresses);
+    }
+
+    [Fact]
+    public void StartWorkflowRequestCarriesTypedNotificationRecipients()
+    {
+        var recipients = new NotificationRecipients
+        {
+            ToEmailAddresses = ["first@example.com", "second@example.com"],
+            CcEmailAddresses = ["copy@example.com"]
+        };
+
+        var request = new StartWorkflowRequest(
+            "PortfolioTrade",
+            "PortfolioTrade",
+            "PT-1001",
+            "maker1",
+            false,
+            NotificationRecipients: recipients);
+
+        Assert.Same(recipients, request.NotificationRecipients);
+    }
+
+    [Fact]
+    public void NotificationRecipientsRoundTripPreservesExactCollections()
+    {
+        var envelope = WorkflowActionEnvelopeTestData.DeserializeValid();
+        envelope.Workflow!.NotificationRecipients = new NotificationRecipients
+        {
+            ToEmailAddresses = [" first@example.test ", "second@example.test", "first@example.test"],
+            CcEmailAddresses = ["manager@example.test", " operations@example.test "]
+        };
+
+        var json = JsonSerializer.Serialize(envelope, WorkflowJson.Options);
+        var roundTripped = JsonSerializer.Deserialize<WorkflowActionEnvelope>(json, WorkflowJson.Options);
+
+        Assert.NotNull(roundTripped?.Workflow?.NotificationRecipients);
+        Assert.Equal(
+            [" first@example.test ", "second@example.test", "first@example.test"],
+            roundTripped.Workflow.NotificationRecipients.ToEmailAddresses);
+        Assert.Equal(
+            ["manager@example.test", " operations@example.test "],
+            roundTripped.Workflow.NotificationRecipients.CcEmailAddresses);
     }
 
     [Fact]

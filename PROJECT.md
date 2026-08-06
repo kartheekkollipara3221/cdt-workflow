@@ -44,7 +44,8 @@ The console app is a proof of concept for the reusable workflow engine, not the 
 | WorkflowActionResult | Standard response object returned after processing a `WorkflowActionEnvelope`; it summarizes state/task changes and may include refreshed workflow context. |
 | Workflow instance | A single in-flight workflow record, usually one per business object. |
 | Transition | A metadata row that maps `(fromState, actionKey, allowedRole)` to `(toState, taskClose, taskCreate)`. |
-| Notification outbox | Persisted notification records. Delivery uses the configured notification sender; dev/test defaults avoid real email, and SMTP can be enabled for fake/local or production relays by configuration. |
+| Notification recipients | Caller-supplied `notificationRecipients.toEmailAddresses` and `ccEmailAddresses` ordered arrays. The caller owns address selection and validation; the engine preserves the supplied values, order, whitespace, and duplicates without lookup or normalization. |
+| Notification outbox | Persisted notification records containing an exact typed recipient snapshot. One outbox row represents one complete message and one message-level retry lifecycle. |
 | SLA | Service-level deadline tied to a workflow task's `DueAtUtc`. |
 | Single-active-state | One current workflow state and at most one pending task for a workflow instance in the MVP. |
 | Return to Maker | A workflow route where Checker or Trading Desk sends the request back to Maker for correction/rework. |
@@ -778,6 +779,10 @@ The JSON object should be workflow-heavy. Form section data can be mocked.
     "actionKey": "SubmitForChecker",
     "actionReason": "Maker submitted the portfolio trade for Checker review.",
     "idempotencyKey": "9a8f7f6c-2e0b-4b5a-81e4-3f8edc3e1a10",
+    "notificationRecipients": {
+      "toEmailAddresses": ["checker.primary@example.test", "checker.secondary@example.test"],
+      "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+    },
     "options": {
       "closeCurrentTask": false,
       "createNextTask": true,
@@ -813,6 +818,9 @@ The JSON object should be workflow-heavy. Form section data can be mocked.
 - `idempotencyKey` is the canonical key used by the engine for dedupe. If `idempotencyKey` is absent, the engine uses `clientActionId` as the idempotency key. If both are present and differ, `idempotencyKey` wins. The simplest UI integration is for the UI to send the same value in both fields.
 - The idempotency lookup key (`IdempotencyRecord.IdempotencyKey`) is separate from `RequestHash`. Two requests that differ only in whether `idempotencyKey` is set will share the same normalized `RequestHash` but use different lookup keys (`idempotencyKey` vs `clientActionId`) and are therefore treated as independent actions for idempotency purposes. This is intentional — `idempotencyKey` is the UI's explicit dedup token; `clientActionId` is the fallback. They are not interchangeable lookup aliases.
 - `correlationId` must be copied into audit and notification records.
+- `workflow.notificationRecipients` is separate from `workflow.notificationContext`. Recipients are ordered typed arrays; notification context contains template data only.
+- The caller owns recipient lookup, authorization, and email-address validation. The engine does not trim, normalize, validate, deduplicate, expand roles, query a directory, or parse singular/delimited recipient fields.
+- The canonical request hash includes every `toEmailAddresses` and `ccEmailAddresses` value in its supplied order and To/Cc placement. Changing any value, order, or placement under the same idempotency key produces `IdempotencyConflict`.
 - `expectedCurrentState` is a concurrency guard, not the source of truth.
 - `expectedCurrentTaskId` is a concurrency guard for exact task ownership.
 - For console sample JSON, `expectedCurrentTaskKey` may be used because task IDs are generated at runtime.
@@ -933,6 +941,8 @@ workflow.workflowInstanceId
 workflow.workflowDefinitionVersion
 workflow.actionKey
 workflow.actionReason
+workflow.notificationRecipients.toEmailAddresses (all values in order)
+workflow.notificationRecipients.ccEmailAddresses (all values in order)
 actor.userId
 actor.roles
 businessObject.objectType
@@ -1221,11 +1231,11 @@ Prints `NotificationOutbox` rows only, ordered by `CreatedAtUtc`:
 
 ```text
 Notifications for WF-PT-1001:
-  [Sent]    2030-01-15T15:30:30Z | WorkflowTaskAssigned    | Checker         | Subject: New task: CheckerReviewTask
-  [Pending] 2030-01-15T15:31:00Z | WorkflowReturnedToMaker | Maker           | Subject: Your trade was returned for correction
+  [Sent]    2030-01-15T15:30:30Z | WorkflowTaskAssigned    | To: checker.primary@example.test, checker.secondary@example.test | Cc: manager@example.test, operations@example.test | Subject: New task: CheckerReviewTask
+  [Pending] 2030-01-15T15:31:00Z | WorkflowReturnedToMaker | To: maker.primary@example.test, maker.secondary@example.test     | Cc: manager@example.test, operations@example.test | Subject: Your trade was returned for correction
 ```
 
-Fields: `Status`, `CreatedAtUtc`, `NotificationType`, `RecipientRoleKey`, `Subject`.
+Fields: `Status`, `CreatedAtUtc`, `NotificationType`, ordered `ToEmailAddresses`, ordered `CcEmailAddresses`, `Subject`, and an invalid-snapshot diagnostic when persisted recipient JSON cannot be read.
 
 ### 10.6 `execute-json` console output
 
@@ -1305,9 +1315,9 @@ Note: v1 does not seed a user-to-role mapping table. The console POC simulates a
 
 ### Notification route seed table
 
-`init-db` must seed exactly these `NotificationRoute` rows (workflow definition version 1):
+`init-db` must seed exactly these `NotificationRoute` rows (workflow definition version 1). The recipient-role column is retained only as dormant legacy metadata and is not used to select runtime email addresses:
 
-| Transition (FromState → Action → Role) | NotificationRouteKey | NotificationType | RecipientRoleKey |
+| Transition (FromState → Action → Role) | NotificationRouteKey | NotificationType | RecipientRoleKey (dormant legacy metadata) |
 |---|---|---|---|
 | `Draft` → `SubmitForChecker` → `Maker` | `RouteCheckerAssignedOnSubmit` | `WorkflowTaskAssigned` | `Checker` |
 | `ReturnedToMaker` → `ResubmitForChecker` → `Maker` | `RouteCheckerAssignedOnResubmit` | `WorkflowTaskAssigned` | `Checker` |
@@ -1321,11 +1331,13 @@ Note: v1 does not seed a user-to-role mapping table. The console POC simulates a
 
 Plus an SLA route used by `run-sla` (not bound to a transition):
 
-| RouteKey | NotificationType | RecipientRoleKey |
+| RouteKey | NotificationType | RecipientRoleKey (dormant legacy metadata) |
 |---|---|---|
-| `RouteSlaTaskOverdue` | `SlaTaskOverdue` | (resolved at runtime from the overdue task's `AssignedRoleKey`) |
+| `RouteSlaTaskOverdue` | `SlaTaskOverdue` | (dormant; no runtime recipient resolution) |
 
 `RouteReturnedToMakerFromChecker` and `RouteReturnedToMakerFromTradingDesk` are intentionally separate routes because they carry different subject/body templates. `RouteBdrmAssigned` is intentionally shared between happy-path and rework paths because BDRM does not need to distinguish them. `RouteCheckerAssignedOnSubmit` and `RouteCheckerAssignedOnResubmit` are separate so Checker can distinguish a new submission from a resubmission.
+
+`NotificationRoute.RecipientRoleKey` and `RecipientUserId` remain only as dormant legacy seed/schema metadata. Runtime task creation, outbox creation, SLA reuse, inspection, and SMTP delivery must not read them to select addresses. Routes select notification type/templates; callers supply delivery addresses through `notificationRecipients`.
 
 ### `verify-seed` validations
 
@@ -1554,6 +1566,7 @@ TaskKey
 AssignedRoleKey
 AssignedUserId nullable
 Status
+NotificationRecipientsJson  -- required exact ordered To/Cc snapshot for later SLA reuse
 CreatedAtUtc
 DueAtUtc nullable
 CompletedAtUtc nullable
@@ -1638,8 +1651,8 @@ Id
 WorkflowDefinitionVersionId
 RouteKey
 NotificationType
-RecipientRoleKey nullable
-RecipientUserId nullable
+RecipientRoleKey nullable  -- dormant legacy metadata; never used for runtime address selection
+RecipientUserId nullable  -- dormant legacy metadata; never used for runtime address selection
 SubjectTemplate
 BodyTemplate
 HtmlBodyTemplate
@@ -1662,8 +1675,7 @@ WorkflowTaskId nullable
 BusinessObjectType
 BusinessObjectId
 NotificationType
-RecipientRoleKey nullable
-RecipientUserId nullable
+NotificationRecipientsJson  -- required exact ordered To/Cc snapshot for this complete message
 Subject
 Body
 HtmlBody
@@ -1826,34 +1838,38 @@ Required notification examples:
 
 ```text
 SubmitForChecker
-  -> queue WorkflowTaskAssigned to Checker group via RouteCheckerAssignedOnSubmit
+  -> queue WorkflowTaskAssigned via RouteCheckerAssignedOnSubmit using caller-supplied notificationRecipients
 
 ResubmitForChecker
-  -> queue WorkflowTaskAssigned to Checker group via RouteCheckerAssignedOnResubmit
+  -> queue WorkflowTaskAssigned via RouteCheckerAssignedOnResubmit using caller-supplied notificationRecipients
 
 CheckerReturnToMaker
-  -> queue WorkflowReturnedToMaker to Maker via RouteReturnedToMakerFromChecker
+  -> queue WorkflowReturnedToMaker via RouteReturnedToMakerFromChecker using caller-supplied notificationRecipients
 
 CheckerSendToTradingDesk
-  -> queue WorkflowTaskAssigned to TradingDesk group via RouteTradingDeskAssigned
+  -> queue WorkflowTaskAssigned via RouteTradingDeskAssigned using caller-supplied notificationRecipients
 
 TradingReturnToMaker
-  -> queue WorkflowReturnedToMaker to Maker via RouteReturnedToMakerFromTradingDesk
+  -> queue WorkflowReturnedToMaker via RouteReturnedToMakerFromTradingDesk using caller-supplied notificationRecipients
 
 TradingTradeExecuted (from TradingDeskReview or TradingDeskRework)
-  -> queue WorkflowTaskAssigned to BDRMClientService group via RouteBdrmAssigned
+  -> queue WorkflowTaskAssigned via RouteBdrmAssigned using caller-supplied notificationRecipients
 
 BdrmTradeNotExecutedProperly
-  -> queue WorkflowTaskAssigned to TradingDesk group via RouteTradingDeskReworkAssigned
+  -> queue WorkflowTaskAssigned via RouteTradingDeskReworkAssigned using caller-supplied notificationRecipients
 
 BdrmTradeFulfilled
-  -> queue WorkflowCompleted via RouteWorkflowCompleted
+  -> queue WorkflowCompleted via RouteWorkflowCompleted using caller-supplied notificationRecipients
 
 run-sla detects overdue task
-  -> queue SlaTaskOverdue via RouteSlaTaskOverdue, recipient resolved at runtime from the overdue task
+  -> queue SlaTaskOverdue via RouteSlaTaskOverdue using the exact recipient snapshot stored on the overdue task
 ```
 
 Notification routes carry `SubjectTemplate`, plain-text `BodyTemplate`, and HTML `HtmlBodyTemplate`. Transition execution and SLA processing render both body formats into `NotificationOutbox.Body` and `NotificationOutbox.HtmlBody`. Token values come from `workflow.notificationContext`, are trimmed for both formats, and are HTML-encoded when rendered into `HtmlBodyTemplate` so caller-provided data cannot inject markup. Template-owned markup is preserved, so seeded templates can bold important values with `<strong>{{token}}</strong>` and render `tradeLink` as `<a href="{{tradeLink}}">Open trade</a>`.
+
+Recipient addresses do not come from notification templates or `notificationContext`. A notification-producing action receives a separate `workflow.notificationRecipients` object containing ordered `toEmailAddresses` and `ccEmailAddresses` arrays. The caller owns address selection and validation. The engine performs no trimming, normalization, deduplication, role/directory lookup, singular-field fallback, or delimited-string parsing.
+
+Transition execution serializes the supplied recipient object once and stores the same snapshot on the created `WorkflowTask` and initial `NotificationOutbox` row. `run-sla` validates the task snapshot and copies it unchanged to the overdue outbox row; a missing or malformed task snapshot is warned and skipped rather than reconstructed. `PayloadJson` contains template context only.
 
 ### `NotificationOutbox.Status` allowed values
 
@@ -1863,7 +1879,7 @@ v1 uses three status values:
 - `Processing` — claimed by `process-notification-outbox` while delivery is in progress. The claim includes `ProcessingToken` and `ProcessingStartedAtUtc` so stale claims can be retried.
 - `Sent` — terminal. Set by `process-notification-outbox` after the configured notification sender succeeds. `SentAtUtc` is set at the same time.
 
-v1 does not implement a terminal `Failed` status or dead-letter queue. If `process-notification-outbox` encounters an exception while processing a row, the claim is released, `RetryCount` is incremented, `LastError` is stored, and the row returns to `Pending`. Earlier rows that already committed remain `Sent`; later rows remain available for the next run.
+v1 does not implement a terminal `Failed` status or dead-letter queue. One outbox row represents one complete email containing all intended To and Cc recipients. If message construction or send fails for any address, the complete row is retried: the claim is released, `RetryCount` is incremented, `LastError` is stored, and the row returns to `Pending`. There is no per-recipient status or partial success. Earlier rows that already committed remain `Sent`; later rows remain available for the next run.
 
 ### `process-notification-outbox` behavior
 
@@ -1893,7 +1909,7 @@ public interface INotificationSender
 
 Three concrete implementations are required in v1:
 
-1. **`ConsoleNotificationSender`** (default for dev and tests) — prints a readable summary to console (`NotificationType`, recipient, subject, `WorkflowInstanceId`). Does not send any real email. `SenderName = "Console"`.
+1. **`ConsoleNotificationSender`** (default for dev and tests) — prints a readable summary to console (`NotificationType`, ordered To/Cc lists, subject, `WorkflowInstanceId`). Does not send any real email. `SenderName = "Console"`.
 2. **`NoOpNotificationSender`** — does nothing, returns immediately. Used when the operator wants to mark notifications as sent without any output. `SenderName = "NoOp"`.
 3. **`SmtpNotificationSender`** — fully implemented SMTP relay sender (see SMTP integration below). Used in production environments. `SenderName = "Smtp"`.
 
@@ -1931,13 +1947,7 @@ Configuration shape:
     "Host": "smtp-relay.yourfirm.local",
     "Port": 25,
     "From": "noreply-cdt@yourfirm.com",
-    "RecipientOverride": null,
-    "RoleEmailMap": {
-      "Maker": "cdt-makers@yourfirm.com",
-      "Checker": "cdt-checkers@yourfirm.com",
-      "TradingDesk": "cdt-tradingdesk@yourfirm.com",
-      "BDRMClientService": "cdt-bdrm@yourfirm.com"
-    }
+    "RecipientOverride": null
   }
 }
 ```
@@ -1951,28 +1961,10 @@ Required configuration behavior:
 
 Required v1 behavior of `SmtpNotificationSender`:
 
-- Resolves recipient email address in this order:
-  1. `Smtp:RecipientOverride`, when configured.
-  2. `recipientEmail` from the notification's persisted `PayloadJson` / `workflow.notificationContext`.
-  3. `RecipientRoleKey` using the configured `Smtp:RoleEmailMap`.
-- If `workflow.notificationContext.ccEmailAddresses` is present, parse it as a comma- or semicolon-separated list and add those addresses as SMTP CC recipients. Because notification context is persisted in both `NotificationOutbox.PayloadJson` and `WorkflowTask.NotificationContextJson`, the same CC list must apply to immediate action-created emails and later SLA overdue emails.
-- When `Smtp:RecipientOverride` is configured, do not send to the real CC recipients. Preserve the original `ccEmailAddresses` value in the override-mode body for smoke-test inspection.
-- v1 **does not** look up users in SQL (consistent with the no-`DemoUser`-table rule in §11). Instead, the target API supplies per-record recipient email addresses through `notificationContext` when needed, and configuration carries a static role fallback map:
-
-```json
-{
-  "Smtp": {
-    "RoleEmailMap": {
-      "Maker": "cdt-makers@yourfirm.com",
-      "Checker": "cdt-checkers@yourfirm.com",
-      "TradingDesk": "cdt-tradingdesk@yourfirm.com",
-      "BDRMClientService": "cdt-bdrm@yourfirm.com"
-    }
-  }
-}
-```
-
-- If no `RecipientOverride`, no payload `recipientEmail`, and `RecipientRoleKey` has no entry in `RoleEmailMap`, throw — the row stays `Pending` and the operator must fix configuration or request data. Do not silently drop the notification.
+- Without `Smtp:RecipientOverride`, add every persisted `ToEmailAddresses` item to one `MimeMessage.To` collection and every persisted `CcEmailAddresses` item to that same message's `Cc` collection, preserving caller order and duplicates.
+- Do not read addresses from `PayloadJson`, `notificationContext`, `NotificationRoute`, task roles, SQL users, directories, configuration maps, singular fields, or delimited strings.
+- The caller is responsible for sending valid addresses. MailKit parses the values at delivery time; a parse or send exception fails the complete message and leaves the outbox row `Pending` with message-level retry diagnostics.
+- When `Smtp:RecipientOverride` is configured, send only to the override address and suppress all intended To/Cc envelope recipients. Prepend controlled plain-text and HTML diagnostics that show both ordered intended lists so the smoke-test reader can verify routing without exposing real recipients on the envelope.
 - Subject is taken from `NotificationOutbox.Subject`. Plain text body is taken from persisted `NotificationOutbox.Body` when present. HTML body is taken from persisted `NotificationOutbox.HtmlBody` when present. When HTML is present, send a `multipart/alternative` email containing both text/plain and text/html parts so links are clickable in HTML-capable clients while plain-text clients still have readable content. Older rows without a persisted body fall back to readable key/value lines built from `NotificationOutbox.PayloadJson`.
 - Connect to `Host:Port`, send the message, disconnect. Use MailKit's `SmtpClient.Connect`, `Send`, `Disconnect` lifecycle. Connection per send is acceptable for v1; connection pooling is a v2 optimization.
 - Log the SMTP response code at INFO level. Log failures at ERROR level with full exception detail.
@@ -1997,21 +1989,17 @@ Tier 1 is mandatory for v1. Tier 2 is mandatory for v1 (proves `SmtpNotification
 | Unit tests | `Console` or `NoOp` | In-memory test double via DI override | No |
 | Integration tests (Tier 2) | `Smtp` (with localhost fake server) | Sends to `smtp4dev` / `Papercut` on `localhost` | No (caught by fake server) |
 | UI integration smoke test (Tier 3, manual) | `Smtp` (with `RecipientOverride` set) | Sends to operator's mailbox only | One controlled email |
-| Production (post-CDT, out of scope here) | `Smtp` (no override) | Sends to real role recipients | Yes |
+| Production (post-CDT, out of scope here) | `Smtp` (no override) | Sends one message to caller-supplied To/Cc recipients | Yes |
 
 The CDT POC ships with the first two rows working out of the box. The third and fourth rows are exercised manually during UI integration. The fifth row is enabled by configuration only — no code change.
 
-### Recipient resolution in v1
+### Caller-supplied recipient snapshots in v1
 
-Notifications in v1 are still routed by workflow metadata to a recipient role, but SMTP delivery can use a per-notification email address when the target API supplies one:
-
-- `NotificationOutbox.RecipientRoleKey` is set from the resolved `NotificationRoute.RecipientRoleKey` (e.g., `Checker`, `TradingDesk`, `BDRMClientService`, `Maker`).
-- `NotificationOutbox.RecipientUserId` is **always null** in v1. The column exists for forward compatibility with future per-user notifications, but the v1 SLA monitor and transition handlers never populate it.
-- `workflow.notificationContext.recipientEmail`, when present, is persisted in `NotificationOutbox.PayloadJson` and is preferred by `SmtpNotificationSender` after `Smtp:RecipientOverride`.
-- `workflow.notificationContext.ccEmailAddresses`, when present, is persisted in `NotificationOutbox.PayloadJson`; for task-created notifications it is also snapshotted to `WorkflowTask.NotificationContextJson` so `run-sla` can include the same CC list in overdue emails.
-- `Smtp:RoleEmailMap` remains the fallback for role-group recipients and for notifications where the target API did not supply a per-record email address.
-
-The "Checker group" / "TradingDesk group" language above is descriptive — it means "whoever holds the Checker role at the time of delivery." v1 does not maintain a user-to-role mapping table, so no group expansion happens in `process-notification-outbox`. For business-record-specific recipients such as the Maker on a returned item, the target API must supply `recipientEmail` in `notificationContext`. For business-record-specific copied recipients, the target API must supply `ccEmailAddresses` in `notificationContext`.
+- Workflow start and action callers supply `notificationRecipients.toEmailAddresses` and `notificationRecipients.ccEmailAddresses` as typed arrays outside `notificationContext`.
+- The API replaces only actor identity from its trusted boundary; recipient strings pass through unchanged.
+- A created task stores `NotificationRecipientsJson` for SLA reuse. The initial outbox row stores the same serialized snapshot. SLA reminders copy the task snapshot unchanged.
+- `show-notifications` displays the persisted To/Cc lists. `process-notification-outbox` materializes the same lists into `NotificationDelivery`.
+- `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are dormant legacy metadata only. They may remain in seed/schema history, but runtime delivery never reads them.
 
 ## 15. Transaction rule
 
@@ -2032,8 +2020,8 @@ Transaction should include:
 1. Close current task if the transition requires it. Closing a task means: `UPDATE WorkflowTask SET Status = 'Completed', CompletedAtUtc = TimeProvider.GetUtcNow(), CompletedByUserId = actor.userId, ClosedByActionKey = actionKey WHERE Id = @taskId`. When `--admin-override` is used, `CompletedByUserId` still records `actor.userId` from the envelope (the human who triggered the action); the override is noted in `WorkflowAudit`, not in the task row.
 1. Move workflow state using optimistic concurrency.
 1. If moving to `Completed`, set `WorkflowInstance.Status = 'Completed'` and `WorkflowInstance.CompletedAtUtc = TimeProvider.GetUtcNow()` and ensure no pending task remains.
-1. Create next task if the transition requires it.
-1. Create notification outbox record if required.
+1. Create next task if the transition requires it, storing the caller's exact serialized `notificationRecipients` snapshot on the task for later SLA reuse.
+1. Create one notification outbox record if required, storing the same recipient snapshot separately from template-only `PayloadJson`.
 1. Write workflow audit record. For `SaveDraft`, `ToStateKey` records the unchanged current state (e.g., `Draft → Draft` or `ReturnedToMaker → ReturnedToMaker`). This is intentional — `SaveDraft` does not move state, so `FromStateKey` and `ToStateKey` are equal. Audit queries that interpret `ToStateKey` as "forward movement" must exclude `SaveDraft` rows when computing state progression.
 1. Write idempotency record.
 1. Commit.
@@ -2291,6 +2279,8 @@ Sample files must not be edited per-demo to change business object values. Edit-
 
 Every sample must include `testExpectations`.
 
+`01-save-draft.json` must omit `notificationRecipients` because it creates no task or notification. Each notification-producing sample (`02` through `10`) must include `workflow.notificationRecipients` outside `notificationContext`, with at least two ordered `toEmailAddresses` and two ordered `ccEmailAddresses`. Samples must not contain singular recipient fields or delimited address strings.
+
 Mandatory expectations for Return-to-Maker samples:
 
 ```text
@@ -2405,14 +2395,15 @@ Add tests for:
 - `NoOpNotificationSender` returns immediately and does nothing.
 - `RecordingNotificationSender` (test double) captures sent rows in memory for unit-test assertions.
 - `SmtpNotificationSender` throws at startup when `Notifications:Sender = "Smtp"` and `Smtp:Host` is missing or empty.
-- `SmtpNotificationSender` uses `workflow.notificationContext.recipientEmail` when present and does not require a role map for that row.
-- `SmtpNotificationSender` adds CC recipients from `workflow.notificationContext.ccEmailAddresses`, including SLA overdue notifications rendered from a task notification snapshot.
+- Workflow start/action API services preserve ordered multiple To/Cc arrays exactly while replacing only actor identity from trusted headers.
+- Notification-producing samples use `notificationRecipients` outside `notificationContext`, with at least two ordered To and two ordered Cc addresses; `01-save-draft.json` has no recipients.
+- A notification-producing transition stores one identical recipient snapshot on the created task and initial outbox row; SLA copies that stored task snapshot unchanged.
 - Notification routes seed plain-text and HTML body templates, including overdue SLA templates.
 - Notification HTML rendering escapes caller-provided `workflow.notificationContext` token values while preserving template-owned markup.
 - Action-created and SLA overdue notification rows persist rendered plain-text and HTML bodies; seeded HTML templates bold important UI-provided values and render `tradeLink` as a clickable link.
 - `SmtpNotificationSender` sends `multipart/alternative` email with text/plain and text/html parts when `NotificationOutbox.HtmlBody` is present.
-- `SmtpNotificationSender` throws when neither payload `recipientEmail` nor `RecipientRoleKey` role mapping can resolve a recipient; the row remains `Pending`.
-- `SmtpNotificationSender` honors `Smtp:RecipientOverride` and redirects all mail to the override address while preserving original-recipient metadata in the body.
+- `SmtpNotificationSender` builds one message from all persisted To/Cc addresses; any parse/send failure returns the complete row to `Pending` with one `RetryCount`/`LastError` lifecycle.
+- `SmtpNotificationSender` honors `Smtp:RecipientOverride`, sends only to the override address, suppresses intended To/Cc envelope recipients, and preserves both ordered intended lists in plain-text and HTML diagnostic content.
 - `SmtpNotificationSender` integration test (Tier 2, `Category=Smtp`) sends to `smtp4dev`/`Papercut` on `localhost` and asserts the fake server received the email with the expected subject, recipient, and body.
 - Tier 2 SMTP tests are excluded from default `dotnet test` runs and only execute under `dotnet test --filter Category=Smtp`.
 
@@ -2503,7 +2494,13 @@ dotnet run --project src/WorkflowEngine.Console -- execute-json ./samples/workfl
 
 # Aggregate demo (happy path end-to-end, uses reserved PT-DEMO business object)
 dotnet run --project src/WorkflowEngine.Console -- demo
+
+# Typed-recipient contract and sample gates
+dotnet test workflow-api/WorkflowEngine.WorkflowApi.slnx --filter "FullyQualifiedName~WorkflowActionServiceTests|FullyQualifiedName~WorkflowStartServiceTests"
+dotnet test src/WorkflowEngine.sln --filter "FullyQualifiedName~WorkflowSamplesTests|FullyQualifiedName~SampleExpectationTests|FullyQualifiedName~ShowInspectionCommandTests"
 ```
+
+Recipient changes also require negative searches over active source/API/samples/docs/tests: no runtime singular-recipient field, no SMTP role-address map, and no `RecipientRoleKey`/`RecipientUserId` use outside dormant `NotificationRoute` seed/schema metadata or historical migrations.
 
 Recommended project settings:
 
@@ -2550,7 +2547,7 @@ Stop before doing any of the following:
 - Allowing multiple sequential workflow instances on the same `(WorkflowKey, BusinessObjectType, BusinessObjectId)` (re-trade scenarios). v1 enforces one workflow lifetime per business object identifier. Schema changes (filtered unique on `Status = 'Active'`, sequence-aware ID generation) are required and out of scope.
 - Adding `Smtp:Username`, `Smtp:Password`, or any SMTP credential support. v1 assumes IP-restricted on-prem relay with no credentials. Authenticated relay requires secret management.
 - Adding any third-party NuGet package other than MailKit (which is pre-approved for `SmtpNotificationSender` in §14).
-- Adding a SQL-backed role-to-email lookup table. Role-to-email resolution is configuration-only (`Smtp:RoleEmailMap`) in v1.
+- Adding engine recipient validation, normalization, deduplication, directory/role lookup, singular recipient fields, delimited recipient parsing, or any fallback other than `Smtp:RecipientOverride`.
 
 ## 23. Completion summary format for coding agents
 
@@ -2690,7 +2687,7 @@ The README should explain:
 - The UI should combine user identity, form metadata, form data, and workflow context on form open.
 - The UI should use workflow context `requestDefaults` when building `WorkflowActionEnvelope`.
 - SLA notifications are task-driven and created by a monitor command, not by form buttons.
-- Notification delivery is abstracted via `INotificationSender`. Default is `ConsoleNotificationSender` (no real email). `SmtpNotificationSender` is fully implemented for on-prem SMTP relay delivery and enabled by configuration only — flip `Notifications:Sender` from `"Console"` to `"Smtp"` and provide `Smtp:Host`, `Smtp:From`, and `Smtp:RoleEmailMap`. No code change required.
+- Notification delivery is abstracted via `INotificationSender`. Default is `ConsoleNotificationSender` (no real email). Callers supply ordered typed To/Cc arrays; the engine snapshots them for initial and SLA delivery. `SmtpNotificationSender` is enabled by setting `Notifications:Sender = "Smtp"` and providing `Smtp:Host` and `Smtp:From`; `Smtp:RecipientOverride` is the only delivery-address override.
 
 ## 27. Final success definition
 
@@ -2769,8 +2766,8 @@ This section captures known implementation pitfalls. Coding agents must use this
 | `AlreadyExists` result lacks status information. | The result must include `existingInstanceStatus` (`Active` or `Completed`) and `existingInstanceVersion` so the caller can distinguish "in progress" from "already finished." |
 | Coding agent hardcodes SMTP delivery into `process-notification-outbox`. | Use the `INotificationSender` interface and configuration-driven registration. Hardcoded SMTP defeats the testability and dev-vs-prod separation. |
 | Coding agent uses `System.Net.Mail.SmtpClient` for the SMTP implementation. | Use MailKit. `System.Net.Mail.SmtpClient` is deprecated by Microsoft for new development. MailKit is pre-approved for this project. |
-| Coding agent looks up role recipients from a SQL table. | v1 has no user-to-role mapping in SQL (see §11). `SmtpNotificationSender` resolves per-record email from persisted notification payload and falls back to `Smtp:RoleEmailMap`. |
-| `SmtpNotificationSender` silently drops a notification when recipient resolution fails. | Throw. The row stays `Pending` and the operator must fix configuration or request data. Silent drops cause undetectable notification loss. |
+| Coding agent resolves recipients from roles, SQL, configuration maps, template context, singular fields, or delimited strings. | The authenticated/integrated caller supplies typed ordered To/Cc arrays. The engine snapshots and reuses them exactly; route role columns are dormant legacy metadata only. |
+| `SmtpNotificationSender` partially succeeds or tracks retry per recipient. | One outbox row is one complete message. Any address parse/send failure returns the entire row to `Pending`, increments one `RetryCount`, and stores one `LastError`. |
 | Coding agent enables real SMTP delivery in dev/test default config. | Default `Notifications:Sender` is `"Console"` everywhere except production. Tier 2 SMTP integration tests opt in explicitly via `Category=Smtp` filter and target a local fake server. |
 | Tier 2 SMTP tests run by default and slow down CI or hit a real relay. | Tier 2 tests must be marked with `Category=Smtp` and excluded from default `dotnet test`. They run only when explicitly requested. |
 | Coding agent adds SMTP credential support to enable an authenticated relay. | v1 assumes IP-restricted on-prem relay with no credentials. Adding `Smtp:Username`/`Smtp:Password` requires secret management and is a stop-and-ask change. |

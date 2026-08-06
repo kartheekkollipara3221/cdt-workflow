@@ -15,4 +15,5 @@ public sealed class WorkflowTask
     public string? ClosedByActionKey { get; set; }
     public string? NotificationRouteKey { get; set; }
     public string? NotificationContextJson { get; set; }
+    public string NotificationRecipientsJson { get; set; } = string.Empty;
 }
