@@ -55,6 +55,57 @@ public sealed class WorkflowStartServiceTests
         Assert.Null(applicationStart.LastRequest.NotificationContext);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void StartWorkflowPassesExplicitNullRecipientArrayWithTrustedActor(bool nullToEmailAddresses)
+    {
+        var applicationStart = new RecordingStartWorkflowService(SuccessResult());
+        var recipients = new NotificationRecipients
+        {
+            ToEmailAddresses = nullToEmailAddresses
+                ? null!
+                : [" first@example.test ", "first@example.test"],
+            CcEmailAddresses = nullToEmailAddresses
+                ? [" manager@example.test ", "manager@example.test"]
+                : null!
+        };
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("trusted-user", "Trusted User", ["Maker"])),
+            applicationStart,
+            new RecordingWorkflowContextReader(new WorkflowContextResponse()));
+
+        service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
+        {
+            WorkflowKey = "PortfolioTrade",
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = nullToEmailAddresses ? "PT-NULL-TO" : "PT-NULL-CC",
+            InitialActionKey = "SubmitForChecker",
+            NotificationRecipients = recipients
+        });
+
+        Assert.NotNull(applicationStart.LastRequest);
+        Assert.Same(recipients, applicationStart.LastRequest.NotificationRecipients);
+        if (nullToEmailAddresses)
+        {
+            Assert.Null(applicationStart.LastRequest.NotificationRecipients?.ToEmailAddresses);
+            Assert.Equal(
+                [" manager@example.test ", "manager@example.test"],
+                applicationStart.LastRequest.NotificationRecipients?.CcEmailAddresses);
+        }
+        else
+        {
+            Assert.Equal(
+                [" first@example.test ", "first@example.test"],
+                applicationStart.LastRequest.NotificationRecipients?.ToEmailAddresses);
+            Assert.Null(applicationStart.LastRequest.NotificationRecipients?.CcEmailAddresses);
+        }
+
+        Assert.Equal("trusted-user", applicationStart.LastRequest.StartedByUserId);
+        Assert.Equal("Trusted User", applicationStart.LastRequest.StartedByDisplayName);
+        Assert.Equal(["Maker"], applicationStart.LastRequest.StartedByRoles);
+    }
+
     [Fact]
     public void StartWorkflowUsesTrustedActorAndReturnsRefreshedContext()
     {

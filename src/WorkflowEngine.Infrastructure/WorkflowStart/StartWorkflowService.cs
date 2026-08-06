@@ -375,8 +375,12 @@ public sealed class StartWorkflowService(
             ? null
             : new NotificationRecipients
             {
-                ToEmailAddresses = [.. recipients.ToEmailAddresses],
-                CcEmailAddresses = [.. recipients.CcEmailAddresses]
+                ToEmailAddresses = recipients.ToEmailAddresses is null
+                    ? null!
+                    : [.. recipients.ToEmailAddresses],
+                CcEmailAddresses = recipients.CcEmailAddresses is null
+                    ? null!
+                    : [.. recipients.CcEmailAddresses]
             };
     }
 

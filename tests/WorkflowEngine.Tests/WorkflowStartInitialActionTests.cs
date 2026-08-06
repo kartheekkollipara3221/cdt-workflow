@@ -68,6 +68,61 @@ public sealed class WorkflowStartInitialActionTests
         Assert.Empty(dbContext.MockSectionData);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void StartWithInitialSubmitPreservesExplicitNullRecipientArray(bool nullToEmailAddresses)
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var service = CreateService(dbContext);
+        var recipients = new NotificationRecipients
+        {
+            ToEmailAddresses = nullToEmailAddresses
+                ? null!
+                : [" first@example.test ", "first@example.test"],
+            CcEmailAddresses = nullToEmailAddresses
+                ? [" manager@example.test ", "manager@example.test"]
+                : null!
+        };
+        var expectedSnapshot = JsonSerializer.Serialize(recipients, WorkflowJson.Options);
+
+        var result = service.Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "PortfolioTrade",
+            nullToEmailAddresses ? "PT-START-NULL-TO" : "PT-START-NULL-CC",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "SubmitForChecker",
+            StartedByDisplayName: "Maker One",
+            StartedByRoles: ["Maker"],
+            NotificationContext: NotificationContext(),
+            NotificationRecipients: recipients));
+
+        Assert.True(result.Envelope.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks);
+        var notification = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal(expectedSnapshot, task.NotificationRecipientsJson);
+        Assert.Equal(task.NotificationRecipientsJson, notification.NotificationRecipientsJson);
+        var persistedRecipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            task.NotificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(persistedRecipients);
+        if (nullToEmailAddresses)
+        {
+            Assert.Null(persistedRecipients.ToEmailAddresses);
+            Assert.Equal(
+                [" manager@example.test ", "manager@example.test"],
+                persistedRecipients.CcEmailAddresses);
+        }
+        else
+        {
+            Assert.Equal(
+                [" first@example.test ", "first@example.test"],
+                persistedRecipients.ToEmailAddresses);
+            Assert.Null(persistedRecipients.CcEmailAddresses);
+        }
+    }
+
     [Fact]
     public void StartWithInvalidInitialActionRollsBackCreatedInstance()
     {
