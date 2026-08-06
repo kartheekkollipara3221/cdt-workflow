@@ -73,8 +73,8 @@ public sealed class Phase5OutboxTests
     public async Task MalformedRecipientSnapshotReleasesClaimAndAbortsBeforeSending()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
-        AddNotification(dbContext, "WF-PT-1", "Malformed", Now);
-        dbContext.NotificationOutbox.Single().NotificationRecipientsJson = "{";
+        var notification = AddNotification(dbContext, "WF-PT-1", "Malformed", Now);
+        notification.NotificationRecipientsJson = "{";
         dbContext.SaveChanges();
         var sender = new RecordingNotificationSender();
 
@@ -100,7 +100,7 @@ public sealed class Phase5OutboxTests
     public async Task MalformedMailboxAddressThroughSmtpSenderReleasesWholeOutboxRow()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
-        AddNotification(dbContext, "WF-PT-1", "Malformed address", Now);
+        var notification = AddNotification(dbContext, "WF-PT-1", "Malformed address", Now);
         var originalSnapshot = JsonSerializer.Serialize(
             new NotificationRecipients
             {
@@ -108,7 +108,7 @@ public sealed class Phase5OutboxTests
                 CcEmailAddresses = ["<"]
             },
             WorkflowJson.Options);
-        dbContext.NotificationOutbox.Single().NotificationRecipientsJson = originalSnapshot;
+        notification.NotificationRecipientsJson = originalSnapshot;
         dbContext.SaveChanges();
         var sender = new SmtpNotificationSender(SmtpNotificationSenderTests.Configuration(new()
         {
@@ -170,7 +170,11 @@ public sealed class Phase5OutboxTests
         Assert.Null(row.ProcessingStartedAtUtc);
     }
 
-    private static void AddNotification(WorkflowDbContext dbContext, string workflowInstanceId, string subject, DateTimeOffset createdAtUtc)
+    private static NotificationOutbox AddNotification(
+        WorkflowDbContext dbContext,
+        string workflowInstanceId,
+        string subject,
+        DateTimeOffset createdAtUtc)
     {
         if (!dbContext.WorkflowInstances.Any(row => row.WorkflowInstanceId == workflowInstanceId))
         {
@@ -189,7 +193,7 @@ public sealed class Phase5OutboxTests
             });
         }
 
-        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        var notification = new NotificationOutbox
         {
             WorkflowInstanceId = workflowInstanceId,
             BusinessObjectType = "PortfolioTrade",
@@ -201,7 +205,9 @@ public sealed class Phase5OutboxTests
             Status = "Pending",
             CorrelationId = subject,
             CreatedAtUtc = createdAtUtc
-        });
+        };
+        dbContext.NotificationOutbox.Add(notification);
+        return notification;
     }
 
     private static WorkflowDbContext CreateDbContext()

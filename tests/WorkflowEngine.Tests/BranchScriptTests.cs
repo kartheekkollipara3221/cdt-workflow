@@ -70,8 +70,12 @@ public sealed class BranchScriptTests
             pending.NotificationRecipientsJson,
             WorkflowJson.Options);
         Assert.NotNull(recipients);
-        Assert.Empty(recipients.ToEmailAddresses);
-        Assert.Empty(recipients.CcEmailAddresses);
+        Assert.Equal(
+            ["workflow.primary@example.test", "workflow.secondary@example.test"],
+            recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["workflow.manager@example.test", "workflow.operations@example.test"],
+            recipients.CcEmailAddresses);
         Assert.Equal(pending.NotificationRecipientsJson, notification.NotificationRecipientsJson);
     }
 }
