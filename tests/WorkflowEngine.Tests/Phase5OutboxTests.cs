@@ -1,4 +1,7 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using MimeKit;
+using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -91,6 +94,49 @@ public sealed class Phase5OutboxTests
         Assert.Contains("recipient snapshot is invalid", row.LastError, StringComparison.Ordinal);
         Assert.Null(row.ProcessingToken);
         Assert.Null(row.ProcessingStartedAtUtc);
+    }
+
+    [Fact]
+    public async Task MalformedMailboxAddressThroughSmtpSenderReleasesWholeOutboxRow()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-PT-1", "Malformed address", Now);
+        var originalSnapshot = JsonSerializer.Serialize(
+            new NotificationRecipients
+            {
+                ToEmailAddresses = ["first@example.test", "second@example.test"],
+                CcEmailAddresses = ["<"]
+            },
+            WorkflowJson.Options);
+        dbContext.NotificationOutbox.Single().NotificationRecipientsJson = originalSnapshot;
+        dbContext.SaveChanges();
+        var sender = new SmtpNotificationSender(SmtpNotificationSenderTests.Configuration(new()
+        {
+            ["Smtp:Host"] = "localhost",
+            ["Smtp:Port"] = "1",
+            ["Smtp:From"] = "workflow@example.test"
+        }));
+
+        var result = await new ProcessNotificationOutboxService(
+            dbContext,
+            sender,
+            new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
+
+        Assert.NotNull(result.Failure);
+        Assert.IsType<ParseException>(result.Failure.Exception);
+        Assert.Equal(
+            ["first@example.test", "second@example.test"],
+            result.Failure.ToEmailAddresses);
+        Assert.Equal(["<"], result.Failure.CcEmailAddresses);
+        Assert.Empty(result.Processed);
+        dbContext.ChangeTracker.Clear();
+        var row = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal("Pending", row.Status);
+        Assert.Equal(1, row.RetryCount);
+        Assert.False(string.IsNullOrWhiteSpace(row.LastError));
+        Assert.Null(row.ProcessingToken);
+        Assert.Null(row.ProcessingStartedAtUtc);
+        Assert.Equal(originalSnapshot, row.NotificationRecipientsJson);
     }
 
     [Fact]

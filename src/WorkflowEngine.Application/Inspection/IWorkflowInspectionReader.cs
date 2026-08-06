@@ -56,6 +56,7 @@ public sealed record NotificationInspection(
     string NotificationType,
     IReadOnlyList<string> ToEmailAddresses,
     IReadOnlyList<string> CcEmailAddresses,
+    bool HasInvalidRecipientSnapshot,
     string Subject,
     string Status,
     string CorrelationId,

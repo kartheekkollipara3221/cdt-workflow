@@ -1,4 +1,5 @@
 using WorkflowEngine.Application.Commands;
+using WorkflowEngine.Application.Inspection;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 using WorkflowEngine.Infrastructure.WorkflowInspection;
@@ -54,6 +55,92 @@ public sealed class ShowInspectionCommandTests
         Assert.Contains("to=[maker.one@example.test, maker.two@example.test]", result.Message, StringComparison.Ordinal);
         Assert.Contains("cc=[manager@example.test, operations@example.test]", result.Message, StringComparison.Ordinal);
         Assert.Contains("status=Pending", result.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("recipientSnapshot=invalid", result.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("{")]
+    [InlineData("""{"toEmailAddresses":null,"ccEmailAddresses":[]}""")]
+    [InlineData("""{"toEmailAddresses":[],"ccEmailAddresses":null}""")]
+    public void ShowNotificationsMarksInvalidRecipientSnapshots(string notificationRecipientsJson)
+    {
+        using var dbContext = CreateReturnToMakerContext();
+        var row = Assert.Single(dbContext.NotificationOutbox);
+        row.NotificationRecipientsJson = notificationRecipientsJson;
+        dbContext.SaveChanges();
+        var reader = new WorkflowInspectionReader(dbContext);
+        var handler = new ShowNotificationsCommandHandler(reader);
+
+        var snapshot = reader.Read("WF-PT-SHOW");
+        var result = handler.Execute(["WF-PT-SHOW"]);
+
+        var notification = Assert.Single(snapshot.Notifications);
+        Assert.True(notification.HasInvalidRecipientSnapshot);
+        Assert.Empty(notification.ToEmailAddresses);
+        Assert.Empty(notification.CcEmailAddresses);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("recipientSnapshot=invalid", result.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("toEmailAddresses", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShowNotificationsDistinguishesValidEmptyRecipientSnapshot()
+    {
+        using var dbContext = CreateReturnToMakerContext();
+        var row = Assert.Single(dbContext.NotificationOutbox);
+        row.NotificationRecipientsJson = """{"toEmailAddresses":[],"ccEmailAddresses":[]}""";
+        dbContext.SaveChanges();
+        var reader = new WorkflowInspectionReader(dbContext);
+        var handler = new ShowNotificationsCommandHandler(reader);
+
+        var snapshot = reader.Read("WF-PT-SHOW");
+        var result = handler.Execute(["WF-PT-SHOW"]);
+
+        var notification = Assert.Single(snapshot.Notifications);
+        Assert.False(notification.HasInvalidRecipientSnapshot);
+        Assert.Empty(notification.ToEmailAddresses);
+        Assert.Empty(notification.CcEmailAddresses);
+        Assert.Contains("to=[] | cc=[]", result.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("recipientSnapshot=invalid", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShowNotificationsDisplaysTypedInvalidRecipientSnapshotMarker()
+    {
+        var snapshot = new WorkflowInspectionSnapshot(
+            new WorkflowInstanceInspection(
+                "WF-INVALID-RECIPIENTS",
+                "PortfolioTrade",
+                1,
+                "PortfolioTrade",
+                "PT-INVALID-RECIPIENTS",
+                "Draft",
+                "Active",
+                Now,
+                "maker1",
+                null,
+                1),
+            [],
+            [],
+            [new NotificationInspection(
+                1,
+                null,
+                "WorkflowTaskAssigned",
+                [],
+                [],
+                true,
+                "Invalid recipients",
+                "Pending",
+                "corr-invalid-recipients",
+                Now,
+                null)]);
+        var handler = new ShowNotificationsCommandHandler(new StubInspectionReader(snapshot));
+
+        var result = handler.Execute(["WF-INVALID-RECIPIENTS"]);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("to=[] | cc=[] | recipientSnapshot=invalid", result.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -165,5 +252,13 @@ public sealed class ShowInspectionCommandTests
         dbContext.SaveChanges();
 
         return dbContext;
+    }
+
+    private sealed class StubInspectionReader(WorkflowInspectionSnapshot snapshot) : IWorkflowInspectionReader
+    {
+        public WorkflowInspectionSnapshot Read(string workflowInstanceId)
+        {
+            return snapshot;
+        }
     }
 }

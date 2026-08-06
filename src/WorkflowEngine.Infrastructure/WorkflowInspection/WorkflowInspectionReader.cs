@@ -78,14 +78,15 @@ public sealed class WorkflowInspectionReader(WorkflowDbContext dbContext) : IWor
         var notifications = notificationRows
             .Select(notification =>
             {
-                var recipients = ReadRecipients(notification.NotificationRecipientsJson);
+                var recipientSnapshot = ReadRecipients(notification.NotificationRecipientsJson);
 
                 return new NotificationInspection(
                     notification.Id,
                     notification.WorkflowTaskId,
                     notification.NotificationType,
-                    recipients.ToEmailAddresses,
-                    recipients.CcEmailAddresses,
+                    recipientSnapshot.Recipients.ToEmailAddresses,
+                    recipientSnapshot.Recipients.CcEmailAddresses,
+                    recipientSnapshot.HasInvalidRecipientSnapshot,
                     notification.Subject,
                     notification.Status,
                     notification.CorrelationId,
@@ -97,11 +98,11 @@ public sealed class WorkflowInspectionReader(WorkflowDbContext dbContext) : IWor
         return new WorkflowInspectionSnapshot(instance, tasks, history, notifications);
     }
 
-    private static NotificationRecipients ReadRecipients(string notificationRecipientsJson)
+    private static RecipientSnapshotInspection ReadRecipients(string notificationRecipientsJson)
     {
         if (string.IsNullOrWhiteSpace(notificationRecipientsJson))
         {
-            return new NotificationRecipients();
+            return RecipientSnapshotInspection.Invalid;
         }
 
         try
@@ -113,12 +114,19 @@ public sealed class WorkflowInspectionReader(WorkflowDbContext dbContext) : IWor
             return recipients is null
                 || recipients.ToEmailAddresses is null
                 || recipients.CcEmailAddresses is null
-                ? new NotificationRecipients()
-                : recipients;
+                ? RecipientSnapshotInspection.Invalid
+                : new RecipientSnapshotInspection(recipients, false);
         }
         catch (JsonException)
         {
-            return new NotificationRecipients();
+            return RecipientSnapshotInspection.Invalid;
         }
+    }
+
+    private sealed record RecipientSnapshotInspection(
+        NotificationRecipients Recipients,
+        bool HasInvalidRecipientSnapshot)
+    {
+        public static RecipientSnapshotInspection Invalid => new(new NotificationRecipients(), true);
     }
 }

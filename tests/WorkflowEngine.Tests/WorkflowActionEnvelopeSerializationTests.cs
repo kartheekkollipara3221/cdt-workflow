@@ -46,6 +46,28 @@ public sealed class WorkflowActionEnvelopeSerializationTests
     }
 
     [Fact]
+    public void NotificationRecipientsRoundTripPreservesExactCollections()
+    {
+        var envelope = WorkflowActionEnvelopeTestData.DeserializeValid();
+        envelope.Workflow!.NotificationRecipients = new NotificationRecipients
+        {
+            ToEmailAddresses = [" first@example.test ", "second@example.test", "first@example.test"],
+            CcEmailAddresses = ["manager@example.test", " operations@example.test "]
+        };
+
+        var json = JsonSerializer.Serialize(envelope, WorkflowJson.Options);
+        var roundTripped = JsonSerializer.Deserialize<WorkflowActionEnvelope>(json, WorkflowJson.Options);
+
+        Assert.NotNull(roundTripped?.Workflow?.NotificationRecipients);
+        Assert.Equal(
+            [" first@example.test ", "second@example.test", "first@example.test"],
+            roundTripped.Workflow.NotificationRecipients.ToEmailAddresses);
+        Assert.Equal(
+            ["manager@example.test", " operations@example.test "],
+            roundTripped.Workflow.NotificationRecipients.CcEmailAddresses);
+    }
+
+    [Fact]
     public void SerializesWorkflowActionResultWithCamelCaseNames()
     {
         var result = new WorkflowActionResultEnvelope

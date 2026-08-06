@@ -31,7 +31,10 @@ public sealed class ShowNotificationsCommandHandler(IWorkflowInspectionReader in
             {
                 var toRecipients = string.Join(", ", notification.ToEmailAddresses);
                 var ccRecipients = string.Join(", ", notification.CcEmailAddresses);
-                lines.Add($"  #{notification.Id} {notification.NotificationType} | status={notification.Status} | to=[{toRecipients}] | cc=[{ccRecipients}] | taskId={notification.WorkflowTaskId?.ToString() ?? "None"} | subject={notification.Subject} | created={ShowCommandHandler.FormatTimestamp(notification.CreatedAtUtc)}");
+                var recipientSnapshotStatus = notification.HasInvalidRecipientSnapshot
+                    ? " | recipientSnapshot=invalid"
+                    : string.Empty;
+                lines.Add($"  #{notification.Id} {notification.NotificationType} | status={notification.Status} | to=[{toRecipients}] | cc=[{ccRecipients}]{recipientSnapshotStatus} | taskId={notification.WorkflowTaskId?.ToString() ?? "None"} | subject={notification.Subject} | created={ShowCommandHandler.FormatTimestamp(notification.CreatedAtUtc)}");
             }
         }
 
