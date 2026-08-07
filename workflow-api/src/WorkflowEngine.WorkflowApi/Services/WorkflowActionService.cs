@@ -99,10 +99,16 @@ public sealed class WorkflowActionService(
                 requestHash,
                 synchronization.Changed,
                 synchronization.ScheduleVersion);
-            synchronizedEnvelope.WorkflowContext = workflowContextReader.Read(new WorkflowContextReadRequest(
+            var workflowContext = workflowContextReader.Read(new WorkflowContextReadRequest(
                 workflowInstanceId,
                 actor.UserId,
                 actor.Roles)).WorkflowContext;
+            synchronizedEnvelope.WorkflowContext = workflowContext;
+            synchronizedEnvelope.Result.BusinessObject = new WorkflowActionResultBusinessObject
+            {
+                ObjectType = workflowContext.BusinessObject.ObjectType,
+                ObjectId = workflowContext.BusinessObject.ObjectId
+            };
 
             return new WorkflowActionApiResponse(new WorkflowActionApiResult(
                 synchronizedEnvelope.Result,

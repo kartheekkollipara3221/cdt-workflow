@@ -165,6 +165,8 @@ public sealed class WorkflowActionServiceTests
         contextResponse.WorkflowContext.Workflow.WorkflowInstanceId = "WF-PT-1001";
         contextResponse.WorkflowContext.Workflow.WorkflowInstanceVersion = 3;
         contextResponse.WorkflowContext.Workflow.CurrentState = "TradingDeskReview";
+        contextResponse.WorkflowContext.BusinessObject.ObjectType = "PortfolioTrade";
+        contextResponse.WorkflowContext.BusinessObject.ObjectId = "PT-1001";
         contextResponse.WorkflowContext.Sla.ScheduleVersion = 2;
         var contextReader = new RecordingWorkflowContextReader(contextResponse);
         var service = CreateService(
@@ -196,6 +198,8 @@ public sealed class WorkflowActionServiceTests
         Assert.Same(contextResponse.WorkflowContext, response.Result.WorkflowContext);
         Assert.Equal(3, response.Result.WorkflowContext?.Workflow.WorkflowInstanceVersion);
         Assert.Equal(2, response.Result.WorkflowContext?.Sla.ScheduleVersion);
+        Assert.Equal("PortfolioTrade", response.Result.ActionResult.BusinessObject?.ObjectType);
+        Assert.Equal("PT-1001", response.Result.ActionResult.BusinessObject?.ObjectId);
         Assert.Equal(0, synchronizationService.CompleteCount);
     }
 
