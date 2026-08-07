@@ -92,6 +92,8 @@ public sealed class WorkflowActionBlock
 
     public string? AssignedRoleKey { get; set; }
 
+    public WorkflowSlaInput? SlaInput { get; set; }
+
     public Dictionary<string, string?>? NotificationContext { get; set; }
 
     public NotificationRecipients? NotificationRecipients { get; set; }

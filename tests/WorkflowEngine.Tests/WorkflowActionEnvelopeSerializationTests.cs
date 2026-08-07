@@ -68,6 +68,45 @@ public sealed class WorkflowActionEnvelopeSerializationTests
     }
 
     [Fact]
+    public void SlaTargetDateRoundTripUsesTypedCamelCaseBlock()
+    {
+        var envelope = WorkflowActionEnvelopeTestData.DeserializeValid();
+        envelope.Workflow!.SlaInput = new WorkflowSlaInput
+        {
+            TargetDate = new DateOnly(2030, 1, 20)
+        };
+
+        var json = JsonSerializer.Serialize(envelope, WorkflowJson.Options);
+        var roundTripped = JsonSerializer.Deserialize<WorkflowActionEnvelope>(json, WorkflowJson.Options);
+        using var document = JsonDocument.Parse(json);
+        var workflow = document.RootElement.GetProperty("workflow");
+        var serializedSlaInput = workflow.GetProperty("slaInput");
+
+        Assert.Equal("2030-01-20", serializedSlaInput.GetProperty("targetDate").GetString());
+        Assert.False(workflow.TryGetProperty("SlaInput", out _));
+        Assert.Equal(new DateOnly(2030, 1, 20), roundTripped?.Workflow?.SlaInput?.TargetDate);
+    }
+
+    [Fact]
+    public void StartWorkflowRequestCarriesTypedSlaInput()
+    {
+        var slaInput = new WorkflowSlaInput
+        {
+            TargetDate = new DateOnly(2030, 1, 20)
+        };
+
+        var request = new StartWorkflowRequest(
+            "PortfolioTrade",
+            "PortfolioTrade",
+            "PT-1001",
+            "maker1",
+            false,
+            SlaInput: slaInput);
+
+        Assert.Same(slaInput, request.SlaInput);
+    }
+
+    [Fact]
     public void SerializesWorkflowActionResultWithCamelCaseNames()
     {
         var result = new WorkflowActionResultEnvelope

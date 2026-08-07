@@ -27,6 +27,7 @@ public sealed class CanonicalRequestHasher
             ["workflow.actionReason"] = envelope.Workflow?.ActionReason,
             ["workflow.notificationContext"] = NormalizeNotificationContext(envelope.Workflow?.NotificationContext),
             ["workflow.notificationRecipients"] = SnapshotNotificationRecipients(envelope.Workflow?.NotificationRecipients),
+            ["workflow.slaInput.targetDate"] = envelope.Workflow?.SlaInput?.TargetDate,
             ["workflow.expectedCurrentState"] = envelope.Workflow?.ExpectedCurrentState,
             ["workflow.expectedCurrentTaskId"] = envelope.Workflow?.ExpectedCurrentTaskId,
             ["workflow.expectedCurrentTaskKey"] = envelope.Workflow?.ExpectedCurrentTaskKey,

@@ -127,4 +127,19 @@ public sealed class WorkflowActionEnvelopeNormalizationTests
 
         Assert.Equal(hasher.ComputeHash(normalized), hasher.ComputeHash(duplicateKeys));
     }
+
+    [Fact]
+    public void HashChangesWhenSlaTargetDateChanges()
+    {
+        var envelope = WorkflowActionEnvelopeTestData.DeserializeValid();
+        envelope.Workflow!.SlaInput = new WorkflowSlaInput
+        {
+            TargetDate = new DateOnly(2030, 1, 20)
+        };
+        var first = hasher.ComputeHash(envelope);
+
+        envelope.Workflow.SlaInput.TargetDate = new DateOnly(2030, 1, 21);
+
+        Assert.NotEqual(first, hasher.ComputeHash(envelope));
+    }
 }
