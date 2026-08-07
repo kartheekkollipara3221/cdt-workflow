@@ -142,6 +142,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset?>("CancelledAtUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("CorrelationId")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -184,6 +191,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("SentAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateOnly?>("SlaOccurrenceDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("SlaReminderKind")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -202,17 +216,20 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<long?>("WorkflowTaskId")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("WorkflowTaskSlaScheduleId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.HasIndex("WorkflowInstanceId");
 
-                    b.HasIndex("WorkflowTaskId", "NotificationType")
+                    b.HasIndex("WorkflowTaskSlaScheduleId", "SlaOccurrenceDate", "SlaReminderKind")
                         .IsUnique()
-                        .HasFilter("[NotificationType] = 'SlaTaskOverdue'");
+                        .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL");
 
                     b.ToTable("NotificationOutbox", "dbo", t =>
                         {
-                            t.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent')");
+                            t.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent', 'Cancelled')");
                         });
                 });
 
@@ -282,14 +299,43 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<int>("DurationMinutes")
+                    b.Property<string>("CalculationMode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("DueNotificationRouteKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("DurationMinutes")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<string>("OverdueNotificationRouteKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("OverdueStartOffsetDays")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RecurrenceIntervalDays")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly?>("ReminderLocalTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("SendDueDateReminder")
+                        .HasColumnType("bit");
+
                     b.Property<string>("SlaPolicyKey")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("TimeZoneId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -301,7 +347,14 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.HasIndex("WorkflowDefinitionVersionId", "SlaPolicyKey")
                         .IsUnique();
 
-                    b.ToTable("SlaPolicy", "dbo");
+                    b.ToTable("SlaPolicy", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_SlaPolicy_CalculationMode", "[CalculationMode] IN ('DurationFromTaskCreation', 'ApplicationTargetDate')");
+
+                            t.HasCheckConstraint("CK_SlaPolicy_OverdueStartOffsetDays", "[OverdueStartOffsetDays] >= 0");
+
+                            t.HasCheckConstraint("CK_SlaPolicy_RecurrenceIntervalDays", "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+                        });
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowActionDefinition", b =>
@@ -761,6 +814,125 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.ToTable("WorkflowTaskDefinition", "dbo");
                 });
 
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTaskSlaSchedule", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CalculationMode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset?>("CompletedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CompletedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DueNotificationRouteKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset?>("DueReminderAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset?>("NextReminderAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("OverdueAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("OverdueNotificationRouteKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("OverdueStartOffsetDays")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RecurrenceIntervalDays")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly?>("ReminderLocalTime")
+                        .HasColumnType("time");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("ScheduleVersion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SlaPolicyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTimeOffset?>("SupersededAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("SupersededByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateOnly?>("TargetDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("TimeZoneId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<long>("WorkflowTaskId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowTaskId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Active'");
+
+                    b.HasIndex("WorkflowTaskId", "ScheduleVersion")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowTaskSlaSchedule", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkflowTaskSlaSchedule_RecurrenceIntervalDays", "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+
+                            t.HasCheckConstraint("CK_WorkflowTaskSlaSchedule_ScheduleVersion", "[ScheduleVersion] > 0");
+
+                            t.HasCheckConstraint("CK_WorkflowTaskSlaSchedule_Status", "[Status] IN ('Active', 'Superseded', 'Completed')");
+                        });
+                });
+
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTransitionDefinition", b =>
                 {
                     b.Property<long>("Id")
@@ -838,6 +1010,11 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasPrincipalKey("WorkflowInstanceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTaskSlaSchedule", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowTaskSlaScheduleId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowAudit", b =>
@@ -867,6 +1044,15 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("WorkflowInstanceId")
                         .HasPrincipalKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTaskSlaSchedule", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTask", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowTaskId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

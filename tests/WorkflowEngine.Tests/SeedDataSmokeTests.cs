@@ -122,6 +122,66 @@ public sealed class SeedDataSmokeTests
         Assert.Null(makerRework.SlaPolicyKey);
     }
 
+    [Fact]
+    public void TradingDeskReviewUsesApplicationTargetDatePolicy()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        dbContext.Database.Migrate();
+
+        new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
+        var versionId = GetPortfolioTradeVersionId(dbContext);
+
+        var tradingPolicy = Assert.Single(dbContext.SlaPolicies.Where(row =>
+            row.WorkflowDefinitionVersionId == versionId
+            && row.SlaPolicyKey == "TradingDeskReviewSla"));
+
+        Assert.Equal("ApplicationTargetDate", tradingPolicy.CalculationMode);
+        Assert.Null(tradingPolicy.DurationMinutes);
+        Assert.True(tradingPolicy.SendDueDateReminder);
+        Assert.Equal(new TimeOnly(9, 0), tradingPolicy.ReminderLocalTime);
+        Assert.Equal("America/New_York", tradingPolicy.TimeZoneId);
+        Assert.Equal(1, tradingPolicy.OverdueStartOffsetDays);
+        Assert.Equal(1, tradingPolicy.RecurrenceIntervalDays);
+        Assert.Equal("RouteSlaTaskDueToday", tradingPolicy.DueNotificationRouteKey);
+        Assert.Equal("RouteSlaTaskOverdue", tradingPolicy.OverdueNotificationRouteKey);
+
+        var dueRoute = Assert.Single(dbContext.NotificationRoutes.Where(row =>
+            row.WorkflowDefinitionVersionId == versionId
+            && row.RouteKey == "RouteSlaTaskDueToday"));
+        Assert.Equal("SlaTaskDueToday", dueRoute.NotificationType);
+    }
+
+    [Fact]
+    public void OtherSeededSlaPoliciesRetainConfiguredDurationMode()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        dbContext.Database.Migrate();
+
+        new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
+        var versionId = GetPortfolioTradeVersionId(dbContext);
+
+        var policies = dbContext.SlaPolicies
+            .Where(row => row.WorkflowDefinitionVersionId == versionId
+                && row.SlaPolicyKey != "TradingDeskReviewSla")
+            .ToList();
+
+        Assert.Equal(3, policies.Count);
+        Assert.All(policies, policy =>
+        {
+            Assert.Equal("DurationFromTaskCreation", policy.CalculationMode);
+            Assert.Equal(2, policy.DurationMinutes);
+            Assert.False(policy.SendDueDateReminder);
+            Assert.Null(policy.ReminderLocalTime);
+            Assert.Null(policy.TimeZoneId);
+            Assert.Equal(0, policy.OverdueStartOffsetDays);
+            Assert.Null(policy.RecurrenceIntervalDays);
+            Assert.Null(policy.DueNotificationRouteKey);
+            Assert.Equal("RouteSlaTaskOverdue", policy.OverdueNotificationRouteKey);
+        });
+    }
+
     private static WorkflowDbContext CreateDbContext()
     {
         var connectionString = TestSqlConnectionFactory.ConnectionString("burrito_phase2_tests");

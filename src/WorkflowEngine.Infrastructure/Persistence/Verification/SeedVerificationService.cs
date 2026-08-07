@@ -53,6 +53,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         VerifyNoAdminDemoOverride(errors, version.Id);
         VerifyActionHints(errors, version.Id);
         VerifyTaskReferences(errors, version.Id);
+        VerifySlaPolicies(errors, version.Id);
         VerifyTaskAssignmentRoles(errors, version.Id);
         VerifyNotificationRoutes(errors, version.Id);
         VerifyTransitions(errors, version.Id);
@@ -190,6 +191,65 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             if (!roleKeys.Contains(row.RoleKey))
             {
                 errors.Add($"Task assignment role references missing RoleKey '{row.RoleKey}'.");
+            }
+        }
+    }
+
+    private void VerifySlaPolicies(ICollection<string> errors, long versionId)
+    {
+        var policies = dbContext.SlaPolicies
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .ToList();
+        VerifyKeySet(
+            errors,
+            "SLA policy",
+            PortfolioTradeSeedData.SlaPolicies.Select(row => row.Key),
+            policies.Select(row => row.SlaPolicyKey));
+
+        var routeKeys = dbContext.NotificationRoutes
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .Select(row => row.RouteKey)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var policy in policies)
+        {
+            if (policy.CalculationMode == "DurationFromTaskCreation")
+            {
+                if (policy.DurationMinutes is null or <= 0
+                    || policy.SendDueDateReminder
+                    || policy.ReminderLocalTime is not null
+                    || policy.TimeZoneId is not null)
+                {
+                    errors.Add($"SLA policy '{policy.SlaPolicyKey}' has invalid duration-mode metadata.");
+                }
+            }
+            else if (policy.CalculationMode == "ApplicationTargetDate")
+            {
+                if (policy.DurationMinutes is not null
+                    || !policy.SendDueDateReminder
+                    || policy.ReminderLocalTime is null
+                    || string.IsNullOrWhiteSpace(policy.TimeZoneId)
+                    || policy.OverdueStartOffsetDays < 0
+                    || policy.RecurrenceIntervalDays is null or <= 0)
+                {
+                    errors.Add($"SLA policy '{policy.SlaPolicyKey}' has invalid application-target-date metadata.");
+                }
+            }
+            else
+            {
+                errors.Add($"SLA policy '{policy.SlaPolicyKey}' has unknown calculation mode '{policy.CalculationMode}'.");
+            }
+
+            if (policy.DueNotificationRouteKey is not null
+                && !routeKeys.Contains(policy.DueNotificationRouteKey))
+            {
+                errors.Add($"SLA policy '{policy.SlaPolicyKey}' references missing due notification route '{policy.DueNotificationRouteKey}'.");
+            }
+
+            if (policy.OverdueNotificationRouteKey is not null
+                && !routeKeys.Contains(policy.OverdueNotificationRouteKey))
+            {
+                errors.Add($"SLA policy '{policy.SlaPolicyKey}' references missing overdue notification route '{policy.OverdueNotificationRouteKey}'.");
             }
         }
     }

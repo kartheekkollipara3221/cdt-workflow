@@ -5,6 +5,9 @@ public sealed class NotificationOutbox
     public long Id { get; set; }
     public string WorkflowInstanceId { get; set; } = string.Empty;
     public long? WorkflowTaskId { get; set; }
+    public long? WorkflowTaskSlaScheduleId { get; set; }
+    public DateOnly? SlaOccurrenceDate { get; set; }
+    public string? SlaReminderKind { get; set; }
     public string BusinessObjectType { get; set; } = string.Empty;
     public string BusinessObjectId { get; set; } = string.Empty;
     public string NotificationType { get; set; } = string.Empty;
@@ -21,4 +24,6 @@ public sealed class NotificationOutbox
     public int RetryCount { get; set; }
     public string? LastError { get; set; }
     public DateTimeOffset? SentAtUtc { get; set; }
+    public DateTimeOffset? CancelledAtUtc { get; set; }
+    public string? CancellationReason { get; set; }
 }

@@ -42,10 +42,10 @@ internal static class PortfolioTradeSeedData
 
     public static readonly SlaPolicySeed[] SlaPolicies =
     [
-        new("CheckerReviewSla", 2),
-        new("TradingDeskReviewSla", 2),
-        new("TradingDeskReworkSla", 2),
-        new("BdrmClientServiceReviewSla", 2)
+        new("CheckerReviewSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue"),
+        new("TradingDeskReviewSla", "ApplicationTargetDate", null, true, new TimeOnly(9, 0), "America/New_York", 1, 1, "RouteSlaTaskDueToday", "RouteSlaTaskOverdue"),
+        new("TradingDeskReworkSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue"),
+        new("BdrmClientServiceReviewSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue")
     ];
 
     public static readonly TaskSeed[] Tasks =
@@ -132,6 +132,18 @@ internal static class PortfolioTradeSeedData
         <p>Overdue at: <strong>{{overdueAtUtc}}</strong></p>
         """;
 
+    private const string SlaTaskDueTodayBody = """
+        Workflow instance {{workflowInstanceId}} has task {{taskKey}} assigned to {{assignedRoleKey}} due for completion today.
+        Target date: {{targetDate}}
+        SLA overdue date: {{dueAtUtc}}
+        """;
+
+    private const string SlaTaskDueTodayHtmlBody = """
+        <p>Workflow instance <strong>{{workflowInstanceId}}</strong> has task <strong>{{taskKey}}</strong> assigned to <strong>{{assignedRoleKey}}</strong> due for completion today.</p>
+        <p>Target date: <strong>{{targetDate}}</strong></p>
+        <p>SLA overdue date: <strong>{{dueAtUtc}}</strong></p>
+        """;
+
     public static readonly NotificationRouteSeed[] NotificationRoutes =
     [
         new("RouteCheckerAssignedOnSubmit", "WorkflowTaskAssigned", "Checker", "Directed Trade Pending Checker Approval", CheckerAssignedBody, CheckerAssignedHtmlBody, "Overdue: "),
@@ -142,6 +154,7 @@ internal static class PortfolioTradeSeedData
         new("RouteBdrmAssigned", "WorkflowTaskAssigned", "BDRMClientService", "Trade Execution Pending Confirmation", BdrmAssignedBody, BdrmAssignedHtmlBody, "Overdue: "),
         new("RouteWorkflowCompleted", "WorkflowCompleted", "Maker", "Confirmation that Trade settled in account", WorkflowCompletedBody, WorkflowCompletedHtmlBody, "Overdue: "),
         new("RouteTradingDeskReworkAssigned", "WorkflowTaskAssigned", "TradingDesk", "Directed Trade Request Pending Rework", TradingDeskReworkAssignedBody, TradingDeskReworkAssignedHtmlBody, "Overdue: "),
+        new("RouteSlaTaskDueToday", "SlaTaskDueToday", null, "Workflow task due today", SlaTaskDueTodayBody, SlaTaskDueTodayHtmlBody, string.Empty),
         new("RouteSlaTaskOverdue", "SlaTaskOverdue", null, "Workflow task overdue", SlaTaskOverdueBody, SlaTaskOverdueHtmlBody, "Overdue: ")
     ];
 
@@ -182,7 +195,17 @@ internal sealed record ActionSeed(
     bool RequiresReason,
     int SortOrder);
 
-internal sealed record SlaPolicySeed(string Key, int DurationMinutes);
+internal sealed record SlaPolicySeed(
+    string Key,
+    string CalculationMode,
+    int? DurationMinutes,
+    bool SendDueDateReminder,
+    TimeOnly? ReminderLocalTime,
+    string? TimeZoneId,
+    int OverdueStartOffsetDays,
+    int? RecurrenceIntervalDays,
+    string? DueNotificationRouteKey,
+    string? OverdueNotificationRouteKey);
 
 internal sealed record TaskSeed(string Key, string DisplayName, string OwnerRoleKey, string? SlaPolicyKey);
 

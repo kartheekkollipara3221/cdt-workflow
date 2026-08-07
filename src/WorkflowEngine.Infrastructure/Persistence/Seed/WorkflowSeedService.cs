@@ -114,7 +114,15 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
                 dbContext.SlaPolicies.Add(row);
             }
 
+            row.CalculationMode = seed.CalculationMode;
             row.DurationMinutes = seed.DurationMinutes;
+            row.SendDueDateReminder = seed.SendDueDateReminder;
+            row.ReminderLocalTime = seed.ReminderLocalTime;
+            row.TimeZoneId = seed.TimeZoneId;
+            row.OverdueStartOffsetDays = seed.OverdueStartOffsetDays;
+            row.RecurrenceIntervalDays = seed.RecurrenceIntervalDays;
+            row.DueNotificationRouteKey = seed.DueNotificationRouteKey;
+            row.OverdueNotificationRouteKey = seed.OverdueNotificationRouteKey;
             row.IsActive = true;
         }
     }

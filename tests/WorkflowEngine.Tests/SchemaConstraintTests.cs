@@ -27,16 +27,57 @@ public sealed class SchemaConstraintTests
     }
 
     [Fact]
-    public void NotificationOutboxHasSlaOverdueFilteredUniqueIndex()
+    public void WorkflowTaskSlaScheduleHasVersionAndSingleActiveIndexes()
+    {
+        var entityType = dbContext.Model.FindEntityType(typeof(WorkflowTaskSlaSchedule));
+        Assert.NotNull(entityType);
+
+        Assert.Contains(entityType.GetIndexes(), index =>
+            index.IsUnique
+            && index.Properties.Select(property => property.Name)
+                .SequenceEqual(["WorkflowTaskId", "ScheduleVersion"]));
+        Assert.Contains(entityType.GetIndexes(), index =>
+            index.IsUnique
+            && index.Properties.Select(property => property.Name).SequenceEqual(["WorkflowTaskId"])
+            && index.GetFilter() == "[Status] = 'Active'");
+
+        var designTimeEntity = dbContext.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(WorkflowTaskSlaSchedule));
+        Assert.NotNull(designTimeEntity);
+        Assert.Contains(designTimeEntity.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_WorkflowTaskSlaSchedule_Status"
+            && constraint.Sql.Contains("'Superseded'", StringComparison.Ordinal)
+            && constraint.Sql.Contains("'Completed'", StringComparison.Ordinal));
+        Assert.Contains(designTimeEntity.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_WorkflowTaskSlaSchedule_ScheduleVersion"
+            && constraint.Sql.Contains("> 0", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NotificationOutboxHasSlaOccurrenceUniqueIndex()
     {
         var entityType = dbContext.Model.FindEntityType(typeof(NotificationOutbox));
         Assert.NotNull(entityType);
 
         var index = Assert.Single(entityType.GetIndexes(), item =>
-            item.Properties.Select(property => property.Name).SequenceEqual(["WorkflowTaskId", "NotificationType"]));
+            item.Properties.Select(property => property.Name).SequenceEqual(
+                ["WorkflowTaskSlaScheduleId", "SlaOccurrenceDate", "SlaReminderKind"]));
 
         Assert.True(index.IsUnique);
-        Assert.Equal("[NotificationType] = 'SlaTaskOverdue'", index.GetFilter());
+        Assert.Equal("[WorkflowTaskSlaScheduleId] IS NOT NULL", index.GetFilter());
+    }
+
+    [Fact]
+    public void NotificationOutboxStatusAllowsCancelled()
+    {
+        var entityType = dbContext.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(NotificationOutbox));
+        Assert.NotNull(entityType);
+
+        var constraint = Assert.Single(entityType.GetCheckConstraints(), item =>
+            item.Name == "CK_NotificationOutbox_Status");
+
+        Assert.Contains("'Cancelled'", constraint.Sql, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -89,6 +130,17 @@ public sealed class SchemaConstraintTests
         Assert.Contains(entityType.GetForeignKeys(), foreignKey =>
             foreignKey.Properties.Select(property => property.Name).SequenceEqual(["WorkflowInstanceId"])
             && foreignKey.PrincipalKey.Properties.Select(property => property.Name).SequenceEqual(["WorkflowInstanceId"]));
+    }
+
+    [Fact]
+    public void WorkflowTaskSlaScheduleReferencesWorkflowTask()
+    {
+        var entityType = dbContext.Model.FindEntityType(typeof(WorkflowTaskSlaSchedule));
+        Assert.NotNull(entityType);
+
+        Assert.Contains(entityType.GetForeignKeys(), foreignKey =>
+            foreignKey.Properties.Select(property => property.Name).SequenceEqual(["WorkflowTaskId"])
+            && foreignKey.PrincipalEntityType.ClrType == typeof(WorkflowTask));
     }
 
     [Theory]

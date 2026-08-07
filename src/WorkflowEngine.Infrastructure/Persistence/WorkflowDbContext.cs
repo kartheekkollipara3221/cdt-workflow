@@ -27,6 +27,8 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
 
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
 
+    public DbSet<WorkflowTaskSlaSchedule> WorkflowTaskSlaSchedules => Set<WorkflowTaskSlaSchedule>();
+
     public DbSet<MockSectionData> MockSectionData => Set<MockSectionData>();
 
     public DbSet<WorkflowAudit> WorkflowAudits => Set<WorkflowAudit>();
@@ -150,7 +152,24 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.ToTable("SlaPolicy");
             entity.HasKey(row => row.Id);
             entity.Property(row => row.SlaPolicyKey).HasMaxLength(100).IsRequired();
+            entity.Property(row => row.CalculationMode).HasMaxLength(50).IsRequired();
+            entity.Property(row => row.ReminderLocalTime).HasColumnType("time");
+            entity.Property(row => row.TimeZoneId).HasMaxLength(100);
+            entity.Property(row => row.DueNotificationRouteKey).HasMaxLength(100);
+            entity.Property(row => row.OverdueNotificationRouteKey).HasMaxLength(100);
             entity.HasIndex(row => new { row.WorkflowDefinitionVersionId, row.SlaPolicyKey }).IsUnique();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_SlaPolicy_CalculationMode",
+                    "[CalculationMode] IN ('DurationFromTaskCreation', 'ApplicationTargetDate')");
+                table.HasCheckConstraint(
+                    "CK_SlaPolicy_OverdueStartOffsetDays",
+                    "[OverdueStartOffsetDays] >= 0");
+                table.HasCheckConstraint(
+                    "CK_SlaPolicy_RecurrenceIntervalDays",
+                    "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+            });
         });
 
         modelBuilder.Entity<NotificationRoute>(entity =>
@@ -225,6 +244,46 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.HasIndex(row => new { row.BusinessObjectType, row.BusinessObjectId, row.SectionKey, row.SavedAtUtc, row.Id });
         });
 
+        modelBuilder.Entity<WorkflowTaskSlaSchedule>(entity =>
+        {
+            entity.ToTable("WorkflowTaskSlaSchedule");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.SlaPolicyKey).HasMaxLength(100).IsRequired();
+            entity.Property(row => row.TargetDate).HasColumnType("date");
+            entity.Property(row => row.CalculationMode).HasMaxLength(50).IsRequired();
+            entity.Property(row => row.TimeZoneId).HasMaxLength(100);
+            entity.Property(row => row.ReminderLocalTime).HasColumnType("time");
+            entity.Property(row => row.DueNotificationRouteKey).HasMaxLength(100);
+            entity.Property(row => row.OverdueNotificationRouteKey).HasMaxLength(100);
+            entity.Property(row => row.Status).HasMaxLength(30).IsRequired();
+            entity.Property(row => row.CreatedByUserId).HasMaxLength(200).IsRequired();
+            entity.Property(row => row.CorrelationId).HasMaxLength(150).IsRequired();
+            entity.Property(row => row.IdempotencyKey).HasMaxLength(200).IsRequired();
+            entity.Property(row => row.SupersededByUserId).HasMaxLength(200);
+            entity.Property(row => row.CompletedByUserId).HasMaxLength(200);
+            entity.Property(row => row.RowVersion).IsRowVersion();
+            entity.HasIndex(row => new { row.WorkflowTaskId, row.ScheduleVersion }).IsUnique();
+            entity.HasIndex(row => row.WorkflowTaskId)
+                .IsUnique()
+                .HasFilter("[Status] = 'Active'");
+            entity.HasOne<WorkflowTask>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowTaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_WorkflowTaskSlaSchedule_Status",
+                    "[Status] IN ('Active', 'Superseded', 'Completed')");
+                table.HasCheckConstraint(
+                    "CK_WorkflowTaskSlaSchedule_ScheduleVersion",
+                    "[ScheduleVersion] > 0");
+                table.HasCheckConstraint(
+                    "CK_WorkflowTaskSlaSchedule_RecurrenceIntervalDays",
+                    "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+            });
+        });
+
         modelBuilder.Entity<WorkflowAudit>(entity =>
         {
             entity.ToTable("WorkflowAudit");
@@ -264,15 +323,27 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.CorrelationId).HasMaxLength(150).IsRequired();
             entity.Property(row => row.ProcessingToken).HasMaxLength(100);
             entity.Property(row => row.LastError).HasMaxLength(1000);
-            entity.HasIndex(row => new { row.WorkflowTaskId, row.NotificationType })
+            entity.Property(row => row.SlaOccurrenceDate).HasColumnType("date");
+            entity.Property(row => row.SlaReminderKind).HasMaxLength(30);
+            entity.Property(row => row.CancellationReason).HasMaxLength(500);
+            entity.HasIndex(row => new
+                {
+                    row.WorkflowTaskSlaScheduleId,
+                    row.SlaOccurrenceDate,
+                    row.SlaReminderKind
+                })
                 .IsUnique()
-                .HasFilter("[NotificationType] = 'SlaTaskOverdue'");
+                .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL");
             entity.HasOne<WorkflowInstance>()
                 .WithMany()
                 .HasForeignKey(row => row.WorkflowInstanceId)
                 .HasPrincipalKey(row => row.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
-            entity.ToTable(table => table.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent')"));
+            entity.HasOne<WorkflowTaskSlaSchedule>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowTaskSlaScheduleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent', 'Cancelled')"));
         });
 
         modelBuilder.Entity<IdempotencyRecord>(entity =>

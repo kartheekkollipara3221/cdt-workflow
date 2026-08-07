@@ -49,6 +49,31 @@ public sealed class MigrationSchemaTests
         Assert.DoesNotContain("DELETE FROM [dbo].[NotificationRoute]", script, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ApplicationAnchoredSlaMigrationCreatesScheduleAndOccurrenceSchemaWithoutBackfill()
+    {
+        using var dbContext = CreateDbContext();
+
+        var script = dbContext.GetService<IMigrator>().GenerateScript();
+
+        Assert.Contains("CREATE TABLE [dbo].[WorkflowTaskSlaSchedule]", script, StringComparison.Ordinal);
+        Assert.Contains("[WorkflowTaskSlaScheduleId] bigint NULL", script, StringComparison.Ordinal);
+        Assert.Contains("[SlaOccurrenceDate] date NULL", script, StringComparison.Ordinal);
+        Assert.Contains("[SlaReminderKind] nvarchar(30) NULL", script, StringComparison.Ordinal);
+        Assert.Contains("[CancelledAtUtc] datetimeoffset NULL", script, StringComparison.Ordinal);
+        Assert.Contains("'Cancelled'", script, StringComparison.Ordinal);
+        Assert.Contains(
+            "CREATE UNIQUE INDEX [IX_WorkflowTaskSlaSchedule_WorkflowTaskId_ScheduleVersion]",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "CREATE UNIQUE INDEX [IX_NotificationOutbox_WorkflowTaskSlaScheduleId_SlaOccurrenceDate_SlaReminderKind]",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("INSERT INTO [dbo].[WorkflowTaskSlaSchedule]", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("UPDATE [dbo].[WorkflowTask] SET", script, StringComparison.Ordinal);
+    }
+
     private static WorkflowDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
