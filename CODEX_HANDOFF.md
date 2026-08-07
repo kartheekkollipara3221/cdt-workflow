@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-08-07T08:15:00-04:00
+Last updated: 2026-08-07T08:35:00-04:00
 
 ## 2026-08-07 Application-Anchored Recurring SLA Implementation
 
@@ -51,6 +51,14 @@ Last updated: 2026-08-07T08:15:00-04:00
 - Revised due-today was sent on Jan 25. `TradingReturnToMaker` completed schedule 3; a Jan 26 scan found zero active SLA schedules and queued zero reminders.
 - smtp4dev contains six acceptance messages: two assignment messages, original due-today, first overdue, revised due-today, and return-to-maker. The error log is empty.
 - Review services are running against the preserved acceptance database: Workflow API `http://localhost:5058` on PID 7640; smtp4dev UI `http://localhost:5000` and SMTP 3025 on PID 10496.
+
+### Full-path live acceptance rerun
+
+- Actual HTTP instance `WF-PT-FULL-LIVE-20260807-01` completed this route: Maker submit, Checker return/reject, Maker resubmit, Checker approve/send to Trading Desk, Trader execute, and BDRM fulfill/approve.
+- The application supplied original target `2030-03-10` on Maker submit and revised target `2030-03-15` on Maker resubmit. Duration-mode Checker schedules correctly ignored target-date authority; Checker approval forwarded the current revised date and created the Trading Desk `ApplicationTargetDate` schedule for `2030-03-15`.
+- The final instance is `Completed` at version 7. All five tasks and all four SLA schedules are completed. The Trading Desk schedule persisted due-today `2030-03-15T13:00:00Z` and overdue start `2030-03-16T13:00:00Z`, reflecting 09:00 Eastern daylight time.
+- Six audit rows record the exact route and six outbox rows (IDs 8-13) are `Sent` with no errors. smtp4dev received exactly six new messages, increasing from 27 to 33; API and smtp4dev error logs remain empty.
+- A post-completion `run-sla --now 2030-03-17T13:00:00Z` found zero pending tasks with active SLA and queued zero reminder occurrences.
 
 ### Remaining tasks
 
