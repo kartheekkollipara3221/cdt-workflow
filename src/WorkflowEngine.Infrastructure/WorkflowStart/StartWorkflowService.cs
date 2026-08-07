@@ -182,6 +182,7 @@ public sealed class StartWorkflowService(
         string workflowInstanceId)
     {
         var generatedId = Guid.NewGuid().ToString("N");
+        var effectiveIdempotencyKey = OptionalText(request.IdempotencyKey) ?? generatedId;
         var envelope = new WorkflowActionEnvelope
         {
             Request = new WorkflowRequest
@@ -213,7 +214,7 @@ public sealed class StartWorkflowService(
                     : new WorkflowSlaInput { TargetDate = request.SlaInput.TargetDate },
                 NotificationContext = CopyNotificationContext(request.NotificationContext),
                 NotificationRecipients = CopyNotificationRecipients(request.NotificationRecipients),
-                IdempotencyKey = generatedId
+                IdempotencyKey = effectiveIdempotencyKey
             }
         };
 

@@ -18,7 +18,8 @@ public sealed record StartWorkflowRequest(
     IReadOnlyList<string>? StartedByRoles = null,
     IReadOnlyDictionary<string, string?>? NotificationContext = null,
     NotificationRecipients? NotificationRecipients = null,
-    WorkflowSlaInput? SlaInput = null);
+    WorkflowSlaInput? SlaInput = null,
+    string? IdempotencyKey = null);
 
 public sealed record StartWorkflowResult(
     WorkflowActionResultEnvelope Envelope,

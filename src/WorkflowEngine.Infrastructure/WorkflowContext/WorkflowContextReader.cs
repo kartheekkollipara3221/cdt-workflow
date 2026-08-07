@@ -39,6 +39,13 @@ public sealed class WorkflowContextReader(
                 .SingleOrDefault(row =>
                     row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
                     && row.TaskKey == pendingTask.TaskKey);
+        var activeSchedule = pendingTask is null
+            ? null
+            : dbContext.WorkflowTaskSlaSchedules
+                .AsNoTracking()
+                .SingleOrDefault(row =>
+                    row.WorkflowTaskId == pendingTask.Id
+                    && row.Status == "Active");
 
         var availableActions = BuildAvailableActions(request, instance, definitionVersion.VersionNumber, pendingTask);
         var currentTask = pendingTask is null
@@ -85,7 +92,7 @@ public sealed class WorkflowContextReader(
                     ReadOnlyReason = availableActions.Count > 0 ? null : BuildReadOnlyReason(instance.Status, instance.CurrentStateKey, pendingTask, request.Roles)
                 },
                 CurrentTask = currentTask,
-                Sla = BuildSla(pendingTask),
+                Sla = BuildSla(pendingTask, activeSchedule),
                 AvailableActions = availableActions,
                 ServerTimeUtc = timeProvider.GetUtcNow()
             }
@@ -155,7 +162,9 @@ public sealed class WorkflowContextReader(
             .ToList();
     }
 
-    private WorkflowContextSla BuildSla(Persistence.Entities.WorkflowTask? pendingTask)
+    private WorkflowContextSla BuildSla(
+        Persistence.Entities.WorkflowTask? pendingTask,
+        Persistence.Entities.WorkflowTaskSlaSchedule? activeSchedule)
     {
         if (pendingTask?.DueAtUtc is null || string.Equals(pendingTask.Status, "Completed", StringComparison.Ordinal))
         {
@@ -170,7 +179,11 @@ public sealed class WorkflowContextReader(
                 Status = "Overdue",
                 DueAtUtc = pendingTask.DueAtUtc,
                 Overdue = true,
-                OverdueByMinutes = Math.Max(0, (int)Math.Ceiling((now - pendingTask.DueAtUtc.Value).TotalMinutes))
+                OverdueByMinutes = Math.Max(0, (int)Math.Ceiling((now - pendingTask.DueAtUtc.Value).TotalMinutes)),
+                CalculationMode = activeSchedule?.CalculationMode,
+                TargetDate = activeSchedule?.TargetDate,
+                ScheduleVersion = activeSchedule?.ScheduleVersion,
+                NextReminderAtUtc = activeSchedule?.NextReminderAtUtc
             };
         }
 
@@ -179,7 +192,11 @@ public sealed class WorkflowContextReader(
             Status = "OnTrack",
             DueAtUtc = pendingTask.DueAtUtc,
             Overdue = false,
-            OverdueByMinutes = 0
+            OverdueByMinutes = 0,
+            CalculationMode = activeSchedule?.CalculationMode,
+            TargetDate = activeSchedule?.TargetDate,
+            ScheduleVersion = activeSchedule?.ScheduleVersion,
+            NextReminderAtUtc = activeSchedule?.NextReminderAtUtc
         };
     }
 

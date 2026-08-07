@@ -38,6 +38,8 @@ public sealed class WorkflowStartServiceTests
             BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001",
             InitialActionKey = "SubmitForChecker",
+            IdempotencyKey = " start-idempotency-1 ",
+            SlaInput = new WorkflowSlaInput { TargetDate = new DateOnly(2030, 1, 20) },
             NotificationRecipients = recipients
         });
 
@@ -52,6 +54,8 @@ public sealed class WorkflowStartServiceTests
         Assert.Equal("trusted-user", applicationStart.LastRequest.StartedByUserId);
         Assert.Equal("Trusted User", applicationStart.LastRequest.StartedByDisplayName);
         Assert.Equal(["Maker"], applicationStart.LastRequest.StartedByRoles);
+        Assert.Equal("start-idempotency-1", applicationStart.LastRequest.IdempotencyKey);
+        Assert.Equal(new DateOnly(2030, 1, 20), applicationStart.LastRequest.SlaInput?.TargetDate);
         Assert.Null(applicationStart.LastRequest.NotificationContext);
     }
 

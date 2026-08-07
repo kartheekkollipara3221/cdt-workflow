@@ -93,4 +93,12 @@ public sealed class WorkflowContextSla
     public bool Overdue { get; set; }
 
     public int OverdueByMinutes { get; set; }
+
+    public string? CalculationMode { get; set; }
+
+    public DateOnly? TargetDate { get; set; }
+
+    public int? ScheduleVersion { get; set; }
+
+    public DateTimeOffset? NextReminderAtUtc { get; set; }
 }

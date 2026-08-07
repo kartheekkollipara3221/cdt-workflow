@@ -38,7 +38,11 @@ public sealed class WorkflowContextSerializationTests
                 Sla = new WorkflowContextSla
                 {
                     Status = "OnTrack",
-                    DueAtUtc = DateTimeOffset.Parse("2026-05-07T12:10:00Z")
+                    DueAtUtc = DateTimeOffset.Parse("2030-01-21T14:00:00Z"),
+                    CalculationMode = "ApplicationTargetDate",
+                    TargetDate = new DateOnly(2030, 1, 20),
+                    ScheduleVersion = 2,
+                    NextReminderAtUtc = DateTimeOffset.Parse("2030-01-20T14:00:00Z")
                 },
                 AvailableActions =
                 [
@@ -74,6 +78,14 @@ public sealed class WorkflowContextSerializationTests
         Assert.True(context.TryGetProperty("currentTask", out var currentTask));
         Assert.Equal(JsonValueKind.Null, currentTask.ValueKind);
         Assert.Equal("OnTrack", context.GetProperty("sla").GetProperty("status").GetString());
+        Assert.Equal(
+            "ApplicationTargetDate",
+            context.GetProperty("sla").GetProperty("calculationMode").GetString());
+        Assert.Equal("2030-01-20", context.GetProperty("sla").GetProperty("targetDate").GetString());
+        Assert.Equal(2, context.GetProperty("sla").GetProperty("scheduleVersion").GetInt32());
+        Assert.Equal(
+            DateTimeOffset.Parse("2030-01-20T14:00:00Z"),
+            context.GetProperty("sla").GetProperty("nextReminderAtUtc").GetDateTimeOffset());
         Assert.False(context.GetProperty("availableActions")[0].TryGetProperty("enabledByWorkflow", out _));
         Assert.False(context.GetProperty("availableActions")[0].TryGetProperty("disabledReason", out _));
     }

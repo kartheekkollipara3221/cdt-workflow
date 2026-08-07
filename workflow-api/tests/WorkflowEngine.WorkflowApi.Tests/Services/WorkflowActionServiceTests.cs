@@ -1,5 +1,8 @@
+using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.WorkflowApi.Models;
 using WorkflowEngine.WorkflowApi.Services;
@@ -96,6 +99,8 @@ public sealed class WorkflowActionServiceTests
             WorkflowInstanceId = " WF-PT-1001 ",
             ActionKey = " CheckerSendToTradingDesk ",
             AssignedRoleKey = " TradingDeskTaxable ",
+            IdempotencyKey = " application-action-1 ",
+            SlaInput = new WorkflowSlaInput { TargetDate = new DateOnly(2030, 1, 20) },
             NotificationContext = new Dictionary<string, string?>
             {
                 ["submitterDisplayName"] = " Kollipara, Kartheek ",
@@ -117,6 +122,7 @@ public sealed class WorkflowActionServiceTests
         Assert.Equal("WF-PT-1001", envelope.Workflow?.WorkflowInstanceId);
         Assert.Equal("CheckerSendToTradingDesk", envelope.Workflow?.ActionKey);
         Assert.Equal("TradingDeskTaxable", envelope.Workflow?.AssignedRoleKey);
+        Assert.Equal(new DateOnly(2030, 1, 20), envelope.Workflow?.SlaInput?.TargetDate);
         Assert.Equal("Kollipara, Kartheek", envelope.Workflow?.NotificationContext?["submitterDisplayName"]);
         Assert.Equal("Taxable", envelope.Workflow?.NotificationContext?["deskName"]);
         Assert.False(envelope.Workflow?.NotificationContext?.ContainsKey("emptyValue") ?? true);
@@ -135,13 +141,62 @@ public sealed class WorkflowActionServiceTests
         Assert.Null(envelope.Workflow?.ActionReason);
         Assert.False(string.IsNullOrWhiteSpace(envelope.Request?.ClientActionId));
         Assert.Equal(envelope.Request?.ClientActionId, envelope.Request?.CorrelationId);
-        Assert.Equal(envelope.Request?.ClientActionId, envelope.Workflow?.IdempotencyKey);
+        Assert.Equal("application-action-1", envelope.Workflow?.IdempotencyKey);
         Assert.Equal(
             new CanonicalRequestHasher().ComputeHash(envelope),
             executionService.LastRequest.RequestHash);
         Assert.Equal("WF-PT-1001", dispatcher.LastWorkflowInstanceId);
         Assert.Equal("api-action-1", dispatcher.LastCorrelationId);
         Assert.Equal(1, dispatcher.DispatchCount);
+    }
+
+    [Fact]
+    public void ActionlessRequestSynchronizesSlaThroughTheSameServicePath()
+    {
+        var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope());
+        var synchronizationService = new RecordingWorkflowSlaSynchronizationService(
+            new WorkflowSlaSynchronizationResult(
+                Changed: true,
+                ScheduleVersion: 2,
+                TargetDate: new DateOnly(2030, 1, 25),
+                DueAtUtc: DateTimeOffset.Parse("2030-01-26T14:00:00Z"),
+                NextReminderAtUtc: DateTimeOffset.Parse("2030-01-25T14:00:00Z")));
+        var contextResponse = new WorkflowContextResponse();
+        contextResponse.WorkflowContext.Workflow.WorkflowInstanceId = "WF-PT-1001";
+        contextResponse.WorkflowContext.Workflow.WorkflowInstanceVersion = 3;
+        contextResponse.WorkflowContext.Workflow.CurrentState = "TradingDeskReview";
+        contextResponse.WorkflowContext.Sla.ScheduleVersion = 2;
+        var contextReader = new RecordingWorkflowContextReader(contextResponse);
+        var service = CreateService(
+            new StubActorResolver(new WorkflowActorSnapshot("maker1", "Maker One", ["Maker"])),
+            executionService,
+            synchronizationService: synchronizationService,
+            contextReader: contextReader);
+
+        var response = service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ActionKey = null,
+            IdempotencyKey = "application-save-2",
+            SlaInput = new WorkflowSlaInput
+            {
+                TargetDate = new DateOnly(2030, 1, 25)
+            }
+        });
+
+        Assert.Null(executionService.LastRequest);
+        Assert.NotNull(synchronizationService.LastRequest);
+        Assert.Equal("WF-PT-1001", synchronizationService.LastRequest.WorkflowInstanceId);
+        Assert.Null(synchronizationService.LastRequest.WorkflowTaskId);
+        Assert.Equal(new DateOnly(2030, 1, 25), synchronizationService.LastRequest.TargetDate);
+        Assert.Equal("application-save-2", synchronizationService.LastRequest.IdempotencyKey);
+        Assert.Equal("maker1", synchronizationService.LastRequest.ActorUserId);
+        Assert.Equal("SlaSynchronized", response.Result.ActionResult.ResultCode);
+        Assert.Equal(string.Empty, response.Result.ActionResult.ActionKey);
+        Assert.Same(contextResponse.WorkflowContext, response.Result.WorkflowContext);
+        Assert.Equal(3, response.Result.WorkflowContext?.Workflow.WorkflowInstanceVersion);
+        Assert.Equal(2, response.Result.WorkflowContext?.Sla.ScheduleVersion);
+        Assert.Equal(0, synchronizationService.CompleteCount);
     }
 
     [Fact]
@@ -335,15 +390,53 @@ public sealed class WorkflowActionServiceTests
     private static WorkflowActionService CreateService(
         IWorkflowActorResolver actorResolver,
         IWorkflowExecutionService workflowExecutionService,
-        IWorkflowActionNotificationDispatcher? notificationDispatcher = null)
+        IWorkflowActionNotificationDispatcher? notificationDispatcher = null,
+        IWorkflowSlaSynchronizationService? synchronizationService = null,
+        IWorkflowContextReader? contextReader = null)
     {
         return new WorkflowActionService(
             actorResolver,
             new WorkflowActionEnvelopeNormalizer(),
             new CanonicalRequestHasher(),
             workflowExecutionService,
+            synchronizationService ?? new RecordingWorkflowSlaSynchronizationService(
+                new WorkflowSlaSynchronizationResult(false, 0, null, null, null)),
+            contextReader ?? new RecordingWorkflowContextReader(new WorkflowContextResponse()),
+            new WorkflowActionResultBuilder(),
             notificationDispatcher ?? new RecordingWorkflowActionNotificationDispatcher(
                 WorkflowActionNotificationDispatchResult.Delivered([])));
+    }
+
+    private sealed class RecordingWorkflowSlaSynchronizationService(
+        WorkflowSlaSynchronizationResult response) : IWorkflowSlaSynchronizationService
+    {
+        public WorkflowSlaSynchronizationRequest? LastRequest { get; private set; }
+
+        public int CompleteCount { get; private set; }
+
+        public WorkflowSlaSynchronizationResult Synchronize(WorkflowSlaSynchronizationRequest request)
+        {
+            LastRequest = request;
+            return response;
+        }
+
+        public WorkflowSlaSynchronizationResult Complete(WorkflowSlaCompletionRequest request)
+        {
+            CompleteCount++;
+            return response;
+        }
+    }
+
+    private sealed class RecordingWorkflowContextReader(
+        WorkflowContextResponse response) : IWorkflowContextReader
+    {
+        public WorkflowContextReadRequest? LastRequest { get; private set; }
+
+        public WorkflowContextResponse Read(WorkflowContextReadRequest request)
+        {
+            LastRequest = request;
+            return response;
+        }
     }
 
     private sealed class StubActorResolver(WorkflowActorSnapshot actor) : IWorkflowActorResolver

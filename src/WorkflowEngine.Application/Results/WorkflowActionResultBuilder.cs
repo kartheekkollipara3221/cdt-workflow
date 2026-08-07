@@ -235,6 +235,24 @@ public sealed class WorkflowActionResultBuilder
         return new WorkflowActionResultEnvelope { Result = result };
     }
 
+    public WorkflowActionResultEnvelope BuildSlaSynchronized(
+        NormalizedWorkflowAction normalized,
+        string requestHash,
+        bool changed,
+        int scheduleVersion)
+    {
+        var result = BaseResult(normalized, requestHash, success: true, resultCode: "SlaSynchronized") with
+        {
+            Message = changed
+                ? $"SLA schedule synchronized as version {scheduleVersion}."
+                : $"SLA schedule version {scheduleVersion} already matches the supplied target date.",
+            Notification = new WorkflowNotificationSummary { Queued = false },
+            Audit = new WorkflowAuditSummary { Written = false }
+        };
+
+        return new WorkflowActionResultEnvelope { Result = result };
+    }
+
     public WorkflowActionResultEnvelope BuildExecutionSuccess(
         NormalizedWorkflowAction normalized,
         string requestHash,

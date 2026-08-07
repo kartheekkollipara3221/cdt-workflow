@@ -40,7 +40,11 @@ public sealed class WorkflowStartService(
             StartedByDisplayName: actor.DisplayName,
             StartedByRoles: actor.Roles,
             NotificationContext: NormalizeNotificationContext(request.NotificationContext),
-            NotificationRecipients: request.NotificationRecipients));
+            NotificationRecipients: request.NotificationRecipients,
+            SlaInput: request.SlaInput is null
+                ? null
+                : new WorkflowSlaInput { TargetDate = request.SlaInput.TargetDate },
+            IdempotencyKey: OptionalText(request.IdempotencyKey)));
 
         var actionResult = startResult.Envelope.Result;
         var workflowContext = actionResult.Success

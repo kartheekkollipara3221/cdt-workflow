@@ -1,5 +1,8 @@
+using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.WorkflowApi.Models;
 
@@ -10,6 +13,9 @@ public sealed class WorkflowActionService(
     WorkflowActionEnvelopeNormalizer normalizer,
     CanonicalRequestHasher hasher,
     IWorkflowExecutionService workflowExecutionService,
+    IWorkflowSlaSynchronizationService slaSynchronizationService,
+    IWorkflowContextReader workflowContextReader,
+    WorkflowActionResultBuilder resultBuilder,
     IWorkflowActionNotificationDispatcher notificationDispatcher) : IWorkflowActionService
 {
     public WorkflowActionApiResponse ExecuteWorkflowAction(HttpContext httpContext, WorkflowActionRequest? request)
@@ -25,10 +31,16 @@ public sealed class WorkflowActionService(
         }
 
         var workflowInstanceId = RequiredText(request.WorkflowInstanceId, "workflowInstanceId");
-        var actionKey = RequiredText(request.ActionKey, "actionKey");
+        var actionKey = OptionalText(request.ActionKey);
+        if (actionKey is null && request.SlaInput?.TargetDate is null)
+        {
+            RequiredText(request.ActionKey, "actionKey");
+        }
+
         var assignedRoleKey = OptionalText(request.AssignedRoleKey);
         var actor = actorResolver.Resolve(httpContext);
         var generatedId = Guid.NewGuid().ToString("N");
+        var effectiveIdempotencyKey = OptionalText(request.IdempotencyKey) ?? generatedId;
         var envelope = new WorkflowActionEnvelope
         {
             Request = new WorkflowRequest
@@ -50,16 +62,56 @@ public sealed class WorkflowActionService(
                 WorkflowInstanceId = workflowInstanceId,
                 ActionKey = actionKey,
                 AssignedRoleKey = assignedRoleKey,
+                SlaInput = request.SlaInput is null
+                    ? null
+                    : new WorkflowSlaInput { TargetDate = request.SlaInput.TargetDate },
                 NotificationContext = NormalizeNotificationContext(request.NotificationContext),
                 NotificationRecipients = request.NotificationRecipients,
-                IdempotencyKey = generatedId
+                IdempotencyKey = effectiveIdempotencyKey
             }
         };
 
         var normalized = normalizer.Normalize(envelope, businessObjectOverride: null, workflowInstanceOverride: null);
+        var requestHash = hasher.ComputeHash(normalized.Envelope);
+        if (actionKey is null)
+        {
+            WorkflowSlaSynchronizationResult synchronization;
+            try
+            {
+                synchronization = slaSynchronizationService.Synchronize(new WorkflowSlaSynchronizationRequest(
+                    workflowInstanceId,
+                    WorkflowTaskId: null,
+                    request.SlaInput?.TargetDate,
+                    actor.UserId,
+                    generatedId,
+                    effectiveIdempotencyKey));
+            }
+            catch (WorkflowSlaValidationException exception)
+            {
+                throw new WorkflowApiRequestException(
+                    StatusCodes.Status400BadRequest,
+                    "Invalid workflow SLA input.",
+                    exception.Message);
+            }
+
+            var synchronizedEnvelope = resultBuilder.BuildSlaSynchronized(
+                normalized,
+                requestHash,
+                synchronization.Changed,
+                synchronization.ScheduleVersion);
+            synchronizedEnvelope.WorkflowContext = workflowContextReader.Read(new WorkflowContextReadRequest(
+                workflowInstanceId,
+                actor.UserId,
+                actor.Roles)).WorkflowContext;
+
+            return new WorkflowActionApiResponse(new WorkflowActionApiResult(
+                synchronizedEnvelope.Result,
+                synchronizedEnvelope.WorkflowContext));
+        }
+
         var resultEnvelope = workflowExecutionService.Execute(new WorkflowExecutionRequest(
                 normalized,
-                hasher.ComputeHash(normalized.Envelope),
+                requestHash,
                 AdminOverride: false)
             {
                 DeriveIdentityFromPersistence = true,

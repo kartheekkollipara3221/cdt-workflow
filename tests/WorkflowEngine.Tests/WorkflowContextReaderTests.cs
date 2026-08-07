@@ -90,6 +90,58 @@ public sealed class WorkflowContextReaderTests
     }
 
     [Fact]
+    public void ApplicationTargetDateScheduleIsProjectedWithOperationalEvidence()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-CTX-APP-SLA", "PT-CTX-APP-SLA", "TradingDeskReview", "Active", 3);
+        AddTask(
+            dbContext,
+            "WF-PT-CTX-APP-SLA",
+            "TradingDeskReviewTask",
+            "TradingDeskTaxable",
+            DateTimeOffset.Parse("2030-01-21T14:00:00Z"));
+        dbContext.SaveChanges();
+        var task = dbContext.WorkflowTasks.Single();
+        dbContext.WorkflowTaskSlaSchedules.Add(new WorkflowTaskSlaSchedule
+        {
+            WorkflowTaskId = task.Id,
+            ScheduleVersion = 2,
+            SlaPolicyKey = "TradingDeskReviewSla",
+            TargetDate = new DateOnly(2030, 1, 20),
+            DueReminderAtUtc = DateTimeOffset.Parse("2030-01-20T14:00:00Z"),
+            OverdueAtUtc = DateTimeOffset.Parse("2030-01-21T14:00:00Z"),
+            NextReminderAtUtc = DateTimeOffset.Parse("2030-01-20T14:00:00Z"),
+            CalculationMode = "ApplicationTargetDate",
+            TimeZoneId = "America/New_York",
+            ReminderLocalTime = new TimeOnly(9, 0),
+            OverdueStartOffsetDays = 1,
+            RecurrenceIntervalDays = 1,
+            DueNotificationRouteKey = "RouteSlaTaskDueToday",
+            OverdueNotificationRouteKey = "RouteSlaTaskOverdue",
+            Status = "Active",
+            CreatedAtUtc = Now,
+            CreatedByUserId = "maker1",
+            CorrelationId = "corr-context",
+            IdempotencyKey = "idem-context"
+        });
+        dbContext.SaveChanges();
+
+        var response = CreateReader(dbContext).Read(new WorkflowContextReadRequest(
+            "WF-PT-CTX-APP-SLA",
+            "trader1",
+            ["TradingDesk"]));
+
+        var sla = response.WorkflowContext.Sla;
+        Assert.Equal("OnTrack", sla.Status);
+        Assert.Equal("ApplicationTargetDate", sla.CalculationMode);
+        Assert.Equal(new DateOnly(2030, 1, 20), sla.TargetDate);
+        Assert.Equal(2, sla.ScheduleVersion);
+        Assert.Equal(DateTimeOffset.Parse("2030-01-20T14:00:00Z"), sla.NextReminderAtUtc);
+        Assert.Equal(DateTimeOffset.Parse("2030-01-21T14:00:00Z"), sla.DueAtUtc);
+        Assert.False(sla.Overdue);
+    }
+
+    [Fact]
     public void CompletedWorkflowReturnsNoActionsAndNoSla()
     {
         using var dbContext = CreateSeededContext();

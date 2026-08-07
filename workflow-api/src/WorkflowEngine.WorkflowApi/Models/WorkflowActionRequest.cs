@@ -10,6 +10,10 @@ public sealed class WorkflowActionRequest
 
     public string? AssignedRoleKey { get; set; }
 
+    public string? IdempotencyKey { get; set; }
+
+    public WorkflowSlaInput? SlaInput { get; set; }
+
     public Dictionary<string, string?>? NotificationContext { get; set; }
 
     public NotificationRecipients? NotificationRecipients { get; set; }

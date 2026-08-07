@@ -41,6 +41,8 @@ public sealed class WorkflowSlaSynchronizationTests
         Assert.NotNull(schedules[0].SupersededAtUtc);
         Assert.Equal("Active", schedules[1].Status);
         Assert.Equal(DateTimeOffset.Parse("2030-01-26T14:00:00Z"), task.DueAtUtc);
+        Assert.Equal(3, dbContext.WorkflowInstances.Single().Version);
+        Assert.Empty(dbContext.WorkflowAudits);
     }
 
     [Fact]
