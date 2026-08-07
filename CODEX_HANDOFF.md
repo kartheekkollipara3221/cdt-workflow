@@ -1,13 +1,13 @@
 # Codex Handoff
 
-Last updated: 2026-08-07T01:20:00-04:00
+Last updated: 2026-08-07T08:15:00-04:00
 
 ## 2026-08-07 Application-Anchored Recurring SLA Implementation
 
 ### Current goal
 
-- Finish full quality gates and a fast live HTTP/SMTP scenario for the approved generic application-anchored SLA.
-- Leave smtp4dev and the Workflow API running for user review after the live scenario if both are healthy.
+- Application-anchored recurring SLA implementation and live acceptance are complete on `feature/application-anchored-recurring-sla`.
+- Leave smtp4dev and the Workflow API running for user review on ports 5000/3025 and 5058.
 
 ### Completed changes
 
@@ -20,6 +20,7 @@ Last updated: 2026-08-07T01:20:00-04:00
 - Replaced task-level one-time scanning with schedule/date/kind occurrences, local-time eligibility, weekend recurrence, current-only catch-up, and completion stop behavior.
 - Added post-claim inactive-schedule suppression so stale outbox rows become `Cancelled` before sender invocation.
 - Fixed the pre-existing fresh-clone test harness pipe hang by disabling child MSBuild reuse and draining stdout/stderr concurrently.
+- Fixed the actionless reschedule response so `actionResult.BusinessObject` is populated from persisted workflow context instead of returning empty strings.
 - Updated the sample contract, `PROJECT.md`, README, API boundary, HTML handoffs, and coverage audit for the implemented behavior.
 
 ### Changed files
@@ -32,20 +33,28 @@ Last updated: 2026-08-07T01:20:00-04:00
 
 ### Build/test status
 
-- Core build: passed, 0 warnings/errors.
-- Full core suite after test-harness fix: 282 passed, 4 optional SMTP skipped, 0 failed, in 1m44s.
+- Both solution restores passed and both warning-as-error builds passed with 0 warnings/errors.
+- Full core suite: 287 passed, 4 optional SMTP skipped, 0 failed, 291 total, in 1m16s.
+- Full Workflow API suite after the final response-only regression fix: 51 passed, 0 skipped/failed. Its focused red/green test first failed with the empty business object, then passed after the fix.
 - Focused recurring SLA/outbox suite: 14 passed.
-- Sample/expectation suite: 9 passed.
-- smtp4dev health: HTTP `/api/Server` 200; HTTP 5000 and SMTP 3025 owned by PID 10496.
+- Documentation/coverage/sample contract suite: 24 passed.
+- EF `has-pending-model-changes`: no model changes since the latest migration.
 - Opt-in SMTP suite: 4 passed, including proof that an inactive-schedule row is not delivered.
+- Clean database `cdt_workflow_sla_live_20260807`: `init-db` and `verify-seed` passed without changing the existing application database.
+
+### Live acceptance evidence
+
+- Actual HTTP instance: `WF-PT-SLA-LIVE-20260807`, business object `PT-SLA-LIVE-20260807`.
+- `CheckerSendToTradingDesk` created task 2 and schedule 2/version 1 for target `2030-01-20`; assignment email was sent immediately.
+- Fast-forwarded `run-sla` sent due-today on `2030-01-20` and overdue on `2030-01-21`; a repeated Jan 21 scan queued zero duplicates.
+- Jan 22 overdue occurrence 5 was deliberately left pending. Actionless `POST /v1/WorkflowAction` changed the target to `2030-01-25`, kept workflow state/version at `TradingDeskReview`/3 and audit count at 2, superseded schedule 2, cancelled occurrence 5 with `SlaScheduleSuperseded`, and created schedule 3/version 2.
+- Revised due-today was sent on Jan 25. `TradingReturnToMaker` completed schedule 3; a Jan 26 scan found zero active SLA schedules and queued zero reminders.
+- smtp4dev contains six acceptance messages: two assignment messages, original due-today, first overdue, revised due-today, and return-to-maker. The error log is empty.
+- Review services are running against the preserved acceptance database: Workflow API `http://localhost:5058` on PID 7640; smtp4dev UI `http://localhost:5000` and SMTP 3025 on PID 10496.
 
 ### Remaining tasks
 
-- Run documentation/coverage tests and commit the documentation slice.
-- Run clean restore/build/test gates for both solutions.
-- Initialize/verify a clean application database. If the configured application DB is not clean, stop for explicit destructive-recreation approval.
-- Start Workflow API on 5058 and execute the actual multi-day target-date/reschedule/completion scenario against smtp4dev.
-- Record final IDs/counts/commands here and leave healthy review services running.
+- None for the approved SLA scope. The feature branch is ready for review/integration; runtime log files remain untracked under `.runtime/` while the API is running.
 
 ### Known risks
 
@@ -56,7 +65,7 @@ Last updated: 2026-08-07T01:20:00-04:00
 ### Next-session prompt
 
 ```text
-Continue application-anchored SLA verification in C:\projects\cdt-workflow\.worktrees\application-anchored-recurring-sla on feature/application-anchored-recurring-sla. Read AGENTS.MD, PROJECT.md, and the top handoff section. Implementation commits through recurring monitor are complete. Finish docs gates, both solution quality gates, clean DB seed verification, and the real Workflow API + smtp4dev multi-day/reschedule/completion scenario. Do not destructively recreate a non-clean application DB without explicit approval.
+Review or integrate the completed application-anchored recurring SLA in C:\projects\cdt-workflow\.worktrees\application-anchored-recurring-sla on feature/application-anchored-recurring-sla. Read AGENTS.MD, PROJECT.md, and the top handoff section. Use the dedicated database cdt_workflow_sla_live_20260807 for preserved acceptance evidence; do not destructively recreate the existing application database.
 ```
 
 ## 2026-08-06 Session Pause Status
