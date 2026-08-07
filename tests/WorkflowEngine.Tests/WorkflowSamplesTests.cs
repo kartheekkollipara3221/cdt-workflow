@@ -65,6 +65,25 @@ public sealed class WorkflowSamplesTests
         Assert.Equal(new DateOnly(2030, 1, 20), sample.Workflow?.SlaInput?.TargetDate);
     }
 
+    [Theory]
+    [InlineData("durationMinutes", "120")]
+    [InlineData("timeZoneId", "\"America/New_York\"")]
+    [InlineData("recurrenceIntervalDays", "1")]
+    [InlineData("overdueStartOffsetDays", "1")]
+    [InlineData("dueAtUtc", "\"2030-01-21T14:00:00Z\"")]
+    public void SlaInputRejectsMetadataOwnedRequestFields(string fieldName, string jsonValue)
+    {
+        var json = $$"""
+            {
+              "targetDate": "2030-01-20",
+              "{{fieldName}}": {{jsonValue}}
+            }
+            """;
+
+        Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize<WorkflowSlaInput>(json, WorkflowJson.Options));
+    }
+
     private static WorkflowActionEnvelope ReadEnvelope(string path)
     {
         return JsonSerializer.Deserialize<WorkflowActionEnvelope>(File.ReadAllText(path), WorkflowJson.Options)
