@@ -105,11 +105,14 @@ public sealed class FreshCloneWalkthroughTests
             UseShellExecute = false
         };
         startInfo.Environment["ConnectionStrings__DefaultConnection"] = TestSqlConnectionFactory.ConnectionString("burrito");
+        startInfo.Environment["DOTNET_CLI_USE_MSBUILD_SERVER"] = "0";
+        startInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {fileName} {arguments}.");
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
         process.WaitForExit();
-        return new ProcessResult(process.ExitCode, stdout, stderr);
+        Task.WaitAll(stdoutTask, stderrTask);
+        return new ProcessResult(process.ExitCode, stdoutTask.Result, stderrTask.Result);
     }
 
     private static ProcessResult RunBuild()
