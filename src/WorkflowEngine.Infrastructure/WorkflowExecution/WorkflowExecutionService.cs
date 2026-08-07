@@ -7,10 +7,12 @@ using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
+using WorkflowEngine.Infrastructure.Sla;
 
 namespace WorkflowEngine.Infrastructure.WorkflowExecution;
 
@@ -20,8 +22,30 @@ public sealed class WorkflowExecutionService(
     TimeProvider timeProvider,
     WorkflowActionResultBuilder resultBuilder,
     CanonicalWorkflowResultSerializer resultSerializer,
-    NotificationTemplateRenderer templateRenderer) : IWorkflowExecutionService
+    NotificationTemplateRenderer templateRenderer,
+    IWorkflowSlaSynchronizationService slaSynchronizationService) : IWorkflowExecutionService
 {
+    public WorkflowExecutionService(
+        WorkflowDbContext dbContext,
+        IWorkflowContextReader contextReader,
+        TimeProvider timeProvider,
+        WorkflowActionResultBuilder resultBuilder,
+        CanonicalWorkflowResultSerializer resultSerializer,
+        NotificationTemplateRenderer templateRenderer)
+        : this(
+            dbContext,
+            contextReader,
+            timeProvider,
+            resultBuilder,
+            resultSerializer,
+            templateRenderer,
+            new WorkflowSlaSynchronizationService(
+                dbContext,
+                timeProvider,
+                new SlaScheduleCalculator()))
+    {
+    }
+
     public WorkflowActionResultEnvelope Execute(WorkflowExecutionRequest request)
     {
         var normalized = request.Normalized;
@@ -176,12 +200,69 @@ public sealed class WorkflowExecutionService(
             return assignmentValidation;
         }
 
+        var slaInputValidation = ValidateSlaInput(normalized, instance, pendingTask, transition);
+        if (slaInputValidation is not null)
+        {
+            return slaInputValidation;
+        }
+
         foreach (var warning in BuildOptionWarnings(envelope.Workflow?.Options, transition, instance.WorkflowDefinitionVersionId))
         {
             Console.Error.WriteLine(warning);
         }
 
         return ExecuteSideEffects(request, instance, pendingTask, transition, performedByRoleKey);
+    }
+
+    private WorkflowActionResultEnvelope? ValidateSlaInput(
+        NormalizedWorkflowAction normalized,
+        WorkflowInstance instance,
+        WorkflowTask? pendingTask,
+        WorkflowTransitionDefinition transition)
+    {
+        string? effectiveTaskKey;
+        if (!string.IsNullOrWhiteSpace(transition.TaskToCreateKey))
+        {
+            effectiveTaskKey = transition.TaskToCreateKey;
+        }
+        else if (!string.IsNullOrWhiteSpace(transition.TaskToCloseKey))
+        {
+            effectiveTaskKey = null;
+        }
+        else
+        {
+            effectiveTaskKey = pendingTask?.TaskKey;
+        }
+
+        if (effectiveTaskKey is null)
+        {
+            return null;
+        }
+
+        var calculationMode = (
+            from taskDefinition in dbContext.WorkflowTaskDefinitions.AsNoTracking()
+            join policy in dbContext.SlaPolicies.AsNoTracking()
+                on new { taskDefinition.WorkflowDefinitionVersionId, SlaPolicyKey = taskDefinition.SlaPolicyKey! }
+                equals new { policy.WorkflowDefinitionVersionId, policy.SlaPolicyKey }
+            where taskDefinition.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                && taskDefinition.TaskKey == effectiveTaskKey
+                && taskDefinition.IsActive
+                && policy.IsActive
+            select policy.CalculationMode)
+            .SingleOrDefault();
+
+        if (calculationMode != "ApplicationTargetDate"
+            || normalized.Envelope.Workflow?.SlaInput?.TargetDate is not null)
+        {
+            return null;
+        }
+
+        return resultBuilder.BuildValidationFailed(normalized,
+        [
+            new WorkflowValidationError(
+                "slaInput.targetDate",
+                $"slaInput.targetDate is required for task '{effectiveTaskKey}'.")
+        ]);
     }
 
     private WorkflowActionResultEnvelope? ValidateEnvelopeIdentity(
@@ -487,6 +568,11 @@ public sealed class WorkflowExecutionService(
                     taskToClose.CompletedAtUtc = now;
                     taskToClose.CompletedByUserId = envelope.Actor?.UserId ?? string.Empty;
                     taskToClose.ClosedByActionKey = workflow.ActionKey;
+                    slaSynchronizationService.Complete(new WorkflowSlaCompletionRequest(
+                        instance.WorkflowInstanceId,
+                        taskToClose.Id,
+                        envelope.Actor?.UserId ?? string.Empty,
+                        normalized.EffectiveCorrelationId));
                     closedTask = new WorkflowTaskChange
                     {
                         TaskId = taskToClose.Id.ToString(CultureInfo.InvariantCulture),
@@ -503,7 +589,6 @@ public sealed class WorkflowExecutionService(
                         .Single(row =>
                             row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
                             && row.TaskKey == transition.TaskToCreateKey);
-                    var dueAtUtc = ResolveDueAtUtc(instance.WorkflowDefinitionVersionId, taskDefinition.SlaPolicyKey, now);
                     var created = new WorkflowTask
                     {
                         WorkflowInstanceId = instance.WorkflowInstanceId,
@@ -515,11 +600,21 @@ public sealed class WorkflowExecutionService(
                         AssignedUserId = null,
                         Status = "Pending",
                         CreatedAtUtc = now,
-                        DueAtUtc = dueAtUtc,
+                        DueAtUtc = null,
                         NotificationRecipientsJson = notificationRecipientsJson
                     };
                     dbContext.WorkflowTasks.Add(created);
                     dbContext.SaveChanges();
+                    if (!string.IsNullOrWhiteSpace(taskDefinition.SlaPolicyKey))
+                    {
+                        slaSynchronizationService.Synchronize(new WorkflowSlaSynchronizationRequest(
+                            instance.WorkflowInstanceId,
+                            created.Id,
+                            workflow.SlaInput?.TargetDate,
+                            envelope.Actor?.UserId ?? string.Empty,
+                            normalized.EffectiveCorrelationId,
+                            normalized.EffectiveIdempotencyKey));
+                    }
                     createdTask = new WorkflowTaskChange
                     {
                         TaskId = created.Id.ToString(CultureInfo.InvariantCulture),
@@ -527,6 +622,19 @@ public sealed class WorkflowExecutionService(
                         AssignedRole = created.AssignedRoleKey,
                         DueAtUtc = created.DueAtUtc
                     };
+                }
+
+                if (string.IsNullOrWhiteSpace(transition.TaskToCloseKey)
+                    && string.IsNullOrWhiteSpace(transition.TaskToCreateKey)
+                    && currentPendingTask is not null)
+                {
+                    slaSynchronizationService.Synchronize(new WorkflowSlaSynchronizationRequest(
+                        instance.WorkflowInstanceId,
+                        currentPendingTask.Id,
+                        workflow.SlaInput?.TargetDate,
+                        envelope.Actor?.UserId ?? string.Empty,
+                        normalized.EffectiveCorrelationId,
+                        normalized.EffectiveIdempotencyKey));
                 }
 
                 if (!string.IsNullOrWhiteSpace(transition.NotificationRouteKey))
@@ -587,6 +695,16 @@ public sealed class WorkflowExecutionService(
                     };
                 }
             }
+            else if (currentPendingTask is not null)
+            {
+                slaSynchronizationService.Synchronize(new WorkflowSlaSynchronizationRequest(
+                    instance.WorkflowInstanceId,
+                    currentPendingTask.Id,
+                    workflow.SlaInput?.TargetDate,
+                    envelope.Actor?.UserId ?? string.Empty,
+                    normalized.EffectiveCorrelationId,
+                    normalized.EffectiveIdempotencyKey));
+            }
 
             var reason = workflow.ActionReason;
             if (request.AdminOverride)
@@ -645,24 +763,6 @@ public sealed class WorkflowExecutionService(
 
             return result;
         }
-    }
-
-    private DateTimeOffset? ResolveDueAtUtc(long workflowDefinitionVersionId, string? slaPolicyKey, DateTimeOffset now)
-    {
-        if (string.IsNullOrWhiteSpace(slaPolicyKey))
-        {
-            return null;
-        }
-
-        var durationMinutes = dbContext.SlaPolicies.AsNoTracking()
-            .Where(row =>
-                row.WorkflowDefinitionVersionId == workflowDefinitionVersionId
-                && row.SlaPolicyKey == slaPolicyKey
-                && row.IsActive)
-            .Select(row => (int?)row.DurationMinutes)
-            .SingleOrDefault();
-
-        return durationMinutes is null ? null : now.AddMinutes(durationMinutes.Value);
     }
 
     private string ResolveCreatedTaskAssignedRole(

@@ -176,6 +176,45 @@ public sealed class WorkflowStartInitialActionTests
         Assert.Single(dbContext.WorkflowTasks);
     }
 
+    [Fact]
+    public void StartInitialActionCopiesSlaInputIntoCreatedTaskSchedule()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var checkerPolicy = dbContext.SlaPolicies.Single(row => row.SlaPolicyKey == "CheckerReviewSla");
+        checkerPolicy.CalculationMode = "ApplicationTargetDate";
+        checkerPolicy.DurationMinutes = null;
+        checkerPolicy.SendDueDateReminder = true;
+        checkerPolicy.ReminderLocalTime = new TimeOnly(9, 0);
+        checkerPolicy.TimeZoneId = "America/New_York";
+        checkerPolicy.OverdueStartOffsetDays = 1;
+        checkerPolicy.RecurrenceIntervalDays = 1;
+        checkerPolicy.DueNotificationRouteKey = "RouteSlaTaskDueToday";
+        checkerPolicy.OverdueNotificationRouteKey = "RouteSlaTaskOverdue";
+        dbContext.SaveChanges();
+        var service = CreateService(dbContext);
+
+        var result = service.Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "PortfolioTrade",
+            "PT-START-SLA",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "SubmitForChecker",
+            StartedByDisplayName: "Maker One",
+            StartedByRoles: ["Maker"],
+            NotificationContext: NotificationContext(),
+            SlaInput: new WorkflowSlaInput
+            {
+                TargetDate = new DateOnly(2030, 1, 20)
+            }));
+
+        Assert.True(result.Envelope.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks);
+        Assert.Equal(DateTimeOffset.Parse("2030-01-21T14:00:00Z"), task.DueAtUtc);
+        var schedule = Assert.Single(dbContext.WorkflowTaskSlaSchedules);
+        Assert.Equal(new DateOnly(2030, 1, 20), schedule.TargetDate);
+    }
+
     private static StartWorkflowService CreateService(WorkflowDbContext dbContext)
     {
         var timeProvider = new FixedTimeProvider(DateTimeOffset.Parse("2030-01-15T15:30:00Z"));

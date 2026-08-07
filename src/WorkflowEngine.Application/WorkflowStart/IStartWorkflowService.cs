@@ -29,5 +29,6 @@ public sealed record StartWorkflowResetCounts(
     int NotificationOutboxRows,
     int WorkflowAuditRows,
     int MockSectionDataRows,
+    int WorkflowTaskSlaScheduleRows,
     int WorkflowTaskRows,
     int WorkflowInstanceRows);

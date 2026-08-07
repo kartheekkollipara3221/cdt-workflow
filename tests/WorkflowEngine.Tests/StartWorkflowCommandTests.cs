@@ -88,7 +88,7 @@ public sealed class StartWorkflowCommandTests
 
             return new StartWorkflowResult(
                 envelope,
-                request.Reset ? new StartWorkflowResetCounts(3, 2, 4, 2, 1, 1) : null);
+                request.Reset ? new StartWorkflowResetCounts(3, 2, 4, 2, 0, 1, 1) : null);
         }
     }
 }

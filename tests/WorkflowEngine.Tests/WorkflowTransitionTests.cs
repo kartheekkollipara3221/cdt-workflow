@@ -171,6 +171,10 @@ public sealed class WorkflowTransitionTests
             roles: ["Checker"],
             userId: "checker1");
         envelope.Workflow!.AssignedRoleKey = assignedRoleKey;
+        envelope.Workflow.SlaInput = new WorkflowSlaInput
+        {
+            TargetDate = new DateOnly(2030, 1, 20)
+        };
 
         var result = CreateService(dbContext).Execute(Request(envelope));
 
@@ -180,11 +184,54 @@ public sealed class WorkflowTransitionTests
         var tradingTask = Assert.Single(dbContext.WorkflowTasks.Where(row => row.TaskKey == "TradingDeskReviewTask"));
         Assert.Equal("Pending", tradingTask.Status);
         Assert.Equal(assignedRoleKey, tradingTask.AssignedRoleKey);
+        Assert.Equal(DateTimeOffset.Parse("2030-01-21T14:00:00Z"), tradingTask.DueAtUtc);
+        var schedule = Assert.Single(dbContext.WorkflowTaskSlaSchedules);
+        Assert.Equal(new DateOnly(2030, 1, 20), schedule.TargetDate);
+        Assert.Equal(1, schedule.ScheduleVersion);
         var notification = Assert.Single(dbContext.NotificationOutbox);
         Assert.Equal("WorkflowTaskAssigned", notification.NotificationType);
         AssertRecipientSnapshot(tradingTask.NotificationRecipientsJson);
         Assert.Equal(tradingTask.NotificationRecipientsJson, notification.NotificationRecipientsJson);
         Assert.Equal(assignedRoleKey, result.Result.CreatedTask?.AssignedRole);
+    }
+
+    [Fact]
+    public void CheckerSendToTradingDeskWithoutTargetDateRollsBackBeforeSideEffects()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        dbContext.WorkflowTasks.Add(new WorkflowTask
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            TaskKey = "CheckerReviewTask",
+            AssignedRoleKey = "Checker",
+            Status = "Pending",
+            CreatedAtUtc = Now,
+            DueAtUtc = Now.AddMinutes(2)
+        });
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            actionKey: "CheckerSendToTradingDesk",
+            sectionKey: "Checker",
+            buttonKey: "CheckerPrimary",
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            expectedTaskKey: "CheckerReviewTask",
+            roles: ["Checker"],
+            userId: "checker1");
+        envelope.Workflow!.AssignedRoleKey = "TradingDeskTaxable";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.False(result.Result.Success);
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("slaInput.targetDate", result.Result.Diagnostics.ValidationErrors!.Select(error => error.Field));
+        Assert.Equal("CheckerReview", dbContext.WorkflowInstances.Single().CurrentStateKey);
+        Assert.Equal(2, dbContext.WorkflowInstances.Single().Version);
+        Assert.Single(dbContext.WorkflowTasks, task => task.TaskKey == "CheckerReviewTask" && task.Status == "Pending");
+        Assert.Empty(dbContext.WorkflowTaskSlaSchedules);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
     }
 
     [Fact]

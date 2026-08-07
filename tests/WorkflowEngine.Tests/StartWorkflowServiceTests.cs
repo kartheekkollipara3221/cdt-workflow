@@ -100,7 +100,7 @@ public sealed class StartWorkflowServiceTests
         var result = CreateService(dbContext).Start(Request("PT-1001", reset: true));
 
         Assert.True(result.Envelope.Result.Success);
-        Assert.Equal(new StartWorkflowResetCounts(1, 1, 1, 1, 1, 1), result.ResetCounts);
+        Assert.Equal(new StartWorkflowResetCounts(1, 1, 1, 1, 1, 1, 1), result.ResetCounts);
         Assert.Equal(2, dbContext.WorkflowInstances.Count());
         Assert.Contains(dbContext.WorkflowInstances, row => row.WorkflowInstanceId == "WF-PT-1001" && row.Version == 1 && row.CurrentStateKey == "Draft");
         Assert.Single(dbContext.WorkflowTasks.Where(row => row.WorkflowInstanceId == "WF-PT-1002"));
@@ -117,7 +117,7 @@ public sealed class StartWorkflowServiceTests
 
         var result = CreateService(dbContext).Start(Request("PT-NEW", reset: true));
 
-        Assert.Equal(new StartWorkflowResetCounts(0, 0, 0, 0, 0, 0), result.ResetCounts);
+        Assert.Equal(new StartWorkflowResetCounts(0, 0, 0, 0, 0, 0, 0), result.ResetCounts);
         Assert.Single(dbContext.WorkflowInstances);
         Assert.Equal("WF-PT-NEW", dbContext.WorkflowInstances.Single().WorkflowInstanceId);
     }
@@ -194,7 +194,7 @@ public sealed class StartWorkflowServiceTests
 
     private static void AddRuntimeRows(WorkflowDbContext dbContext, string workflowInstanceId, string businessObjectId)
     {
-        dbContext.WorkflowTasks.Add(new WorkflowTask
+        var task = new WorkflowTask
         {
             WorkflowInstanceId = workflowInstanceId,
             TaskKey = "CheckerReviewTask",
@@ -202,6 +202,24 @@ public sealed class StartWorkflowServiceTests
             Status = "Pending",
             CreatedAtUtc = Now,
             NotificationRecipientsJson = """{"toEmailAddresses":[],"ccEmailAddresses":[]}"""
+        };
+        dbContext.WorkflowTasks.Add(task);
+        dbContext.SaveChanges();
+        dbContext.WorkflowTaskSlaSchedules.Add(new WorkflowTaskSlaSchedule
+        {
+            WorkflowTaskId = task.Id,
+            ScheduleVersion = 1,
+            SlaPolicyKey = "CheckerReviewSla",
+            OverdueAtUtc = Now.AddMinutes(2),
+            NextReminderAtUtc = Now.AddMinutes(2),
+            CalculationMode = "DurationFromTaskCreation",
+            OverdueStartOffsetDays = 0,
+            OverdueNotificationRouteKey = "RouteSlaTaskOverdue",
+            Status = "Active",
+            CreatedAtUtc = Now,
+            CreatedByUserId = "maker1",
+            CorrelationId = $"corr-{businessObjectId}",
+            IdempotencyKey = $"idem-{businessObjectId}"
         });
         dbContext.WorkflowAudits.Add(new WorkflowAudit
         {

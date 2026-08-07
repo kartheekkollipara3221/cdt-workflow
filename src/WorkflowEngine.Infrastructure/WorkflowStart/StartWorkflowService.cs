@@ -208,6 +208,9 @@ public sealed class StartWorkflowService(
             {
                 WorkflowInstanceId = workflowInstanceId,
                 ActionKey = request.InitialActionKey,
+                SlaInput = request.SlaInput is null
+                    ? null
+                    : new WorkflowSlaInput { TargetDate = request.SlaInput.TargetDate },
                 NotificationContext = CopyNotificationContext(request.NotificationContext),
                 NotificationRecipients = CopyNotificationRecipients(request.NotificationRecipients),
                 IdempotencyKey = generatedId
@@ -247,6 +250,11 @@ public sealed class StartWorkflowService(
             dbContext.MockSectionData
                 .Where(row => row.BusinessObjectType == request.BusinessObjectType
                     && row.BusinessObjectId == request.BusinessObjectId)
+                .ExecuteDelete(),
+            dbContext.WorkflowTaskSlaSchedules
+                .Where(schedule => dbContext.WorkflowTasks.Any(task =>
+                    task.Id == schedule.WorkflowTaskId
+                    && task.WorkflowInstanceId == workflowInstanceId))
                 .ExecuteDelete(),
             dbContext.WorkflowTasks
                 .Where(row => row.WorkflowInstanceId == workflowInstanceId)

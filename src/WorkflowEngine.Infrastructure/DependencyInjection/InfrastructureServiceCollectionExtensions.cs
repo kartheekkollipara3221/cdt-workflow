@@ -47,6 +47,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<WorkflowInspectionReader>();
         services.AddScoped<StartWorkflowService>();
         services.AddScoped<RunSlaService>();
+        services.AddSingleton<SlaScheduleCalculator>();
+        services.AddScoped<WorkflowSlaSynchronizationService>();
         services.AddScoped<ProcessNotificationOutboxService>();
         services.AddScoped<global::WorkflowEngine.Application.Persistence.IWorkflowDatabaseInitializer>(provider =>
             provider.GetRequiredService<WorkflowDatabaseInitializer>());
@@ -62,6 +64,8 @@ public static class InfrastructureServiceCollectionExtensions
             provider.GetRequiredService<StartWorkflowService>());
         services.AddScoped<global::WorkflowEngine.Application.Sla.IRunSlaService>(provider =>
             provider.GetRequiredService<RunSlaService>());
+        services.AddScoped<global::WorkflowEngine.Application.Sla.IWorkflowSlaSynchronizationService>(provider =>
+            provider.GetRequiredService<WorkflowSlaSynchronizationService>());
         services.AddScoped<global::WorkflowEngine.Application.Notifications.IProcessNotificationOutboxService>(provider =>
             provider.GetRequiredService<ProcessNotificationOutboxService>());
         services.AddSingleton<INotificationSender>(provider =>
