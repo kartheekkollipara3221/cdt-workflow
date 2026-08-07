@@ -170,6 +170,86 @@ public sealed class Phase5OutboxTests
         Assert.Null(row.ProcessingStartedAtUtc);
     }
 
+    [Fact]
+    public async Task ClaimedSlaOccurrenceForInactiveScheduleIsCancelledBeforeSenderRuns()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var instance = AddInstance(dbContext, "WF-PT-STALE-SLA", Now);
+        var task = new WorkflowTask
+        {
+            WorkflowInstanceId = instance.WorkflowInstanceId,
+            TaskKey = "TradingDeskReviewTask",
+            AssignedRoleKey = "TradingDeskTaxable",
+            Status = "Pending",
+            CreatedAtUtc = Now.AddDays(-1),
+            NotificationRecipientsJson = RecipientSnapshot
+        };
+        dbContext.WorkflowTasks.Add(task);
+        dbContext.SaveChanges();
+        var schedule = new WorkflowTaskSlaSchedule
+        {
+            WorkflowTaskId = task.Id,
+            ScheduleVersion = 1,
+            SlaPolicyKey = "TradingDeskReviewSla",
+            TargetDate = new DateOnly(2030, 1, 15),
+            DueReminderAtUtc = Now,
+            OverdueAtUtc = Now.AddDays(1),
+            NextReminderAtUtc = null,
+            CalculationMode = "ApplicationTargetDate",
+            TimeZoneId = "America/New_York",
+            ReminderLocalTime = new TimeOnly(9, 0),
+            OverdueStartOffsetDays = 1,
+            RecurrenceIntervalDays = 1,
+            DueNotificationRouteKey = "RouteSlaTaskDueToday",
+            OverdueNotificationRouteKey = "RouteSlaTaskOverdue",
+            Status = "Superseded",
+            CreatedAtUtc = Now.AddDays(-1),
+            CreatedByUserId = "maker1",
+            CorrelationId = "corr-stale",
+            IdempotencyKey = "idem-stale",
+            SupersededAtUtc = Now,
+            SupersededByUserId = "maker1"
+        };
+        dbContext.WorkflowTaskSlaSchedules.Add(schedule);
+        dbContext.SaveChanges();
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = instance.WorkflowInstanceId,
+            WorkflowTaskId = task.Id,
+            WorkflowTaskSlaScheduleId = schedule.Id,
+            SlaOccurrenceDate = new DateOnly(2030, 1, 15),
+            SlaReminderKind = "DueToday",
+            BusinessObjectType = instance.BusinessObjectType,
+            BusinessObjectId = instance.BusinessObjectId,
+            NotificationType = "SlaTaskDueToday",
+            NotificationRecipientsJson = RecipientSnapshot,
+            Subject = "Stale SLA reminder",
+            Body = "body",
+            HtmlBody = "<p>body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = "sla-stale",
+            CreatedAtUtc = Now
+        });
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+
+        var result = await new ProcessNotificationOutboxService(
+            dbContext,
+            sender,
+            new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
+
+        Assert.Null(result.Failure);
+        Assert.Empty(sender.SentRows);
+        dbContext.ChangeTracker.Clear();
+        var row = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal("Cancelled", row.Status);
+        Assert.Equal("SlaScheduleInactive", row.CancellationReason);
+        Assert.Equal(Now, row.CancelledAtUtc);
+        Assert.Null(row.ProcessingToken);
+        Assert.Null(row.ProcessingStartedAtUtc);
+    }
+
     private static NotificationOutbox AddNotification(
         WorkflowDbContext dbContext,
         string workflowInstanceId,
@@ -208,6 +288,28 @@ public sealed class Phase5OutboxTests
         };
         dbContext.NotificationOutbox.Add(notification);
         return notification;
+    }
+
+    private static WorkflowInstance AddInstance(
+        WorkflowDbContext dbContext,
+        string workflowInstanceId,
+        DateTimeOffset createdAtUtc)
+    {
+        var instance = new WorkflowInstance
+        {
+            WorkflowInstanceId = workflowInstanceId,
+            WorkflowKey = "PortfolioTrade",
+            WorkflowDefinitionVersionId = PortfolioTradeVersionId(dbContext),
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = workflowInstanceId,
+            CurrentStateKey = "TradingDeskReview",
+            Status = "Active",
+            StartedAtUtc = createdAtUtc,
+            StartedByUserId = "maker1",
+            Version = 1
+        };
+        dbContext.WorkflowInstances.Add(instance);
+        return instance;
     }
 
     private static WorkflowDbContext CreateDbContext()

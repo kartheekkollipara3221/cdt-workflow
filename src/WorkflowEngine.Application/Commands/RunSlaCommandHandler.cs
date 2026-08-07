@@ -27,18 +27,18 @@ public sealed class RunSlaCommandHandler(
         output.AppendLine(CultureInfo.InvariantCulture, $"Sender: {notificationSender.SenderName}");
         output.AppendLine(CultureInfo.InvariantCulture, $"Now: {FormatUtc(result.Now)}");
         output.AppendLine();
-        output.AppendLine("Scanning pending tasks...");
-        output.AppendLine(CultureInfo.InvariantCulture, $"Pending tasks with SLA: {result.PendingTasksWithSla}");
-        output.AppendLine(CultureInfo.InvariantCulture, $"  Already-queued (skipped): {result.AlreadyQueued}");
-        output.AppendLine(CultureInfo.InvariantCulture, $"  Overdue (to process):     {result.QueuedNotifications.Count}");
+        output.AppendLine("Scanning active SLA schedules...");
+        output.AppendLine(CultureInfo.InvariantCulture, $"Pending tasks with active SLA: {result.PendingTasksWithSla}");
+        output.AppendLine(CultureInfo.InvariantCulture, $"  Existing occurrences (skipped): {result.AlreadyQueued}");
+        output.AppendLine(CultureInfo.InvariantCulture, $"  Occurrences queued:              {result.QueuedNotifications.Count}");
         output.AppendLine();
-        output.AppendLine("Processing overdue tasks...");
+        output.AppendLine("Processing eligible SLA occurrences...");
 
         foreach (var queued in result.QueuedNotifications)
         {
             output.AppendLine(
                 CultureInfo.InvariantCulture,
-                $"[Queued] #{queued.WorkflowTaskId} {queued.TaskKey} | {queued.AssignedRoleKey ?? "(unassigned)"} | due {FormatUtc(queued.DueAtUtc)} | notification {queued.NotificationOutboxId}");
+                $"[Queued {queued.ReminderKind}] #{queued.WorkflowTaskId} {queued.TaskKey} | {queued.AssignedRoleKey ?? "(unassigned)"} | occurrence {queued.OccurrenceDate:yyyy-MM-dd} | schedule {queued.WorkflowTaskSlaScheduleId} v{queued.ScheduleVersion} | overdue {FormatUtc(queued.DueAtUtc)} | notification {queued.NotificationOutboxId}");
         }
 
         foreach (var warning in result.Warnings)
@@ -47,7 +47,7 @@ public sealed class RunSlaCommandHandler(
         }
 
         output.AppendLine();
-        output.AppendLine(CultureInfo.InvariantCulture, $"{result.QueuedNotifications.Count} SLA overdue notifications queued.");
+        output.AppendLine(CultureInfo.InvariantCulture, $"{result.QueuedNotifications.Count} SLA reminder occurrences queued.");
         return CommandResult.Success(output.ToString().TrimEnd());
     }
 

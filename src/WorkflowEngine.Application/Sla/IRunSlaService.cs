@@ -20,4 +20,8 @@ public sealed record RunSlaQueuedNotification(
     string TaskKey,
     string? AssignedRoleKey,
     DateTimeOffset DueAtUtc,
-    long NotificationOutboxId);
+    long NotificationOutboxId,
+    long WorkflowTaskSlaScheduleId,
+    int ScheduleVersion,
+    DateOnly OccurrenceDate,
+    string ReminderKind);

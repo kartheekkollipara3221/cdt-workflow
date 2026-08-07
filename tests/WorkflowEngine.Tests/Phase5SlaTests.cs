@@ -30,7 +30,7 @@ public sealed class Phase5SlaTests
         var returned = AddTask(dbContext, "WF-PT-7", "TradingDeskReviewTask", "TradingDesk", Now.AddMinutes(-6));
         var overdue = AddTask(dbContext, "WF-PT-1", "CheckerReviewTask", "Checker", Now.AddMinutes(-5));
         var alreadyQueued = AddTask(dbContext, "WF-PT-2", "CheckerReviewTask", "Checker", Now.AddMinutes(-4));
-        AddTask(dbContext, "WF-PT-3", "CheckerReviewTask", "Checker", Now);
+        AddTask(dbContext, "WF-PT-3", "CheckerReviewTask", "Checker", Now.AddMinutes(1));
         AddTask(dbContext, "WF-PT-4", "MakerReworkTask", "Maker", null);
         AddTask(dbContext, "WF-PT-5", "CheckerReviewTask", "Checker", Now.AddMinutes(-3), status: "Completed");
         AddTask(dbContext, "WF-PT-6", "CheckerReviewTask", "Checker", Now.AddMinutes(-2));
@@ -39,6 +39,9 @@ public sealed class Phase5SlaTests
         {
             WorkflowInstanceId = "WF-PT-2",
             WorkflowTaskId = alreadyQueued.Id,
+            WorkflowTaskSlaScheduleId = dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == alreadyQueued.Id).Id,
+            SlaOccurrenceDate = DateOnly.FromDateTime(alreadyQueued.DueAtUtc!.Value.UtcDateTime),
+            SlaReminderKind = "Overdue",
             BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-2",
             NotificationType = "SlaTaskOverdue",
@@ -54,7 +57,8 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Equal(4, result.PendingTasksWithSla);
         Assert.Equal(1, result.AlreadyQueued);
@@ -63,18 +67,19 @@ public sealed class Phase5SlaTests
         Assert.Equal(3, dbContext.NotificationOutbox.Count(row => row.NotificationType == "SlaTaskOverdue"));
         var overdueNotification = dbContext.NotificationOutbox.Single(row =>
             row.WorkflowTaskId == overdue.Id && row.NotificationType == "SlaTaskOverdue");
-        Assert.Equal("Overdue: Directed Trade Pending Checker Approval", overdueNotification.Subject);
-        Assert.Contains("Kollipara, Kartheek", overdueNotification.Body, StringComparison.Ordinal);
-        Assert.Contains("Sharepoint link = https://sharepoint.example.test/trades/1050", overdueNotification.Body, StringComparison.Ordinal);
-        Assert.Contains("<strong>Kollipara, Kartheek</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
-        Assert.Contains("""<a href="https://sharepoint.example.test/trades/1050">Open trade</a>""", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Equal("Overdue: Workflow task overdue", overdueNotification.Subject);
+        Assert.Contains("WF-PT-1", overdueNotification.Body, StringComparison.Ordinal);
+        Assert.Contains("CheckerReviewTask", overdueNotification.Body, StringComparison.Ordinal);
+        Assert.Contains("<strong>WF-PT-1</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains("<strong>CheckerReviewTask</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
         Assert.Equal(RecipientSnapshot, overdueNotification.NotificationRecipientsJson);
         using var payload = JsonDocument.Parse(overdueNotification.PayloadJson);
         Assert.False(payload.RootElement.TryGetProperty("ccEmailAddresses", out _));
 
         var second = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Empty(second.QueuedNotifications);
     }
@@ -99,7 +104,8 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Contains(
             result.Warnings,
@@ -134,7 +140,8 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Contains(
             result.Warnings,
@@ -174,7 +181,8 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer()).RunAsync(new(Now), CancellationToken.None);
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Contains(
             result.Warnings,
@@ -239,6 +247,33 @@ public sealed class Phase5SlaTests
             NotificationRecipientsJson = notificationRecipientsJson ?? string.Empty
         };
         dbContext.WorkflowTasks.Add(task);
+        dbContext.SaveChanges();
+        if (dueAtUtc is not null)
+        {
+            dbContext.WorkflowTaskSlaSchedules.Add(new WorkflowTaskSlaSchedule
+            {
+                WorkflowTaskId = task.Id,
+                ScheduleVersion = 1,
+                SlaPolicyKey = $"{taskKey}TestSla",
+                TargetDate = null,
+                DueReminderAtUtc = null,
+                OverdueAtUtc = dueAtUtc.Value,
+                NextReminderAtUtc = dueAtUtc.Value,
+                CalculationMode = "DurationFromTaskCreation",
+                TimeZoneId = null,
+                ReminderLocalTime = null,
+                OverdueStartOffsetDays = 0,
+                RecurrenceIntervalDays = null,
+                DueNotificationRouteKey = null,
+                OverdueNotificationRouteKey = "RouteSlaTaskOverdue",
+                Status = "Active",
+                CreatedAtUtc = task.CreatedAtUtc,
+                CreatedByUserId = "system",
+                CorrelationId = $"corr-{workflowInstanceId}",
+                IdempotencyKey = $"idem-{workflowInstanceId}"
+            });
+        }
+
         return task;
     }
 

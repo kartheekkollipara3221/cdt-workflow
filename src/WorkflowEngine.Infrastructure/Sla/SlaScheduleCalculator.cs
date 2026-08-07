@@ -65,6 +65,17 @@ public sealed class SlaScheduleCalculator
             timeZone);
     }
 
+    public DateTimeOffset CalculateCalendarOccurrence(
+        DateOnly occurrenceDate,
+        TimeOnly reminderLocalTime,
+        string timeZoneId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(timeZoneId);
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        return ConvertLocalDateToUtc(occurrenceDate, reminderLocalTime, timeZone);
+    }
+
     private static DateTimeOffset ConvertLocalDateToUtc(
         DateOnly date,
         TimeOnly localTime,

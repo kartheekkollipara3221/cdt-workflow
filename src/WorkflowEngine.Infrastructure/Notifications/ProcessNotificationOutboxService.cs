@@ -78,6 +78,39 @@ public sealed class ProcessNotificationOutboxService(
                     .AsNoTracking()
                     .SingleAsync(item => item.Id == row.Id && item.ProcessingToken == processingToken, cancellationToken);
 
+                if (claimedRow.WorkflowTaskSlaScheduleId is not null)
+                {
+                    var scheduleIsActive = await dbContext.WorkflowTaskSlaSchedules
+                        .AsNoTracking()
+                        .AnyAsync(item =>
+                            item.Id == claimedRow.WorkflowTaskSlaScheduleId
+                            && item.Status == "Active",
+                            cancellationToken);
+                    if (!scheduleIsActive)
+                    {
+                        var cancelledAtUtc = timeProvider.GetUtcNow();
+                        var markedCancelled = await dbContext.NotificationOutbox
+                            .Where(item =>
+                                item.Id == row.Id
+                                && item.Status == "Processing"
+                                && item.ProcessingToken == processingToken)
+                            .ExecuteUpdateAsync(setters => setters
+                                .SetProperty(item => item.Status, "Cancelled")
+                                .SetProperty(item => item.CancelledAtUtc, cancelledAtUtc)
+                                .SetProperty(item => item.CancellationReason, "SlaScheduleInactive")
+                                .SetProperty(item => item.ProcessingToken, (string?)null)
+                                .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
+                                .SetProperty(item => item.LastError, (string?)null),
+                                cancellationToken);
+                        if (markedCancelled == 0)
+                        {
+                            warnings.Add($"row {row.Id} became inactive but could not be marked Cancelled");
+                        }
+
+                        continue;
+                    }
+                }
+
                 delivery = ToDelivery(claimedRow);
                 await notificationSender.SendAsync(delivery, cancellationToken);
                 var sentAtUtc = timeProvider.GetUtcNow();

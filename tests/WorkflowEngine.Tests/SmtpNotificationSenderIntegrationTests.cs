@@ -1,6 +1,11 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Notifications;
+using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.Infrastructure.Persistence.Entities;
+using WorkflowEngine.Infrastructure.Persistence.Seed;
 
 namespace WorkflowEngine.Tests;
 
@@ -89,6 +94,112 @@ public sealed class SmtpNotificationSenderIntegrationTests
         Assert.Contains("\"taskKey\":\"MakerReworkTask\"", plaintext, StringComparison.Ordinal);
     }
 
+    [SmtpFact]
+    public async Task InactiveSlaScheduleOccurrenceNeverReachesSmtp4Dev()
+    {
+        await EnsureSmtp4DevAvailableAsync();
+        var now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
+        var subject = "Cancelled SLA SMTP " + Guid.NewGuid().ToString("N");
+        var options = new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito_smtp_stale_sla_tests"))
+            .Options;
+        await using var dbContext = new WorkflowDbContext(options);
+        await dbContext.Database.EnsureDeletedAsync();
+        await dbContext.Database.MigrateAsync();
+        new WorkflowSeedService(dbContext, new FixedTimeProvider(now)).SeedPortfolioTrade();
+        var definition = dbContext.WorkflowDefinitions.Single(row => row.WorkflowKey == "PortfolioTrade");
+        var version = dbContext.WorkflowDefinitionVersions.Single(row =>
+            row.WorkflowDefinitionId == definition.Id && row.IsActive);
+        var instance = new WorkflowInstance
+        {
+            WorkflowInstanceId = "WF-SMTP-STALE-SLA",
+            WorkflowKey = "PortfolioTrade",
+            WorkflowDefinitionVersionId = version.Id,
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-SMTP-STALE-SLA",
+            CurrentStateKey = "TradingDeskReview",
+            Status = "Active",
+            StartedAtUtc = now.AddDays(-1),
+            StartedByUserId = "maker1",
+            Version = 1
+        };
+        dbContext.WorkflowInstances.Add(instance);
+        var task = new WorkflowTask
+        {
+            WorkflowInstanceId = instance.WorkflowInstanceId,
+            TaskKey = "TradingDeskReviewTask",
+            AssignedRoleKey = "TradingDeskTaxable",
+            Status = "Pending",
+            CreatedAtUtc = now.AddDays(-1),
+            NotificationRecipientsJson = """{"toEmailAddresses":["desk@example.test"],"ccEmailAddresses":[]}"""
+        };
+        dbContext.WorkflowTasks.Add(task);
+        await dbContext.SaveChangesAsync();
+        var schedule = new WorkflowTaskSlaSchedule
+        {
+            WorkflowTaskId = task.Id,
+            ScheduleVersion = 1,
+            SlaPolicyKey = "TradingDeskReviewSla",
+            TargetDate = new DateOnly(2030, 1, 15),
+            DueReminderAtUtc = now,
+            OverdueAtUtc = now.AddDays(1),
+            CalculationMode = "ApplicationTargetDate",
+            TimeZoneId = "America/New_York",
+            ReminderLocalTime = new TimeOnly(9, 0),
+            OverdueStartOffsetDays = 1,
+            RecurrenceIntervalDays = 1,
+            DueNotificationRouteKey = "RouteSlaTaskDueToday",
+            OverdueNotificationRouteKey = "RouteSlaTaskOverdue",
+            Status = "Superseded",
+            CreatedAtUtc = now.AddDays(-1),
+            CreatedByUserId = "maker1",
+            CorrelationId = "corr-stale-smtp",
+            IdempotencyKey = "idem-stale-smtp",
+            SupersededAtUtc = now,
+            SupersededByUserId = "maker1"
+        };
+        dbContext.WorkflowTaskSlaSchedules.Add(schedule);
+        await dbContext.SaveChangesAsync();
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = instance.WorkflowInstanceId,
+            WorkflowTaskId = task.Id,
+            WorkflowTaskSlaScheduleId = schedule.Id,
+            SlaOccurrenceDate = new DateOnly(2030, 1, 15),
+            SlaReminderKind = "DueToday",
+            BusinessObjectType = instance.BusinessObjectType,
+            BusinessObjectId = instance.BusinessObjectId,
+            NotificationType = "SlaTaskDueToday",
+            NotificationRecipientsJson = task.NotificationRecipientsJson,
+            Subject = subject,
+            Body = "body",
+            HtmlBody = "<p>body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = "sla-stale-smtp",
+            CreatedAtUtc = now
+        });
+        await dbContext.SaveChangesAsync();
+        var sender = new SmtpNotificationSender(SmtpNotificationSenderTests.Configuration(new()
+        {
+            ["Smtp:Host"] = "localhost",
+            ["Smtp:Port"] = "3025",
+            ["Smtp:From"] = "workflow@example.test"
+        }));
+
+        var result = await new ProcessNotificationOutboxService(
+            dbContext,
+            sender,
+            new FixedTimeProvider(now)).ProcessAsync(CancellationToken.None);
+
+        Assert.Null(result.Failure);
+        Assert.Empty(result.Processed);
+        dbContext.ChangeTracker.Clear();
+        Assert.Equal("Cancelled", dbContext.NotificationOutbox.Single().Status);
+        using var client = new HttpClient { BaseAddress = Smtp4DevApi };
+        Assert.False(await HasMessageAsync(client, subject, CancellationToken.None));
+    }
+
     private static async Task EnsureSmtp4DevAvailableAsync()
     {
         try
@@ -123,6 +234,14 @@ public sealed class SmtpNotificationSenderIntegrationTests
         }
 
         throw new InvalidOperationException($"smtp4dev did not capture message with subject '{subject}'.");
+    }
+
+    private static async Task<bool> HasMessageAsync(HttpClient client, string subject, CancellationToken cancellationToken)
+    {
+        var json = await client.GetFromJsonAsync<JsonElement>("/api/messages", cancellationToken);
+        return EnumerateObjects(json).Any(message =>
+            message.TryGetProperty("subject", out var lowerSubject) && lowerSubject.GetString() == subject
+            || message.TryGetProperty("Subject", out var upperSubject) && upperSubject.GetString() == subject);
     }
 
     private static IEnumerable<JsonElement> EnumerateObjects(JsonElement element)

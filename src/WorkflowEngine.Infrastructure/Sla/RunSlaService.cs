@@ -11,70 +11,88 @@ namespace WorkflowEngine.Infrastructure.Sla;
 
 public sealed class RunSlaService(
     WorkflowDbContext dbContext,
-    NotificationTemplateRenderer templateRenderer) : IRunSlaService
+    NotificationTemplateRenderer templateRenderer,
+    SlaScheduleCalculator scheduleCalculator) : IRunSlaService
 {
     public async Task<RunSlaResult> RunAsync(RunSlaRequest request, CancellationToken cancellationToken)
     {
         var now = request.Now.ToUniversalTime();
-        var baseQuery =
-            from task in dbContext.WorkflowTasks.AsNoTracking()
+        var activeQuery =
+            from schedule in dbContext.WorkflowTaskSlaSchedules.AsNoTracking()
+            join task in dbContext.WorkflowTasks.AsNoTracking()
+                on schedule.WorkflowTaskId equals task.Id
             join instance in dbContext.WorkflowInstances.AsNoTracking()
                 on task.WorkflowInstanceId equals instance.WorkflowInstanceId
-            where task.Status == "Pending"
-                && task.DueAtUtc != null
+            where schedule.Status == "Active"
+                && schedule.NextReminderAtUtc != null
+                && task.Status == "Pending"
                 && instance.Status == "Active"
             select new
             {
+                Schedule = schedule,
                 Task = task,
                 Instance = instance
             };
 
-        var pendingTasksWithSla = await baseQuery
-            .CountAsync(cancellationToken);
-
-        var alreadyQueued = await baseQuery
-            .Where(row => row.Task.DueAtUtc < now)
-            .Where(row => dbContext.NotificationOutbox.Any(outbox =>
-                outbox.WorkflowTaskId == row.Task.Id
-                && outbox.NotificationType == "SlaTaskOverdue"))
-            .CountAsync(cancellationToken);
-
-        var overdueRows = await baseQuery
-            .Where(row => row.Task.DueAtUtc < now)
-            .Where(row => !dbContext.NotificationOutbox.Any(outbox =>
-                outbox.WorkflowTaskId == row.Task.Id
-                && outbox.NotificationType == "SlaTaskOverdue"))
-            .OrderBy(row => row.Task.DueAtUtc)
-            .ThenBy(row => row.Task.Id)
-            .Select(row => new SlaScanRow(row.Task, row.Instance))
+        var pendingTasksWithSla = await activeQuery.CountAsync(cancellationToken);
+        var scanRows = await activeQuery
+            .Where(row => row.Schedule.NextReminderAtUtc <= now)
+            .OrderBy(row => row.Schedule.NextReminderAtUtc)
+            .ThenBy(row => row.Schedule.Id)
+            .Select(row => new SlaScanRow(
+                row.Schedule.Id,
+                row.Task.Id,
+                row.Instance.WorkflowInstanceId))
             .ToListAsync(cancellationToken);
 
+        var alreadyQueued = 0;
         var queued = new List<RunSlaQueuedNotification>();
         var warnings = new List<string>();
 
-        foreach (var row in overdueRows)
+        foreach (var row in scanRows)
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
             try
             {
-                var task = await dbContext.WorkflowTasks.SingleAsync(item => item.Id == row.Task.Id, cancellationToken);
+                var schedule = await dbContext.WorkflowTaskSlaSchedules.SingleAsync(
+                    item => item.Id == row.ScheduleId,
+                    cancellationToken);
+                var task = await dbContext.WorkflowTasks.SingleAsync(
+                    item => item.Id == row.TaskId,
+                    cancellationToken);
                 var instance = await dbContext.WorkflowInstances.SingleAsync(
-                    item => item.WorkflowInstanceId == task.WorkflowInstanceId,
+                    item => item.WorkflowInstanceId == row.WorkflowInstanceId,
                     cancellationToken);
 
-                var dueAtUtc = task.DueAtUtc;
-                if (task.Status != "Pending" || dueAtUtc is null || dueAtUtc >= now || instance.Status != "Active")
+                if (schedule.Status != "Active"
+                    || schedule.NextReminderAtUtc is null
+                    || schedule.NextReminderAtUtc > now
+                    || task.Status != "Pending"
+                    || instance.Status != "Active")
                 {
                     await transaction.CommitAsync(cancellationToken);
                     continue;
                 }
-                var taskDueAtUtc = dueAtUtc.Value;
+
+                var occurrence = ResolveOccurrence(schedule, now);
+                if (occurrence.EligibleAtUtc > now)
+                {
+                    schedule.NextReminderAtUtc = occurrence.EligibleAtUtc;
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    continue;
+                }
 
                 var exists = await dbContext.NotificationOutbox.AnyAsync(outbox =>
-                    outbox.WorkflowTaskId == task.Id
-                    && outbox.NotificationType == "SlaTaskOverdue", cancellationToken);
+                    outbox.WorkflowTaskSlaScheduleId == schedule.Id
+                    && outbox.SlaOccurrenceDate == occurrence.Date
+                    && outbox.SlaReminderKind == occurrence.Kind,
+                    cancellationToken);
                 if (exists)
                 {
+                    alreadyQueued++;
+                    AdvanceSchedule(schedule, occurrence);
+                    await dbContext.SaveChangesAsync(cancellationToken);
                     await transaction.CommitAsync(cancellationToken);
                     continue;
                 }
@@ -86,20 +104,27 @@ public sealed class RunSlaService(
                     continue;
                 }
 
-                var route = !string.IsNullOrWhiteSpace(task.NotificationRouteKey)
-                    ? await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
-                        item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
-                        && item.RouteKey == task.NotificationRouteKey
-                        && item.IsActive, cancellationToken)
-                    : await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
-                        item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
-                        && item.RouteKey == "RouteSlaTaskOverdue"
-                        && item.IsActive, cancellationToken);
+                var routeKey = occurrence.Kind == "DueToday"
+                    ? schedule.DueNotificationRouteKey
+                    : schedule.OverdueNotificationRouteKey;
+                if (string.IsNullOrWhiteSpace(routeKey))
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    warnings.Add($"schedule {schedule.Id} {occurrence.Kind} notification route missing");
+                    continue;
+                }
+
+                var route = await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
+                    item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                    && item.RouteKey == routeKey
+                    && item.IsActive,
+                    cancellationToken);
 
                 if (!TryBuildNotificationContext(
                     task,
                     instance,
-                    taskDueAtUtc,
+                    schedule,
+                    occurrence,
                     now,
                     out var context,
                     out var contextWarning))
@@ -129,7 +154,7 @@ public sealed class RunSlaService(
                 {
                     await transaction.RollbackAsync(CancellationToken.None);
                     warnings.Add(
-                        $"task {task.Id} overdue notification template missing: {string.Join("; ", templateErrors.Select(error => error.Message))}");
+                        $"task {task.Id} SLA notification template missing: {string.Join("; ", templateErrors.Select(error => error.Message))}");
                     continue;
                 }
 
@@ -137,19 +162,25 @@ public sealed class RunSlaService(
                 {
                     WorkflowInstanceId = instance.WorkflowInstanceId,
                     WorkflowTaskId = task.Id,
+                    WorkflowTaskSlaScheduleId = schedule.Id,
+                    SlaOccurrenceDate = occurrence.Date,
+                    SlaReminderKind = occurrence.Kind,
                     BusinessObjectType = instance.BusinessObjectType,
                     BusinessObjectId = instance.BusinessObjectId,
-                    NotificationType = "SlaTaskOverdue",
+                    NotificationType = route.NotificationType,
                     NotificationRecipientsJson = task.NotificationRecipientsJson,
-                    Subject = route.OverdueSubjectPrefix + renderedSubject.Rendered,
+                    Subject = occurrence.Kind == "Overdue"
+                        ? route.OverdueSubjectPrefix + renderedSubject.Rendered
+                        : renderedSubject.Rendered,
                     Body = renderedBody.Rendered,
                     HtmlBody = renderedHtmlBody.Rendered,
                     PayloadJson = JsonSerializer.Serialize(context),
                     Status = "Pending",
-                    CorrelationId = $"sla-{task.Id}",
+                    CorrelationId = $"sla-{schedule.Id}-{occurrence.Date:yyyyMMdd}-{occurrence.Kind}",
                     CreatedAtUtc = now
                 };
                 dbContext.NotificationOutbox.Add(outbox);
+                AdvanceSchedule(schedule, occurrence);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
 
@@ -158,17 +189,88 @@ public sealed class RunSlaService(
                     instance.WorkflowInstanceId,
                     task.TaskKey,
                     task.AssignedRoleKey,
-                    taskDueAtUtc,
-                    outbox.Id));
+                    schedule.OverdueAtUtc,
+                    outbox.Id,
+                    schedule.Id,
+                    schedule.ScheduleVersion,
+                    occurrence.Date,
+                    occurrence.Kind));
             }
             catch (DbUpdateException exception) when (IsSlaOutboxUniqueViolation(exception))
             {
                 await transaction.RollbackAsync(CancellationToken.None);
-                warnings.Add($"task {row.Task.Id} already has an SlaTaskOverdue notification");
+                dbContext.ChangeTracker.Clear();
+                alreadyQueued++;
+                warnings.Add($"schedule {row.ScheduleId} occurrence was already queued");
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                dbContext.ChangeTracker.Clear();
+                warnings.Add($"schedule {row.ScheduleId} changed during the SLA scan; a later scan will re-evaluate it");
             }
         }
 
         return new RunSlaResult(now, pendingTasksWithSla, alreadyQueued, queued, warnings);
+    }
+
+    private SlaOccurrence ResolveOccurrence(WorkflowTaskSlaSchedule schedule, DateTimeOffset now)
+    {
+        if (schedule.CalculationMode == "DurationFromTaskCreation")
+        {
+            return new SlaOccurrence(
+                DateOnly.FromDateTime(schedule.OverdueAtUtc.UtcDateTime),
+                "Overdue",
+                schedule.OverdueAtUtc);
+        }
+
+        if (schedule.CalculationMode != "ApplicationTargetDate"
+            || schedule.TargetDate is null
+            || schedule.ReminderLocalTime is null
+            || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
+        {
+            throw new InvalidOperationException($"SLA schedule {schedule.Id} metadata is invalid.");
+        }
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZoneId);
+        var localNow = TimeZoneInfo.ConvertTime(now, timeZone);
+        var currentLocalDate = DateOnly.FromDateTime(localNow.DateTime);
+        var overdueStartDate = schedule.TargetDate.Value.AddDays(schedule.OverdueStartOffsetDays);
+        var kind = currentLocalDate >= overdueStartDate ? "Overdue" : "DueToday";
+        var eligibleAtUtc = scheduleCalculator.CalculateCalendarOccurrence(
+            currentLocalDate,
+            schedule.ReminderLocalTime.Value,
+            schedule.TimeZoneId);
+        return new SlaOccurrence(currentLocalDate, kind, eligibleAtUtc);
+    }
+
+    private void AdvanceSchedule(WorkflowTaskSlaSchedule schedule, SlaOccurrence occurrence)
+    {
+        if (schedule.CalculationMode == "DurationFromTaskCreation")
+        {
+            schedule.NextReminderAtUtc = null;
+            return;
+        }
+
+        if (occurrence.Kind == "DueToday")
+        {
+            schedule.NextReminderAtUtc = schedule.OverdueAtUtc;
+            return;
+        }
+
+        if (schedule.RecurrenceIntervalDays is null
+            || schedule.ReminderLocalTime is null
+            || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
+        {
+            schedule.NextReminderAtUtc = null;
+            return;
+        }
+
+        schedule.NextReminderAtUtc = scheduleCalculator.CalculateNextRecurringOccurrence(
+            occurrence.Date,
+            schedule.ReminderLocalTime.Value,
+            schedule.TimeZoneId,
+            schedule.RecurrenceIntervalDays.Value);
     }
 
     private static bool TryValidateNotificationRecipientsSnapshot(
@@ -207,8 +309,9 @@ public sealed class RunSlaService(
     private static bool TryBuildNotificationContext(
         WorkflowTask task,
         WorkflowInstance instance,
-        DateTimeOffset dueAtUtc,
-        DateTimeOffset overdueAtUtc,
+        WorkflowTaskSlaSchedule schedule,
+        SlaOccurrence occurrence,
+        DateTimeOffset processedAtUtc,
         out Dictionary<string, string?> context,
         out string warning)
     {
@@ -235,8 +338,13 @@ public sealed class RunSlaService(
         context["workflowInstanceId"] = instance.WorkflowInstanceId;
         context["taskKey"] = task.TaskKey;
         context["assignedRoleKey"] = task.AssignedRoleKey;
-        context["dueAtUtc"] = dueAtUtc.ToString("O");
-        context["overdueAtUtc"] = overdueAtUtc.ToString("O");
+        context["targetDate"] = schedule.TargetDate?.ToString("yyyy-MM-dd");
+        context["dueAtUtc"] = schedule.OverdueAtUtc.ToString("O");
+        context["dueReminderAtUtc"] = schedule.DueReminderAtUtc?.ToString("O");
+        context["overdueAtUtc"] = schedule.OverdueAtUtc.ToString("O");
+        context["reminderQueuedAtUtc"] = processedAtUtc.ToString("O");
+        context["slaOccurrenceDate"] = occurrence.Date.ToString("yyyy-MM-dd");
+        context["slaReminderKind"] = occurrence.Kind;
         return true;
     }
 
@@ -246,5 +354,7 @@ public sealed class RunSlaService(
             && sqlException.Errors.Cast<SqlError>().Any(error => error.Number is 2601 or 2627);
     }
 
-    private sealed record SlaScanRow(WorkflowTask Task, WorkflowInstance Instance);
+    private sealed record SlaScanRow(long ScheduleId, long TaskId, string WorkflowInstanceId);
+
+    private sealed record SlaOccurrence(DateOnly Date, string Kind, DateTimeOffset EligibleAtUtc);
 }
