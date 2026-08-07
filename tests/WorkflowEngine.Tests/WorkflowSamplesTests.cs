@@ -53,6 +53,18 @@ public sealed class WorkflowSamplesTests
         }
     }
 
+    [Fact]
+    public void CheckerSendToTradingDeskSampleCarriesCurrentTargetDate()
+    {
+        var sample = ReadEnvelope(Path.Combine(
+            FindRepoRoot(),
+            "samples",
+            "workflow-actions",
+            "05-checker-send-to-trading-desk.json"));
+
+        Assert.Equal(new DateOnly(2030, 1, 20), sample.Workflow?.SlaInput?.TargetDate);
+    }
+
     private static WorkflowActionEnvelope ReadEnvelope(string path)
     {
         return JsonSerializer.Deserialize<WorkflowActionEnvelope>(File.ReadAllText(path), WorkflowJson.Options)

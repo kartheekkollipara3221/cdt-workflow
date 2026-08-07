@@ -15,6 +15,9 @@
     "actionKey": "CheckerSendToTradingDesk",
     "actionReason": "Checker sent to Trading Desk.",
     "assignedRoleKey": "TradingDeskTaxable",
+    "slaInput": {
+      "targetDate": "2030-01-20"
+    },
     "idempotencyKey": "sample-05-checker-send-to-trading-desk",
     "notificationRecipients": {
       "toEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
