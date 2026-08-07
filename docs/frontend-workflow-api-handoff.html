@@ -273,6 +273,41 @@
   </header>
 
   <main>
+    <section id="application-sla">
+      <h2>Application-anchored SLA integration</h2>
+      <div class="callout info">
+        <p>
+          The frontend/application maps its business date to generic <code>SlaInput.TargetDate</code> and forwards the
+          current value on the existing workflow request. It does not detect whether the value changed, calculate an
+          SLA instant, or call a second rescheduling API. The workflow engine compares the versioned schedule.
+        </p>
+      </div>
+      <pre><code>{
+  "WorkflowInstanceId": "WF-PT-1001",
+  "ActionKey": "CheckerSendToTradingDesk",
+  "AssignedRoleKey": "TradingDeskTaxable",
+  "IdempotencyKey": "checker-to-desk-1001",
+  "SlaInput": { "TargetDate": "2030-01-20" },
+  "NotificationContext": {},
+  "NotificationRecipients": {
+    "ToEmailAddresses": ["desk@example.test"],
+    "CcEmailAddresses": []
+  }
+}</code></pre>
+      <p>For a later save where no workflow transition is needed:</p>
+      <pre><code>{
+  "WorkflowInstanceId": "WF-PT-1001",
+  "IdempotencyKey": "target-date-save-1001-20300125",
+  "SlaInput": { "TargetDate": "2030-01-25" }
+}</code></pre>
+      <p>
+        <code>SlaInput</code> accepts only <code>TargetDate</code>. Never send duration, timezone, reminder time,
+        recurrence, overdue offset, routes, or <code>DueAtUtc</code>. Those values are versioned metadata. The seeded
+        Trading Desk rule is 09:00 Eastern on the target date, overdue the following calendar date, then daily
+        including weekends until task completion.
+      </p>
+    </section>
+
     <nav class="toc" aria-label="Table of contents">
       <a href="#quick-start">1. Quick Start</a>
       <a href="#headers">2. Required Headers</a>
@@ -493,7 +528,7 @@
           </tr>
           <tr>
             <td><code>ActionKey</code></td>
-            <td>Yes</td>
+            <td>Yes for a workflow transition; omit only for SLA-only synchronization</td>
             <td><code>CheckerReturnToMaker</code></td>
             <td>Must be one of the actor's current <code>AvailableActions</code>.</td>
           </tr>
@@ -502,6 +537,18 @@
             <td>Only for dynamic Trading Desk assignment</td>
             <td><code>TradingDeskTaxable</code></td>
             <td>Required when <code>CheckerSendToTradingDesk</code> creates <code>TradingDeskReviewTask</code>.</td>
+          </tr>
+          <tr>
+            <td><code>IdempotencyKey</code></td>
+            <td>Optional</td>
+            <td><code>target-date-save-1001-20300125</code></td>
+            <td>Preserved when supplied; otherwise the workflow layer generates one.</td>
+          </tr>
+          <tr>
+            <td><code>SlaInput.TargetDate</code></td>
+            <td>Required for an application-target-date task or SLA-only synchronization</td>
+            <td><code>2030-01-20</code></td>
+            <td>The only caller-owned SLA field. Current application value is forwarded; engine owns comparison/rescheduling.</td>
           </tr>
           <tr>
             <td><code>NotificationContext</code></td>
@@ -533,7 +580,8 @@
         <code>toState</code>, form payload, field values, <code>BusinessObjectId</code>,
         <code>BusinessObjectType</code>, <code>WorkflowKey</code>, <code>ExpectedCurrentState</code>,
         <code>ExpectedCurrentTaskId</code>, <code>ExpectedCurrentTaskKey</code>, <code>ExpectedInstanceVersion</code>,
-        <code>sectionKey</code>, <code>buttonKey</code>, <code>buttonLabelShown</code>, or <code>saveAsDraft</code>.
+        <code>sectionKey</code>, <code>buttonKey</code>, <code>buttonLabelShown</code>, <code>saveAsDraft</code>, SLA
+        duration/timezone/reminder/cadence/offset/route configuration, or <code>DueAtUtc</code>.
       </div>
 
       <h3>Important SaveDraft boundary</h3>
@@ -793,6 +841,8 @@ X-Workflow-DisplayName: Checker One
   "WorkflowInstanceId": "WF-PT-FE-1001",
   "ActionKey": "CheckerSendToTradingDesk",
   "AssignedRoleKey": "TradingDeskTaxable",
+  "IdempotencyKey": "checker-to-desk-1001",
+  "SlaInput": { "TargetDate": "2030-01-20" },
   "NotificationRecipients": {
     "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
     "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
@@ -960,7 +1010,7 @@ X-Workflow-DisplayName: BDRM One
       "CreatedTask": {
         "TaskKey": "TradingDeskReviewTask",
         "AssignedRole": "TradingDeskTaxable",
-        "DueAtUtc": "2026-06-09T16:02:00Z"
+        "DueAtUtc": "2030-01-21T14:00:00Z"
       },
       "Notification": {
         "Queued": true,

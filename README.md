@@ -79,9 +79,18 @@ dotnet run --project src/WorkflowEngine.Console -- show-notifications WF-PT-1003
 ### SLA and notifications
 
 ```bash
+# Duration-mode example (Checker deadline fast-forward)
 dotnet run --project src/WorkflowEngine.Console -- run-sla --now "2030-01-15T16:00:00Z"
 dotnet run --project src/WorkflowEngine.Console -- process-notification-outbox
+
+# After sample 05 creates TradingDeskReviewTask with targetDate 2030-01-20:
+dotnet run --project src/WorkflowEngine.Console -- run-sla --now "2030-01-20T14:00:00Z"
+dotnet run --project src/WorkflowEngine.Console -- process-notification-outbox
+dotnet run --project src/WorkflowEngine.Console -- run-sla --now "2030-01-21T14:00:00Z"
+dotnet run --project src/WorkflowEngine.Console -- process-notification-outbox
 ```
+
+The first Trading Desk scan is the 9:00 AM Eastern due-today occurrence; the second is the next-calendar-day overdue occurrence. Repeating the same scan does not duplicate an occurrence. Local verification fast-forwards injected time; SIT/UAT invoke `run-sla` on wall-clock time.
 
 ### Inspection commands
 
@@ -125,7 +134,15 @@ Abbreviated shape:
     "businessObject": { "objectType": "PortfolioTrade", "objectId": "PT-1001" },
     "actorAccess": { "userId": "checker1", "effectiveRoles": ["Checker"], "canAct": true },
     "currentTask": { "taskKey": "CheckerReviewTask", "assignedRole": "Checker" },
-    "sla": { "status": "OnTrack", "dueAtUtc": "2030-01-15T16:00:00Z", "overdue": false },
+    "sla": {
+      "status": "OnTrack",
+      "dueAtUtc": "2030-01-21T14:00:00Z",
+      "overdue": false,
+      "calculationMode": "ApplicationTargetDate",
+      "targetDate": "2030-01-20",
+      "scheduleVersion": 1,
+      "nextReminderAtUtc": "2030-01-20T14:00:00Z"
+    },
     "availableActions": [{ "actionKey": "CheckerSendToTradingDesk", "requestDefaults": {} }]
   }
 }
@@ -146,11 +163,18 @@ Abbreviated shape:
   "actor": { "userId": "maker1", "roles": ["Maker"] },
   "uiAction": { "sectionKey": "Maker", "buttonKey": "MakerPrimary", "saveAsDraft": false },
   "dataSave": { "sectionKey": "Maker", "payload": {} },
-  "workflow": { "workflowInstanceId": "WF-PT-1001", "actionKey": "SubmitForChecker" }
+  "workflow": {
+    "workflowInstanceId": "WF-PT-1001",
+    "actionKey": "CheckerSendToTradingDesk",
+    "assignedRoleKey": "TradingDeskTaxable",
+    "slaInput": { "targetDate": "2030-01-20" }
+  }
 }
 ```
 
 `MakerPrimary` uses one physical Maker button: `saveAsDraft=true` maps to `SaveDraft`; `saveAsDraft=false` maps to submit/resubmit. Idempotency and concurrency guards belong in this envelope. See `PROJECT.md` §9 for the full field reference.
+
+For application-date policies, the caller maps its business date to generic `slaInput.targetDate` on the same normal workflow request. It sends no duration, reminder time, timezone, overdue offset, recurrence, route, or `dueAtUtc`; those fields are rejected because versioned `SlaPolicy` metadata owns them. The engine does not parse `dataSave.payload`.
 
 ### Action result contract: WorkflowActionResult
 
@@ -196,9 +220,11 @@ Concurrency guards are independent: `expectedCurrentState`, `expectedCurrentTask
 
 ### SLA model
 
-SLA is task-driven. Task definitions may point at an SLA policy; tasks without a policy get `DueAtUtc = null`. `MakerReworkTask` intentionally has no SLA in v1.
+SLA is task-driven and metadata-driven. Task definitions may point at either a configured duration policy or an application-target-date policy; tasks without a policy get `DueAtUtc = null`. `MakerReworkTask` intentionally has no SLA.
 
-`run-sla --now ...` scans pending tasks with due dates in the past and queues one `SlaTaskOverdue` notification per task ever. `show-context` computes `OnTrack`, `Overdue`, or `NoSla` directly from the current task and time. See `PROJECT.md` §12 and §13.
+`TradingDeskReviewTask` is the seeded application-date example. The normal start/action request forwards the application's current `targetDate`. The engine creates schedule version 1, treats the same date as a no-op, and automatically supersedes/reschedules when a later request carries a changed date. Pending old occurrences are cancelled; sent history is preserved. An actionless body on the same `POST /v1/WorkflowAction` can synchronize the current pending task without moving workflow state or writing audit—there is no second SLA API.
+
+The Trading Desk policy sends `SlaTaskDueToday` at configured 09:00 `America/New_York` on the target date, becomes overdue on target + 1 calendar day, then queues one `SlaTaskOverdue` occurrence per calendar day including weekends. `run-sla` deduplicates by schedule/date/kind, never backfills every missed day, and stops when the task completes. `show-context` computes `OnTrack`, `Overdue`, or `NoSla` from the persisted schedule projection and current time. See `PROJECT.md` sections 12 and 13.
 
 ### Notifications
 
@@ -246,6 +272,8 @@ Switch `Notifications:Sender` from `Console` to `Smtp`. Configure `Smtp:Host` an
 
 Never use `--reset` in production. One business object identifier means one workflow lifetime ever in v1. Assign a new `BusinessObjectId` for a new business lifetime.
 
+The application-anchored SLA migration targets a clean latest-schema database and does not backfill legacy active SLA tasks/outbox rows. Do not recreate an existing application database without explicit approval and a deployment plan.
+
 ### Testing
 
 - Tier 1 default: `dotnet test`
@@ -257,7 +285,7 @@ Never use `--reset` in production. One business object identifier means one work
 
 ### Extending the engine
 
-Add a new workflow by seeding states, actions, roles, transitions, task definitions, SLA policies, notification routes, and action presentation hints. Add sample envelopes and update seed verification expectations.
+Add a new workflow by seeding states, actions, roles, transitions, task definitions, SLA policies, notification routes, and action presentation hints. Choose `DurationFromTaskCreation` or `ApplicationTargetDate` in metadata; no reusable engine change is needed to use the target-date mode at another task step. Add sample envelopes and update seed verification expectations.
 
 Stop and ask before adding parallel branches, multiple pending tasks, CQRS, MediatR, event sourcing, BPMN, message brokers, plugin frameworks, user-to-role SQL tables, failure audit, conditional-action fields, or schema changes outside the locked v1 scope. The stop-and-ask list lives in `PROJECT.md` §22.
 

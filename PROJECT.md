@@ -46,7 +46,7 @@ The console app is a proof of concept for the reusable workflow engine, not the 
 | Transition | A metadata row that maps `(fromState, actionKey, allowedRole)` to `(toState, taskClose, taskCreate)`. |
 | Notification recipients | Caller-supplied `notificationRecipients.toEmailAddresses` and `ccEmailAddresses` ordered arrays. The caller owns address selection and validation; the engine preserves the supplied values, order, whitespace, and duplicates without lookup or normalization. |
 | Notification outbox | Persisted notification records containing an exact typed recipient snapshot. One outbox row represents one complete message and one message-level retry lifecycle. |
-| SLA | Service-level deadline tied to a workflow task's `DueAtUtc`. |
+| SLA | Metadata-driven task schedule. Duration policies derive a deadline from task creation; application-date policies use caller-supplied `slaInput.targetDate` plus versioned policy timing/cadence. `WorkflowTask.DueAtUtc` is the overdue-start projection. |
 | Single-active-state | One current workflow state and at most one pending task for a workflow instance in the MVP. |
 | Return to Maker | A workflow route where Checker or Trading Desk sends the request back to Maker for correction/rework. |
 
@@ -490,7 +490,11 @@ When the current state has no pending task, or the pending task has `DueAtUtc = 
   "status": "NoSla",
   "dueAtUtc": null,
   "overdue": false,
-  "overdueByMinutes": 0
+  "overdueByMinutes": 0,
+  "calculationMode": null,
+  "targetDate": null,
+  "scheduleVersion": null,
+  "nextReminderAtUtc": null
 }
 ```
 
@@ -819,6 +823,10 @@ The JSON object should be workflow-heavy. Form section data can be mocked.
 - The idempotency lookup key (`IdempotencyRecord.IdempotencyKey`) is separate from `RequestHash`. Two requests that differ only in whether `idempotencyKey` is set will share the same normalized `RequestHash` but use different lookup keys (`idempotencyKey` vs `clientActionId`) and are therefore treated as independent actions for idempotency purposes. This is intentional — `idempotencyKey` is the UI's explicit dedup token; `clientActionId` is the fallback. They are not interchangeable lookup aliases.
 - `correlationId` must be copied into audit and notification records.
 - `workflow.notificationRecipients` is separate from `workflow.notificationContext`. Recipients are ordered typed arrays; notification context contains template data only.
+- `workflow.slaInput` is optional and contains only `targetDate` (`yyyy-MM-dd`). Duration, reminder time, timezone, overdue offset, recurrence, route keys, and `dueAtUtc` are metadata-owned and are rejected if supplied inside `slaInput`.
+- For an `ApplicationTargetDate` policy, the calling application maps its own business field to `workflow.slaInput.targetDate` on the existing start/action request. The engine never parses `dataSave.payload` and never knows the application's field name.
+- The caller forwards its current target date but does not compare it with prior values. The engine creates, retains, or reschedules the active task schedule in the same transaction.
+- A workflow API action request may omit `actionKey` only when it supplies `slaInput.targetDate`; this performs an SLA-only synchronization through the existing `POST /v1/WorkflowAction`. It does not move state, write workflow audit, or increment `WorkflowInstance.Version`.
 - The caller owns recipient lookup, authorization, and email-address validation. The engine does not trim, normalize, validate, deduplicate, expand roles, query a directory, or parse singular/delimited recipient fields.
 - The canonical request hash includes every `toEmailAddresses` and `ccEmailAddresses` value in its supplied order and To/Cc placement. Changing any value, order, or placement under the same idempotency key produces `IdempotencyConflict`.
 - `expectedCurrentState` is a concurrency guard, not the source of truth.
@@ -1635,14 +1643,56 @@ Id
 WorkflowDefinitionVersionId
 SlaPolicyKey
 DurationMinutes
+CalculationMode
+SendDueDateReminder
+ReminderLocalTime nullable
+TimeZoneId nullable
+OverdueStartOffsetDays
+RecurrenceIntervalDays nullable
+DueNotificationRouteKey nullable
+OverdueNotificationRouteKey nullable
 IsActive
 ```
+
+`CalculationMode` is `DurationFromTaskCreation` or `ApplicationTargetDate`. `DurationMinutes` is required only for duration mode and is versioned workflow/application configuration, never request or per-task input. Application-date policies require local reminder time, timezone, overdue offset, and recurrence metadata. Request JSON can supply only `targetDate`.
 
 Required uniqueness:
 
 ```text
 UNIQUE (WorkflowDefinitionVersionId, SlaPolicyKey)
 ```
+
+### WorkflowTaskSlaSchedule
+
+```text
+Id
+WorkflowTaskId
+ScheduleVersion
+SlaPolicyKey
+TargetDate nullable
+DueReminderAtUtc nullable
+OverdueAtUtc
+NextReminderAtUtc nullable
+CalculationMode
+TimeZoneId nullable
+ReminderLocalTime nullable
+OverdueStartOffsetDays
+RecurrenceIntervalDays nullable
+DueNotificationRouteKey nullable
+OverdueNotificationRouteKey nullable
+Status
+CreatedAtUtc
+CreatedByUserId
+CorrelationId
+IdempotencyKey
+SupersededAtUtc nullable
+SupersededByUserId nullable
+CompletedAtUtc nullable
+CompletedByUserId nullable
+RowVersion
+```
+
+`Status` values are `Active`, `Superseded`, and `Completed`. Required constraints are `UNIQUE (WorkflowTaskId, ScheduleVersion)` plus one filtered active schedule per task (`UNIQUE (WorkflowTaskId) WHERE Status = 'Active'`). Each row snapshots the effective versioned policy so later metadata edits do not rewrite an existing task's schedule history.
 
 ### NotificationRoute
 
@@ -1672,6 +1722,9 @@ UNIQUE (WorkflowDefinitionVersionId, RouteKey)
 Id
 WorkflowInstanceId
 WorkflowTaskId nullable
+WorkflowTaskSlaScheduleId nullable
+SlaOccurrenceDate nullable
+SlaReminderKind nullable
 BusinessObjectType
 BusinessObjectId
 NotificationType
@@ -1688,21 +1741,23 @@ ProcessingStartedAtUtc nullable
 RetryCount
 LastError nullable
 SentAtUtc nullable
+CancelledAtUtc nullable
+CancellationReason nullable
 ```
 
-`Status` allowed values in v1 are `Pending`, `Processing`, and `Sent`. There is no terminal `Failed` status and no dead-letter queue (see section 14).
+`Status` allowed values are `Pending`, `Processing`, `Sent`, and `Cancelled`. There is no terminal `Failed` status and no dead-letter queue (see section 14). `Cancelled` is terminal and is used for undelivered occurrences whose schedule was superseded or completed.
 
 SLA duplicate rule:
 
 ```text
-SlaTaskOverdue is queued at most once per WorkflowTaskId, ever.
+One SLA reminder is queued per schedule version, occurrence date, and reminder kind.
 ```
 
 Preferred SQL Server implementation:
 
 ```text
-UNIQUE (WorkflowTaskId, NotificationType)
-WHERE NotificationType = 'SlaTaskOverdue'
+UNIQUE (WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)
+WHERE WorkflowTaskSlaScheduleId IS NOT NULL
 ```
 
 ### IdempotencyRecord
@@ -1737,16 +1792,17 @@ These constraints must exist in the SQL schema:
 - `WorkflowRoleDefinition`: `UNIQUE (WorkflowDefinitionVersionId, RoleKey)`
 - `WorkflowTaskDefinition`: `UNIQUE (WorkflowDefinitionVersionId, TaskKey)`
 - `SlaPolicy`: `UNIQUE (WorkflowDefinitionVersionId, SlaPolicyKey)`
+- `WorkflowTaskSlaSchedule`: `UNIQUE (WorkflowTaskId, ScheduleVersion)` and one filtered active schedule per task
 - `NotificationRoute`: `UNIQUE (WorkflowDefinitionVersionId, RouteKey)`
+- `NotificationOutbox`: `UNIQUE (WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` for SLA rows
 - `WorkflowTransitionDefinition`: `UNIQUE (WorkflowDefinitionVersionId, FromStateKey, ActionKey, AllowedRoleKey)`
 - `WorkflowInstance`: `UNIQUE (WorkflowInstanceId)` and `UNIQUE (WorkflowKey, BusinessObjectType, BusinessObjectId)`
 - `WorkflowTask`: only one pending task per workflow instance for the MVP
-- `NotificationOutbox`: `SlaTaskOverdue` queued at most once per `WorkflowTaskId`
 - `IdempotencyRecord`: `UNIQUE (IdempotencyKey)`
 
 ## 13. SLA behavior
 
-SLA is task-driven. A workflow task with a due date is the source of SLA truth.
+SLA is task-driven and metadata-driven. `WorkflowTaskSlaSchedule` is the durable scheduling source of truth; `WorkflowTask.DueAtUtc` remains the task/context projection of the schedule's overdue-start instant.
 
 ```text
 SubmitForChecker
@@ -1761,7 +1817,8 @@ CheckerReturnToMaker
 CheckerSendToTradingDesk
   -> closes CheckerReviewTask
   -> creates TradingDeskReviewTask
-  -> starts Trading Desk SLA
+  -> requires current slaInput.targetDate
+  -> starts application-target-date Trading Desk SLA
 
 TradingReturnToMaker
   -> closes TradingDeskReviewTask
@@ -1784,45 +1841,62 @@ BdrmTradeNotExecutedProperly
   -> starts Trading Desk rework SLA
 ```
 
-For the POC, use short demo SLA durations so overdue behavior can be demonstrated quickly.
+Duration policies use short demo durations. Trading Desk review uses the same real calendar policy in local, SIT, and UAT; local verification fast-forwards the injected monitor time instead of changing the policy to minutes.
 
-| Task key | Demo SLA duration | SLA enabled in v1 |
-|---|---:|---|
-| `CheckerReviewTask` | 2 minutes | Yes |
-| `TradingDeskReviewTask` | 2 minutes | Yes |
-| `TradingDeskReworkTask` | 2 minutes | Yes |
-| `BdrmClientServiceReviewTask` | 2 minutes | Yes |
-| `MakerReworkTask` | None | No |
+| Task key | Calculation mode | Seeded configuration | SLA enabled |
+|---|---|---|---|
+| `CheckerReviewTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
+| `TradingDeskReviewTask` | `ApplicationTargetDate` | 09:00 `America/New_York`; due-today on target date; overdue target + 1 calendar day; repeat every calendar day | Yes |
+| `TradingDeskReworkTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
+| `BdrmClientServiceReviewTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
+| `MakerReworkTask` | None | None | No |
 
 `MakerReworkTask` is intentionally not SLA-tracked in v1: a returned request sitting in Maker's queue does not generate overdue notifications. This is acceptable for the POC because Maker holds the request and is expected to act on it. The schema fully supports adding a `MakerReworkTask` SLA later — it requires only seeding an `SlaPolicy` row and updating the `WorkflowTaskDefinition.SlaPolicyKey` reference. No engine code changes are required.
 
-### Task `DueAtUtc` invariant
+### Schedule creation and `DueAtUtc` projection
 
-When a transition creates a new task, the engine sets `WorkflowTask.DueAtUtc` based on the task definition:
+When metadata creates an SLA-enabled task, the engine resolves its versioned policy and creates schedule version 1 in the same workflow transaction:
 
-- If `WorkflowTaskDefinition.SlaPolicyKey` is non-null, look up `SlaPolicy` by `(WorkflowDefinitionVersionId, SlaPolicyKey)` and set `DueAtUtc = TimeProvider.GetUtcNow() + SlaPolicy.DurationMinutes`.
-- If `WorkflowTaskDefinition.SlaPolicyKey` is null, set `DueAtUtc = null`. The engine does not invent a default deadline. The engine does not inherit `DueAtUtc` from the closing task.
+- `DurationFromTaskCreation`: `OverdueAtUtc = task.CreatedAtUtc + SlaPolicy.DurationMinutes`; `TargetDate` and `DueReminderAtUtc` are null; `NextReminderAtUtc` is the overdue instant (or current injected time for catch-up); recurrence is null.
+- `ApplicationTargetDate`: the request must supply `slaInput.targetDate`. The engine converts the target date and target + `OverdueStartOffsetDays` independently from configured local time/timezone to UTC. It never calculates recurrence as previous UTC + 24 hours.
+- No SLA policy: create no schedule and set `WorkflowTask.DueAtUtc = null`.
 
-`MakerReworkTask` has `SlaPolicyKey = null` and is created with `DueAtUtc = null` on every Return-to-Maker transition. `run-sla` selects pending tasks with `DueAtUtc < now`, which excludes null values by SQL three-valued logic. Tests must assert that `MakerReworkTask` is never selected by `run-sla` regardless of how much time passes.
+For every active schedule, `WorkflowTask.DueAtUtc = WorkflowTaskSlaSchedule.OverdueAtUtc`. The engine never accepts `dueAtUtc`, duration, timezone, cadence, offset, or route keys from the caller and never inherits a deadline from the closing task.
 
-### SLA levels for POC
+### Same-API synchronization and rescheduling
 
-The POC uses a single overdue level. `SlaTaskOverdue` is queued at most once per task ever, regardless of `process-notification-outbox` state. Multi-level escalation is out of scope and may be added later.
+The application forwards the current business target date through `slaInput.targetDate` on its existing workflow request. It does not remember the prior value or decide whether rescheduling is required. The engine compares the input with the active schedule:
+
+- No active schedule: create version 1.
+- Same target date: successful no-op.
+- Changed target date: mark the old schedule `Superseded`, cancel its `Pending`/`Processing` outbox occurrences, and create the next schedule version.
+
+Sent occurrences are immutable history. A revised schedule has a new identity and may send a new due-today occurrence for its revised target date. Closing the task marks its active schedule `Completed`, clears `NextReminderAtUtc`, and cancels undelivered future occurrences.
+
+`POST /v1/WorkflowAction` is the single HTTP command for both action execution and SLA-only synchronization. An actionless body supplies `workflowInstanceId`, optional `idempotencyKey`, and `slaInput.targetDate`. The workflow engine identifies the current pending task and performs create/no-op/reschedule without moving state, incrementing `WorkflowInstance.Version`, or writing workflow audit. The application cannot change an SLA invisibly: its existing request must reach the engine, but no second SLA endpoint or application-side comparison exists.
+
+### SLA state and monitor occurrences
 
 `show-context` computes `sla.status`, `sla.overdue`, and `sla.overdueByMinutes` by comparing `WorkflowTask.DueAtUtc` directly to `TimeProvider.GetUtcNow()`. It does **not** check `NotificationOutbox` to determine overdue status. This means a task can appear overdue in `show-context` before `run-sla` has run — this is correct and intentional. The SLA monitor's job is to queue notifications, not to gate the overdue signal.
 
 `run-sla` must:
 
-- Find pending tasks with `DueAtUtc` earlier than `now`.
-- Before inserting an `SlaTaskOverdue` row, check whether any `NotificationOutbox` row already exists for `(WorkflowTaskId, NotificationType = 'SlaTaskOverdue')` regardless of `Status`. If one exists, skip. The filtered unique index from section 12 is the durable enforcement; this check is the friendly pre-flight that avoids relying on a unique-violation exception for normal flow.
-- Queue SLA overdue notification records.
-- Process each overdue task in its own short transaction so partial progress survives mid-batch failures.
-- Not close tasks.
-- Not move workflow state.
+- Select active schedules for pending tasks on active workflow instances where `NextReminderAtUtc <= now`.
+- Re-read each candidate inside its own short transaction.
+- Convert `now` to the snapshotted policy timezone and honor the configured local-time eligibility boundary.
+- Queue `SlaTaskDueToday` on the applicable pre-overdue target-date occurrence and `SlaTaskOverdue` on the overdue-start date and recurring calendar dates.
+- Insert at most one occurrence for the current local date. If the monitor missed several dates, queue only the current applicable occurrence and never backfill every historical date.
+- Deduplicate by `(WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` and advance `NextReminderAtUtc` by independently converting the next configured calendar date through `TimeZoneInfo`.
+- Set `NextReminderAtUtc = null` after a one-time duration reminder.
+- Not close tasks or move workflow state.
+
+The configured time is an eligibility boundary, not an in-process scheduler. An external scheduler invokes `run-sla` regularly. Local tests use `run-sla --now` to fast-forward the real seeded calendar policy and finish multi-day scenarios in minutes; SIT/UAT omit `--now` and use wall-clock time.
+
+This feature targets a clean latest-schema database. The migration deliberately does not backfill legacy active SLA tasks or legacy SLA outbox rows. Do not silently delete/recreate an existing application database; obtain explicit approval before destructive recreation.
 
 ## 14. Notification behavior
 
-Do not send real email in v1. Use notification outbox records.
+Workflow transitions and the SLA monitor persist notification outbox records. Delivery occurs only after commit through the configured sender; SMTP is never performed inside the workflow transaction.
 
 Workflow transitions queue notifications such as:
 
@@ -1832,6 +1906,7 @@ Workflow transitions queue notifications such as:
 
 SLA monitor queues notifications such as:
 
+- `SlaTaskDueToday`
 - `SlaTaskOverdue`
 
 Required notification examples:
@@ -1861,23 +1936,28 @@ BdrmTradeNotExecutedProperly
 BdrmTradeFulfilled
   -> queue WorkflowCompleted via RouteWorkflowCompleted using caller-supplied notificationRecipients
 
-run-sla detects overdue task
-  -> queue SlaTaskOverdue via RouteSlaTaskOverdue using the exact recipient snapshot stored on the overdue task
+run-sla reaches target-date occurrence
+  -> queue SlaTaskDueToday via the schedule's DueNotificationRouteKey using the exact recipient snapshot stored on the task
+
+run-sla reaches overdue calendar occurrence
+  -> queue SlaTaskOverdue via the schedule's OverdueNotificationRouteKey using the exact recipient snapshot stored on the task
 ```
 
 Notification routes carry `SubjectTemplate`, plain-text `BodyTemplate`, and HTML `HtmlBodyTemplate`. Transition execution and SLA processing render both body formats into `NotificationOutbox.Body` and `NotificationOutbox.HtmlBody`. Token values come from `workflow.notificationContext`, are trimmed for both formats, and are HTML-encoded when rendered into `HtmlBodyTemplate` so caller-provided data cannot inject markup. Template-owned markup is preserved, so seeded templates can bold important values with `<strong>{{token}}</strong>` and render `tradeLink` as `<a href="{{tradeLink}}">Open trade</a>`.
 
 Recipient addresses do not come from notification templates or `notificationContext`. A notification-producing action receives a separate `workflow.notificationRecipients` object containing ordered `toEmailAddresses` and `ccEmailAddresses` arrays. The caller owns address selection and validation. The engine performs no trimming, normalization, deduplication, role/directory lookup, singular-field fallback, or delimited-string parsing.
 
-Transition execution serializes the supplied recipient object once and stores the same snapshot on the created `WorkflowTask` and initial `NotificationOutbox` row. `run-sla` validates the task snapshot and copies it unchanged to the overdue outbox row; a missing or malformed task snapshot is warned and skipped rather than reconstructed. `PayloadJson` contains template context only.
+Transition execution serializes the supplied recipient object once and stores the same snapshot on the created `WorkflowTask` and initial `NotificationOutbox` row. `run-sla` validates the task snapshot and copies it unchanged to due-today and overdue occurrence rows; a missing or malformed task snapshot is warned and skipped rather than reconstructed. `PayloadJson` contains template context only, including schedule target date, occurrence date/kind, due-reminder instant, and overdue-start instant.
 
 ### `NotificationOutbox.Status` allowed values
 
-v1 uses three status values:
+The outbox uses four status values:
 
 - `Pending` — newly queued. Set on insert by transition execution and SLA monitor.
 - `Processing` — claimed by `process-notification-outbox` while delivery is in progress. The claim includes `ProcessingToken` and `ProcessingStartedAtUtc` so stale claims can be retried.
 - `Sent` — terminal. Set by `process-notification-outbox` after the configured notification sender succeeds. `SentAtUtc` is set at the same time.
+
+- `Cancelled` — terminal. Used for an undelivered SLA occurrence after its schedule is superseded or completed. `CancelledAtUtc` and `CancellationReason` record why delivery was suppressed.
 
 v1 does not implement a terminal `Failed` status or dead-letter queue. One outbox row represents one complete email containing all intended To and Cc recipients. If message construction or send fails for any address, the complete row is retried: the claim is released, `RetryCount` is incremented, `LastError` is stored, and the row returns to `Pending`. There is no per-recipient status or partial success. Earlier rows that already committed remain `Sent`; later rows remain available for the next run.
 
@@ -1886,6 +1966,7 @@ v1 does not implement a terminal `Failed` status or dead-letter queue. One outbo
 1. Select all `NotificationOutbox` rows where `Status = 'Pending'`, plus stale `Processing` rows whose processing lease has expired, ordered by `CreatedAtUtc, Id`.
 2. For each row:
    - Claim the row by setting `Status = 'Processing'`, `ProcessingToken`, and `ProcessingStartedAtUtc`.
+   - If the row references an SLA schedule, reload the schedule after the claim. If it is no longer `Active`, atomically mark the row `Cancelled`, clear claim fields, and continue without invoking the sender.
    - Call the configured `INotificationSender.SendAsync(notification)` (see "Notification sender abstraction" below).
    - On success, update `Status = 'Sent'`, set `SentAtUtc = TimeProvider.GetUtcNow()`, and clear processing claim fields.
    - On exception, release the claim, increment `RetryCount`, store `LastError`, and abort the command. Earlier rows that already committed remain `Sent`; the failed row and later rows remain available for a later run.
@@ -2038,7 +2119,7 @@ Use SQL Server's default `READ COMMITTED` isolation level for `execute-json` tra
 
 Do not use `SERIALIZABLE` or `SNAPSHOT` isolation in v1. They are not required for correctness given the optimistic concurrency design, and `SERIALIZABLE` introduces lock contention and deadlock risk under concurrent actors.
 
-The `run-sla` and `process-notification-outbox` commands also use `READ COMMITTED`. Each task processed within `run-sla` is its own short transaction, not one large transaction wrapping the whole scan.
+The `run-sla` and `process-notification-outbox` commands also use `READ COMMITTED`. Each schedule candidate processed within `run-sla` is its own short transaction, not one large transaction wrapping the whole scan.
 
 ## 16. POC engineering discipline
 
@@ -2355,7 +2436,15 @@ Add tests for:
 - MakerPrimary `SubmitForChecker` and `ResubmitForChecker` require `uiAction.saveAsDraft = false`.
 - Definition keys are unique per workflow definition version.
 - `workflow.options` cannot suppress metadata-required task creation, notification creation, or audit writing.
-- SLA monitor queues overdue notifications once per task, regardless of `process-notification-outbox` state.
+- `TradingDeskReviewSla` uses `ApplicationTargetDate`, 09:00 `America/New_York`, target + 1 calendar day overdue start, daily calendar recurrence, and separate due/overdue routes.
+- `CheckerSendToTradingDesk` without `slaInput.targetDate` returns `ValidationFailed` before task, notification, audit, idempotency, or data-save side effects.
+- `slaInput` accepts only `targetDate` and rejects request-owned duration, timezone, recurrence, overdue offset, and `dueAtUtc` fields.
+- Duration-mode schedules ignore caller target dates and use the versioned policy's `DurationMinutes`.
+- Same application target date is a schedule no-op; a changed target date supersedes the old schedule, creates the next version, cancels undelivered old occurrences, and preserves sent history.
+- Actionless `POST /v1/WorkflowAction` SLA synchronization does not move workflow state, increment `WorkflowInstance.Version`, or write workflow audit.
+- SLA monitor queues one due-today occurrence on the target date and one overdue occurrence on each eligible calendar date, including weekends.
+- Repeated same-date scans do not duplicate an occurrence; delayed scans queue only the current applicable local-date occurrence and honor the configured local-time boundary.
+- Completing an SLA task stops later occurrences; an outbox row claimed for an inactive schedule becomes `Cancelled` before sender invocation.
 - `process-notification-outbox` marks `Pending` rows as `Sent` and is safe to run twice.
 - `execute-json` command handles every sample envelope successfully.
 - `--admin-override` writes a distinguishable audit record on success.
@@ -2398,9 +2487,9 @@ Add tests for:
 - Workflow start/action API services preserve ordered multiple To/Cc arrays exactly while replacing only actor identity from trusted headers.
 - Notification-producing samples use `notificationRecipients` outside `notificationContext`, with at least two ordered To and two ordered Cc addresses; `01-save-draft.json` has no recipients.
 - A notification-producing transition stores one identical recipient snapshot on the created task and initial outbox row; SLA copies that stored task snapshot unchanged.
-- Notification routes seed plain-text and HTML body templates, including overdue SLA templates.
+- Notification routes seed plain-text and HTML body templates, including separate due-today and overdue SLA templates.
 - Notification HTML rendering escapes caller-provided `workflow.notificationContext` token values while preserving template-owned markup.
-- Action-created and SLA overdue notification rows persist rendered plain-text and HTML bodies; seeded HTML templates bold important UI-provided values and render `tradeLink` as a clickable link.
+- Action-created, SLA due-today, and SLA overdue notification rows persist rendered plain-text and HTML bodies.
 - `SmtpNotificationSender` sends `multipart/alternative` email with text/plain and text/html parts when `NotificationOutbox.HtmlBody` is present.
 - `SmtpNotificationSender` builds one message from all persisted To/Cc addresses; any parse/send failure returns the complete row to `Pending` with one `RetryCount`/`LastError` lifecycle.
 - `SmtpNotificationSender` honors `Smtp:RecipientOverride`, sends only to the override address, suppresses intended To/Cc envelope recipients, and preserves both ordered intended lists in plain-text and HTML diagnostic content.
@@ -2587,7 +2676,7 @@ Transition resolver, role/action/state validation, task close/create, audit writ
 
 ### Milestone 5: SLA monitor and notification senders
 
-`run-sla` and `process-notification-outbox` work. SLA durations are short enough to demo overdue behavior. `SlaTaskOverdue` is queued at most once per task. `--now` override on `run-sla` works correctly via injected `TimeProvider`. The `INotificationSender` abstraction is in place with `ConsoleNotificationSender` (default), `NoOpNotificationSender`, and `SmtpNotificationSender` registered by configuration. Tier 1 unit tests against a recording test double pass. Tier 2 SMTP integration tests against a local fake SMTP server (`smtp4dev` or `Papercut`) pass when run with `--filter Category=Smtp`. Default `dotnet test` does not invoke Tier 2 tests.
+`run-sla` and `process-notification-outbox` work. Duration-mode tasks use short configured demo durations; application-date tasks use versioned local time/timezone, overdue offset, and recurrence metadata. The monitor queues occurrence-level due-today/overdue reminders, catches up without backfill, and supports injected `--now`. The outbox suppresses inactive-schedule delivery. The `INotificationSender` abstraction is in place with `ConsoleNotificationSender` (default), `NoOpNotificationSender`, and `SmtpNotificationSender` registered by configuration. Tier 1 unit tests against a recording test double pass. Tier 2 SMTP integration tests against local `smtp4dev`/`Papercut`, including cancelled-SLA suppression, pass when run with `--filter Category=Smtp`. Default `dotnet test` does not invoke Tier 2 tests.
 
 ### Milestone 6: Samples, tests, and demo
 
@@ -2733,7 +2822,12 @@ This section captures known implementation pitfalls. Coding agents must use this
 | Duplicate workflow definition keys cause ambiguous metadata. | SQL unique constraints enforce definition-key uniqueness per workflow definition version. |
 | Workflow definition version comparison is wrong. | JSON carries version number. Persisted instance carries `WorkflowDefinitionVersionId`; join to compare against `WorkflowDefinitionVersion.VersionNumber`. |
 | Idempotency conflicts when reusing samples with overrides. | `execute-json --business-object` / `--workflow-instance` must derive effective clientActionId, idempotencyKey, and correlationId before dedupe. |
-| SLA duplicates. | `NotificationOutbox` includes `WorkflowTaskId`; `SlaTaskOverdue` is queued at most once per task ever. |
+| SLA duplicates. | Use `(WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` as the durable occurrence identity. Repeated/concurrent scans cannot create a second row for the same occurrence. |
+| Application must remember whether its target date changed. | The application forwards its current date on the existing workflow request. The engine compares against the active schedule and owns create/no-op/reschedule behavior. |
+| A second SLA endpoint is added for rescheduling. | Use the existing `POST /v1/WorkflowAction`; an actionless request with `slaInput.targetDate` performs SLA-only synchronization. |
+| Engine parses CDT's Target Completion Date from form payload. | `dataSave.payload` remains opaque. The application explicitly maps its field to generic `slaInput.targetDate`. |
+| Request overrides SLA configuration. | `slaInput` contains only `targetDate`. Duration, local time, timezone, overdue offset, recurrence, and routes come only from versioned `SlaPolicy` metadata. |
+| UTC recurrence drifts across DST. | Convert every local calendar occurrence independently through `TimeZoneInfo`; never add 24 hours to the prior UTC instant. |
 | Parallel workflow sneaks into v1. | MVP is single-active-state only. No fan-out/fan-in or multiple pending tasks. |
 | Portfolio Trade is hardcoded into the engine. | Portfolio Trade belongs in seed metadata and sample JSON only. Engine remains generic. |
 | Agents over-engineer the POC. | Follow the simplicity rule and stop-and-ask triggers. Do not add CQRS, MediatR, event sourcing, BPMN, brokers, plugin systems, or microservices without approval. |
@@ -2745,13 +2839,13 @@ This section captures known implementation pitfalls. Coding agents must use this
 | Coding agent calls `DateTime.UtcNow` directly. | Inject `TimeProvider` everywhere a timestamp is needed. The composition root is the only place `TimeProvider.System` is referenced. |
 | Coding agent uses `SERIALIZABLE` for "safety". | Use `READ COMMITTED`. Optimistic concurrency on `WorkflowInstance.Version` and the filtered unique index on pending tasks provide the correctness guarantees. |
 | Coding agent invents a default `DueAtUtc` for `MakerReworkTask`. | Null `SlaPolicyKey` produces null `DueAtUtc`. The engine never invents deadlines and never inherits from the closing task. |
-| Coding agent uses wrong `WorkflowTask.Status` string in filtered index or queries. | Allowed values are `Pending` and `Completed` only. The filtered unique index literal must be `WHERE Status = 'Pending'`. `run-sla` must filter `WHERE Status = 'Pending' AND DueAtUtc < now`. |
+| Coding agent uses wrong `WorkflowTask.Status` string in filtered index or queries. | Allowed values are `Pending` and `Completed` only. The filtered unique task index literal must be `WHERE Status = 'Pending'`. `run-sla` joins pending tasks to active schedules with `NextReminderAtUtc <= now`. |
 | Coding agent uses wrong `WorkflowInstance.Status` string. | Allowed values are `Active` and `Completed` only. Set `Active` on `start-workflow`, `Completed` on terminal transition. |
 | Coding agent populates `WorkflowTask.AssignedUserId` from `actor.userId`. | `AssignedUserId` is always null in v1. Tasks are role-assigned only. The actor who triggers a transition is not the assignee of the created task. |
 | Coding agent omits `CompletedAtUtc`, `CompletedByUserId`, or `ClosedByActionKey` when closing a task. | All four columns must be set on task close: `Status = 'Completed'`, `CompletedAtUtc = TimeProvider.GetUtcNow()`, `CompletedByUserId = actor.userId`, `ClosedByActionKey = actionKey`. |
 | Coding agent reads `ToStateKey` in `WorkflowAudit` to infer forward movement and includes `SaveDraft` rows. | For `SaveDraft`, `ToStateKey = FromStateKey`. Exclude `SaveDraft` rows when querying audit for state progression. |
 | Coding agent treats `idempotencyKey` absent and `idempotencyKey` present as the same lookup. | They use different `IdempotencyRecord.IdempotencyKey` values (`clientActionId` vs `idempotencyKey`). Same `RequestHash` but different lookup keys — independent actions for idempotency purposes. |
-| Coding agent returns `"sla": null` or omits `sla` block for no-SLA states. | Always return `{ "status": "NoSla", "dueAtUtc": null, "overdue": false, "overdueByMinutes": 0 }`. The three `sla.status` values are `OnTrack`, `Overdue`, `NoSla`. |
+| Coding agent returns `"sla": null` or omits `sla` block for no-SLA states. | Always return the full SLA object with `status = "NoSla"`, false/zero overdue fields, and null `dueAtUtc`, `calculationMode`, `targetDate`, `scheduleVersion`, and `nextReminderAtUtc`. The three status values are `OnTrack`, `Overdue`, and `NoSla`. |
 | Coding agent gates `show-context` SLA overdue on `NotificationOutbox` having a record. | `show-context` computes overdue by comparing `DueAtUtc` to `TimeProvider.GetUtcNow()` directly. SLA monitor fires notifications independently. |
 | Coding agent records `businessObject.objectVersion` in `WorkflowAudit`. | `WorkflowAudit` has no `BusinessObjectVersion` column. The field is silently ignored by the engine. |
 | `demo` command uses its own sample files or hardcodes Portfolio Trade steps. | `demo` reuses the §19 sample files with `--business-object PT-DEMO --workflow-instance WF-PT-DEMO` overrides. No demo-specific samples needed. |

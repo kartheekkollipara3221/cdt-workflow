@@ -324,7 +324,7 @@
         are useful in real operations versus local demo work.
       </p>
       <div class="meta">
-        <span class="pill">Generated from source: 2026-06-23</span>
+        <span class="pill">Updated from source: 2026-08-07</span>
         <span class="pill">Active API: workflow-api</span>
         <span class="pill">Console: src/WorkflowEngine.Console</span>
         <span class="pill">.NET 10</span>
@@ -334,6 +334,47 @@
   </header>
 
   <main class="wrap">
+    <section id="sla-target-date">
+      <h2>Current contract: application-anchored SLA</h2>
+      <div class="callout info">
+        <p>
+          The calling application maps its current business date to <code>slaInput.targetDate</code> on the existing
+          workflow request. The engine compares it with the active task schedule and performs create, no-op, or
+          reschedule logic. There is no second SLA endpoint and the engine never parses the date from form payload.
+        </p>
+      </div>
+      <h3>Assign Trading Desk and create schedule version 1</h3>
+      <pre><code>{
+  "workflowInstanceId": "WF-PT-1001",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable",
+  "idempotencyKey": "checker-to-desk-1001",
+  "slaInput": { "targetDate": "2030-01-20" },
+  "notificationContext": {},
+  "notificationRecipients": {
+    "toEmailAddresses": ["desk@example.test"],
+    "ccEmailAddresses": []
+  }
+}</code></pre>
+      <h3>Same endpoint, actionless date synchronization</h3>
+      <pre><code>{
+  "workflowInstanceId": "WF-PT-1001",
+  "idempotencyKey": "target-date-save-1001-20300125",
+  "slaInput": { "targetDate": "2030-01-25" }
+}</code></pre>
+      <p>
+        <code>slaInput</code> accepts only <code>targetDate</code>. Duration, reminder time, timezone, overdue offset,
+        recurrence, route keys, and <code>dueAtUtc</code> are versioned <code>SlaPolicy</code> metadata and are rejected
+        in request JSON. The seeded Trading Desk policy is 09:00 <code>America/New_York</code>, due-today on the target
+        date, overdue on target + 1 calendar day, then daily including weekends until task completion.
+      </p>
+      <p>
+        For local testing, run <code>run-sla --now</code> at the relevant UTC instants and then
+        <code>process-notification-outbox</code>; repeated same-date scans do not duplicate occurrences. SIT/UAT omit
+        <code>--now</code> and use wall-clock scheduling. The latest schema intentionally has no legacy SLA backfill.
+      </p>
+    </section>
+
     <nav class="toc" aria-label="Table of contents">
       <a href="#scope">1. Scope</a>
       <a href="#headers">2. Required Headers</a>
@@ -697,8 +738,9 @@ X-Workflow-DisplayName: Checker User One</code></pre>
     <section id="action-bodies">
       <h2>7. WorkflowAction JSON Bodies</h2>
       <p>
-        <code>POST /v1/WorkflowAction</code> requires <code>workflowInstanceId</code> and <code>actionKey</code>.
-        It accepts optional <code>assignedRoleKey</code> for metadata-defined dynamic task assignment and optional
+        <code>POST /v1/WorkflowAction</code> always requires <code>workflowInstanceId</code>. A normal transition also
+        requires <code>actionKey</code>; actionless SLA synchronization instead requires <code>slaInput.targetDate</code>.
+        It accepts optional <code>idempotencyKey</code>, optional <code>assignedRoleKey</code> for metadata-defined dynamic task assignment, and optional
         <code>notificationContext</code> for email rendering. Notification-producing actions also accept typed
         <code>notificationRecipients</code> with ordered To/Cc arrays.
       </p>
@@ -786,6 +828,8 @@ X-Workflow-DisplayName: Checker User One</code></pre>
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "CheckerSendToTradingDesk",
   "assignedRoleKey": "TradingDeskTaxable",
+  "idempotencyKey": "checker-to-desk-1001",
+  "slaInput": { "targetDate": "2030-01-20" },
   "notificationRecipients": {
     "toEmailAddresses": ["trading.primary@example.test", "trading.secondary@example.test"],
     "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
@@ -941,9 +985,9 @@ X-Workflow-DisplayName: Checker User One</code></pre>
             <td><code>referenceNumber</code>, <code>confirmerDisplayName</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>tradeLink</code></td>
           </tr>
           <tr>
-            <td>SLA overdue</td>
+            <td>SLA due-today or overdue occurrence</td>
             <td>Created by <code>run-sla</code>, not by API JSON</td>
-            <td><code>workflowInstanceId</code>, <code>taskKey</code>, <code>assignedRoleKey</code>, <code>dueAtUtc</code>, <code>overdueAtUtc</code> are added by the SLA service.</td>
+            <td><code>workflowInstanceId</code>, <code>taskKey</code>, <code>assignedRoleKey</code>, <code>targetDate</code>, <code>slaOccurrenceDate</code>, <code>slaReminderKind</code>, <code>dueReminderAtUtc</code>, and <code>overdueAtUtc</code> are added by the SLA service.</td>
           </tr>
         </tbody>
       </table>

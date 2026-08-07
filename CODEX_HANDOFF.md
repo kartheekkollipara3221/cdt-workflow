@@ -1,6 +1,63 @@
 # Codex Handoff
 
-Last updated: 2026-08-06T04:52:30.135Z
+Last updated: 2026-08-07T01:20:00-04:00
+
+## 2026-08-07 Application-Anchored Recurring SLA Implementation
+
+### Current goal
+
+- Finish full quality gates and a fast live HTTP/SMTP scenario for the approved generic application-anchored SLA.
+- Leave smtp4dev and the Workflow API running for user review after the live scenario if both are healthy.
+
+### Completed changes
+
+- Added typed `slaInput.targetDate` to core/API start and action contracts; SLA configuration fields are rejected as unmapped input.
+- Added `DurationFromTaskCreation` and `ApplicationTargetDate` calculations using `TimeProvider` and independent `TimeZoneInfo` conversion for each calendar occurrence.
+- Added versioned `WorkflowTaskSlaSchedule` persistence and occurrence-level outbox identity/cancellation fields with clean-schema EF migration `20260807032848_AddApplicationAnchoredRecurringSla`.
+- Seeded Trading Desk review for configurable 09:00 `America/New_York`, due-today on target date, overdue target + 1 calendar day, and daily calendar recurrence. Other SLA tasks retain configured two-minute duration mode.
+- Integrated schedule create/no-op/reschedule/complete behavior into the existing workflow transaction. Changed dates supersede schedules and cancel undelivered old occurrences while preserving sent history.
+- Added actionless SLA synchronization through the existing `POST /v1/WorkflowAction`; no second API, state movement, workflow version increment, or workflow audit.
+- Replaced task-level one-time scanning with schedule/date/kind occurrences, local-time eligibility, weekend recurrence, current-only catch-up, and completion stop behavior.
+- Added post-claim inactive-schedule suppression so stale outbox rows become `Cancelled` before sender invocation.
+- Fixed the pre-existing fresh-clone test harness pipe hang by disabling child MSBuild reuse and draining stdout/stderr concurrently.
+- Updated the sample contract, `PROJECT.md`, README, API boundary, HTML handoffs, and coverage audit for the implemented behavior.
+
+### Changed files
+
+- Core contracts/application: `src/WorkflowEngine.Application/**`
+- Persistence/SLA/notification runtime: `src/WorkflowEngine.Infrastructure/**`
+- API models/services/tests: `workflow-api/**`
+- Migration and seed: `src/WorkflowEngine.Infrastructure/Persistence/Migrations/**`, `Persistence/Seed/**`
+- Samples/tests/docs: `samples/**`, `tests/**`, `PROJECT.md`, `README.md`, `docs/**`, this handoff.
+
+### Build/test status
+
+- Core build: passed, 0 warnings/errors.
+- Full core suite after test-harness fix: 282 passed, 4 optional SMTP skipped, 0 failed, in 1m44s.
+- Focused recurring SLA/outbox suite: 14 passed.
+- Sample/expectation suite: 9 passed.
+- smtp4dev health: HTTP `/api/Server` 200; HTTP 5000 and SMTP 3025 owned by PID 10496.
+- Opt-in SMTP suite: 4 passed, including proof that an inactive-schedule row is not delivered.
+
+### Remaining tasks
+
+- Run documentation/coverage tests and commit the documentation slice.
+- Run clean restore/build/test gates for both solutions.
+- Initialize/verify a clean application database. If the configured application DB is not clean, stop for explicit destructive-recreation approval.
+- Start Workflow API on 5058 and execute the actual multi-day target-date/reschedule/completion scenario against smtp4dev.
+- Record final IDs/counts/commands here and leave healthy review services running.
+
+### Known risks
+
+- The migration intentionally has no legacy SLA backfill and requires a clean latest-schema application database.
+- SQL Integrated Security commands require the normal Windows token; sandbox identity produces SSPI failures.
+- The original checkout has user-owned `.tools/`, `SQMS/`, `tareget-api-integration/`, and handoff changes. Feature work remains isolated in `.worktrees/application-anchored-recurring-sla`.
+
+### Next-session prompt
+
+```text
+Continue application-anchored SLA verification in C:\projects\cdt-workflow\.worktrees\application-anchored-recurring-sla on feature/application-anchored-recurring-sla. Read AGENTS.MD, PROJECT.md, and the top handoff section. Implementation commits through recurring monitor are complete. Finish docs gates, both solution quality gates, clean DB seed verification, and the real Workflow API + smtp4dev multi-day/reschedule/completion scenario. Do not destructively recreate a non-clean application DB without explicit approval.
+```
 
 ## 2026-08-06 Session Pause Status
 
