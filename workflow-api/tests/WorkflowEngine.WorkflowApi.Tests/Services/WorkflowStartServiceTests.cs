@@ -10,22 +10,29 @@ namespace WorkflowEngine.WorkflowApi.Tests.Services;
 public sealed class WorkflowStartServiceTests
 {
     [Fact]
-    public void StartWorkflowPreservesNotificationRecipientsAndUsesTrustedActor()
+    public void StartWorkflowMapsNamedRecipientInputsAndUsesTrustedActor()
     {
         var applicationStart = new RecordingStartWorkflowService(SuccessResult());
-        var recipients = new NotificationRecipients
+        var notification = new WorkflowNotificationRequest
         {
-            ToEmailAddresses =
-            [
-                " primary@example.com ",
-                "duplicate@example.com",
-                "duplicate@example.com"
-            ],
-            CcEmailAddresses =
-            [
-                " copied-first@example.com ",
-                "copied-second@example.com"
-            ]
+            RecipientInputs = new Dictionary<string, List<WorkflowRecipientRequest>?>
+            {
+                ["originalMaker"] =
+                [
+                    new WorkflowRecipientRequest
+                    {
+                        UserId = "maker-1",
+                        EmailAddress = " opaque-address-value ",
+                        DisplayName = "Maker One"
+                    }
+                ],
+                ["selectedCcUsers"] = null
+            },
+            TemplateData = new Dictionary<string, string?>
+            {
+                ["tradeId"] = " PT-1001 ",
+                ["emptyValue"] = null
+            }
         };
         var service = CreateService(
             new StubActorResolver(new WorkflowActorSnapshot("trusted-user", "Trusted User", ["Maker"])),
@@ -35,45 +42,33 @@ public sealed class WorkflowStartServiceTests
         service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001",
-            InitialActionKey = "SubmitForChecker",
-            IdempotencyKey = " start-idempotency-1 ",
-            SlaInput = new WorkflowSlaInput { TargetDate = new DateOnly(2030, 1, 20) },
-            NotificationRecipients = recipients
+            ActionKey = "SubmitForChecker",
+            SlaTargetDate = new DateOnly(2030, 1, 20),
+            Notification = notification
         });
 
         Assert.NotNull(applicationStart.LastRequest);
-        Assert.Same(recipients, applicationStart.LastRequest.NotificationRecipients);
-        Assert.Equal(
-            [" primary@example.com ", "duplicate@example.com", "duplicate@example.com"],
-            applicationStart.LastRequest.NotificationRecipients?.ToEmailAddresses);
-        Assert.Equal(
-            [" copied-first@example.com ", "copied-second@example.com"],
-            applicationStart.LastRequest.NotificationRecipients?.CcEmailAddresses);
+        Assert.Null(applicationStart.LastRequest.NotificationRecipients);
+        var maker = Assert.Single(applicationStart.LastRequest.NotificationInput?.RecipientInputs["originalMaker"] ?? []);
+        Assert.Equal("maker-1", maker.UserId);
+        Assert.Equal(" opaque-address-value ", maker.EmailAddress);
+        Assert.Equal("Maker One", maker.DisplayName);
+        Assert.Empty(applicationStart.LastRequest.NotificationInput?.RecipientInputs["selectedCcUsers"] ?? []);
+        Assert.Equal(" PT-1001 ", applicationStart.LastRequest.NotificationInput?.TemplateData["tradeId"]);
+        Assert.Null(applicationStart.LastRequest.NotificationInput?.TemplateData["emptyValue"]);
         Assert.Equal("trusted-user", applicationStart.LastRequest.StartedByUserId);
         Assert.Equal("Trusted User", applicationStart.LastRequest.StartedByDisplayName);
         Assert.Equal(["Maker"], applicationStart.LastRequest.StartedByRoles);
-        Assert.Equal("start-idempotency-1", applicationStart.LastRequest.IdempotencyKey);
+        Assert.Null(applicationStart.LastRequest.IdempotencyKey);
         Assert.Equal(new DateOnly(2030, 1, 20), applicationStart.LastRequest.SlaInput?.TargetDate);
         Assert.Null(applicationStart.LastRequest.NotificationContext);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void StartWorkflowPassesExplicitNullRecipientArrayWithTrustedActor(bool nullToEmailAddresses)
+    [Fact]
+    public void StartWorkflowProvidesEmptyNotificationInputWhenNotificationIsOmitted()
     {
         var applicationStart = new RecordingStartWorkflowService(SuccessResult());
-        var recipients = new NotificationRecipients
-        {
-            ToEmailAddresses = nullToEmailAddresses
-                ? null!
-                : [" first@example.test ", "first@example.test"],
-            CcEmailAddresses = nullToEmailAddresses
-                ? [" manager@example.test ", "manager@example.test"]
-                : null!
-        };
         var service = CreateService(
             new StubActorResolver(new WorkflowActorSnapshot("trusted-user", "Trusted User", ["Maker"])),
             applicationStart,
@@ -82,32 +77,13 @@ public sealed class WorkflowStartServiceTests
         service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
-            BusinessObjectId = nullToEmailAddresses ? "PT-NULL-TO" : "PT-NULL-CC",
-            InitialActionKey = "SubmitForChecker",
-            NotificationRecipients = recipients
+            BusinessObjectId = "PT-1001"
         });
 
         Assert.NotNull(applicationStart.LastRequest);
-        Assert.Same(recipients, applicationStart.LastRequest.NotificationRecipients);
-        if (nullToEmailAddresses)
-        {
-            Assert.Null(applicationStart.LastRequest.NotificationRecipients?.ToEmailAddresses);
-            Assert.Equal(
-                [" manager@example.test ", "manager@example.test"],
-                applicationStart.LastRequest.NotificationRecipients?.CcEmailAddresses);
-        }
-        else
-        {
-            Assert.Equal(
-                [" first@example.test ", "first@example.test"],
-                applicationStart.LastRequest.NotificationRecipients?.ToEmailAddresses);
-            Assert.Null(applicationStart.LastRequest.NotificationRecipients?.CcEmailAddresses);
-        }
-
-        Assert.Equal("trusted-user", applicationStart.LastRequest.StartedByUserId);
-        Assert.Equal("Trusted User", applicationStart.LastRequest.StartedByDisplayName);
-        Assert.Equal(["Maker"], applicationStart.LastRequest.StartedByRoles);
+        Assert.NotNull(applicationStart.LastRequest.NotificationInput);
+        Assert.Empty(applicationStart.LastRequest.NotificationInput.RecipientInputs);
+        Assert.Empty(applicationStart.LastRequest.NotificationInput.TemplateData);
     }
 
     [Fact]
@@ -135,7 +111,6 @@ public sealed class WorkflowStartServiceTests
         var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = " PortfolioTrade ",
-            BusinessObjectType = " PortfolioTrade ",
             BusinessObjectId = " PT-1001 "
         });
 
@@ -144,7 +119,7 @@ public sealed class WorkflowStartServiceTests
         Assert.Same(expectedContext.WorkflowContext, response.Result.WorkflowContext);
         Assert.NotNull(applicationStart.LastRequest);
         Assert.Equal("PortfolioTrade", applicationStart.LastRequest.WorkflowKey);
-        Assert.Equal("PortfolioTrade", applicationStart.LastRequest.BusinessObjectType);
+        Assert.Equal(string.Empty, applicationStart.LastRequest.BusinessObjectType);
         Assert.Equal("PT-1001", applicationStart.LastRequest.BusinessObjectId);
         Assert.Equal("maker1", applicationStart.LastRequest.StartedByUserId);
         Assert.False(applicationStart.LastRequest.Reset);
@@ -178,14 +153,16 @@ public sealed class WorkflowStartServiceTests
         var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = " PortfolioTrade ",
-            BusinessObjectType = " PortfolioTrade ",
             BusinessObjectId = " PT-1001 ",
-            InitialActionKey = " SubmitForChecker ",
-            NotificationContext = new Dictionary<string, string?>
+            ActionKey = " SubmitForChecker ",
+            Notification = new WorkflowNotificationRequest
             {
-                ["submitterDisplayName"] = " Kollipara, Kartheek ",
-                ["deskName"] = "Taxable",
-                ["emptyValue"] = " "
+                TemplateData = new Dictionary<string, string?>
+                {
+                    ["submitterDisplayName"] = " Kollipara, Kartheek ",
+                    ["deskName"] = "Taxable",
+                    ["emptyValue"] = " "
+                }
             }
         });
 
@@ -194,10 +171,12 @@ public sealed class WorkflowStartServiceTests
         Assert.Equal("SubmitForChecker", applicationStart.LastRequest.InitialActionKey);
         Assert.Equal("Maker One", applicationStart.LastRequest.StartedByDisplayName);
         Assert.Equal(["Maker"], applicationStart.LastRequest.StartedByRoles);
-        Assert.NotNull(applicationStart.LastRequest.NotificationContext);
-        Assert.Equal("Kollipara, Kartheek", applicationStart.LastRequest.NotificationContext["submitterDisplayName"]);
-        Assert.Equal("Taxable", applicationStart.LastRequest.NotificationContext["deskName"]);
-        Assert.False(applicationStart.LastRequest.NotificationContext.ContainsKey("emptyValue"));
+        Assert.Null(applicationStart.LastRequest.NotificationContext);
+        Assert.Equal(
+            " Kollipara, Kartheek ",
+            applicationStart.LastRequest.NotificationInput?.TemplateData["submitterDisplayName"]);
+        Assert.Equal("Taxable", applicationStart.LastRequest.NotificationInput?.TemplateData["deskName"]);
+        Assert.Equal(" ", applicationStart.LastRequest.NotificationInput?.TemplateData["emptyValue"]);
     }
 
     [Fact]
@@ -234,9 +213,8 @@ public sealed class WorkflowStartServiceTests
         var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001",
-            InitialActionKey = "SubmitForChecker"
+            ActionKey = "SubmitForChecker"
         });
 
         Assert.True(response.Result.ActionResult.Success);
@@ -260,7 +238,6 @@ public sealed class WorkflowStartServiceTests
         var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001"
         });
 
@@ -302,9 +279,8 @@ public sealed class WorkflowStartServiceTests
         var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001",
-            InitialActionKey = "SubmitForChecker"
+            ActionKey = "SubmitForChecker"
         });
 
         Assert.False(response.Result.ActionResult.Success);
@@ -337,7 +313,6 @@ public sealed class WorkflowStartServiceTests
         var response = service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001"
         });
 
@@ -363,15 +338,12 @@ public sealed class WorkflowStartServiceTests
     }
 
     [Theory]
-    [InlineData(null, "PortfolioTrade", "PT-1001", "workflowKey is required.")]
-    [InlineData(" ", "PortfolioTrade", "PT-1001", "workflowKey is required.")]
-    [InlineData("PortfolioTrade", null, "PT-1001", "businessObjectType is required.")]
-    [InlineData("PortfolioTrade", " ", "PT-1001", "businessObjectType is required.")]
-    [InlineData("PortfolioTrade", "PortfolioTrade", null, "businessObjectId is required.")]
-    [InlineData("PortfolioTrade", "PortfolioTrade", " ", "businessObjectId is required.")]
+    [InlineData(null, "PT-1001", "workflowKey is required.")]
+    [InlineData(" ", "PT-1001", "workflowKey is required.")]
+    [InlineData("PortfolioTrade", null, "businessObjectId is required.")]
+    [InlineData("PortfolioTrade", " ", "businessObjectId is required.")]
     public void StartWorkflowThrowsRequestExceptionWhenRequiredFieldsAreMissing(
         string? workflowKey,
-        string? businessObjectType,
         string? businessObjectId,
         string expectedDetail)
     {
@@ -385,7 +357,6 @@ public sealed class WorkflowStartServiceTests
             service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
             {
                 WorkflowKey = workflowKey,
-                BusinessObjectType = businessObjectType,
                 BusinessObjectId = businessObjectId
             }));
 
@@ -396,7 +367,7 @@ public sealed class WorkflowStartServiceTests
     }
 
     [Fact]
-    public void StartWorkflowMergesDuplicateNotificationContextKeysAfterTrim()
+    public void StartWorkflowPreservesTemplateDataKeysAndValues()
     {
         var expectedContext = new WorkflowContextResponse();
         expectedContext.WorkflowContext.Workflow.WorkflowInstanceId = "WF-PT-1001";
@@ -409,23 +380,24 @@ public sealed class WorkflowStartServiceTests
         service.StartWorkflow(new DefaultHttpContext(), new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001",
-            InitialActionKey = "SubmitForChecker",
-            NotificationContext = new Dictionary<string, string?>
+            ActionKey = "SubmitForChecker",
+            Notification = new WorkflowNotificationRequest
             {
-                ["deskName"] = "Original",
-                [" deskName "] = " Taxable ",
-                ["emptyValue"] = " "
+                TemplateData = new Dictionary<string, string?>
+                {
+                    ["deskName"] = "Original",
+                    [" deskName "] = " Taxable ",
+                    ["emptyValue"] = " "
+                }
             }
         });
 
-        var context = Assert.IsType<Dictionary<string, string?>>(
-            applicationStart.LastRequest?.NotificationContext);
-        var item = Assert.Single(context);
-        Assert.Equal("deskName", item.Key);
-        Assert.Equal("Taxable", item.Value);
-        Assert.False(context.ContainsKey("emptyValue"));
+        var templateData = applicationStart.LastRequest?.NotificationInput?.TemplateData;
+        Assert.NotNull(templateData);
+        Assert.Equal("Original", templateData["deskName"]);
+        Assert.Equal(" Taxable ", templateData[" deskName "]);
+        Assert.Equal(" ", templateData["emptyValue"]);
     }
 
     private static ApiWorkflowStartService CreateService(

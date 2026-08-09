@@ -25,26 +25,27 @@ public sealed class WorkflowStartService(
         }
 
         var workflowKey = RequiredText(request.WorkflowKey, "workflowKey");
-        var businessObjectType = RequiredText(request.BusinessObjectType, "businessObjectType");
         var businessObjectId = RequiredText(request.BusinessObjectId, "businessObjectId");
-        var initialActionKey = OptionalText(request.InitialActionKey);
+        var actionKey = OptionalText(request.ActionKey);
         var actor = actorResolver.Resolve(httpContext);
+        var notificationInput = WorkflowNotificationRequestMapper.Map(request.Notification);
 
         var startResult = startWorkflowService.Start(new ApplicationStartWorkflowRequest(
             workflowKey,
-            businessObjectType,
+            BusinessObjectType: string.Empty,
             businessObjectId,
             actor.UserId,
             Reset: false,
-            InitialActionKey: initialActionKey,
+            InitialActionKey: actionKey,
             StartedByDisplayName: actor.DisplayName,
             StartedByRoles: actor.Roles,
-            NotificationContext: NormalizeNotificationContext(request.NotificationContext),
-            NotificationRecipients: request.NotificationRecipients,
-            SlaInput: request.SlaInput is null
+            NotificationContext: null,
+            NotificationRecipients: null,
+            SlaInput: request.SlaTargetDate is null
                 ? null
-                : new WorkflowSlaInput { TargetDate = request.SlaInput.TargetDate },
-            IdempotencyKey: OptionalText(request.IdempotencyKey)));
+                : new WorkflowSlaInput { TargetDate = request.SlaTargetDate },
+            IdempotencyKey: null,
+            NotificationInput: notificationInput));
 
         var actionResult = startResult.Envelope.Result;
         var workflowContext = actionResult.Success
@@ -54,7 +55,7 @@ public sealed class WorkflowStartService(
                 actor.Roles)).WorkflowContext
             : null;
 
-        DispatchInitialActionNotifications(initialActionKey, actionResult);
+        DispatchInitialActionNotifications(actionKey, actionResult);
 
         return new WorkflowStartApiResponse(new WorkflowStartApiResult(actionResult, workflowContext));
     }
@@ -110,27 +111,6 @@ public sealed class WorkflowStartService(
             StatusCodes.Status400BadRequest,
             "Invalid workflow start request.",
             $"{fieldName} is required.");
-    }
-
-    private static Dictionary<string, string?>? NormalizeNotificationContext(Dictionary<string, string?>? values)
-    {
-        if (values is null || values.Count == 0)
-        {
-            return null;
-        }
-
-        var normalized = new Dictionary<string, string?>(StringComparer.Ordinal);
-        foreach (var pair in values)
-        {
-            if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
-            {
-                continue;
-            }
-
-            normalized[pair.Key.Trim()] = pair.Value!.Trim();
-        }
-
-        return normalized.Count == 0 ? null : normalized;
     }
 
     private static string? OptionalText(string? value)

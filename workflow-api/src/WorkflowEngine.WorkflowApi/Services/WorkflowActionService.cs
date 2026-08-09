@@ -32,7 +32,7 @@ public sealed class WorkflowActionService(
 
         var workflowInstanceId = RequiredText(request.WorkflowInstanceId, "workflowInstanceId");
         var actionKey = OptionalText(request.ActionKey);
-        if (actionKey is null && request.SlaInput?.TargetDate is null)
+        if (actionKey is null && request.SlaTargetDate is null)
         {
             RequiredText(request.ActionKey, "actionKey");
         }
@@ -40,7 +40,8 @@ public sealed class WorkflowActionService(
         var assignedRoleKey = OptionalText(request.AssignedRoleKey);
         var actor = actorResolver.Resolve(httpContext);
         var generatedId = Guid.NewGuid().ToString("N");
-        var effectiveIdempotencyKey = OptionalText(request.IdempotencyKey) ?? generatedId;
+        var effectiveIdempotencyKey = generatedId;
+        var notificationInput = WorkflowNotificationRequestMapper.Map(request.Notification);
         var envelope = new WorkflowActionEnvelope
         {
             Request = new WorkflowRequest
@@ -62,17 +63,17 @@ public sealed class WorkflowActionService(
                 WorkflowInstanceId = workflowInstanceId,
                 ActionKey = actionKey,
                 AssignedRoleKey = assignedRoleKey,
-                SlaInput = request.SlaInput is null
+                SlaInput = request.SlaTargetDate is null
                     ? null
-                    : new WorkflowSlaInput { TargetDate = request.SlaInput.TargetDate },
-                NotificationContext = NormalizeNotificationContext(request.NotificationContext),
-                NotificationRecipients = request.NotificationRecipients,
+                    : new WorkflowSlaInput { TargetDate = request.SlaTargetDate },
+                NotificationContext = null,
+                NotificationRecipients = null,
                 IdempotencyKey = effectiveIdempotencyKey
             }
         };
 
         var normalized = normalizer.Normalize(envelope, businessObjectOverride: null, workflowInstanceOverride: null);
-        var requestHash = hasher.ComputeHash(normalized.Envelope);
+        var requestHash = hasher.ComputeHash(normalized.Envelope, notificationInput);
         if (actionKey is null)
         {
             WorkflowSlaSynchronizationResult synchronization;
@@ -81,7 +82,7 @@ public sealed class WorkflowActionService(
                 synchronization = slaSynchronizationService.Synchronize(new WorkflowSlaSynchronizationRequest(
                     workflowInstanceId,
                     WorkflowTaskId: null,
-                    request.SlaInput?.TargetDate,
+                    request.SlaTargetDate,
                     actor.UserId,
                     generatedId,
                     effectiveIdempotencyKey));
@@ -122,7 +123,8 @@ public sealed class WorkflowActionService(
             {
                 DeriveIdentityFromPersistence = true,
                 PersistSectionData = false,
-                ValidateActionEcho = false
+                ValidateActionEcho = false,
+                NotificationInput = notificationInput
             });
 
         DispatchCreatedNotifications(resultEnvelope.Result);
@@ -179,27 +181,6 @@ public sealed class WorkflowActionService(
             StatusCodes.Status400BadRequest,
             "Invalid workflow action request.",
             $"{fieldName} is required.");
-    }
-
-    private static Dictionary<string, string?>? NormalizeNotificationContext(Dictionary<string, string?>? values)
-    {
-        if (values is null || values.Count == 0)
-        {
-            return null;
-        }
-
-        var normalized = new Dictionary<string, string?>(StringComparer.Ordinal);
-        foreach (var pair in values)
-        {
-            if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value))
-            {
-                continue;
-            }
-
-            normalized[pair.Key.Trim()] = pair.Value!.Trim();
-        }
-
-        return normalized.Count == 0 ? null : normalized;
     }
 
     private static string? OptionalText(string? value)

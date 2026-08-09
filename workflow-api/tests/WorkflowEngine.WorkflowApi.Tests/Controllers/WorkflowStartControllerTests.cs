@@ -26,7 +26,6 @@ public sealed class WorkflowStartControllerTests
         var request = new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001"
         };
 
@@ -60,7 +59,6 @@ public sealed class WorkflowStartControllerTests
         var response = controller.StartWorkflow(new WorkflowStartRequest
         {
             WorkflowKey = "PortfolioTrade",
-            BusinessObjectType = "PortfolioTrade",
             BusinessObjectId = "PT-1001"
         });
 

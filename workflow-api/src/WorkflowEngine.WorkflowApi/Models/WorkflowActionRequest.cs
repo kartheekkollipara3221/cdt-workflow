@@ -1,20 +1,22 @@
-using WorkflowEngine.Application.Contracts;
+using System.Text.Json.Serialization;
 
 namespace WorkflowEngine.WorkflowApi.Models;
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class WorkflowActionRequest
 {
+    [JsonPropertyName("workflowInstanceId")]
     public string? WorkflowInstanceId { get; set; }
 
+    [JsonPropertyName("actionKey")]
     public string? ActionKey { get; set; }
 
+    [JsonPropertyName("assignedRoleKey")]
     public string? AssignedRoleKey { get; set; }
 
-    public string? IdempotencyKey { get; set; }
+    [JsonPropertyName("slaTargetDate")]
+    public DateOnly? SlaTargetDate { get; set; }
 
-    public WorkflowSlaInput? SlaInput { get; set; }
-
-    public Dictionary<string, string?>? NotificationContext { get; set; }
-
-    public NotificationRecipients? NotificationRecipients { get; set; }
+    [JsonPropertyName("notification")]
+    public WorkflowNotificationRequest? Notification { get; set; }
 }

@@ -12,7 +12,7 @@ namespace WorkflowEngine.WorkflowApi.Tests.Services;
 public sealed class WorkflowActionServiceTests
 {
     [Fact]
-    public void ExecuteWorkflowActionPreservesNotificationRecipientsAndUsesTrustedActor()
+    public void ExecuteWorkflowActionMapsNamedRecipientInputsAndUsesTrustedActor()
     {
         var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope
         {
@@ -26,20 +26,6 @@ public sealed class WorkflowActionServiceTests
             },
             WorkflowContext = new WorkflowContext()
         });
-        var recipients = new NotificationRecipients
-        {
-            ToEmailAddresses =
-            [
-                " primary@example.com ",
-                "duplicate@example.com",
-                "duplicate@example.com"
-            ],
-            CcEmailAddresses =
-            [
-                " copied-first@example.com ",
-                "copied-second@example.com"
-            ]
-        };
         var service = CreateService(
             new StubActorResolver(new WorkflowActorSnapshot("trusted-user", "Trusted User", ["Maker"])),
             executionService);
@@ -48,18 +34,31 @@ public sealed class WorkflowActionServiceTests
         {
             WorkflowInstanceId = "WF-PT-1001",
             ActionKey = "SubmitForChecker",
-            NotificationRecipients = recipients
+            Notification = new WorkflowNotificationRequest
+            {
+                RecipientInputs = new Dictionary<string, List<WorkflowRecipientRequest>?>
+                {
+                    ["selectedCcUsers"] =
+                    [
+                        new WorkflowRecipientRequest
+                        {
+                            UserId = "cc-1",
+                            EmailAddress = " opaque-address-value ",
+                            DisplayName = "Copied User"
+                        }
+                    ]
+                }
+            }
         });
 
         var envelope = Assert.IsType<WorkflowActionEnvelope>(
             executionService.LastRequest?.Normalized.Envelope);
-        Assert.Same(recipients, envelope.Workflow?.NotificationRecipients);
-        Assert.Equal(
-            [" primary@example.com ", "duplicate@example.com", "duplicate@example.com"],
-            envelope.Workflow?.NotificationRecipients?.ToEmailAddresses);
-        Assert.Equal(
-            [" copied-first@example.com ", "copied-second@example.com"],
-            envelope.Workflow?.NotificationRecipients?.CcEmailAddresses);
+        Assert.Null(envelope.Workflow?.NotificationRecipients);
+        var copiedUser = Assert.Single(
+            executionService.LastRequest?.NotificationInput?.RecipientInputs["selectedCcUsers"] ?? []);
+        Assert.Equal("cc-1", copiedUser.UserId);
+        Assert.Equal(" opaque-address-value ", copiedUser.EmailAddress);
+        Assert.Equal("Copied User", copiedUser.DisplayName);
         Assert.Equal("trusted-user", envelope.Actor?.UserId);
         Assert.Equal("Trusted User", envelope.Actor?.DisplayName);
         Assert.Equal(["Maker"], envelope.Actor?.Roles);
@@ -99,13 +98,15 @@ public sealed class WorkflowActionServiceTests
             WorkflowInstanceId = " WF-PT-1001 ",
             ActionKey = " CheckerSendToTradingDesk ",
             AssignedRoleKey = " TradingDeskTaxable ",
-            IdempotencyKey = " application-action-1 ",
-            SlaInput = new WorkflowSlaInput { TargetDate = new DateOnly(2030, 1, 20) },
-            NotificationContext = new Dictionary<string, string?>
+            SlaTargetDate = new DateOnly(2030, 1, 20),
+            Notification = new WorkflowNotificationRequest
             {
-                ["submitterDisplayName"] = " Kollipara, Kartheek ",
-                ["deskName"] = "Taxable",
-                ["emptyValue"] = " "
+                TemplateData = new Dictionary<string, string?>
+                {
+                    ["submitterDisplayName"] = " Kollipara, Kartheek ",
+                    ["deskName"] = "Taxable",
+                    ["emptyValue"] = " "
+                }
             }
         });
 
@@ -123,9 +124,12 @@ public sealed class WorkflowActionServiceTests
         Assert.Equal("CheckerSendToTradingDesk", envelope.Workflow?.ActionKey);
         Assert.Equal("TradingDeskTaxable", envelope.Workflow?.AssignedRoleKey);
         Assert.Equal(new DateOnly(2030, 1, 20), envelope.Workflow?.SlaInput?.TargetDate);
-        Assert.Equal("Kollipara, Kartheek", envelope.Workflow?.NotificationContext?["submitterDisplayName"]);
-        Assert.Equal("Taxable", envelope.Workflow?.NotificationContext?["deskName"]);
-        Assert.False(envelope.Workflow?.NotificationContext?.ContainsKey("emptyValue") ?? true);
+        Assert.Null(envelope.Workflow?.NotificationContext);
+        Assert.Equal(
+            " Kollipara, Kartheek ",
+            executionService.LastRequest.NotificationInput?.TemplateData["submitterDisplayName"]);
+        Assert.Equal("Taxable", executionService.LastRequest.NotificationInput?.TemplateData["deskName"]);
+        Assert.Equal(" ", executionService.LastRequest.NotificationInput?.TemplateData["emptyValue"]);
         Assert.Equal("checker1", envelope.Actor?.UserId);
         Assert.Equal("Checker One", envelope.Actor?.DisplayName);
         Assert.Equal(["Checker"], envelope.Actor?.Roles);
@@ -141,9 +145,10 @@ public sealed class WorkflowActionServiceTests
         Assert.Null(envelope.Workflow?.ActionReason);
         Assert.False(string.IsNullOrWhiteSpace(envelope.Request?.ClientActionId));
         Assert.Equal(envelope.Request?.ClientActionId, envelope.Request?.CorrelationId);
-        Assert.Equal("application-action-1", envelope.Workflow?.IdempotencyKey);
+        Assert.False(string.IsNullOrWhiteSpace(envelope.Workflow?.IdempotencyKey));
+        Assert.Equal(envelope.Request?.ClientActionId, envelope.Workflow?.IdempotencyKey);
         Assert.Equal(
-            new CanonicalRequestHasher().ComputeHash(envelope),
+            new CanonicalRequestHasher().ComputeHash(envelope, executionService.LastRequest.NotificationInput),
             executionService.LastRequest.RequestHash);
         Assert.Equal("WF-PT-1001", dispatcher.LastWorkflowInstanceId);
         Assert.Equal("api-action-1", dispatcher.LastCorrelationId);
@@ -179,11 +184,7 @@ public sealed class WorkflowActionServiceTests
         {
             WorkflowInstanceId = "WF-PT-1001",
             ActionKey = null,
-            IdempotencyKey = "application-save-2",
-            SlaInput = new WorkflowSlaInput
-            {
-                TargetDate = new DateOnly(2030, 1, 25)
-            }
+            SlaTargetDate = new DateOnly(2030, 1, 25)
         });
 
         Assert.Null(executionService.LastRequest);
@@ -191,7 +192,10 @@ public sealed class WorkflowActionServiceTests
         Assert.Equal("WF-PT-1001", synchronizationService.LastRequest.WorkflowInstanceId);
         Assert.Null(synchronizationService.LastRequest.WorkflowTaskId);
         Assert.Equal(new DateOnly(2030, 1, 25), synchronizationService.LastRequest.TargetDate);
-        Assert.Equal("application-save-2", synchronizationService.LastRequest.IdempotencyKey);
+        Assert.False(string.IsNullOrWhiteSpace(synchronizationService.LastRequest.IdempotencyKey));
+        Assert.Equal(
+            synchronizationService.LastRequest.CorrelationId,
+            synchronizationService.LastRequest.IdempotencyKey);
         Assert.Equal("maker1", synchronizationService.LastRequest.ActorUserId);
         Assert.Equal("SlaSynchronized", response.Result.ActionResult.ResultCode);
         Assert.Equal(string.Empty, response.Result.ActionResult.ActionKey);
@@ -352,7 +356,7 @@ public sealed class WorkflowActionServiceTests
     }
 
     [Fact]
-    public void ExecuteWorkflowActionMergesDuplicateNotificationContextKeysAfterTrim()
+    public void ExecuteWorkflowActionProvidesEmptyNotificationInputWhenNotificationIsOmitted()
     {
         var executionService = new RecordingWorkflowExecutionService(new WorkflowActionResultEnvelope
         {
@@ -374,21 +378,12 @@ public sealed class WorkflowActionServiceTests
         service.ExecuteWorkflowAction(new DefaultHttpContext(), new WorkflowActionRequest
         {
             WorkflowInstanceId = "WF-PT-1001",
-            ActionKey = "SaveDraft",
-            NotificationContext = new Dictionary<string, string?>
-            {
-                ["deskName"] = "Original",
-                [" deskName "] = " Taxable ",
-                ["emptyValue"] = " "
-            }
+            ActionKey = "SaveDraft"
         });
 
-        var context = Assert.IsType<Dictionary<string, string?>>(
-            executionService.LastRequest?.Normalized.Envelope.Workflow?.NotificationContext);
-        var item = Assert.Single(context);
-        Assert.Equal("deskName", item.Key);
-        Assert.Equal("Taxable", item.Value);
-        Assert.False(context.ContainsKey("emptyValue"));
+        Assert.NotNull(executionService.LastRequest?.NotificationInput);
+        Assert.Empty(executionService.LastRequest.NotificationInput.RecipientInputs);
+        Assert.Empty(executionService.LastRequest.NotificationInput.TemplateData);
     }
 
     private static WorkflowActionService CreateService(
