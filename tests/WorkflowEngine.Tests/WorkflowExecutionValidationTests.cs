@@ -477,6 +477,86 @@ public sealed class WorkflowExecutionValidationTests
         Assert.Equal("Success", result.Result.ResultCode);
     }
 
+    [Theory]
+    [InlineData("BdrmTradeFulfilled")]
+    [InlineData("BdrmTradeNotExecutedProperly")]
+    public void BdrmExitActionCompletesRecurringScheduleAndCancelsUndeliveredReminder(string actionKey)
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "BdrmClientServiceReview", "Active", 4);
+        AddTask(dbContext, "WF-PT-1001", "BdrmClientServiceReviewTask", "BDRMClientService");
+        dbContext.SaveChanges();
+        var task = dbContext.WorkflowTasks.Single();
+        var schedule = AddBdrmSchedule(dbContext, task);
+        AddPendingReminder(dbContext, task, schedule);
+        dbContext.SaveChanges();
+
+        var envelope = Envelope(
+            expectedState: "BdrmClientServiceReview",
+            expectedVersion: 4,
+            actionKey: actionKey,
+            roles: ["BDRMClientService"]);
+        envelope.Workflow!.ExpectedCurrentTaskKey = "BdrmClientServiceReviewTask";
+
+        var result = CreateService(dbContext).Execute(Request(envelope));
+
+        Assert.True(result.Result.Success);
+        Assert.Equal("Completed", schedule.Status);
+        Assert.Null(schedule.NextReminderAtUtc);
+        var reminder = dbContext.NotificationOutbox
+            .Single(row => row.WorkflowTaskSlaScheduleId == schedule.Id);
+        Assert.Equal("Cancelled", reminder.Status);
+        Assert.Equal("WorkflowTaskCompleted", reminder.CancellationReason);
+    }
+
+    [Fact]
+    public void TradingReexecutionCreatesFreshBdrmRecurringSchedule()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "BdrmClientServiceReview", "Active", 4);
+        AddTask(dbContext, "WF-PT-1001", "BdrmClientServiceReviewTask", "BDRMClientService");
+        dbContext.SaveChanges();
+        var oldTask = dbContext.WorkflowTasks.Single();
+        var oldSchedule = AddBdrmSchedule(dbContext, oldTask);
+        dbContext.SaveChanges();
+        var service = CreateService(dbContext);
+
+        var reject = Envelope(
+            expectedState: "BdrmClientServiceReview",
+            expectedVersion: 4,
+            actionKey: "BdrmTradeNotExecutedProperly",
+            roles: ["BDRMClientService"]);
+        reject.Request!.ClientActionId = "client-bdrm-reject";
+        reject.Workflow!.IdempotencyKey = "idem-bdrm-reject";
+        reject.Workflow.ExpectedCurrentTaskKey = "BdrmClientServiceReviewTask";
+        Assert.True(service.Execute(Request(reject)).Result.Success);
+
+        var reexecute = Envelope(
+            expectedState: "TradingDeskRework",
+            expectedVersion: 5,
+            actionKey: "TradingTradeExecuted",
+            roles: ["TradingDesk"]);
+        reexecute.Request!.ClientActionId = "client-trading-reexecute";
+        reexecute.Workflow!.IdempotencyKey = "idem-trading-reexecute";
+        reexecute.Workflow.ExpectedCurrentTaskKey = "TradingDeskReworkTask";
+        Assert.True(service.Execute(Request(reexecute)).Result.Success);
+
+        var newTask = dbContext.WorkflowTasks.Single(row =>
+            row.TaskKey == "BdrmClientServiceReviewTask"
+            && row.Status == "Pending");
+        var newSchedule = dbContext.WorkflowTaskSlaSchedules.Single(row =>
+            row.WorkflowTaskId == newTask.Id
+            && row.Status == "Active");
+
+        Assert.Equal("Completed", oldSchedule.Status);
+        Assert.NotEqual(oldSchedule.Id, newSchedule.Id);
+        Assert.Equal(Now.AddMinutes(2), newSchedule.OverdueAtUtc);
+        Assert.Equal(Now.AddMinutes(2), newSchedule.NextReminderAtUtc);
+        Assert.Equal(new TimeOnly(9, 0), newSchedule.ReminderLocalTime);
+        Assert.Equal("America/New_York", newSchedule.TimeZoneId);
+        Assert.Equal(1, newSchedule.RecurrenceIntervalDays);
+    }
+
     [Fact]
     public void AmbiguousRoleMatchRequiresMultipleMatchingTransitionRoles()
     {
@@ -619,6 +699,60 @@ public sealed class WorkflowExecutionValidationTests
             TaskKey = taskKey,
             AssignedRoleKey = assignedRole,
             Status = "Pending",
+            CreatedAtUtc = Now
+        });
+    }
+
+    private static WorkflowTaskSlaSchedule AddBdrmSchedule(
+        WorkflowDbContext dbContext,
+        WorkflowTask task)
+    {
+        var schedule = new WorkflowTaskSlaSchedule
+        {
+            WorkflowTaskId = task.Id,
+            ScheduleVersion = 1,
+            SlaPolicyKey = "BdrmClientServiceReviewSla",
+            OverdueAtUtc = Now.AddMinutes(2),
+            NextReminderAtUtc = Now.AddMinutes(2),
+            CalculationMode = "DurationFromTaskCreation",
+            ReminderLocalTime = new TimeOnly(9, 0),
+            TimeZoneId = "America/New_York",
+            OverdueStartOffsetDays = 0,
+            RecurrenceIntervalDays = 1,
+            OverdueNotificationRouteKey = "RouteSlaTaskOverdue",
+            Status = "Active",
+            CreatedAtUtc = Now,
+            CreatedByUserId = "system",
+            CorrelationId = "corr-bdrm-sla",
+            IdempotencyKey = "idem-bdrm-sla"
+        };
+        dbContext.WorkflowTaskSlaSchedules.Add(schedule);
+        dbContext.SaveChanges();
+        return schedule;
+    }
+
+    private static void AddPendingReminder(
+        WorkflowDbContext dbContext,
+        WorkflowTask task,
+        WorkflowTaskSlaSchedule schedule)
+    {
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = task.WorkflowInstanceId,
+            WorkflowTaskId = task.Id,
+            WorkflowTaskSlaScheduleId = schedule.Id,
+            SlaOccurrenceDate = new DateOnly(2030, 1, 16),
+            SlaReminderKind = "Overdue",
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-1001",
+            NotificationType = "SlaTaskOverdue",
+            NotificationRecipientsJson = "{\"toEmailAddresses\":[\"bdrm@example.test\"],\"ccEmailAddresses\":[]}",
+            Subject = "Overdue",
+            Body = "body",
+            HtmlBody = "<p>body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = "corr-pending-bdrm-reminder",
             CreatedAtUtc = Now
         });
     }
