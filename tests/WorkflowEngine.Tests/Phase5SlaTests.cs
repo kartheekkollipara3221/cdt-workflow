@@ -41,6 +41,7 @@ public sealed class Phase5SlaTests
             WorkflowInstanceId = "WF-PT-2",
             WorkflowTaskId = alreadyQueued.Id,
             WorkflowTaskSlaScheduleId = dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == alreadyQueued.Id).Id,
+            SlaOccurrenceAtUtc = alreadyQueued.DueAtUtc,
             SlaOccurrenceDate = DateOnly.FromDateTime(alreadyQueued.DueAtUtc!.Value.UtcDateTime),
             SlaReminderKind = "Overdue",
             BusinessObjectType = "PortfolioTrade",
@@ -111,6 +112,59 @@ public sealed class Phase5SlaTests
     }
 
     [Fact]
+    public async Task RunSlaMinuteRecurrenceQueuesSameDaySlotsAndSkipsMissedOccurrences()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-CHECKER-RECUR", "PT-CHECKER-RECUR", "Active", versionId);
+        var task = AddTask(
+            dbContext,
+            "WF-PT-CHECKER-RECUR",
+            "CheckerReviewTask",
+            "Checker",
+            Now,
+            recurrenceIntervalMinutes: 2);
+        dbContext.SaveChanges();
+        var service = new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator());
+
+        var first = await service.RunAsync(new(Now), CancellationToken.None);
+        var duplicate = await service.RunAsync(new(Now), CancellationToken.None);
+        var second = await service.RunAsync(new(Now.AddMinutes(2)), CancellationToken.None);
+        var delayed = await service.RunAsync(new(Now.AddMinutes(11)), CancellationToken.None);
+        var delayedDuplicate = await service.RunAsync(new(Now.AddMinutes(11)), CancellationToken.None);
+
+        Assert.Single(first.QueuedNotifications);
+        Assert.Empty(duplicate.QueuedNotifications);
+        Assert.Single(second.QueuedNotifications);
+        Assert.Single(delayed.QueuedNotifications);
+        Assert.Empty(delayedDuplicate.QueuedNotifications);
+
+        var reminders = dbContext.NotificationOutbox
+            .Where(row => row.WorkflowTaskId == task.Id && row.SlaReminderKind == "Overdue")
+            .OrderBy(row => row.SlaOccurrenceAtUtc)
+            .ToArray();
+        Assert.Equal(3, reminders.Length);
+        Assert.All(reminders, row => Assert.Equal(new DateOnly(2030, 1, 15), row.SlaOccurrenceDate));
+        Assert.Equal(
+            [Now, Now.AddMinutes(2), Now.AddMinutes(10)],
+            reminders.Select(row => row.SlaOccurrenceAtUtc!.Value).ToArray());
+        Assert.Equal(3, reminders.Select(row => row.CorrelationId).Distinct(StringComparer.Ordinal).Count());
+        Assert.All(reminders, row =>
+        {
+            using var payload = JsonDocument.Parse(row.PayloadJson);
+            Assert.Equal(
+                row.SlaOccurrenceAtUtc!.Value.ToString("O"),
+                payload.RootElement.GetProperty("slaOccurrenceAtUtc").GetString());
+        });
+        Assert.Equal(
+            Now.AddMinutes(12),
+            dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == task.Id).NextReminderAtUtc);
+    }
+
+    [Fact]
     public async Task RunSlaDurationRecurrenceStartsAtDeadlineThenRunsDailyAtNineEastern()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
@@ -157,6 +211,9 @@ public sealed class Phase5SlaTests
         Assert.Equal(
             [new DateOnly(2030, 1, 15), new DateOnly(2030, 1, 16), new DateOnly(2030, 1, 19)],
             reminders.Select(row => row.SlaOccurrenceDate!.Value).ToArray());
+        Assert.Equal(
+            [Now.AddMinutes(-2), DateTimeOffset.Parse("2030-01-16T14:00:00Z"), DateTimeOffset.Parse("2030-01-19T14:00:00Z")],
+            reminders.Select(row => row.SlaOccurrenceAtUtc!.Value).ToArray());
         Assert.All(
             reminders,
             row => Assert.Equal(RecipientSnapshot, row.NotificationRecipientsJson));
@@ -341,6 +398,7 @@ public sealed class Phase5SlaTests
         string status = "Pending",
         bool storeNotificationSnapshot = true,
         string? notificationRecipientsJson = RecipientSnapshot,
+        int? recurrenceIntervalMinutes = null,
         int? recurrenceIntervalDays = null,
         TimeOnly? reminderLocalTime = null,
         string? timeZoneId = null)
@@ -383,6 +441,7 @@ public sealed class Phase5SlaTests
                 TimeZoneId = timeZoneId,
                 ReminderLocalTime = reminderLocalTime,
                 OverdueStartOffsetDays = 0,
+                RecurrenceIntervalMinutes = recurrenceIntervalMinutes,
                 RecurrenceIntervalDays = recurrenceIntervalDays,
                 DueNotificationRouteKey = null,
                 OverdueNotificationRouteKey = "RouteSlaTaskOverdue",

@@ -38,7 +38,7 @@ public sealed class RunSlaCommandHandler(
         {
             output.AppendLine(
                 CultureInfo.InvariantCulture,
-                $"[Queued {queued.ReminderKind}] #{queued.WorkflowTaskId} {queued.TaskKey} | {queued.AssignedRoleKey ?? "(unassigned)"} | occurrence {queued.OccurrenceDate:yyyy-MM-dd} | schedule {queued.WorkflowTaskSlaScheduleId} v{queued.ScheduleVersion} | overdue {FormatUtc(queued.DueAtUtc)} | notification {queued.NotificationOutboxId}");
+                $"[Queued {queued.ReminderKind}] #{queued.WorkflowTaskId} {queued.TaskKey} | {queued.AssignedRoleKey ?? "(unassigned)"} | occurrence {FormatUtc(queued.OccurrenceAtUtc)} | occurrence date {queued.OccurrenceDate:yyyy-MM-dd} | schedule {queued.WorkflowTaskSlaScheduleId} v{queued.ScheduleVersion} | overdue {FormatUtc(queued.DueAtUtc)} | notification {queued.NotificationOutboxId}");
         }
 
         foreach (var warning in result.Warnings)

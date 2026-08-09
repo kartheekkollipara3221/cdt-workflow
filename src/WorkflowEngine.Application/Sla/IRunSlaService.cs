@@ -23,5 +23,6 @@ public sealed record RunSlaQueuedNotification(
     long NotificationOutboxId,
     long WorkflowTaskSlaScheduleId,
     int ScheduleVersion,
+    DateTimeOffset OccurrenceAtUtc,
     DateOnly OccurrenceDate,
     string ReminderKind);

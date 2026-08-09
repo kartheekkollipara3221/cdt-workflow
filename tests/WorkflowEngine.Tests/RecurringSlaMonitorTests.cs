@@ -82,6 +82,7 @@ public sealed class RecurringSlaMonitorTests
         Assert.Equal(new DateOnly(2030, 1, 23), queued.OccurrenceDate);
         Assert.Equal("Overdue", queued.ReminderKind);
         var occurrence = Assert.Single(dbContext.NotificationOutbox);
+        Assert.Equal(DateTimeOffset.Parse("2030-01-23T14:00:00Z"), occurrence.SlaOccurrenceAtUtc);
         Assert.Equal(new DateOnly(2030, 1, 23), occurrence.SlaOccurrenceDate);
         Assert.Equal("Overdue", occurrence.SlaReminderKind);
         Assert.Equal(DateTimeOffset.Parse("2030-01-24T14:00:00Z"), schedule.NextReminderAtUtc);

@@ -88,7 +88,7 @@ public sealed class RunSlaService(
 
                 var exists = await dbContext.NotificationOutbox.AnyAsync(outbox =>
                     outbox.WorkflowTaskSlaScheduleId == schedule.Id
-                    && outbox.SlaOccurrenceDate == occurrence.Date
+                    && outbox.SlaOccurrenceAtUtc == occurrence.EligibleAtUtc
                     && outbox.SlaReminderKind == occurrence.Kind,
                     cancellationToken);
                 if (exists)
@@ -166,6 +166,7 @@ public sealed class RunSlaService(
                     WorkflowInstanceId = instance.WorkflowInstanceId,
                     WorkflowTaskId = task.Id,
                     WorkflowTaskSlaScheduleId = schedule.Id,
+                    SlaOccurrenceAtUtc = occurrence.EligibleAtUtc,
                     SlaOccurrenceDate = occurrence.Date,
                     SlaReminderKind = occurrence.Kind,
                     BusinessObjectType = instance.BusinessObjectType,
@@ -179,7 +180,7 @@ public sealed class RunSlaService(
                     HtmlBody = renderedHtmlBody.Rendered,
                     PayloadJson = JsonSerializer.Serialize(context),
                     Status = "Pending",
-                    CorrelationId = $"sla-{schedule.Id}-{occurrence.Date:yyyyMMdd}-{occurrence.Kind}",
+                    CorrelationId = $"sla-{schedule.Id}-{occurrence.EligibleAtUtc.UtcTicks}-{occurrence.Kind}",
                     CreatedAtUtc = now
                 };
                 dbContext.NotificationOutbox.Add(outbox);
@@ -196,6 +197,7 @@ public sealed class RunSlaService(
                     outbox.Id,
                     schedule.Id,
                     schedule.ScheduleVersion,
+                    occurrence.EligibleAtUtc,
                     occurrence.Date,
                     occurrence.Kind));
             }
@@ -221,6 +223,19 @@ public sealed class RunSlaService(
     {
         if (schedule.CalculationMode == "DurationFromTaskCreation")
         {
+            if (schedule.RecurrenceIntervalMinutes is > 0)
+            {
+                var next = schedule.NextReminderAtUtc ?? schedule.OverdueAtUtc;
+                var occurrenceAtUtc = ResolveLatestMinuteOccurrence(
+                    next,
+                    now,
+                    schedule.RecurrenceIntervalMinutes.Value);
+                return new SlaOccurrence(
+                    DateOnly.FromDateTime(occurrenceAtUtc.UtcDateTime),
+                    "Overdue",
+                    occurrenceAtUtc);
+            }
+
             if (schedule.RecurrenceIntervalDays is null)
             {
                 return new SlaOccurrence(
@@ -276,6 +291,13 @@ public sealed class RunSlaService(
     {
         if (schedule.CalculationMode == "DurationFromTaskCreation")
         {
+            if (schedule.RecurrenceIntervalMinutes is > 0)
+            {
+                schedule.NextReminderAtUtc = occurrence.EligibleAtUtc.AddMinutes(
+                    schedule.RecurrenceIntervalMinutes.Value);
+                return;
+            }
+
             if (schedule.RecurrenceIntervalDays is null)
             {
                 schedule.NextReminderAtUtc = null;
@@ -389,6 +411,7 @@ public sealed class RunSlaService(
         context["overdueAtUtc"] = schedule.OverdueAtUtc.ToString("O");
         context["overdueDateDisplay"] = FormatFixedUtcMinusFiveDate(schedule.OverdueAtUtc);
         context["reminderQueuedAtUtc"] = processedAtUtc.ToString("O");
+        context["slaOccurrenceAtUtc"] = occurrence.EligibleAtUtc.ToString("O");
         context["slaOccurrenceDate"] = occurrence.Date.ToString("yyyy-MM-dd");
         context["slaReminderKind"] = occurrence.Kind;
         return true;
@@ -399,6 +422,17 @@ public sealed class RunSlaService(
         return value
             .ToOffset(FixedUtcMinusFiveOffset)
             .ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
+    }
+
+    private static DateTimeOffset ResolveLatestMinuteOccurrence(
+        DateTimeOffset next,
+        DateTimeOffset now,
+        int intervalMinutes)
+    {
+        var intervalTicks = TimeSpan.FromMinutes(intervalMinutes).Ticks;
+        var elapsedTicks = (now - next).Ticks;
+        var completedIntervals = elapsedTicks / intervalTicks;
+        return next.AddTicks(completedIntervals * intervalTicks);
     }
 
     private static bool IsSlaOutboxUniqueViolation(DbUpdateException exception)
