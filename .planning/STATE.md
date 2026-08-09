@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 status: milestone_complete
-last_updated: "2026-05-08T16:45:00.000Z"
+last_updated: "2026-08-09T16:20:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 6
@@ -29,6 +29,8 @@ See: `.planning/PROJECT.md` and repository-root `PROJECT.md`.
 **Core value:** A user can run the console, pass a standard workflow action JSON envelope, and see SQL metadata drive workflow state, tasks, notifications, SLA, idempotency, concurrency, and audit without Portfolio Trade logic embedded in the engine.
 
 **Current focus:** Phase 06 — Samples, Tests, and Demo
+
+Last activity: 2026-08-09 - Completed quick task 260809-f8m: Optimize the UI-facing Workflow Start and Action envelope
 
 ## Current Position
 
@@ -71,6 +73,12 @@ Phase 6 is signed off. The v1 milestone is ready for milestone completion or rel
 | May 7, 2026 | Completed Phase 4: Workflow Engine. |
 | May 7, 2026 | Completed Phase 5: SLA Monitor and Notification Senders. |
 | May 8, 2026 | Completed Phase 6: Samples, Tests, and Demo, including fresh-clone sign-off. |
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260809-f8m | Optimize the UI-facing Workflow Start and Action envelope | 2026-08-09 | 9317013 | [260809-f8m-optimize-the-ui-facing-workflowstart-and](./quick/260809-f8m-optimize-the-ui-facing-workflowstart-and/) |
 
 ## Open Issues
 
