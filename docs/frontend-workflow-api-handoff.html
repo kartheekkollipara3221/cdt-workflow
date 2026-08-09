@@ -5,1173 +5,162 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Frontend Workflow API Handoff</title>
   <style>
-    :root {
-      color-scheme: light;
-      --ink: #17212b;
-      --muted: #52606d;
-      --line: #d8e2ec;
-      --soft: #f5f8fb;
-      --panel: #ffffff;
-      --accent: #0f6b6e;
-      --accent-soft: #e3f5f4;
-      --warn: #7a4a00;
-      --warn-soft: #fff4db;
-      --danger: #8a1f11;
-      --danger-soft: #fdecea;
-      --ok: #17613a;
-      --ok-soft: #e7f6ed;
-      --code-bg: #17212b;
-      --code-ink: #edf2f7;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
-      line-height: 1.55;
-      color: var(--ink);
-      background: #fbfcfd;
-    }
-
-    header {
-      border-bottom: 1px solid var(--line);
-      background: #ffffff;
-    }
-
-    main,
-    .wrap {
-      width: min(1180px, calc(100% - 32px));
-      margin: 0 auto;
-    }
-
-    .hero {
-      padding: 32px 0 22px;
-    }
-
-    h1,
-    h2,
-    h3 {
-      line-height: 1.2;
-      letter-spacing: 0;
-      color: #102a43;
-    }
-
-    h1 {
-      margin: 0 0 10px;
-      font-size: 34px;
-    }
-
-    h2 {
-      margin: 34px 0 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--line);
-      font-size: 24px;
-    }
-
-    h3 {
-      margin: 24px 0 10px;
-      font-size: 18px;
-    }
-
-    p {
-      margin: 0 0 12px;
-    }
-
-    code {
-      padding: 1px 4px;
-      border-radius: 4px;
-      background: #edf2f7;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 0.95em;
-    }
-
-    pre {
-      margin: 10px 0 16px;
-      padding: 14px;
-      overflow-x: auto;
-      border-radius: 8px;
-      background: var(--code-bg);
-      color: var(--code-ink);
-    }
-
-    pre code {
-      padding: 0;
-      border-radius: 0;
-      background: transparent;
-      color: inherit;
-      font-size: 13px;
-    }
-
-    table {
-      width: 100%;
-      margin: 12px 0 18px;
-      border-collapse: collapse;
-      border: 1px solid var(--line);
-      background: var(--panel);
-    }
-
-    th,
-    td {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-      text-align: left;
-    }
-
-    th {
-      background: #eef3f8;
-      color: #243b53;
-      font-size: 13px;
-    }
-
-    tr:last-child td {
-      border-bottom: 0;
-    }
-
-    ul,
-    ol {
-      margin-top: 8px;
-      padding-left: 24px;
-    }
-
-    li {
-      margin: 6px 0;
-    }
-
-    nav.toc {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 8px;
-      margin: 20px 0 30px;
-    }
-
-    nav.toc a {
-      display: block;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      color: #183b56;
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .lede {
-      max-width: 900px;
-      color: var(--muted);
-      font-size: 17px;
-    }
-
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 16px;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      padding: 4px 10px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--soft);
-      color: #334e68;
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .callout {
-      margin: 14px 0;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-    }
-
-    .callout.info {
-      border-color: #9bd7d5;
-      background: var(--accent-soft);
-    }
-
-    .callout.warn {
-      border-color: #f4c66d;
-      background: var(--warn-soft);
-    }
-
-    .callout.danger {
-      border-color: #f4aaa3;
-      background: var(--danger-soft);
-    }
-
-    .callout.ok {
-      border-color: #9bd3b2;
-      background: var(--ok-soft);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 12px;
-      margin: 12px 0;
-    }
-
-    .card {
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-    }
-
-    .label {
-      display: inline-block;
-      margin-bottom: 6px;
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .small {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    @media (max-width: 760px) {
-      h1 {
-        font-size: 28px;
-      }
-
-      th,
-      td {
-        padding: 8px;
-      }
-    }
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1050px; margin: auto; padding: 32px; color: #172233; }
+    h1, h2, h3 { color: #173f69; line-height: 1.2; }
+    pre { overflow: auto; padding: 16px; border-radius: 8px; background: #0f172a; color: #e2e8f0; }
+    code { font-family: ui-monospace, monospace; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid #cad4e0; padding: 10px; text-align: left; vertical-align: top; }
+    .important { padding: 14px; background: #eef7ff; border-left: 5px solid #2673c9; }
   </style>
 </head>
 <body>
-  <header>
-    <div class="wrap hero">
-      <h1>Frontend Workflow API Handoff</h1>
-      <p class="lede">
-        This handoff explains the current reference API in <code>workflow-api/WorkflowEngine.WorkflowApi.slnx</code>.
-        It is for a frontend developer who needs to open a workflow-backed form, render workflow actions,
-        call the workflow endpoints, and run the full Portfolio Trade happy path.
-      </p>
-      <div class="meta">
-        <span class="pill">Updated: 2026-06-09</span>
-        <span class="pill">Reference host: workflow-api</span>
-        <span class="pill">Base URL: http://localhost:5058</span>
-        <span class="pill">Workflow key: PortfolioTrade</span>
-        <span class="pill">JSON model fields: PascalCase</span>
-      </div>
-    </div>
-  </header>
+  <h1>Frontend Workflow API Handoff</h1>
+  <p>This guide reflects the optimized public DTOs in the live reference API.</p>
 
-  <main>
-    <section id="application-sla">
-      <h2>Application-anchored SLA integration</h2>
-      <div class="callout info">
-        <p>
-          The frontend/application maps its business date to generic <code>SlaInput.TargetDate</code> and forwards the
-          current value on the existing workflow request. It does not detect whether the value changed, calculate an
-          SLA instant, or call a second rescheduling API. The workflow engine compares the versioned schedule.
-        </p>
-      </div>
-      <pre><code>{
-  "WorkflowInstanceId": "WF-PT-1001",
-  "ActionKey": "CheckerSendToTradingDesk",
-  "AssignedRoleKey": "TradingDeskTaxable",
-  "IdempotencyKey": "checker-to-desk-1001",
-  "SlaInput": { "TargetDate": "2030-01-20" },
-  "NotificationContext": {},
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["desk@example.test"],
-    "CcEmailAddresses": []
-  }
-}</code></pre>
-      <p>For a later save where no workflow transition is needed:</p>
-      <pre><code>{
-  "WorkflowInstanceId": "WF-PT-1001",
-  "IdempotencyKey": "target-date-save-1001-20300125",
-  "SlaInput": { "TargetDate": "2030-01-25" }
-}</code></pre>
-      <p>
-        <code>SlaInput</code> accepts only <code>TargetDate</code>. Never send duration, timezone, reminder time,
-        recurrence, overdue offset, routes, or <code>DueAtUtc</code>. Those values are versioned metadata. The seeded
-        Trading Desk rule is 09:00 Eastern on the target date, overdue the following calendar date, then daily
-        including weekends until task completion.
-      </p>
-    </section>
+  <h2>TypeScript request types</h2>
+  <pre><code>type WorkflowRecipientInput = {
+  userId?: string | null;
+  emailAddress?: string | null;
+  displayName?: string | null;
+};
 
-    <nav class="toc" aria-label="Table of contents">
-      <a href="#quick-start">1. Quick Start</a>
-      <a href="#headers">2. Required Headers</a>
-      <a href="#json-casing">3. JSON Casing</a>
-      <a href="#endpoints">4. Endpoint Contracts</a>
-      <a href="#frontend-rules">5. Frontend Rules</a>
-      <a href="#happy-path">6. Full Happy Path Demo</a>
-      <a href="#response-fields">7. Response Fields To Use</a>
-      <a href="#errors">8. Errors</a>
-    </nav>
+type WorkflowNotificationInput = {
+  recipientInputs?: Record&lt;string, WorkflowRecipientInput[] | null&gt;;
+  templateData?: Record&lt;string, string | null&gt;;
+};
 
-    <section id="quick-start">
-      <h2>1. Quick Start</h2>
-      <p>
-        Run this against the reference ASP.NET Core host under <code>workflow-api/</code>. The current local
-        <code>http</code> launch profile uses <code>http://localhost:5058</code> and exposes Swagger UI at the root.
-      </p>
+type WorkflowStartRequest = {
+  workflowKey: string;
+  businessObjectId: string;
+  actionKey?: string | null;
+  slaTargetDate?: string | null; // yyyy-MM-dd
+  notification?: WorkflowNotificationInput | null;
+};
 
-      <pre><code>dotnet run --project workflow-api\src\WorkflowEngine.WorkflowApi --launch-profile http</code></pre>
+type WorkflowActionRequest = {
+  workflowInstanceId: string;
+  actionKey?: string | null;
+  assignedRoleKey?: string | null;
+  slaTargetDate?: string | null; // yyyy-MM-dd
+  notification?: WorkflowNotificationInput | null;
+};</code></pre>
 
-      <div class="callout warn">
-        <strong>Notification delivery matters for the demo.</strong>
-        The <code>http</code> launch profile sets <code>Notifications__Sender=Smtp</code> with
-        <code>Smtp__Host=localhost</code> and <code>Smtp__Port=3025</code>. Start smtp4dev on port 3025 before
-        running action steps that queue email, or override <code>Notifications__Sender=NoOp</code> for a UI-only
-        smoke test.
-      </div>
+  <h2>Actor transport</h2>
+  <pre><code>X-Workflow-UserId: maker1
+X-Workflow-Roles: Maker
+X-Workflow-DisplayName: Maker One</code></pre>
+  <p>These headers model a trusted upstream identity adapter. Do not copy user or role values from editable body fields.</p>
 
-      <div class="grid">
-        <div class="card">
-          <span class="label">API owns</span>
-          <p>Workflow state, tasks, SLA state, notification outbox rows, audit rows, and workflow context.</p>
-        </div>
-        <div class="card">
-          <span class="label">API does not own</span>
-          <p>Form field data, form validation, user lookup, business object creation, or UI button rendering.</p>
-        </div>
-        <div class="card">
-          <span class="label">Frontend reads</span>
-          <p><code>result.workflowContext.AvailableActions</code> to decide which workflow buttons to show.</p>
-        </div>
-      </div>
-    </section>
+  <h2>Starting the workflow</h2>
+  <pre><code>POST /v1/WorkflowStart
+Content-Type: application/json
 
-    <section id="headers">
-      <h2>2. Required Headers</h2>
-      <p>
-        The reference API uses trusted actor headers. They are temporary integration headers, not a permanent
-        authentication model.
-      </p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Header</th>
-            <th>Required</th>
-            <th>Example</th>
-            <th>Meaning</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>X-Workflow-UserId</code></td>
-            <td>Yes</td>
-            <td><code>maker1</code></td>
-            <td>User identifier recorded as workflow evidence.</td>
-          </tr>
-          <tr>
-            <td><code>X-Workflow-Roles</code></td>
-            <td>Yes</td>
-            <td><code>Maker</code>, <code>Checker</code>, <code>TradingDesk</code>, <code>BDRMClientService</code></td>
-            <td>Comma- or semicolon-separated workflow roles used for metadata authorization.</td>
-          </tr>
-          <tr>
-            <td><code>X-Workflow-DisplayName</code></td>
-            <td>No</td>
-            <td><code>Maker One</code></td>
-            <td>Friendly actor name. If omitted, the API uses <code>X-Workflow-UserId</code>.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="callout info">
-        For Trading Desk actions, send <code>X-Workflow-Roles: TradingDesk</code>. The <code>AssignedRoleKey</code>
-        field selects the specific desk task recipient such as <code>TradingDeskTaxable</code>; the actor action
-        itself is still authorized by the broad <code>TradingDesk</code> role.
-      </div>
-    </section>
-
-    <section id="json-casing">
-      <h2>3. JSON Casing</h2>
-      <p>
-        The current reference API sets <code>JsonSerializerOptions.PropertyNamingPolicy = null</code>. Use PascalCase
-        for model fields. The top-level wrapper names <code>result</code>, <code>actionResult</code>, and
-        <code>workflowContext</code> are explicitly configured as lower-case names.
-      </p>
-
-      <pre><code>{
-  "result": {
-    "actionResult": {
-      "Success": true,
-      "ResultCode": "Success",
-      "WorkflowInstanceId": "WF-PT-FE-1001"
+{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectId": "PT-FE-1001",
+  "actionKey": "SubmitForChecker",
+  "notification": {
+    "recipientInputs": {
+      "originalMaker": [
+        {
+          "userId": "maker1",
+          "emailAddress": "maker@example.test",
+          "displayName": "Maker One"
+        }
+      ],
+      "selectedCcUsers": []
     },
-    "workflowContext": {
-      "Workflow": {
-        "CurrentState": "CheckerReview"
-      }
+    "templateData": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Maker One",
+      "tradeLink": "https://example.test/trades/PT-FE-1001"
     }
   }
 }</code></pre>
-    </section>
+  <p>Persist the returned <code>workflowInstanceId</code> with the business record. Use it for context reads and all later actions.</p>
 
-    <section id="endpoints">
-      <h2>4. Endpoint Contracts</h2>
+  <h2>Opening or refreshing the form</h2>
+  <pre><code>GET /v1/WorkflowContext?workflowInstanceId=WF-PT-FE-1001</code></pre>
+  <p>
+    Render buttons from <code>result.workflowContext.availableActions</code>. Submit the selected
+    <code>actionKey</code>. Do not infer or submit destination state.
+  </p>
 
-      <h3>POST /v1/WorkflowStart</h3>
-      <p>
-        Starts one workflow instance for a business object. For the demo path, use
-        <code>InitialActionKey = SubmitForChecker</code> so the first call represents Maker submit.
-      </p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Body field</th>
-            <th>Required</th>
-            <th>Example</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>WorkflowKey</code></td>
-            <td>Yes</td>
-            <td><code>PortfolioTrade</code></td>
-            <td>Seeded workflow definition key.</td>
-          </tr>
-          <tr>
-            <td><code>BusinessObjectType</code></td>
-            <td>Yes</td>
-            <td><code>PortfolioTrade</code></td>
-            <td>Business object type supplied by the calling app.</td>
-          </tr>
-          <tr>
-            <td><code>BusinessObjectId</code></td>
-            <td>Yes</td>
-            <td><code>PT-FE-1001</code></td>
-            <td>Must be unique for each demo run. The generated workflow instance id is <code>WF-{BusinessObjectId}</code>.</td>
-          </tr>
-          <tr>
-            <td><code>InitialActionKey</code></td>
-            <td>No</td>
-            <td><code>SubmitForChecker</code></td>
-            <td>When present, starts the workflow and immediately executes the first metadata-valid action.</td>
-          </tr>
-          <tr>
-            <td><code>NotificationContext</code></td>
-            <td>Only when the action queues a templated notification</td>
-            <td>Dictionary of string keys and values</td>
-            <td>Blank keys and blank values are ignored. Keys and values are trimmed.</td>
-          </tr>
-          <tr>
-            <td><code>NotificationRecipients</code></td>
-            <td>When the initial action creates a task/notification</td>
-            <td>Ordered <code>ToEmailAddresses</code> and <code>CcEmailAddresses</code> arrays</td>
-            <td>The caller selects and validates addresses; the workflow API preserves values, order, whitespace, and duplicates.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>GET /v1/WorkflowContext</h3>
-      <p>
-        Reads the workflow state for form-open or after-action refresh. The frontend should call this with the
-        currently logged-in actor's workflow headers.
-      </p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Query field</th>
-            <th>Required</th>
-            <th>Example</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>workflowInstanceId</code></td>
-            <td>Yes</td>
-            <td><code>WF-PT-FE-1001</code></td>
-            <td>Returned by <code>WorkflowStart</code> and every action response.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>POST /v1/WorkflowAction</h3>
-      <p>
-        Executes one workflow action on an existing workflow instance. This endpoint is workflow-only. It does not
-        accept or persist form section payload data.
-      </p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Body field</th>
-            <th>Required</th>
-            <th>Example</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>WorkflowInstanceId</code></td>
-            <td>Yes</td>
-            <td><code>WF-PT-FE-1001</code></td>
-            <td>Workflow instance to move.</td>
-          </tr>
-          <tr>
-            <td><code>ActionKey</code></td>
-            <td>Yes for a workflow transition; omit only for SLA-only synchronization</td>
-            <td><code>CheckerReturnToMaker</code></td>
-            <td>Must be one of the actor's current <code>AvailableActions</code>.</td>
-          </tr>
-          <tr>
-            <td><code>AssignedRoleKey</code></td>
-            <td>Only for dynamic Trading Desk assignment</td>
-            <td><code>TradingDeskTaxable</code></td>
-            <td>Required when <code>CheckerSendToTradingDesk</code> creates <code>TradingDeskReviewTask</code>.</td>
-          </tr>
-          <tr>
-            <td><code>IdempotencyKey</code></td>
-            <td>Optional</td>
-            <td><code>target-date-save-1001-20300125</code></td>
-            <td>Preserved when supplied; otherwise the workflow layer generates one.</td>
-          </tr>
-          <tr>
-            <td><code>SlaInput.TargetDate</code></td>
-            <td>Required for an application-target-date task or SLA-only synchronization</td>
-            <td><code>2030-01-20</code></td>
-            <td>The only caller-owned SLA field. Current application value is forwarded; engine owns comparison/rescheduling.</td>
-          </tr>
-          <tr>
-            <td><code>NotificationContext</code></td>
-            <td>Only when the action queues a templated notification</td>
-            <td>Dictionary of string keys and values</td>
-            <td>Provides template values only. Values are rendered into text and HTML emails by the workflow engine.</td>
-          </tr>
-          <tr>
-            <td><code>NotificationRecipients</code></td>
-            <td>When the action creates a task/notification</td>
-            <td>Ordered <code>ToEmailAddresses</code> and <code>CcEmailAddresses</code> arrays</td>
-            <td>Separate from template context; the caller owns selection and validation.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section id="frontend-rules">
-      <h2>5. Frontend Rules</h2>
-
-      <div class="callout ok">
-        <strong>Do this.</strong>
-        On form open and after each workflow action, read <code>workflowContext</code>. Render workflow buttons from
-        <code>workflowContext.AvailableActions</code>. Send only the selected action key and supported workflow fields.
-      </div>
-
-      <div class="callout danger">
-        <strong>Do not send these fields to /v1/WorkflowAction:</strong>
-        <code>toState</code>, form payload, field values, <code>BusinessObjectId</code>,
-        <code>BusinessObjectType</code>, <code>WorkflowKey</code>, <code>ExpectedCurrentState</code>,
-        <code>ExpectedCurrentTaskId</code>, <code>ExpectedCurrentTaskKey</code>, <code>ExpectedInstanceVersion</code>,
-        <code>sectionKey</code>, <code>buttonKey</code>, <code>buttonLabelShown</code>, <code>saveAsDraft</code>, SLA
-        duration/timezone/reminder/cadence/offset/route configuration, or <code>DueAtUtc</code>.
-      </div>
-
-      <h3>Important SaveDraft boundary</h3>
-      <p>
-        <code>SaveDraft</code> is a workflow action. In the reference API it keeps the workflow in
-        <code>Draft</code> or <code>ReturnedToMaker</code> and does not create tasks or notifications. It does not save
-        form fields because this API intentionally has no form payload. The form/business API must save draft field
-        data separately.
-      </p>
-
-      <h3>Maker primary button mapping</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Current state</th>
-            <th>Save as Draft checked</th>
-            <th>Save as Draft unchecked</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>Draft</code></td>
-            <td><code>SaveDraft</code></td>
-            <td><code>SubmitForChecker</code></td>
-          </tr>
-          <tr>
-            <td><code>ReturnedToMaker</code></td>
-            <td><code>SaveDraft</code></td>
-            <td><code>ResubmitForChecker</code></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section id="happy-path">
-      <h2>6. Full Happy Path Demo</h2>
-      <p>
-        This is the approved full path for a frontend demo:
-        Maker submit, Checker reject, Maker resubmit, Checker approve, Trading Desk reject, Maker save as draft,
-        Maker submit again, Checker approve, Trading Desk approve, BDRM approve and complete.
-      </p>
-
-      <div class="callout info">
-        Use a fresh <code>BusinessObjectId</code> for every run. The examples below use
-        <code>PT-FE-1001</code>, which creates workflow instance <code>WF-PT-FE-1001</code>.
-      </div>
-
-      <h3>Shared notification data</h3>
-      <p>Reuse these separate recipient arrays and template-context values in the sample bodies below.</p>
-      <pre><code>"NotificationRecipients": {
-  "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-  "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-}</code></pre>
-      <pre><code>{
-  "referenceNumber": "1050",
-  "submitterDisplayName": "Maker One",
-  "returnedByDisplayName": "Checker One",
-  "recipientDisplayName": "Maker One",
-  "traderDisplayName": "Trader One",
-  "confirmerDisplayName": "BDRM One",
-  "deskName": "Taxable",
-  "securityType": "Equity",
-  "accountShortName": "ABC123",
-  "accountDisplayName": "ABC Growth Account",
-  "submittedDate": "2026-06-09",
-  "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-}</code></pre>
-
-      <div class="callout info">
-        The frontend/business API owns recipient selection and email validation. The workflow API replaces only actor
-        identity from trusted headers and passes recipient strings unchanged. The engine performs no trimming,
-        normalization, deduplication, role/directory lookup, singular-field fallback, or delimited parsing. It stores
-        the exact snapshot on the created task and initial outbox row; SLA reminders copy the task snapshot unchanged.
-        One outbox row is one complete message and one retry lifecycle. <code>Smtp:RecipientOverride</code> sends only
-        to the override mailbox and includes the intended ordered To/Cc lists in controlled diagnostics.
-      </div>
-
-      <div class="callout info">
-        Send notification values as plain data, not HTML. The engine renders both text and HTML email bodies from SQL
-        templates, HTML-escapes caller-provided values, bolds important values from
-        <code>notificationContext</code>, and renders <code>tradeLink</code> as a clickable email link.
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Step</th>
-            <th>Actor headers</th>
-            <th>Endpoint</th>
-            <th>Action key</th>
-            <th>Expected state after success</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>1. Maker submit</td>
-            <td><code>maker1</code> / <code>Maker</code></td>
-            <td><code>POST /v1/WorkflowStart</code></td>
-            <td><code>SubmitForChecker</code></td>
-            <td><code>CheckerReview</code></td>
-          </tr>
-          <tr>
-            <td>2. Checker reject</td>
-            <td><code>checker1</code> / <code>Checker</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>CheckerReturnToMaker</code></td>
-            <td><code>ReturnedToMaker</code></td>
-          </tr>
-          <tr>
-            <td>3. Maker resubmit</td>
-            <td><code>maker1</code> / <code>Maker</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>ResubmitForChecker</code></td>
-            <td><code>CheckerReview</code></td>
-          </tr>
-          <tr>
-            <td>4. Checker approve</td>
-            <td><code>checker1</code> / <code>Checker</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>CheckerSendToTradingDesk</code></td>
-            <td><code>TradingDeskReview</code></td>
-          </tr>
-          <tr>
-            <td>5. Trading Desk reject</td>
-            <td><code>trader1</code> / <code>TradingDesk</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>TradingReturnToMaker</code></td>
-            <td><code>ReturnedToMaker</code></td>
-          </tr>
-          <tr>
-            <td>6. Maker save as draft</td>
-            <td><code>maker1</code> / <code>Maker</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>SaveDraft</code></td>
-            <td><code>ReturnedToMaker</code></td>
-          </tr>
-          <tr>
-            <td>7. Maker submit again</td>
-            <td><code>maker1</code> / <code>Maker</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>ResubmitForChecker</code></td>
-            <td><code>CheckerReview</code></td>
-          </tr>
-          <tr>
-            <td>8. Checker approve</td>
-            <td><code>checker1</code> / <code>Checker</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>CheckerSendToTradingDesk</code></td>
-            <td><code>TradingDeskReview</code></td>
-          </tr>
-          <tr>
-            <td>9. Trading Desk approve</td>
-            <td><code>trader1</code> / <code>TradingDesk</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>TradingTradeExecuted</code></td>
-            <td><code>BdrmClientServiceReview</code></td>
-          </tr>
-          <tr>
-            <td>10. BDRM approve and complete</td>
-            <td><code>bdrm1</code> / <code>BDRMClientService</code></td>
-            <td><code>POST /v1/WorkflowAction</code></td>
-            <td><code>BdrmTradeFulfilled</code></td>
-            <td><code>Completed</code></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>Step 1: Maker submit and start workflow</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowStart
-Content-Type: application/json
-X-Workflow-UserId: maker1
-X-Workflow-Roles: Maker
-X-Workflow-DisplayName: Maker One
-
-{
-  "WorkflowKey": "PortfolioTrade",
-  "BusinessObjectType": "PortfolioTrade",
-  "BusinessObjectId": "PT-FE-1001",
-  "InitialActionKey": "SubmitForChecker",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "submitterDisplayName": "Maker One",
-    "deskName": "Taxable",
-    "securityType": "Equity",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Optional: read Checker context before reject</h3>
-      <pre><code>GET http://localhost:5058/v1/WorkflowContext?workflowInstanceId=WF-PT-FE-1001
-X-Workflow-UserId: checker1
-X-Workflow-Roles: Checker
-X-Workflow-DisplayName: Checker One</code></pre>
-
-      <h3>Step 2: Checker reject to Maker</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: checker1
-X-Workflow-Roles: Checker
-X-Workflow-DisplayName: Checker One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "CheckerReturnToMaker",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "referenceNumber": "1050",
-    "returnedByDisplayName": "Checker One",
-    "recipientDisplayName": "Maker One",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "submittedDate": "2026-06-09",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Step 3: Maker resubmit</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: maker1
-X-Workflow-Roles: Maker
-X-Workflow-DisplayName: Maker One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "ResubmitForChecker",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "submitterDisplayName": "Maker One",
-    "deskName": "Taxable",
-    "securityType": "Equity",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Step 4: Checker approve to Trading Desk</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: checker1
-X-Workflow-Roles: Checker
-X-Workflow-DisplayName: Checker One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "CheckerSendToTradingDesk",
-  "AssignedRoleKey": "TradingDeskTaxable",
-  "IdempotencyKey": "checker-to-desk-1001",
-  "SlaInput": { "TargetDate": "2030-01-20" },
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "submitterDisplayName": "Maker One",
-    "deskName": "Taxable",
-    "securityType": "Equity",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Step 5: Trading Desk reject to Maker</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: trader1
-X-Workflow-Roles: TradingDesk
-X-Workflow-DisplayName: Trader One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "TradingReturnToMaker",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "referenceNumber": "1050",
-    "returnedByDisplayName": "Trader One",
-    "recipientDisplayName": "Maker One",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "submittedDate": "2026-06-09",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Step 6: Maker save as draft</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: maker1
-X-Workflow-Roles: Maker
-X-Workflow-DisplayName: Maker One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "SaveDraft"
-}</code></pre>
-
-      <h3>Step 7: Maker submit again</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: maker1
-X-Workflow-Roles: Maker
-X-Workflow-DisplayName: Maker One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "ResubmitForChecker",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "submitterDisplayName": "Maker One",
-    "deskName": "Taxable",
-    "securityType": "Equity",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Step 8: Checker approve again</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: checker1
-X-Workflow-Roles: Checker
-X-Workflow-DisplayName: Checker One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "CheckerSendToTradingDesk",
-  "AssignedRoleKey": "TradingDeskTaxable",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "submitterDisplayName": "Maker One",
-    "deskName": "Taxable",
-    "securityType": "Equity",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Step 9: Trading Desk approve</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: trader1
-X-Workflow-Roles: TradingDesk
-X-Workflow-DisplayName: Trader One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "TradingTradeExecuted",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "traderDisplayName": "Trader One",
-    "deskName": "Taxable",
-    "securityType": "Equity",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-
-      <h3>Step 10: BDRM approve and complete</h3>
-      <pre><code>POST http://localhost:5058/v1/WorkflowAction
-Content-Type: application/json
-X-Workflow-UserId: bdrm1
-X-Workflow-Roles: BDRMClientService
-X-Workflow-DisplayName: BDRM One
-
-{
-  "WorkflowInstanceId": "WF-PT-FE-1001",
-  "ActionKey": "BdrmTradeFulfilled",
-  "NotificationRecipients": {
-    "ToEmailAddresses": ["workflow.primary@example.test", "workflow.secondary@example.test"],
-    "CcEmailAddresses": ["manager.one@example.test", "audit.one@example.test"]
-  },
-  "NotificationContext": {
-    "confirmerDisplayName": "BDRM One",
-    "accountShortName": "ABC123",
-    "accountDisplayName": "ABC Growth Account",
-    "tradeLink": "http://localhost:4200/trades/PT-FE-1001"
-  }
-}</code></pre>
-    </section>
-
-    <section id="response-fields">
-      <h2>7. Response Fields To Use</h2>
-
-      <h3>Action response shape</h3>
-      <pre><code>{
-  "result": {
-    "actionResult": {
-      "Success": true,
-      "ResultCode": "Success",
-      "WorkflowInstanceId": "WF-PT-FE-1001",
-      "ActionKey": "CheckerSendToTradingDesk",
-      "OldState": "CheckerReview",
-      "NewState": "TradingDeskReview",
-      "ClosedTask": {
-        "TaskKey": "CheckerReviewTask",
-        "AssignedRole": "Checker"
-      },
-      "CreatedTask": {
-        "TaskKey": "TradingDeskReviewTask",
-        "AssignedRole": "TradingDeskTaxable",
-        "DueAtUtc": "2030-01-21T14:00:00Z"
-      },
-      "Notification": {
-        "Queued": true,
-        "NotificationType": "WorkflowTaskAssigned",
-        "RecipientRole": "TradingDeskTaxable"
-      }
-    },
-    "workflowContext": {
-      "Workflow": {
-        "WorkflowInstanceId": "WF-PT-FE-1001",
-        "CurrentState": "TradingDeskReview",
-        "Status": "Active"
-      }
+  <h2>Executing actions</h2>
+  <h3>Checker sends to Trading Desk</h3>
+  <pre><code>{
+  "workflowInstanceId": "WF-PT-FE-1001",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable",
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "templateData": {
+      "referenceNumber": "1050",
+      "deskName": "Taxable"
     }
   }
 }</code></pre>
 
-      <h3>Workflow context fields</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Field</th>
-            <th>Frontend use</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>Workflow.CurrentState</code></td>
-            <td>Current workflow state, such as <code>CheckerReview</code> or <code>Completed</code>.</td>
-          </tr>
-          <tr>
-            <td><code>Workflow.Status</code></td>
-            <td><code>Active</code> or <code>Completed</code>.</td>
-          </tr>
-          <tr>
-            <td><code>CurrentTask</code></td>
-            <td>Current pending task, or <code>null</code> after completion.</td>
-          </tr>
-          <tr>
-            <td><code>Sla.Status</code></td>
-            <td><code>NoSla</code>, <code>OnTrack</code>, or <code>Overdue</code>.</td>
-          </tr>
-          <tr>
-            <td><code>ActorAccess.CanAct</code></td>
-            <td>Whether the actor has any action in the current state.</td>
-          </tr>
-          <tr>
-            <td><code>ActorAccess.ReadOnlyReason</code></td>
-            <td>Reason the current actor cannot act, useful for read-only messaging.</td>
-          </tr>
-          <tr>
-            <td><code>AvailableActions</code></td>
-            <td>Source of truth for workflow buttons.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>Available action item shape</h3>
-      <pre><code>{
-  "ActionKey": "CheckerSendToTradingDesk",
-  "SectionKey": "Checker",
-  "ButtonKey": "CheckerPrimary",
-  "ButtonLabel": "Send to Trading Desk",
-  "Intent": "Approve",
-  "RequiresReason": false,
-  "RequestDefaults": {
-    "WorkflowKey": "PortfolioTrade",
-    "WorkflowInstanceId": "WF-PT-FE-1001",
-    "WorkflowDefinitionVersion": 1,
-    "ExpectedCurrentState": "CheckerReview",
-    "ExpectedCurrentTaskId": "42",
-    "ExpectedCurrentTaskKey": "CheckerReviewTask",
-    "ExpectedInstanceVersion": 3
-  }
-}</code></pre>
-
-      <div class="callout warn">
-        <code>RequestDefaults</code> are useful display/debug context in this reference API, but
-        <code>POST /v1/WorkflowAction</code> does not accept those guard fields. Send only
-        <code>WorkflowInstanceId</code>, <code>ActionKey</code>, optional <code>AssignedRoleKey</code>, optional
-        <code>NotificationContext</code>, and optional typed <code>NotificationRecipients</code>.
-      </div>
-
-      <div class="callout info">
-        <code>RequiresReason</code> is returned from workflow metadata for actions such as Return to Maker, but the
-        current reference <code>POST /v1/WorkflowAction</code> body does not accept an action reason field. Do not add
-        <code>ActionReason</code> to the frontend request unless the API contract is explicitly changed later.
-      </div>
-    </section>
-
-    <section id="errors">
-      <h2>8. Errors</h2>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>Body</th>
-            <th>Frontend handling</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>200</code></td>
-            <td><code>WorkflowStartApiResponse</code>, <code>WorkflowActionApiResponse</code>, or <code>WorkflowContextApiResponse</code></td>
-            <td>Read <code>result</code>. For action/start, require <code>result.actionResult.Success === true</code>.</td>
-          </tr>
-          <tr>
-            <td><code>400</code></td>
-            <td><code>ProblemDetails</code></td>
-            <td>Request is malformed or required fields are missing. Show <code>detail</code>.</td>
-          </tr>
-          <tr>
-            <td><code>401</code></td>
-            <td><code>ProblemDetails</code></td>
-            <td><code>X-Workflow-UserId</code> is missing.</td>
-          </tr>
-          <tr>
-            <td><code>403</code></td>
-            <td><code>ProblemDetails</code></td>
-            <td><code>X-Workflow-Roles</code> is missing or empty.</td>
-          </tr>
-          <tr>
-            <td><code>404</code></td>
-            <td><code>ProblemDetails</code></td>
-            <td>Workflow instance was not found.</td>
-          </tr>
-          <tr>
-            <td><code>500</code></td>
-            <td>Either <code>WorkflowActionApiResponse</code> with <code>Success=false</code>, or <code>ProblemDetails</code></td>
-            <td>Workflow failed, notification delivery failed, or an unexpected error occurred. Show <code>Message</code> or <code>detail</code>.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>Common workflow failure result</h3>
-      <pre><code>{
-  "result": {
-    "actionResult": {
-      "Success": false,
-      "ResultCode": "ValidationFailed",
-      "Message": "Workflow action request failed validation.",
-      "Diagnostics": {
-        "ValidationErrors": [
-          {
-            "Field": "workflow.assignedRoleKey",
-            "Message": "workflow.assignedRoleKey is required when creating task 'TradingDeskReviewTask'."
-          }
-        ]
-      }
+  <h3>Checker returns to the captured Maker with optional copied users</h3>
+  <pre><code>{
+  "workflowInstanceId": "WF-PT-FE-1001",
+  "actionKey": "CheckerReturnToMaker",
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager1",
+          "emailAddress": "manager@example.test",
+          "displayName": "Manager One"
+        }
+      ]
     },
-    "workflowContext": null
+    "templateData": {
+      "returnedByDisplayName": "Checker One"
+    }
   }
 }</code></pre>
 
-      <div class="callout info">
-        If SMTP delivery fails after a workflow action commits, the API returns
-        <code>ResultCode = NotificationDeliveryFailed</code> and HTTP 500. The notification row remains pending for
-        retry by the outbox processor.
-      </div>
-    </section>
-  </main>
+  <h3>SLA-only synchronization</h3>
+  <pre><code>{
+  "workflowInstanceId": "WF-PT-FE-1001",
+  "slaTargetDate": "2030-01-25"
+}</code></pre>
+
+  <h2>Recipient input rules in seeded metadata</h2>
+  <table>
+    <thead><tr><th>Operation</th><th>Allowed UI input</th><th>Final placement</th></tr></thead>
+    <tbody>
+      <tr><td>Workflow Start</td><td><code>originalMaker</code> required</td><td>Captured for later metadata routes.</td></tr>
+      <tr><td>SubmitForChecker</td><td><code>selectedCcUsers</code> optional</td><td>Checker static address is To; selected users are Cc.</td></tr>
+      <tr><td>CheckerReturnToMaker</td><td><code>selectedCcUsers</code> optional</td><td>Captured Maker is To; selected users and operations metadata are Cc.</td></tr>
+      <tr><td>Other seeded routes</td><td>No request recipient input unless metadata declares one</td><td>Static or captured sources determine recipients.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="important">
+    The UI resolves the Maker and any selected users. It does not choose To versus Cc. It may submit opaque address
+    strings, including values that are not syntactically valid email addresses; the workflow API stores them without
+    syntax, directory, mailbox, or SMTP validation. Do not trim or rewrite address strings before calling workflow if
+    exact preservation is required.
+  </div>
+
+  <h2>Do not send</h2>
+  <p>
+    Do not send <code>toState</code>, form payload, business-object type on Start, workflow/business identity on Action,
+    expected-state/task/version guards, request/correlation/idempotency IDs, final To/Cc arrays, UI button labels,
+    action reason, SLA configuration, route keys, or <code>dueAtUtc</code>. Unknown root or nested fields are rejected.
+  </p>
+
+  <h2>Error handling</h2>
+  <ul>
+    <li>HTTP/model-binding failures return <code>ProblemDetails</code>.</li>
+    <li>Workflow failures return the API response wrapper with a failed action result and HTTP 500 under the current boundary.</li>
+    <li>After a successful action, replace local workflow UI state with returned <code>workflowContext</code>.</li>
+    <li>If immediate delivery fails after commit, show failure and allow server-side outbox retry; do not resubmit a guessed transition.</li>
+  </ul>
+
+  <p>Copyable bodies are under <code>workflow-api/samples</code>.</p>
 </body>
 </html>

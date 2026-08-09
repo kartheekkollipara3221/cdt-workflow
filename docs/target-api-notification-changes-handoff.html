@@ -3,665 +3,148 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Target API Notification Change Handoff</title>
+  <title>Target API Workflow Notification Handoff</title>
   <style>
-    :root {
-      color-scheme: light;
-      --ink: #17212b;
-      --muted: #52606d;
-      --line: #d8e2ec;
-      --soft: #f5f8fb;
-      --panel: #ffffff;
-      --accent: #0f6b6e;
-      --accent-soft: #e3f5f4;
-      --warn: #7a4a00;
-      --warn-soft: #fff4db;
-      --danger: #8a1f11;
-      --danger-soft: #fdecea;
-      --code-bg: #17212b;
-      --code-ink: #edf2f7;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
-      line-height: 1.55;
-      color: var(--ink);
-      background: #fbfcfd;
-    }
-
-    header {
-      border-bottom: 1px solid var(--line);
-      background: #ffffff;
-    }
-
-    main,
-    .wrap {
-      width: min(1180px, calc(100% - 32px));
-      margin: 0 auto;
-    }
-
-    .hero {
-      padding: 30px 0 20px;
-    }
-
-    h1,
-    h2,
-    h3 {
-      line-height: 1.2;
-      letter-spacing: 0;
-      color: #102a43;
-    }
-
-    h1 {
-      margin: 0 0 10px;
-      font-size: 34px;
-    }
-
-    h2 {
-      margin: 34px 0 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--line);
-      font-size: 24px;
-    }
-
-    h3 {
-      margin: 24px 0 10px;
-      font-size: 18px;
-    }
-
-    p {
-      margin: 0 0 12px;
-    }
-
-    .lede {
-      max-width: 920px;
-      color: var(--muted);
-      font-size: 17px;
-    }
-
-    .callout {
-      margin: 16px 0;
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-      border-left: 5px solid var(--accent);
-      background: var(--accent-soft);
-      border-radius: 6px;
-    }
-
-    .warning {
-      border-left-color: var(--warn);
-      background: var(--warn-soft);
-    }
-
-    .danger {
-      border-left-color: var(--danger);
-      background: var(--danger-soft);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      margin: 18px 0;
-    }
-
-    .box {
-      border: 1px solid var(--line);
-      background: var(--panel);
-      border-radius: 6px;
-      padding: 16px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 14px 0 22px;
-      background: #ffffff;
-    }
-
-    th,
-    td {
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      vertical-align: top;
-      text-align: left;
-    }
-
-    th {
-      background: var(--soft);
-      color: #243b53;
-      font-weight: 650;
-    }
-
-    code {
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 0.95em;
-    }
-
-    pre {
-      overflow-x: auto;
-      margin: 12px 0 18px;
-      padding: 14px;
-      border-radius: 6px;
-      background: var(--code-bg);
-      color: var(--code-ink);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    pre code {
-      color: inherit;
-    }
-
-    ul,
-    ol {
-      margin-top: 8px;
-      padding-left: 24px;
-    }
-
-    li {
-      margin: 5px 0;
-    }
-
-    .tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: var(--soft);
-      color: #334e68;
-      font-size: 12px;
-      font-weight: 650;
-      white-space: nowrap;
-    }
-
-    .required {
-      background: var(--danger-soft);
-      color: var(--danger);
-    }
-
-    .optional {
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-
-    nav {
-      margin-top: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    nav a {
-      color: var(--accent);
-      text-decoration: none;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 6px 10px;
-      background: #ffffff;
-    }
-
-    nav a:hover {
-      border-color: var(--accent);
-    }
-
-    footer {
-      margin-top: 44px;
-      padding: 20px 0 32px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    @media (max-width: 760px) {
-      h1 {
-        font-size: 28px;
-      }
-
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      th,
-      td {
-        padding: 9px;
-      }
-    }
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 1050px; margin: auto; padding: 32px; color: #1d2939; }
+    h1, h2, h3 { color: #153f69; line-height: 1.2; }
+    pre { overflow: auto; background: #101828; color: #f2f4f7; padding: 16px; border-radius: 8px; }
+    code { font-family: ui-monospace, monospace; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid #ccd5df; padding: 10px; text-align: left; vertical-align: top; }
+    .callout { padding: 14px; background: #ecf6ff; border-left: 5px solid #2673c9; }
   </style>
 </head>
 <body>
-  <header>
-    <div class="wrap hero">
-      <h1>Target API Notification Change Handoff</h1>
-      <p class="lede">
-        Use this checklist to apply the last two workflow notification changes to your target API:
-        caller-supplied typed multiple To/Cc recipient snapshots, and persisted HTML email bodies.
-      </p>
-      <nav aria-label="Document sections">
-        <a href="#summary">Summary</a>
-        <a href="#file-checklist">Files</a>
-        <a href="#database">Database</a>
-        <a href="#api">API Changes</a>
-        <a href="#engine">Engine Changes</a>
-        <a href="#config">Config</a>
-        <a href="#test">Test</a>
-      </nav>
-    </div>
-  </header>
+  <h1>Target API Handoff: Metadata-Resolved Notifications</h1>
 
-  <main>
-    <section id="summary">
-      <h2>Summary</h2>
-      <div class="grid">
-        <div class="box">
-          <h3>Change 1: typed recipient snapshots</h3>
-          <p>
-            The target API selects and validates ordered To/Cc addresses from the business data it owns, then sends
-            them in a dedicated <code>notificationRecipients</code> object. The reusable engine preserves the exact
-            values, order, whitespace, and duplicates without lookup or normalization.
-          </p>
-          <p>The created task and initial outbox row store the same recipient snapshot. SLA reminders copy the task snapshot unchanged.</p>
-        </div>
-        <div class="box">
-          <h3>Change 2: HTML notification bodies</h3>
-          <p>
-            Notification routes now store both a plain-text template and an HTML template. Queued outbox rows
-            store both rendered bodies. SMTP sends multipart email when HTML is available.
-          </p>
-          <p>
-            The API must send plain values in <code>notificationContext</code>. The engine handles HTML escaping.
-          </p>
-        </div>
-      </div>
+  <h2>Integration outcome</h2>
+  <p>
+    The target application supplies only resolved participant/request inputs and template data. Versioned workflow
+    metadata declares which sources a route uses and whether each source contributes To or Cc. The engine persists one
+    final task/outbox recipient snapshot and reuses it for SLA reminders.
+  </p>
 
-      <div class="callout warning">
-        <strong>Keep this boundary:</strong> do not add recipient validation, trimming, deduplication, role/directory
-        resolution, SQL/config address maps, singular fields, or delimited parsing to the engine. Do not let the UI
-        send HTML. The business/API layer supplies validated recipient arrays and plain template values.
-      </div>
-    </section>
-
-    <section id="file-checklist">
-      <h2>Files To Update</h2>
-      <p>
-        The target file names may differ in your target API. Update the equivalent file that owns the same
-        responsibility.
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Target API area</th>
-            <th>Update required</th>
-            <th>Reference source file in this repo</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="tag required">Required</span><br><code>Program.cs</code> or composition root</td>
-            <td>
-              Register workflow infrastructure, <code>INotificationSender</code>, <code>NotificationTemplateRenderer</code>,
-              <code>TimeProvider.System</code>, and the immediate action notification dispatcher.
-            </td>
-            <td>
-              <code>workflow-api/src/WorkflowEngine.WorkflowApi/Program.cs</code><br>
-              <code>src/WorkflowEngine.Infrastructure/DependencyInjection/InfrastructureServiceCollectionExtensions.cs</code>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>Workflow start/action DTOs</td>
-            <td>
-              Ensure request bodies accept the shared typed <code>NotificationRecipients</code> contract outside
-              <code>NotificationContext</code>. The target API owns business recipient selection and address
-              validation; <code>NotificationContext</code> contains template data only.
-            </td>
-            <td>
-              <code>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs</code><br>
-              <code>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs</code>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>Target API service that executes workflow action</td>
-            <td>
-              Pass <code>notificationRecipients</code> unchanged and separately from <code>notificationContext</code>
-              into workflow execution. After a successful action queues a notification, dispatch rows for the same
-              <code>WorkflowInstanceId</code> and <code>CorrelationId</code>.
-            </td>
-            <td>
-              <code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs</code><br>
-              <code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowStartService.cs</code>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>Notification dispatcher service</td>
-            <td>
-              Add a dispatcher that claims pending outbox rows, deserializes persisted
-              <code>NotificationRecipientsJson</code> into typed ordered To/Cc lists, sends one message, marks the row
-              <code>Sent</code>, and releases the complete row to <code>Pending</code> on failure. Include
-              <code>HtmlBody</code> when building <code>NotificationDelivery</code>.
-            </td>
-            <td><code>workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs</code></td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>Notification delivery contract</td>
-            <td>Carry typed ordered To/Cc lists and <code>HtmlBody</code> in the delivery object passed into senders.</td>
-            <td><code>src/WorkflowEngine.Application/Notifications/INotificationSender.cs</code></td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>SMTP sender</td>
-            <td>
-              Send the typed To/Cc lists reconstructed from persisted <code>NotificationRecipientsJson</code>. Never
-              fall back to payload/template context, route roles, singular fields, or delimited address parsing.
-              One outbox row has one message-level send/retry lifecycle. Send multipart text/plain plus text/html
-              when <code>HtmlBody</code> exists.
-            </td>
-            <td><code>src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs</code></td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>Notification template renderer</td>
-            <td>Add HTML rendering that HTML-escapes caller-provided token values.</td>
-            <td><code>src/WorkflowEngine.Application/Notifications/NotificationTemplateRenderer.cs</code></td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>EF entities and mapping</td>
-            <td>
-              Keep required <code>NotificationRoute.HtmlBodyTemplate</code> and
-              <code>NotificationOutbox.HtmlBody</code>. Add required <code>nvarchar(max)</code>
-              <code>WorkflowTask.NotificationRecipientsJson</code> and
-              <code>NotificationOutbox.NotificationRecipientsJson</code>. Remove obsolete
-              <code>NotificationOutbox.RecipientRoleKey</code> and <code>RecipientUserId</code>; the similarly named
-              <code>NotificationRoute</code> fields remain dormant metadata only.
-            </td>
-            <td>
-              <code>src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationRoute.cs</code><br>
-              <code>src/WorkflowEngine.Infrastructure/Persistence/Entities/WorkflowTask.cs</code><br>
-              <code>src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationOutbox.cs</code><br>
-              <code>src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs</code>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>EF migration or SQL deployment script</td>
-            <td>
-              Apply the HTML-body migration and then the recipient-snapshot migration in chronological order. The
-              latter deliberately deletes existing outbox rows and then task rows because legacy runtime rows have no
-              trustworthy typed recipient snapshot; it does not backfill them.
-            </td>
-            <td>
-              <code>src/WorkflowEngine.Infrastructure/Migrations/20260620130000_AddHtmlNotificationBodies.cs</code><br>
-              <code>src/WorkflowEngine.Infrastructure/Migrations/20260803120000_AddNotificationRecipientSnapshots.cs</code>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>Seed and seed verification</td>
-            <td>
-              Add HTML templates to notification route seed data and verify the seeded HTML template value.
-            </td>
-            <td>
-              <code>src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs</code><br>
-              <code>src/WorkflowEngine.Infrastructure/Persistence/Seed/WorkflowSeedService.cs</code><br>
-              <code>src/WorkflowEngine.Infrastructure/Persistence/Verification/SeedVerificationService.cs</code>
-            </td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required</span><br>Workflow execution service</td>
-            <td>
-              Persist the caller's exact typed recipient snapshot separately from rendered subject, plain body,
-              HTML body, and template-only payload JSON when action-created notifications are queued.
-            </td>
-            <td><code>src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs</code></td>
-          </tr>
-          <tr>
-            <td><span class="tag required">Required for SLA</span><br>SLA overdue service</td>
-            <td>
-              Render and persist HTML body for SLA overdue rows. Copy the stored task recipient snapshot unchanged;
-              use stored notification context only for template rendering.
-            </td>
-            <td><code>src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs</code></td>
-          </tr>
-          <tr>
-            <td><span class="tag optional">Operational</span><br>Scheduled processor</td>
-            <td>
-              Keep <code>run-sla</code> and <code>process-notification-outbox</code> in a scheduled processor or
-              separate worker, not inside the IIS request loop.
-            </td>
-            <td><code>src/WorkflowEngine.Console</code> command handlers</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section id="database">
-      <h2>Database Updates</h2>
-
-      <h3>Historical HTML-body migration</h3>
-      <p>
-        Apply the older <code>20260620130000_AddHtmlNotificationBodies</code> migration before deploying code that
-        reads or writes HTML email bodies. Its equivalent SQL is:
-      </p>
-      <pre><code>IF COL_LENGTH('dbo.NotificationRoute', 'HtmlBodyTemplate') IS NULL
-BEGIN
-    ALTER TABLE dbo.NotificationRoute
-    ADD HtmlBodyTemplate nvarchar(max) NOT NULL
-        CONSTRAINT DF_NotificationRoute_HtmlBodyTemplate DEFAULT ('');
-END;
-
-IF COL_LENGTH('dbo.NotificationOutbox', 'HtmlBody') IS NULL
-BEGIN
-    ALTER TABLE dbo.NotificationOutbox
-    ADD HtmlBody nvarchar(max) NOT NULL
-        CONSTRAINT DF_NotificationOutbox_HtmlBody DEFAULT ('');
-END;</code></pre>
-
-      <div class="callout">
-        If your target API uses EF migrations, prefer an EF migration equivalent to
-        <code>20260620130000_AddHtmlNotificationBodies</code>. If deployment is DBA-controlled, use the SQL above
-        as the implementation shape.
-      </div>
-
-      <h3>Recipient-snapshot migration</h3>
-      <p>
-        Next apply <code>20260803120000_AddNotificationRecipientSnapshots</code>. It adds required
-        <code>nvarchar(max)</code> recipient snapshots to both runtime tables and removes the obsolete recipient role
-        and user columns from <code>NotificationOutbox</code>. For a DBA-controlled deployment, use this one-time SQL
-        in the same order as the EF migration:
-      </p>
-      <pre><code>BEGIN TRANSACTION;
-
-DELETE FROM [dbo].[NotificationOutbox];
-DELETE FROM [dbo].[WorkflowTask];
-
-ALTER TABLE [dbo].[WorkflowTask]
-    ADD [NotificationRecipientsJson] nvarchar(max) NOT NULL;
-
-ALTER TABLE [dbo].[NotificationOutbox]
-    ADD [NotificationRecipientsJson] nvarchar(max) NOT NULL;
-
-ALTER TABLE [dbo].[NotificationOutbox]
-    DROP COLUMN [RecipientRoleKey];
-
-ALTER TABLE [dbo].[NotificationOutbox]
-    DROP COLUMN [RecipientUserId];
-
-COMMIT TRANSACTION;</code></pre>
-
-      <div class="callout danger">
-        <strong>Approved disposal boundary:</strong> delete <code>NotificationOutbox</code> rows first and
-        <code>WorkflowTask</code> rows second. Do not delete workflow instances, workflow audit, mock section data,
-        workflow definitions, transitions, routes, or other metadata. Do not invent a legacy backfill: old runtime
-        rows do not contain an authoritative ordered typed To/Cc snapshot. Back up and obtain the target-system data
-        owner's approval before applying this destructive migration outside a disposable environment.
-      </div>
-    </section>
-
-    <section id="api">
-      <h2>Target API Changes</h2>
-
-      <h3>Request DTO shape</h3>
-      <p>Reuse the shared application recipient contract; keep addresses outside <code>notificationContext</code>.</p>
-      <pre><code>public sealed class WorkflowActionRequest
+  <h2>Public DTOs</h2>
+  <pre><code>public sealed class WorkflowNotificationRequest
 {
-    public string? WorkflowInstanceId { get; set; }
-    public string? ActionKey { get; set; }
-    public string? AssignedRoleKey { get; set; }
-    public Dictionary&lt;string, string?&gt;? NotificationContext { get; set; }
-    public NotificationRecipients? NotificationRecipients { get; set; }
+    public Dictionary&lt;string, List&lt;WorkflowRecipientRequest&gt;?&gt;? RecipientInputs { get; set; }
+    public Dictionary&lt;string, string?&gt;? TemplateData { get; set; }
 }
 
-public sealed class NotificationRecipients
+public sealed class WorkflowRecipientRequest
 {
-    public List&lt;string&gt; ToEmailAddresses { get; set; } = [];
-    public List&lt;string&gt; CcEmailAddresses { get; set; } = [];
+    public string? UserId { get; set; }
+    public string? EmailAddress { get; set; }
+    public string? DisplayName { get; set; }
+}</code></pre>
+  <p>
+    Start has exactly <code>workflowKey</code>, <code>businessObjectId</code>, <code>actionKey</code>,
+    <code>slaTargetDate</code>, and <code>notification</code>. Action has exactly <code>workflowInstanceId</code>,
+    <code>actionKey</code>, <code>assignedRoleKey</code>, <code>slaTargetDate</code>, and <code>notification</code>.
+  </p>
+
+  <h2>Target application responsibilities</h2>
+  <table>
+    <thead><tr><th>Responsibility</th><th>Required behavior</th></tr></thead>
+    <tbody>
+      <tr><td>Actor</td><td>Map authenticated user ID, display name, and roles into the trusted workflow actor boundary.</td></tr>
+      <tr><td>Original Maker</td><td>Resolve it before Start and send exactly one value under <code>originalMaker</code>.</td></tr>
+      <tr><td>UI-selected copied users</td><td>Send ordered values under <code>selectedCcUsers</code> only for routes whose metadata declares that key.</td></tr>
+      <tr><td>Template data</td><td>Send plain string values under <code>notification.templateData</code>. Do not send HTML.</td></tr>
+      <tr><td>Business date</td><td>Map the application field to flat <code>slaTargetDate</code>; do not send SLA schedule configuration.</td></tr>
+      <tr><td>Form persistence</td><td>Save business/form data in the target API before calling workflow.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Workflow engine responsibilities</h2>
+  <ul>
+    <li>Derive <code>businessObjectType</code> from the active workflow definition.</li>
+    <li>Capture immutable workflow participants transactionally with Start.</li>
+    <li>Reject undeclared recipient input keys before task, notification, audit, or idempotency side effects.</li>
+    <li>Resolve StaticAddress, WorkflowParticipant, and RequestInput sources in metadata rule order.</li>
+    <li>Deduplicate addresses case-insensitively, retain the first opaque string, and give To precedence over Cc.</li>
+    <li>Store the resolved JSON on the task and immediate outbox row.</li>
+    <li>Copy the task snapshot unchanged for every SLA due/overdue row.</li>
+    <li>Maintain one message-level outbox status and retry count.</li>
+  </ul>
+
+  <div class="callout">
+    Address strings are storage values, not verified mailboxes. Participant capture and recipient resolution do not
+    validate syntax, directory membership, mailbox existence, or SMTP reachability and do not trim or rewrite the
+    supplied address. A sender-level parse/send failure returns the whole outbox row to Pending and increments its one retry count.
+  </div>
+
+  <h2>Metadata and runtime tables</h2>
+  <table>
+    <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>WorkflowDefinition</code></td><td>Owns the generic business-object type.</td></tr>
+      <tr><td><code>WorkflowParticipantDefinition</code></td><td>Declares participant keys, cardinality, requiredness, and immutability.</td></tr>
+      <tr><td><code>WorkflowParticipant</code></td><td>Stores workflow-lifetime participant snapshots such as Original Maker.</td></tr>
+      <tr><td><code>NotificationRecipientRule</code></td><td>Maps ordered source rules to To/Cc for each notification route.</td></tr>
+      <tr><td><code>WorkflowTask</code></td><td>Stores the final recipient and template-context snapshots used throughout the task lifetime.</td></tr>
+      <tr><td><code>NotificationOutbox</code></td><td>Stores rendered content, final recipients, status, retry count, and error for one complete message.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Payload examples</h2>
+  <h3>Start with immutable Maker</h3>
+  <pre><code>{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectId": "PT-1050",
+  "actionKey": "SubmitForChecker",
+  "notification": {
+    "recipientInputs": {
+      "originalMaker": [
+        { "userId": "maker1", "emailAddress": "maker@example.com", "displayName": "Maker One" }
+      ],
+      "selectedCcUsers": []
+    },
+    "templateData": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Maker One"
+    }
+  }
 }</code></pre>
 
-      <h3>Target API payload example</h3>
-      <pre><code>{
+  <h3>Return to Maker with selected Cc</h3>
+  <pre><code>{
   "workflowInstanceId": "WF-PT-1050",
   "actionKey": "CheckerReturnToMaker",
-  "notificationRecipients": {
-    "toEmailAddresses": ["maker.one@example.com", "maker.delegate@example.com"],
-    "ccEmailAddresses": ["supervisor@example.com", "ops@example.com"]
-  },
-  "notificationContext": {
-    "referenceNumber": "1050",
-    "returnedByDisplayName": "Checker One",
-    "recipientDisplayName": "Maker One",
-    "accountShortName": "EFG",
-    "accountDisplayName": "INSURANCE-5091003029-EFG INSURANCE, LTD./ASI",
-    "submittedDate": "4/24/2026",
-    "tradeLink": "https://sharepoint.example/trades/PT-1050"
-  }
-}</code></pre>
-
-      <h3>Immediate action notification dispatch</h3>
-      <p>
-        After workflow execution succeeds, deliver only rows created by that action. Select by
-        <code>WorkflowInstanceId</code> plus <code>CorrelationId</code>.
-      </p>
-      <pre><code>var resultEnvelope = workflowExecutionService.Execute(request);
-
-if (resultEnvelope.Result.Success
-    &amp;&amp; resultEnvelope.Result.Notification?.Queued == true)
-{
-    var dispatch = notificationDispatcher.DispatchCreatedNotifications(
-        resultEnvelope.Result.WorkflowInstanceId,
-        resultEnvelope.Result.CorrelationId);
-
-    if (!dispatch.Success)
-    {
-        resultEnvelope.Result.Success = false;
-        resultEnvelope.Result.ResultCode = "NotificationDeliveryFailed";
-        resultEnvelope.Result.Message = dispatch.FailureMessage;
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        { "userId": "supervisor1", "emailAddress": "supervisor@example.com", "displayName": "Supervisor" }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "1050",
+      "returnedByDisplayName": "Checker One"
     }
-}</code></pre>
-
-      <div class="callout warning">
-        Do not dispatch all pending notifications from the API request. Dispatch only rows created by the current
-        workflow action. The scheduled outbox processor handles old pending rows and retry backlog.
-      </div>
-    </section>
-
-    <section id="engine">
-      <h2>Reusable Engine Changes</h2>
-
-      <h3>Render plain and HTML templates</h3>
-      <pre><code>var renderedSubject = templateRenderer.Render(route.SubjectTemplate, notificationContext, "workflow.notificationContext");
-var renderedBody = templateRenderer.Render(route.BodyTemplate, notificationContext, "workflow.notificationContext");
-var renderedHtmlBody = templateRenderer.RenderHtml(route.HtmlBodyTemplate, notificationContext, "workflow.notificationContext");
-
-var templateErrors = renderedSubject.Errors
-    .Concat(renderedBody.Errors)
-    .Concat(renderedHtmlBody.Errors)
-    .ToArray();</code></pre>
-
-      <h3>Persist outbox row</h3>
-      <pre><code>dbContext.NotificationOutbox.Add(new NotificationOutbox
-{
-    WorkflowInstanceId = instance.WorkflowInstanceId,
-    WorkflowTaskId = createdTask?.Id,
-    BusinessObjectType = instance.BusinessObjectType,
-    BusinessObjectId = instance.BusinessObjectId,
-    NotificationType = route.NotificationType,
-    NotificationRecipientsJson = notificationRecipientsJson,
-    Subject = renderedSubject.Rendered,
-    Body = renderedBody.Rendered,
-    HtmlBody = renderedHtmlBody.Rendered,
-    PayloadJson = JsonSerializer.Serialize(notificationContext),
-    Status = "Pending",
-    CorrelationId = normalized.EffectiveCorrelationId,
-    CreatedAtUtc = timeProvider.GetUtcNow()
-});</code></pre>
-
-      <h3>SMTP sender behavior</h3>
-      <p>The sender should:</p>
-      <ul>
-        <li>Without an override, add every persisted To and Cc item to one message in caller order.</li>
-        <li>Never resolve addresses from payload/template context, route roles, SQL, directories, or configuration maps.</li>
-        <li>Treat any MailKit parse/send failure as failure of the complete outbox row; retry is message-level.</li>
-        <li>With <code>Smtp:RecipientOverride</code>, send only to the override mailbox, suppress intended envelope recipients, and include both ordered intended lists in controlled diagnostics.</li>
-        <li>Send multipart email when <code>HtmlBody</code> is not blank.</li>
-      </ul>
-
-      <p>
-        Persist the exact same <code>notificationRecipientsJson</code> on the created task and initial outbox row.
-        <code>PayloadJson</code> remains template context only. SLA reads and copies the task snapshot unchanged;
-        missing or malformed task snapshots are warned and skipped rather than reconstructed.
-      </p>
-    </section>
-
-    <section id="config">
-      <h2>Configuration</h2>
-      <p>Use this shape while smoke testing. Keep <code>RecipientOverride</code> on until you are ready to send real mail.</p>
-      <pre><code>{
-  "Notifications": {
-    "Sender": "Smtp"
-  },
-  "Smtp": {
-    "Host": "smtp-relay.yourfirm.local",
-    "Port": "25",
-    "From": "workflow@yourfirm.com",
-    "RecipientOverride": "operator-smoke-test@yourfirm.com"
   }
 }</code></pre>
 
-      <div class="callout">
-        <code>Smtp:RecipientOverride</code> is the only delivery-address override. Remove it only when every
-        notification-producing caller supplies validated To/Cc arrays.
-      </div>
-    </section>
+  <h2>Composition and dispatch</h2>
+  <ul>
+    <li>Register the shared workflow infrastructure, <code>TimeProvider</code>, API services, notification dispatcher, and configured sender.</li>
+    <li>Execute workflow through the shared application/infrastructure services; do not duplicate transition or recipient resolution logic in controllers.</li>
+    <li>After commit, dispatch only action-created rows selected by workflow instance ID and correlation ID.</li>
+    <li>Keep <code>Smtp:RecipientOverride</code> enabled during controlled live smoke tests.</li>
+    <li>Run SLA and generic outbox processing from a scheduler/worker, not a polling loop inside the request host.</li>
+  </ul>
 
-    <section id="test">
-      <h2>Verification Checklist</h2>
-      <ol>
-        <li>Apply the database migration.</li>
-        <li>Run seed or metadata update so every notification route has <code>HtmlBodyTemplate</code>.</li>
-        <li>Build the target API with warnings as errors.</li>
-        <li>Start a workflow and execute an action that queues a notification.</li>
-        <li>Confirm the created task and initial outbox row contain identical ordered <code>NotificationRecipientsJson</code> while <code>PayloadJson</code> contains template values only.</li>
-        <li>Confirm <code>NotificationOutbox.HtmlBody</code> is not blank.</li>
-        <li>With <code>Smtp:RecipientOverride</code> enabled, confirm the smoke mailbox is the only envelope recipient and sees both original ordered To/Cc lists in the body.</li>
-        <li>Remove <code>RecipientOverride</code> only when ready to send real mail.</li>
-        <li>Run the scheduled processor path for overdue and retry processing.</li>
-      </ol>
+  <h2>Verification checklist</h2>
+  <ul>
+    <li>Start without required Original Maker fails and rolls back the new instance.</li>
+    <li>A later action cannot replace immutable Original Maker.</li>
+    <li>An undeclared request input key fails before side effects.</li>
+    <li>Static To plus selected Cc resolves in deterministic order.</li>
+    <li>Duplicate case variants retain the first string and To removes the same address from Cc.</li>
+    <li>Immediate outbox JSON equals task JSON.</li>
+    <li>SLA JSON remains byte-for-byte equal after metadata/participant changes.</li>
+    <li>An unusable stored address produces one message-level delivery failure/retry.</li>
+  </ul>
 
-      <h3>Scheduled processor shape</h3>
-      <pre><code>dotnet .\WorkflowEngine.Console.dll run-sla
-dotnet .\WorkflowEngine.Console.dll process-notification-outbox</code></pre>
-
-      <div class="callout danger">
-        Do not run the scheduled SLA/outbox loop inside the IIS target API. Use Windows Task Scheduler or a separate
-        worker process.
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <div class="wrap">
-      Source of truth for this handoff: current workflow engine source in <code>C:\projects\cdt-workflow</code>.
-      Created for target API integration of per-record recipients, CC recipients, and HTML notification email bodies.
-    </div>
-  </footer>
+  <p>Reference files: <code>workflow-api/WORKFLOW_API_BOUNDARIES.md</code>, <code>workflow-api/samples</code>, and <code>PROJECT.md</code>.</p>
 </body>
 </html>
