@@ -1,0 +1,12 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "BdrmTradeFulfilled",
+  "notification": {
+    "templateData": {
+      "confirmerDisplayName": "Scenario BDRM Reviewer",
+      "accountShortName": "API016",
+      "accountDisplayName": "Scenario Fulfilled Account",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-16"
+    }
+  }
+}

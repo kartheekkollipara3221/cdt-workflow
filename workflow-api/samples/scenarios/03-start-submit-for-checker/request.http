@@ -1,0 +1,9 @@
+@baseUrl = http://localhost:5058
+
+POST {{baseUrl}}/v1/WorkflowStart
+Content-Type: application/json
+X-Workflow-UserId: maker.scenario
+X-Workflow-Roles: Maker
+X-Workflow-DisplayName: Scenario Maker
+
+< ./request.json

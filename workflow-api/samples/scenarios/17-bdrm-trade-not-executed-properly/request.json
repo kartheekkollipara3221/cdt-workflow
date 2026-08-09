@@ -1,0 +1,12 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "BdrmTradeNotExecutedProperly",
+  "notification": {
+    "templateData": {
+      "accountShortName": "API017",
+      "accountDisplayName": "Scenario Rework Account",
+      "deskName": "Taxable",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-17"
+    }
+  }
+}

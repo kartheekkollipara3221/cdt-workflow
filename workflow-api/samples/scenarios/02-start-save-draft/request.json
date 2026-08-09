@@ -1,0 +1,16 @@
+{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectId": "PT-API-SCENARIO-02",
+  "actionKey": "SaveDraft",
+  "notification": {
+    "recipientInputs": {
+      "originalMaker": [
+        {
+          "userId": "maker.scenario",
+          "emailAddress": "maker.scenario@example.test",
+          "displayName": "Scenario Maker"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "SubmitForChecker",
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager.scenario",
+          "emailAddress": "manager.scenario@example.test",
+          "displayName": "Scenario Manager"
+        }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "API-05",
+      "submitterDisplayName": "Scenario Maker",
+      "deskName": "Taxable",
+      "securityType": "Equity",
+      "accountShortName": "API005",
+      "accountDisplayName": "Scenario Income Account",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-05"
+    }
+  }
+}

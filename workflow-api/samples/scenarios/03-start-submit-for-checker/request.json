@@ -1,0 +1,32 @@
+{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectId": "PT-API-SCENARIO-03",
+  "actionKey": "SubmitForChecker",
+  "notification": {
+    "recipientInputs": {
+      "originalMaker": [
+        {
+          "userId": "maker.scenario",
+          "emailAddress": "maker.scenario@example.test",
+          "displayName": "Scenario Maker"
+        }
+      ],
+      "selectedCcUsers": [
+        {
+          "userId": "manager.scenario",
+          "emailAddress": "manager.scenario@example.test",
+          "displayName": "Scenario Manager"
+        }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "API-03",
+      "submitterDisplayName": "Scenario Maker",
+      "deskName": "Taxable",
+      "securityType": "Equity",
+      "accountShortName": "API003",
+      "accountDisplayName": "Scenario Growth Account",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-03"
+    }
+  }
+}

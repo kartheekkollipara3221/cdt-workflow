@@ -1,0 +1,17 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable",
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "templateData": {
+      "referenceNumber": "API-09",
+      "submitterDisplayName": "Scenario Maker",
+      "deskName": "Taxable",
+      "securityType": "Equity",
+      "accountShortName": "API009",
+      "accountDisplayName": "Scenario Taxable Account",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-09"
+    }
+  }
+}

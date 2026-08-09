@@ -1,0 +1,10 @@
+@baseUrl = http://localhost:5058
+@workflowInstanceId = REPLACE_WITH_PERSISTED_INSTANCE_ID
+
+POST {{baseUrl}}/v1/WorkflowAction
+Content-Type: application/json
+X-Workflow-UserId: checker.scenario
+X-Workflow-Roles: Checker
+X-Workflow-DisplayName: Scenario Checker
+
+< ./request.json

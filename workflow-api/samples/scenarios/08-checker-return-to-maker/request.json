@@ -1,0 +1,24 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "CheckerReturnToMaker",
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager.scenario",
+          "emailAddress": "manager.scenario@example.test",
+          "displayName": "Scenario Manager"
+        }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "API-08",
+      "returnedByDisplayName": "Scenario Checker",
+      "recipientDisplayName": "Scenario Maker",
+      "accountShortName": "API008",
+      "accountDisplayName": "Scenario Review Account",
+      "submittedDate": "2026-08-09",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-08"
+    }
+  }
+}

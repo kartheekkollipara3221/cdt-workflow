@@ -1,0 +1,17 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxExempt",
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "templateData": {
+      "referenceNumber": "API-10",
+      "submitterDisplayName": "Scenario Maker",
+      "deskName": "Tax Exempt",
+      "securityType": "Municipal Bond",
+      "accountShortName": "API010",
+      "accountDisplayName": "Scenario Tax Exempt Account",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-10"
+    }
+  }
+}

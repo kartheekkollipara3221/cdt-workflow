@@ -1,0 +1,14 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "TradingTradeExecuted",
+  "notification": {
+    "templateData": {
+      "accountShortName": "API018",
+      "accountDisplayName": "Scenario Re-executed Account",
+      "traderDisplayName": "Scenario Trader",
+      "deskName": "Taxable",
+      "securityType": "Equity",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-18"
+    }
+  }
+}

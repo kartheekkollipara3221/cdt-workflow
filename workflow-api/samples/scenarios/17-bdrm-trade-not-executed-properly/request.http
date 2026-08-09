@@ -1,0 +1,10 @@
+@baseUrl = http://localhost:5058
+@workflowInstanceId = REPLACE_WITH_PERSISTED_INSTANCE_ID
+
+POST {{baseUrl}}/v1/WorkflowAction
+Content-Type: application/json
+X-Workflow-UserId: bdrm.scenario
+X-Workflow-Roles: BDRMClientService
+X-Workflow-DisplayName: Scenario BDRM Reviewer
+
+< ./request.json

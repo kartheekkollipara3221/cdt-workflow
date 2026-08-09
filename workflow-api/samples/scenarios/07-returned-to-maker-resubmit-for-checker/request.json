@@ -1,0 +1,15 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "ResubmitForChecker",
+  "notification": {
+    "templateData": {
+      "referenceNumber": "API-07",
+      "submitterDisplayName": "Scenario Maker",
+      "deskName": "Taxable",
+      "securityType": "Equity",
+      "accountShortName": "API007",
+      "accountDisplayName": "Scenario Rework Account",
+      "tradeLink": "https://example.test/trades/PT-API-SCENARIO-07"
+    }
+  }
+}

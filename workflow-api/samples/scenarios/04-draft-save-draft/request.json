@@ -1,0 +1,4 @@
+{
+  "workflowInstanceId": "{{workflowInstanceId}}",
+  "actionKey": "SaveDraft"
+}
