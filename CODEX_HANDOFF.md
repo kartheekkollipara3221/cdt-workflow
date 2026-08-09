@@ -708,3 +708,57 @@ Latest restore-bundle verification:
 ```text
 Continue the SQMS design discussion in C:\projects\cdt-workflow on branch console-code-first-0518. Read AGENTS.MD and PROJECT.md first, then CODEX_HANDOFF.md. The supplied SQMS sources have already been reviewed; do not restart the 33-question questionnaire or re-derive settled decisions unless a source conflict appears. The approved direction is integration-only: two metadata-driven definitions (`SqmsOpportunity` and `SqmsBid`) plus a thin timed-close coordinator around the existing generic engine. The existing application/IPG owns allocation-state selection. Review the exact opportunity, bid, automatic-close, notification, and ownership flow in `CODEX_HANDOFF.md` with me. Make no code, seed, migration, contract, test, sample, or implementation-plan changes unless I explicitly authorize them.
 ```
+
+## 2026-08-09 Optimized UI Workflow API Envelope
+
+### Current goal
+
+- Completed the approved UI-facing `WorkflowStart` and `WorkflowAction` payload optimization on `console-code-first-0518`.
+- Kept the reusable engine generic and metadata-driven while moving definition-owned and server-derived values out of the browser body.
+
+### Completed changes
+
+- Public Start now exposes exactly `workflowKey`, `businessObjectId`, optional `actionKey`, optional flat `slaTargetDate`, and optional `notification`.
+- Public Action now exposes exactly `workflowInstanceId`, optional `actionKey`, optional `assignedRoleKey`, optional flat `slaTargetDate`, and optional `notification`.
+- Unknown root/nested fields are rejected; obsolete body fields such as business-object type, body idempotency, nested SLA input, legacy notification context, and final recipient arrays are no longer accepted publicly.
+- Added definition metadata for business-object type, workflow participant definitions/snapshots, and ordered notification recipient rules.
+- Start derives business-object type and captures the required immutable `originalMaker` participant once.
+- Metadata resolves StaticAddress, WorkflowParticipant, and RequestInput sources into final To/Cc snapshots. Resolution uses rule/source order, case-insensitive duplicate comparison, first opaque value retention, and To-over-Cc precedence.
+- Opaque address strings are stored without syntax, directory, mailbox, SMTP, trimming, or rewriting validation.
+- Immediate outbox rows and tasks store the same final snapshot; SLA reminders reuse the task snapshot byte-for-byte.
+- The API generates client-action, correlation, and idempotency identity inside the trusted boundary.
+- Preserved the console-only `WorkflowActionEnvelope` and existing console sample fixtures.
+- Added current public examples under `workflow-api/samples` and replaced stale HTML integration handoffs.
+
+### Changed files
+
+- Public API DTOs/services/tests under `workflow-api/src` and `workflow-api/tests`.
+- Application notification contracts, participant capture, canonical hashing, and recipient resolver.
+- Workflow execution and Start integration.
+- EF entities/configuration/migration/seed verification for definition type, participants, and recipient rules.
+- SQL-backed Start/Action/SLA regression tests.
+- `PROJECT.md`, `README.md`, `workflow-api/WORKFLOW_API_BOUNDARIES.md`, current design/plan artifacts, and four integration handoff HTML files.
+
+### Build and test status
+
+- Core warnings-as-errors build: passed with 0 warnings/errors.
+- Core full SQL-backed suite: 308 passed, 0 failed, 4 smtp4dev-only tests skipped.
+- Workflow API warnings-as-errors build: passed with 0 warnings/errors.
+- Workflow API full suite: 66 passed, 0 failed, 0 skipped.
+- `init-db` and `verify-seed`: passed against `cdt_workflow_api_20260527`.
+- Required Checker Return, Trading Desk Return, SLA, notification inspection, and 14-step demo commands: passed.
+- Live NoOp HTTP verification: Start moved to CheckerReview; Checker Return moved to ReturnedToMaker. SQL showed the captured Maker address and selected addresses retained surrounding spaces, with each task snapshot matching its immediate Sent outbox row.
+- The live API process was stopped and port 5058 was verified available.
+
+### Known risks and open items
+
+- The migration intentionally clears workflow runtime rows because backward compatibility was explicitly not required; metadata and mock business data remain.
+- Four smtp4dev integration tests remain opt-in/skipped because no live fake SMTP service was requested for this verification. Unit and SQL tests cover message-level retry behavior.
+- The local verification database now contains the final console/demo/live-HTTP evidence rows.
+- Existing unrelated untracked `.tools`, `SQMS`, and `tareget-api-integration` content was preserved.
+
+### Next-session prompt
+
+```text
+Continue UI integration from the optimized Workflow API contract on console-code-first-0518. Read AGENTS.MD, PROJECT.md, workflow-api/WORKFLOW_API_BOUNDARIES.md, and the 2026-08-09 handoff section. Use workflow-api/samples for public bodies; do not use samples/workflow-actions as HTTP payloads. Start must send the resolved immutable originalMaker. Actions may send only metadata-declared recipient input keys such as selectedCcUsers. The engine owns final To/Cc placement, state transition, SLA configuration, correlation, and idempotency identity.
+```
