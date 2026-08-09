@@ -200,10 +200,22 @@ public sealed class WorkflowSlaSynchronizationService(
     {
         if (policy.CalculationMode == "DurationFromTaskCreation")
         {
-            if (policy.DurationMinutes is null or <= 0)
+            var hasRecurrence = policy.RecurrenceIntervalDays is > 0;
+            if (policy.DurationMinutes is null or <= 0
+                || policy.SendDueDateReminder
+                || policy.OverdueStartOffsetDays != 0
+                || policy.RecurrenceIntervalDays is <= 0
+                || (hasRecurrence
+                    && (policy.ReminderLocalTime is null
+                        || string.IsNullOrWhiteSpace(policy.TimeZoneId)))
+                || (!hasRecurrence
+                    && (policy.ReminderLocalTime is not null
+                        || policy.TimeZoneId is not null))
+                || policy.DueNotificationRouteKey is not null
+                || string.IsNullOrWhiteSpace(policy.OverdueNotificationRouteKey))
             {
                 throw new InvalidOperationException(
-                    $"SLA policy '{policy.SlaPolicyKey}' requires positive DurationMinutes.");
+                    $"SLA policy '{policy.SlaPolicyKey}' has invalid duration-mode metadata.");
             }
 
             return;

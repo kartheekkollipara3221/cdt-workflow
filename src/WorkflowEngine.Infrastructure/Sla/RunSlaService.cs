@@ -218,10 +218,35 @@ public sealed class RunSlaService(
     {
         if (schedule.CalculationMode == "DurationFromTaskCreation")
         {
-            return new SlaOccurrence(
-                DateOnly.FromDateTime(schedule.OverdueAtUtc.UtcDateTime),
-                "Overdue",
-                schedule.OverdueAtUtc);
+            if (schedule.RecurrenceIntervalDays is null)
+            {
+                return new SlaOccurrence(
+                    DateOnly.FromDateTime(schedule.OverdueAtUtc.UtcDateTime),
+                    "Overdue",
+                    schedule.OverdueAtUtc);
+            }
+
+            if (schedule.ReminderLocalTime is null
+                || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
+            {
+                throw new InvalidOperationException($"SLA schedule {schedule.Id} metadata is invalid.");
+            }
+
+            var durationTimeZone = TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZoneId);
+            var overdueLocalDate = DateOnly.FromDateTime(
+                TimeZoneInfo.ConvertTime(schedule.OverdueAtUtc, durationTimeZone).DateTime);
+            var durationCurrentLocalDate = DateOnly.FromDateTime(
+                TimeZoneInfo.ConvertTime(now, durationTimeZone).DateTime);
+            if (durationCurrentLocalDate <= overdueLocalDate)
+            {
+                return new SlaOccurrence(overdueLocalDate, "Overdue", schedule.OverdueAtUtc);
+            }
+
+            var durationEligibleAtUtc = scheduleCalculator.CalculateCalendarOccurrence(
+                durationCurrentLocalDate,
+                schedule.ReminderLocalTime.Value,
+                schedule.TimeZoneId);
+            return new SlaOccurrence(durationCurrentLocalDate, "Overdue", durationEligibleAtUtc);
         }
 
         if (schedule.CalculationMode != "ApplicationTargetDate"
@@ -248,7 +273,23 @@ public sealed class RunSlaService(
     {
         if (schedule.CalculationMode == "DurationFromTaskCreation")
         {
-            schedule.NextReminderAtUtc = null;
+            if (schedule.RecurrenceIntervalDays is null)
+            {
+                schedule.NextReminderAtUtc = null;
+                return;
+            }
+
+            if (schedule.ReminderLocalTime is null
+                || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
+            {
+                throw new InvalidOperationException($"SLA schedule {schedule.Id} metadata is invalid.");
+            }
+
+            schedule.NextReminderAtUtc = scheduleCalculator.CalculateNextRecurringOccurrence(
+                occurrence.Date,
+                schedule.ReminderLocalTime.Value,
+                schedule.TimeZoneId,
+                schedule.RecurrenceIntervalDays.Value);
             return;
         }
 
