@@ -128,14 +128,16 @@ internal static class PortfolioTradeSeedData
 
     private const string SlaTaskOverdueBody = """
         Workflow instance {{workflowInstanceId}} has an overdue task {{taskKey}} assigned to {{assignedRoleKey}}.
-        Task due date: {{dueAtUtc}}
-        Overdue at: {{overdueAtUtc}}
+        Task due date: {{dueDateDisplay}}
+        Overdue date: {{overdueDateDisplay}}
+        Request link: {{tradeLink}}
         """;
 
     private const string SlaTaskOverdueHtmlBody = """
         <p>Workflow instance <strong>{{workflowInstanceId}}</strong> has an overdue task <strong>{{taskKey}}</strong> assigned to <strong>{{assignedRoleKey}}</strong>.</p>
-        <p>Task due date: <strong>{{dueAtUtc}}</strong></p>
-        <p>Overdue at: <strong>{{overdueAtUtc}}</strong></p>
+        <p>Task due date: <strong>{{dueDateDisplay}}</strong></p>
+        <p>Overdue date: <strong>{{overdueDateDisplay}}</strong></p>
+        <p><a href="{{tradeLink}}">Open request</a></p>
         """;
 
     private const string SlaTaskDueTodayBody = """

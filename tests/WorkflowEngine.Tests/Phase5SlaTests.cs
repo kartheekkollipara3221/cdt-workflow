@@ -27,8 +27,9 @@ public sealed class Phase5SlaTests
         AddInstance(dbContext, "WF-PT-7", "PT-7", "Active", versionId);
         dbContext.SaveChanges();
 
+        var fixedOffsetBoundary = DateTimeOffset.Parse("2030-01-15T02:00:00Z");
         var returned = AddTask(dbContext, "WF-PT-7", "TradingDeskReviewTask", "TradingDesk", Now.AddMinutes(-6));
-        var overdue = AddTask(dbContext, "WF-PT-1", "CheckerReviewTask", "Checker", Now.AddMinutes(-5));
+        var overdue = AddTask(dbContext, "WF-PT-1", "CheckerReviewTask", "Checker", fixedOffsetBoundary);
         var alreadyQueued = AddTask(dbContext, "WF-PT-2", "CheckerReviewTask", "Checker", Now.AddMinutes(-4));
         AddTask(dbContext, "WF-PT-3", "CheckerReviewTask", "Checker", Now.AddMinutes(1));
         AddTask(dbContext, "WF-PT-4", "MakerReworkTask", "Maker", null);
@@ -62,19 +63,44 @@ public sealed class Phase5SlaTests
 
         Assert.Equal(4, result.PendingTasksWithSla);
         Assert.Equal(1, result.AlreadyQueued);
-        Assert.Equal([returned.Id, overdue.Id], result.QueuedNotifications.Select(row => row.WorkflowTaskId));
+        Assert.Equal([overdue.Id, returned.Id], result.QueuedNotifications.Select(row => row.WorkflowTaskId));
         Assert.All(result.QueuedNotifications, row => Assert.Equal("Active", dbContext.WorkflowInstances.Single(instance => instance.WorkflowInstanceId == row.WorkflowInstanceId).Status));
         Assert.Equal(3, dbContext.NotificationOutbox.Count(row => row.NotificationType == "SlaTaskOverdue"));
         var overdueNotification = dbContext.NotificationOutbox.Single(row =>
             row.WorkflowTaskId == overdue.Id && row.NotificationType == "SlaTaskOverdue");
+        const string requestUrl = "https://sharepoint.example.test/trades/1050";
         Assert.Equal("Overdue: Workflow task overdue", overdueNotification.Subject);
         Assert.Contains("WF-PT-1", overdueNotification.Body, StringComparison.Ordinal);
         Assert.Contains("CheckerReviewTask", overdueNotification.Body, StringComparison.Ordinal);
+        Assert.Contains("Task due date: 01/14/2030", overdueNotification.Body, StringComparison.Ordinal);
+        Assert.Contains("Overdue date: 01/14/2030", overdueNotification.Body, StringComparison.Ordinal);
+        Assert.Contains($"Request link: {requestUrl}", overdueNotification.Body, StringComparison.Ordinal);
         Assert.Contains("<strong>WF-PT-1</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
         Assert.Contains("<strong>CheckerReviewTask</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains("Task due date: <strong>01/14/2030</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains("Overdue date: <strong>01/14/2030</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains($"<a href=\"{requestUrl}\">Open request</a>", overdueNotification.HtmlBody, StringComparison.Ordinal);
         Assert.Equal(RecipientSnapshot, overdueNotification.NotificationRecipientsJson);
+
+        foreach (var forbidden in new[]
+                 {
+                     fixedOffsetBoundary.ToString("O"),
+                     "01/14/2030 +00:00",
+                     "01/14/2030 -05:00",
+                     "01/14/2030 UTC",
+                     "01/14/2030 UTC-5",
+                     "01/14/2030 EST",
+                     "01/14/2030 EDT"
+                 })
+        {
+            Assert.DoesNotContain(forbidden, overdueNotification.Body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(forbidden, overdueNotification.HtmlBody, StringComparison.OrdinalIgnoreCase);
+        }
+
         using var payload = JsonDocument.Parse(overdueNotification.PayloadJson);
         Assert.False(payload.RootElement.TryGetProperty("ccEmailAddresses", out _));
+        Assert.Equal(fixedOffsetBoundary.ToString("O"), payload.RootElement.GetProperty("dueAtUtc").GetString());
+        Assert.Equal(fixedOffsetBoundary.ToString("O"), payload.RootElement.GetProperty("overdueAtUtc").GetString());
 
         var second = await new RunSlaService(
             dbContext,
@@ -251,6 +277,42 @@ public sealed class Phase5SlaTests
         Assert.Single(
             dbContext.NotificationOutbox,
             row => row.WorkflowTaskId == validTask.Id && row.NotificationType == "SlaTaskOverdue");
+    }
+
+    [Fact]
+    public async Task RunSlaWarnsAndSkipsWhenOverdueRequestLinkIsMissing()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-MISSING-LINK", "PT-MISSING-LINK", "Active", versionId);
+        var task = AddTask(
+            dbContext,
+            "WF-PT-MISSING-LINK",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-5));
+        var context = NotificationContext();
+        context.Remove("tradeLink");
+        task.NotificationContextJson = JsonSerializer.Serialize(context);
+        dbContext.SaveChanges();
+
+        var result = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.StartsWith(
+                    $"task {task.Id} SLA notification template missing:",
+                    StringComparison.Ordinal)
+                && warning.Contains(
+                    "Template token 'tradeLink' requires workflow.notificationContext.tradeLink.",
+                    StringComparison.Ordinal));
+        Assert.Empty(result.QueuedNotifications);
+        Assert.DoesNotContain(
+            dbContext.NotificationOutbox,
+            row => row.WorkflowTaskId == task.Id && row.NotificationType == "SlaTaskOverdue");
     }
 
     private static void AddInstance(WorkflowDbContext dbContext, string workflowInstanceId, string businessObjectId, string status, long versionId)

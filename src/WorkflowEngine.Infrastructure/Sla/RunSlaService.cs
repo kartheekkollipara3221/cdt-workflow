@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,8 @@ public sealed class RunSlaService(
     NotificationTemplateRenderer templateRenderer,
     SlaScheduleCalculator scheduleCalculator) : IRunSlaService
 {
+    private static readonly TimeSpan FixedUtcMinusFiveOffset = TimeSpan.FromHours(-5);
+
     public async Task<RunSlaResult> RunAsync(RunSlaRequest request, CancellationToken cancellationToken)
     {
         var now = request.Now.ToUniversalTime();
@@ -381,12 +384,21 @@ public sealed class RunSlaService(
         context["assignedRoleKey"] = task.AssignedRoleKey;
         context["targetDate"] = schedule.TargetDate?.ToString("yyyy-MM-dd");
         context["dueAtUtc"] = schedule.OverdueAtUtc.ToString("O");
+        context["dueDateDisplay"] = FormatFixedUtcMinusFiveDate(schedule.OverdueAtUtc);
         context["dueReminderAtUtc"] = schedule.DueReminderAtUtc?.ToString("O");
         context["overdueAtUtc"] = schedule.OverdueAtUtc.ToString("O");
+        context["overdueDateDisplay"] = FormatFixedUtcMinusFiveDate(schedule.OverdueAtUtc);
         context["reminderQueuedAtUtc"] = processedAtUtc.ToString("O");
         context["slaOccurrenceDate"] = occurrence.Date.ToString("yyyy-MM-dd");
         context["slaReminderKind"] = occurrence.Kind;
         return true;
+    }
+
+    private static string FormatFixedUtcMinusFiveDate(DateTimeOffset value)
+    {
+        return value
+            .ToOffset(FixedUtcMinusFiveOffset)
+            .ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
     }
 
     private static bool IsSlaOutboxUniqueViolation(DbUpdateException exception)

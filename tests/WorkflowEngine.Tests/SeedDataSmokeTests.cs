@@ -171,6 +171,14 @@ public sealed class SeedDataSmokeTests
         Assert.Equal("Updates Required to Directed Trade Request", returned.SubjectTemplate);
         Assert.DoesNotContain("returnReason", returned.BodyTemplate, StringComparison.Ordinal);
         Assert.Contains("<strong>{{recipientDisplayName}}</strong>", returned.HtmlBodyTemplate, StringComparison.Ordinal);
+
+        var overdue = routes["RouteSlaTaskOverdue"];
+        Assert.Contains("{{dueDateDisplay}}", overdue.BodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("{{overdueDateDisplay}}", overdue.BodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("{{tradeLink}}", overdue.BodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("{{dueDateDisplay}}", overdue.HtmlBodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("{{overdueDateDisplay}}", overdue.HtmlBodyTemplate, StringComparison.Ordinal);
+        Assert.Contains("""<a href="{{tradeLink}}">Open request</a>""", overdue.HtmlBodyTemplate, StringComparison.Ordinal);
     }
 
     [Fact]
