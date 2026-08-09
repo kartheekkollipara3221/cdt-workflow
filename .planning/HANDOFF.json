@@ -1,90 +1,86 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-06T04:52:30.135Z",
-  "phase": null,
-  "phase_name": "SQMS integration discovery and design confirmation",
-  "phase_dir": null,
-  "plan": null,
-  "task": 1,
-  "total_tasks": 3,
+  "timestamp": "2026-08-09T20:06:27.643Z",
+  "phase": "06",
+  "phase_name": "Samples, Tests, and Demo - post-milestone live acceptance",
+  "phase_dir": ".planning/phases/06-samples-tests-and-demo",
+  "plan": 4,
+  "task": 4,
+  "total_tasks": 4,
   "status": "paused",
   "completed_tasks": [
     {
       "id": 1,
-      "name": "Implement typed multiple-To and multiple-Cc notification support",
+      "name": "Create the 18-pack public Workflow API scenario catalog",
       "status": "done",
-      "commit": "f60f40e"
+      "commit": "ceb3999"
     },
     {
       "id": 2,
-      "name": "Merge recipient feature into console-code-first-0518",
-      "status": "done",
-      "commit": "f55470d"
+      "name": "Start CDT workflow and SaveDraft through the live API",
+      "status": "done"
     },
     {
       "id": 3,
-      "name": "Validate, commit, and push portable repository bundle",
-      "status": "done",
-      "commit": "92c42de"
+      "name": "Submit the CDT workflow to CheckerReview",
+      "status": "done"
     },
     {
       "id": 4,
-      "name": "Review all supplied SQMS source files and record source-backed architecture",
+      "name": "Queue and send the Checker SLA overdue reminder through smtp4dev",
       "status": "done"
     }
   ],
   "remaining_tasks": [
     {
       "id": 5,
-      "name": "Review and explicitly confirm the detailed SqmsOpportunity and SqmsBid transition flow with the user",
+      "name": "Receive the user's next Checker action choice",
       "status": "not_started"
     },
     {
       "id": 6,
-      "name": "Obtain explicit authorization for an SQMS implementation plan and code changes",
-      "status": "not_started"
-    },
-    {
-      "id": 7,
-      "name": "Implement the approved integration-only SQMS slice after authorization",
+      "name": "Continue the directed live scenario one request at a time",
       "status": "not_started"
     }
   ],
-  "blockers": [],
+  "blockers": [
+    {
+      "description": "The immediate Checker assignment outbox row was marked Sent by the first NoOp-configured API process and therefore has no smtp4dev message.",
+      "type": "technical",
+      "workaround": "Do not rewrite or replay it. If assignment SMTP proof is required, create a fresh user-approved workflow scenario after confirming the API has explicit SMTP environment variables."
+    }
+  ],
+  "async_jobs": [],
   "human_actions_pending": [
     {
-      "action": "Confirm or correct the source-derived SQMS Opportunity/Bid transition flow",
-      "context": "The architecture is recorded, but no SQMS-specific implementation should begin until the detailed flow is explicitly approved.",
-      "blocking": true
-    },
-    {
-      "action": "Authorize SQMS implementation separately",
-      "context": "Flow confirmation does not by itself authorize code, seed, migration, contract, sample, or test changes.",
+      "action": "Choose CheckerReturnToMaker or CheckerSendToTradingDesk as the next live action.",
+      "context": "The workflow is paused in CheckerReview with a pending Checker task.",
       "blocking": true
     }
   ],
   "decisions": [
     {
-      "decision": "Multiple recipients are represented as ordered To and Cc arrays on one notification message",
-      "rationale": "CDT and SQMS require multiple recipients but not per-recipient delivery tracking."
+      "decision": "Print the exact endpoint, trusted actor headers, and public body before every live action.",
+      "rationale": "The user wants a transparent UI integration walkthrough.",
+      "phase": "06"
     },
     {
-      "decision": "Calling applications own recipient selection and validation",
-      "rationale": "CDT and SQMS already validate email addresses; duplicating validation in the generic engine adds unnecessary overhead."
+      "decision": "The Checker task snapshot includes the original Maker and one UI-selected manager as Cc.",
+      "rationale": "Both must receive the task assignment/reminder snapshot selected by the UI.",
+      "phase": "06"
     },
     {
-      "decision": "SQMS integrates through two metadata-driven definitions and a thin coordinator",
-      "rationale": "The reusable engine stays generic while time-driven parent/child behavior remains coordinated through normal System actions."
-    },
-    {
-      "decision": "SQMS application remains authoritative for business records and allocation decisions",
-      "rationale": "The workflow engine owns workflow effects, not SQMS domain data or contextual business authorization."
+      "decision": "Do not reset, replay, or directly edit the first Sent assignment outbox row.",
+      "rationale": "Preserve real workflow and outbox history unless the user explicitly authorizes a new scenario.",
+      "phase": "06"
     }
   ],
   "uncommitted_files": [
+    "CODEX_HANDOFF.md",
+    ".tools/",
     "SQMS/",
     "tareget-api-integration/"
   ],
-  "next_action": "Resume on console-code-first-0518 at 92c42de, read AGENTS.MD, PROJECT.md, CODEX_HANDOFF.md, and .planning/.continue-here.md, then review the detailed source-derived SQMS flow with the user before planning or implementation.",
-  "context_notes": "Multiple-recipient support and the base64 bundle are complete, merged, and pushed through 92c42de, but SQMS-specific integration has not started. This pause handoff is committed locally afterward and may leave the branch one handoff-only commit ahead of origin. The completed generic feature is only a prerequisite. No dotnet or testhost processes are running. Preserve the untracked SQMS and tareget-api-integration folders."
+  "next_action": "Read the required files, verify PID/ports and GET WorkflowContext for WF-CDT-SAVE-DRAFT-20260809-01, then wait for the user to choose the next Checker action before printing and sending its request.",
+  "context_notes": "Phase 6 and the quick scenario-catalog task are complete. Live acceptance is paused with WF-CDT-SAVE-DRAFT-20260809-01 active in CheckerReview version 2, pending CheckerReviewTask 1. Task recipient snapshot is checker@example.test To and cdt.maker1@example.test plus cdt.manager1@example.test Cc. Outbox 1 assignment is Sent by NoOp with no smtp message. Outbox 2 overdue reminder is Sent through SMTP as smtp4dev message d9a07ff6-6733-4171-bffb-2e0cf7a7f986. API PID 7256 listens on 5058 with explicit SMTP configuration; smtp4dev PID 25560 listens on 5000/3025."
 }
