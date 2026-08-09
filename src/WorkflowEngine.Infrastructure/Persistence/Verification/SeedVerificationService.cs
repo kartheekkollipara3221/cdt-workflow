@@ -254,15 +254,18 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         {
             if (policy.CalculationMode == "DurationFromTaskCreation")
             {
-                var hasRecurrence = policy.RecurrenceIntervalDays is > 0;
+                var hasMinuteRecurrence = policy.RecurrenceIntervalMinutes is > 0;
+                var hasDayRecurrence = policy.RecurrenceIntervalDays is > 0;
                 if (policy.DurationMinutes is null or <= 0
                     || policy.SendDueDateReminder
                     || policy.OverdueStartOffsetDays != 0
+                    || policy.RecurrenceIntervalMinutes is <= 0
                     || policy.RecurrenceIntervalDays is <= 0
-                    || (hasRecurrence
+                    || (hasMinuteRecurrence && hasDayRecurrence)
+                    || (hasDayRecurrence
                         && (policy.ReminderLocalTime is null
                             || string.IsNullOrWhiteSpace(policy.TimeZoneId)))
-                    || (!hasRecurrence
+                    || (!hasDayRecurrence
                         && (policy.ReminderLocalTime is not null
                             || policy.TimeZoneId is not null))
                     || policy.DueNotificationRouteKey is not null
@@ -274,6 +277,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             else if (policy.CalculationMode == "ApplicationTargetDate")
             {
                 if (policy.DurationMinutes is not null
+                    || policy.RecurrenceIntervalMinutes is not null
                     || !policy.SendDueDateReminder
                     || policy.ReminderLocalTime is null
                     || string.IsNullOrWhiteSpace(policy.TimeZoneId)

@@ -84,6 +84,7 @@ public sealed class WorkflowSlaSynchronizationService(
             TimeZoneId = policy.TimeZoneId,
             ReminderLocalTime = policy.ReminderLocalTime,
             OverdueStartOffsetDays = policy.OverdueStartOffsetDays,
+            RecurrenceIntervalMinutes = policy.RecurrenceIntervalMinutes,
             RecurrenceIntervalDays = policy.RecurrenceIntervalDays,
             DueNotificationRouteKey = policy.DueNotificationRouteKey,
             OverdueNotificationRouteKey = policy.OverdueNotificationRouteKey,
@@ -200,15 +201,18 @@ public sealed class WorkflowSlaSynchronizationService(
     {
         if (policy.CalculationMode == "DurationFromTaskCreation")
         {
-            var hasRecurrence = policy.RecurrenceIntervalDays is > 0;
+            var hasMinuteRecurrence = policy.RecurrenceIntervalMinutes is > 0;
+            var hasDayRecurrence = policy.RecurrenceIntervalDays is > 0;
             if (policy.DurationMinutes is null or <= 0
                 || policy.SendDueDateReminder
                 || policy.OverdueStartOffsetDays != 0
+                || policy.RecurrenceIntervalMinutes is <= 0
                 || policy.RecurrenceIntervalDays is <= 0
-                || (hasRecurrence
+                || (hasMinuteRecurrence && hasDayRecurrence)
+                || (hasDayRecurrence
                     && (policy.ReminderLocalTime is null
                         || string.IsNullOrWhiteSpace(policy.TimeZoneId)))
-                || (!hasRecurrence
+                || (!hasDayRecurrence
                     && (policy.ReminderLocalTime is not null
                         || policy.TimeZoneId is not null))
                 || policy.DueNotificationRouteKey is not null
@@ -223,6 +227,7 @@ public sealed class WorkflowSlaSynchronizationService(
 
         if (policy.CalculationMode != "ApplicationTargetDate"
             || policy.DurationMinutes is not null
+            || policy.RecurrenceIntervalMinutes is not null
             || policy.ReminderLocalTime is null
             || string.IsNullOrWhiteSpace(policy.TimeZoneId)
             || policy.OverdueStartOffsetDays < 0

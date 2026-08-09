@@ -149,6 +149,7 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
             row.ReminderLocalTime = seed.ReminderLocalTime;
             row.TimeZoneId = seed.TimeZoneId;
             row.OverdueStartOffsetDays = seed.OverdueStartOffsetDays;
+            row.RecurrenceIntervalMinutes = seed.RecurrenceIntervalMinutes;
             row.RecurrenceIntervalDays = seed.RecurrenceIntervalDays;
             row.DueNotificationRouteKey = seed.DueNotificationRouteKey;
             row.OverdueNotificationRouteKey = seed.OverdueNotificationRouteKey;

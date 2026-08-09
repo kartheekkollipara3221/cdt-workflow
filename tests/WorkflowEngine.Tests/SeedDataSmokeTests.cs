@@ -219,6 +219,7 @@ public sealed class SeedDataSmokeTests
         Assert.Equal(new TimeOnly(9, 0), tradingPolicy.ReminderLocalTime);
         Assert.Equal("America/New_York", tradingPolicy.TimeZoneId);
         Assert.Equal(1, tradingPolicy.OverdueStartOffsetDays);
+        Assert.Null(tradingPolicy.RecurrenceIntervalMinutes);
         Assert.Equal(1, tradingPolicy.RecurrenceIntervalDays);
         Assert.Equal("RouteSlaTaskDueToday", tradingPolicy.DueNotificationRouteKey);
         Assert.Equal("RouteSlaTaskOverdue", tradingPolicy.OverdueNotificationRouteKey);
@@ -255,16 +256,22 @@ public sealed class SeedDataSmokeTests
             Assert.Equal("RouteSlaTaskOverdue", policy.OverdueNotificationRouteKey);
         });
 
-        foreach (var policyKey in new[] { "CheckerReviewSla", "TradingDeskReworkSla" })
-        {
-            Assert.Null(policies[policyKey].ReminderLocalTime);
-            Assert.Null(policies[policyKey].TimeZoneId);
-            Assert.Null(policies[policyKey].RecurrenceIntervalDays);
-        }
+        var checker = policies["CheckerReviewSla"];
+        Assert.Null(checker.ReminderLocalTime);
+        Assert.Null(checker.TimeZoneId);
+        Assert.Equal(2, checker.RecurrenceIntervalMinutes);
+        Assert.Null(checker.RecurrenceIntervalDays);
+
+        var tradingRework = policies["TradingDeskReworkSla"];
+        Assert.Null(tradingRework.ReminderLocalTime);
+        Assert.Null(tradingRework.TimeZoneId);
+        Assert.Null(tradingRework.RecurrenceIntervalMinutes);
+        Assert.Null(tradingRework.RecurrenceIntervalDays);
 
         var bdrm = policies["BdrmClientServiceReviewSla"];
         Assert.Equal(new TimeOnly(9, 0), bdrm.ReminderLocalTime);
         Assert.Equal("America/New_York", bdrm.TimeZoneId);
+        Assert.Null(bdrm.RecurrenceIntervalMinutes);
         Assert.Equal(1, bdrm.RecurrenceIntervalDays);
     }
 

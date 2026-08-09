@@ -48,10 +48,10 @@ internal static class PortfolioTradeSeedData
 
     public static readonly SlaPolicySeed[] SlaPolicies =
     [
-        new("CheckerReviewSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue"),
-        new("TradingDeskReviewSla", "ApplicationTargetDate", null, true, new TimeOnly(9, 0), "America/New_York", 1, 1, "RouteSlaTaskDueToday", "RouteSlaTaskOverdue"),
-        new("TradingDeskReworkSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue"),
-        new("BdrmClientServiceReviewSla", "DurationFromTaskCreation", 2, false, new TimeOnly(9, 0), "America/New_York", 0, 1, null, "RouteSlaTaskOverdue")
+        new("CheckerReviewSla", "DurationFromTaskCreation", 2, false, null, null, 0, 2, null, null, "RouteSlaTaskOverdue"),
+        new("TradingDeskReviewSla", "ApplicationTargetDate", null, true, new TimeOnly(9, 0), "America/New_York", 1, null, 1, "RouteSlaTaskDueToday", "RouteSlaTaskOverdue"),
+        new("TradingDeskReworkSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, null, "RouteSlaTaskOverdue"),
+        new("BdrmClientServiceReviewSla", "DurationFromTaskCreation", 2, false, new TimeOnly(9, 0), "America/New_York", 0, null, 1, null, "RouteSlaTaskOverdue")
     ];
 
     public static readonly TaskSeed[] Tasks =
@@ -233,6 +233,7 @@ internal sealed record SlaPolicySeed(
     TimeOnly? ReminderLocalTime,
     string? TimeZoneId,
     int OverdueStartOffsetDays,
+    int? RecurrenceIntervalMinutes,
     int? RecurrenceIntervalDays,
     string? DueNotificationRouteKey,
     string? OverdueNotificationRouteKey);

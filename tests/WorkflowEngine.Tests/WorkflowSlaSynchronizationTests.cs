@@ -84,6 +84,51 @@ public sealed class WorkflowSlaSynchronizationTests
         var schedule = Assert.Single(dbContext.WorkflowTaskSlaSchedules);
         Assert.Equal("DurationFromTaskCreation", schedule.CalculationMode);
         Assert.Null(schedule.TargetDate);
+        Assert.Equal(2, schedule.RecurrenceIntervalMinutes);
+        Assert.Null(schedule.RecurrenceIntervalDays);
+        Assert.Equal(1, schedule.ScheduleVersion);
+    }
+
+    [Fact]
+    public void DurationScheduleSnapshotsProductionStyleInitialDelayAndRecurrence()
+    {
+        using var dbContext = CreateSeededContext();
+        var checkerPolicy = dbContext.SlaPolicies.Single(row => row.SlaPolicyKey == "CheckerReviewSla");
+        checkerPolicy.DurationMinutes = 240;
+        checkerPolicy.RecurrenceIntervalMinutes = 60;
+        dbContext.SaveChanges();
+        var task = AddTask(dbContext, "CheckerReviewTask", Now);
+
+        var result = CreateService(dbContext).Synchronize(Request(task.Id, targetDate: null, "idem-production"));
+
+        Assert.True(result.Changed);
+        Assert.Equal(Now.AddHours(4), result.DueAtUtc);
+        Assert.Equal(Now.AddHours(4), result.NextReminderAtUtc);
+        var schedule = Assert.Single(dbContext.WorkflowTaskSlaSchedules);
+        Assert.Equal(240, checkerPolicy.DurationMinutes);
+        Assert.Equal(60, schedule.RecurrenceIntervalMinutes);
+        Assert.Null(schedule.RecurrenceIntervalDays);
+    }
+
+    [Fact]
+    public void ExistingDurationScheduleDoesNotAdoptLaterPolicyRecurrenceChanges()
+    {
+        using var dbContext = CreateSeededContext();
+        var task = AddTask(dbContext, "CheckerReviewTask", Now);
+        var service = CreateService(dbContext);
+        var first = service.Synchronize(Request(task.Id, targetDate: null, "idem-original"));
+        var checkerPolicy = dbContext.SlaPolicies.Single(row => row.SlaPolicyKey == "CheckerReviewSla");
+        checkerPolicy.DurationMinutes = 240;
+        checkerPolicy.RecurrenceIntervalMinutes = 60;
+        dbContext.SaveChanges();
+
+        var unchanged = service.Synchronize(Request(task.Id, targetDate: null, "idem-updated"));
+
+        Assert.True(first.Changed);
+        Assert.False(unchanged.Changed);
+        var schedule = Assert.Single(dbContext.WorkflowTaskSlaSchedules);
+        Assert.Equal(Now.AddMinutes(2), schedule.OverdueAtUtc);
+        Assert.Equal(2, schedule.RecurrenceIntervalMinutes);
         Assert.Equal(1, schedule.ScheduleVersion);
     }
 

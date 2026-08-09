@@ -258,6 +258,7 @@ public sealed class WorkflowStartInitialActionTests
         checkerPolicy.ReminderLocalTime = new TimeOnly(9, 0);
         checkerPolicy.TimeZoneId = "America/New_York";
         checkerPolicy.OverdueStartOffsetDays = 1;
+        checkerPolicy.RecurrenceIntervalMinutes = null;
         checkerPolicy.RecurrenceIntervalDays = 1;
         checkerPolicy.DueNotificationRouteKey = "RouteSlaTaskDueToday";
         checkerPolicy.OverdueNotificationRouteKey = "RouteSlaTaskOverdue";
@@ -297,6 +298,7 @@ public sealed class WorkflowStartInitialActionTests
         checkerPolicy.ReminderLocalTime = new TimeOnly(9, 0);
         checkerPolicy.TimeZoneId = "America/New_York";
         checkerPolicy.OverdueStartOffsetDays = 1;
+        checkerPolicy.RecurrenceIntervalMinutes = null;
         checkerPolicy.RecurrenceIntervalDays = 1;
         checkerPolicy.DueNotificationRouteKey = "RouteSlaTaskDueToday";
         checkerPolicy.OverdueNotificationRouteKey = "RouteSlaTaskOverdue";
