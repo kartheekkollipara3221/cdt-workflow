@@ -18,4 +18,6 @@ public sealed record WorkflowExecutionRequest(
     public bool ValidateActionEcho { get; init; } = true;
 
     public bool PersistSectionData { get; init; } = true;
+
+    public WorkflowNotificationInput? NotificationInput { get; init; }
 }

@@ -142,4 +142,59 @@ public sealed class WorkflowActionEnvelopeNormalizationTests
 
         Assert.NotEqual(first, hasher.ComputeHash(envelope));
     }
+
+    [Fact]
+    public void NotificationInputHashSortsKeysButPreservesRecipientInputOrderAndValues()
+    {
+        var envelope = WorkflowActionEnvelopeTestData.DeserializeValid();
+        var first = new WorkflowNotificationInput
+        {
+            RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+            {
+                ["zInput"] = [new("z", "first", null), new("z2", "second", null)],
+                ["aInput"] = [new("a", "opaque", "A")]
+            },
+            TemplateData = new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["z"] = "last",
+                ["a"] = "first"
+            }
+        };
+        var reorderedKeys = new WorkflowNotificationInput
+        {
+            RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+            {
+                ["aInput"] = [new("a", "opaque", "A")],
+                ["zInput"] = [new("z", "first", null), new("z2", "second", null)]
+            },
+            TemplateData = new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["a"] = "first",
+                ["z"] = "last"
+            }
+        };
+        var reversedRecipients = new WorkflowNotificationInput
+        {
+            RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+            {
+                ["aInput"] = [new("a", "opaque", "A")],
+                ["zInput"] = [new("z2", "second", null), new("z", "first", null)]
+            },
+            TemplateData = reorderedKeys.TemplateData
+        };
+
+        Assert.Equal(hasher.ComputeHash(envelope, first), hasher.ComputeHash(envelope, reorderedKeys));
+        Assert.NotEqual(hasher.ComputeHash(envelope, first), hasher.ComputeHash(envelope, reversedRecipients));
+
+        var changedValue = new WorkflowNotificationInput
+        {
+            RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+            {
+                ["aInput"] = [new("a", "opaque", "A")],
+                ["zInput"] = [new("z", "FIRST", null), new("z2", "second", null)]
+            },
+            TemplateData = reorderedKeys.TemplateData
+        };
+        Assert.NotEqual(hasher.ComputeHash(envelope, reorderedKeys), hasher.ComputeHash(envelope, changedValue));
+    }
 }

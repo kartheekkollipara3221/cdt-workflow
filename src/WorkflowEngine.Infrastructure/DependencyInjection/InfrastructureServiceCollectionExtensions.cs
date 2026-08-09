@@ -46,6 +46,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<WorkflowExecutionService>();
         services.AddScoped<WorkflowInspectionReader>();
         services.AddScoped<StartWorkflowService>();
+        services.AddScoped<WorkflowParticipantCaptureService>();
+        services.AddScoped<NotificationRecipientResolver>();
         services.AddScoped<RunSlaService>();
         services.AddSingleton<SlaScheduleCalculator>();
         services.AddScoped<WorkflowSlaSynchronizationService>();

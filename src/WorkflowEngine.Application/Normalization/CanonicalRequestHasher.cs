@@ -9,6 +9,13 @@ public sealed class CanonicalRequestHasher
 {
     public string ComputeHash(WorkflowActionEnvelope envelope)
     {
+        return ComputeHash(envelope, null);
+    }
+
+    public string ComputeHash(
+        WorkflowActionEnvelope envelope,
+        WorkflowNotificationInput? notificationInput)
+    {
         ArgumentNullException.ThrowIfNull(envelope);
 
         var canonical = new SortedDictionary<string, object?>(StringComparer.Ordinal)
@@ -27,6 +34,8 @@ public sealed class CanonicalRequestHasher
             ["workflow.actionReason"] = envelope.Workflow?.ActionReason,
             ["workflow.notificationContext"] = NormalizeNotificationContext(envelope.Workflow?.NotificationContext),
             ["workflow.notificationRecipients"] = SnapshotNotificationRecipients(envelope.Workflow?.NotificationRecipients),
+            ["workflow.notificationInput.recipientInputs"] = SnapshotRecipientInputs(notificationInput?.RecipientInputs),
+            ["workflow.notificationInput.templateData"] = notificationInput?.TemplateData,
             ["workflow.slaInput.targetDate"] = envelope.Workflow?.SlaInput?.TargetDate,
             ["workflow.expectedCurrentState"] = envelope.Workflow?.ExpectedCurrentState,
             ["workflow.expectedCurrentTaskId"] = envelope.Workflow?.ExpectedCurrentTaskId,
@@ -39,6 +48,20 @@ public sealed class CanonicalRequestHasher
 
         var json = SerializeCanonical(canonical);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+    }
+
+    private static IReadOnlyDictionary<string, object?>? SnapshotRecipientInputs(
+        IReadOnlyDictionary<string, IReadOnlyList<WorkflowRecipientInput>>? recipientInputs)
+    {
+        if (recipientInputs is null || recipientInputs.Count == 0)
+        {
+            return null;
+        }
+
+        return recipientInputs.ToDictionary(
+            pair => pair.Key,
+            pair => (object?)pair.Value,
+            StringComparer.Ordinal);
     }
 
     private static IReadOnlyDictionary<string, object?>? SnapshotNotificationRecipients(
