@@ -4,11 +4,11 @@
 
 **Date:** 2026-08-09
 
-**Scope:** Surgical extension of the existing Milestone 5 duration-based SLA behavior
+**Scope:** Surgical extension of the existing Milestone 5 duration-triggered, calendar-recurring SLA behavior
 
 ## 1. Goal
 
-When a `BdrmClientServiceReviewTask` remains pending, send its first overdue notification two minutes after task creation and then send one overdue reminder every day until that task closes.
+When a `BdrmClientServiceReviewTask` remains pending, send its first overdue notification two minutes after task creation, then send another overdue reminder at 9:00 AM Eastern on the next calendar day and every calendar day afterward until that task closes.
 
 This behavior remains generic and metadata-driven. Portfolio Trade selects the behavior through its seeded SLA policy; reusable scheduler code does not branch on the BDRM task or workflow key.
 
@@ -16,7 +16,8 @@ This behavior remains generic and metadata-driven. Portfolio Trade selects the b
 
 - The BDRM task becomes overdue two minutes after creation.
 - The first overdue notification is eligible at that overdue instant.
-- After the first notification, another overdue notification is eligible every 24 hours.
+- After the first notification, the next overdue notification is eligible at 9:00 AM `America/New_York` on the next calendar day.
+- Later overdue notifications are eligible at 9:00 AM Eastern every calendar day, including weekends and holidays.
 - Every reminder uses the exact ordered To/Cc recipient snapshot persisted on that BDRM task.
 - Repeated or concurrent SLA scans must not create the same daily occurrence twice.
 - A delayed scan queues only the current applicable reminder and does not backfill every missed day.
@@ -27,7 +28,7 @@ This behavior remains generic and metadata-driven. Portfolio Trade selects the b
 
 ## 3. Metadata Design
 
-The existing `RecurrenceIntervalDays` metadata is sufficient and remains authoritative.
+The existing duration, local reminder time, timezone, and recurrence metadata are sufficient and remain authoritative.
 
 The seeded `BdrmClientServiceReviewSla` policy becomes:
 
@@ -36,10 +37,12 @@ The seeded `BdrmClientServiceReviewSla` policy becomes:
 | `CalculationMode` | `DurationFromTaskCreation` |
 | `DurationMinutes` | `2` |
 | `SendDueDateReminder` | `false` |
+| `ReminderLocalTime` | `09:00` |
+| `TimeZoneId` | `America/New_York` |
 | `RecurrenceIntervalDays` | `1` |
 | `OverdueNotificationRouteKey` | `RouteSlaTaskOverdue` |
 
-`null` recurrence continues to mean a one-time duration overdue notification. A positive recurrence interval means the overdue notification repeats at that interval while the task and schedule remain active.
+`null` recurrence continues to mean a one-time duration overdue notification with no local time or timezone. A positive duration recurrence requires a local reminder time and timezone: the duration determines the first overdue instant, while the calendar metadata determines later occurrences.
 
 The public Workflow API does not accept duration or recurrence fields. The UI cannot override this policy.
 
@@ -47,14 +50,15 @@ The public Workflow API does not accept duration or recurrence fields. The UI ca
 
 The generic duration-SLA path must honor the schedule's snapshotted `RecurrenceIntervalDays` value:
 
-1. Schedule creation sets `OverdueAtUtc = task.CreatedAtUtc + DurationMinutes` and initially sets `NextReminderAtUtc` to the overdue instant.
+1. Schedule creation sets `OverdueAtUtc = task.CreatedAtUtc + DurationMinutes` and initially sets `NextReminderAtUtc` to that overdue instant.
 2. `run-sla` selects the schedule only while its workflow instance is active, its task is pending, its schedule is active, and `NextReminderAtUtc <= now`.
 3. The first eligible scan queues one `SlaTaskOverdue` outbox row.
 4. If recurrence is null, the scheduler clears `NextReminderAtUtc`, preserving existing one-time behavior for Checker and Trading Desk Rework policies.
-5. If recurrence is positive, the scheduler advances `NextReminderAtUtc` to the next interval-aligned instant after the processed scan time.
-6. When scans are delayed across one or more expected instants, the scheduler queues one current occurrence and advances to the next future interval. It does not emit a burst of historical reminders.
+5. If recurrence is positive, the scheduler converts the first overdue instant to the configured timezone, takes the next calendar date, and schedules that date at the configured local reminder time.
+6. Each later occurrence advances by `RecurrenceIntervalDays` in the configured timezone. Every local calendar occurrence is converted independently to UTC so daylight-saving changes do not shift the 9:00 AM wall-clock time.
+7. When scans are delayed across one or more expected dates, the scheduler queues at most the current eligible local-date occurrence and advances to the next future calendar occurrence. It does not emit a burst of historical reminders.
 
-Duration recurrence uses exact elapsed-day intervals from the original overdue instant. It does not use application-date timezone/calendar calculations; those remain unchanged for `ApplicationTargetDate` policies such as Trading Desk review.
+This deliberately reuses the same calendar recurrence calculation used by `ApplicationTargetDate` policies after the first occurrence. BDRM differs only in how its first overdue instant is established: task creation plus two minutes rather than a caller-supplied target date.
 
 ## 5. Occurrence Identity
 
@@ -64,7 +68,7 @@ Daily duration reminders can continue using the existing SLA occurrence identity
 (WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)
 ```
 
-For duration recurrence, `SlaOccurrenceDate` is the UTC date of the current applicable interval occurrence. Because this requirement permits only one reminder per day, the existing filtered unique constraint remains sufficient.
+For recurring duration policies, `SlaOccurrenceDate` is the configured timezone's local occurrence date. The first two-minute occurrence and every later 9:00 AM occurrence fall on distinct eligible calendar dates, so the existing filtered unique constraint remains sufficient.
 
 No database-schema migration is required.
 
@@ -100,10 +104,12 @@ The BDRM assignment transition still stores its resolved recipient snapshot on t
 
 Automated coverage must prove:
 
-- BDRM seed metadata has a two-minute duration and one-day recurrence.
+- BDRM seed metadata has a two-minute duration, 9:00 AM `America/New_York` reminder time, and one-calendar-day recurrence.
 - A duration schedule with null recurrence remains one-time.
 - A recurring duration schedule queues its first overdue occurrence at two minutes.
-- A later eligible scan queues the next daily occurrence.
+- The next occurrence is 9:00 AM Eastern on the next calendar day, not 24 hours after the first reminder.
+- Later occurrences remain at 9:00 AM Eastern across daylight-saving boundaries.
+- Weekends and holidays are included.
 - Repeating a scan for the same occurrence does not duplicate it.
 - A delayed scan queues only one current occurrence and advances to a future instant.
 - `BdrmTradeFulfilled` stops future reminders.
@@ -128,6 +134,6 @@ SQL-backed seed verification must confirm the updated policy. Live acceptance ag
 - Caller-controlled SLA configuration;
 - Hardcoded BDRM scheduler logic;
 - Changes to Trading Desk application-date recurrence;
-- Business-day or holiday calendars;
+- Business-day or holiday exclusion calendars;
 - Per-recipient delivery tracking; and
 - Changes to the Workflow API envelope.
