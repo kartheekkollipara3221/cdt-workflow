@@ -110,7 +110,7 @@ The POC uses SQL Server for schema, seed data, runtime workflow state, task data
 The local SQL Server connection string for this project is:
 
 ```text
-Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False
+Server=DOLLY;Database=workflowengine;Integrated Security=true;TrustServerCertificate=True;Encrypt=False
 ```
 
 Required configuration behavior:
@@ -131,7 +131,7 @@ Example `appsettings.Development.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
+    "DefaultConnection": "Server=DOLLY;Database=workflowengine;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
   }
 }
 ```

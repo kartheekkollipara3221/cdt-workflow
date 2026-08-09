@@ -9,7 +9,7 @@ Reusable .NET workflow engine for replacing SharePoint Designer workflow behavio
 - .NET 10 SDK.
 - SQL Server local instance.
 - Configure `ConnectionStrings__DefaultConnection` or a local, untracked `appsettings.Development.json`.
-- Current local verification connection string: `Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
+- Current local verification connection string: `Server=DOLLY;Database=workflowengine;Integrated Security=true;TrustServerCertificate=True;Encrypt=False`.
 
 ### First run
 
@@ -304,7 +304,7 @@ Copy-pasteable `appsettings.json` shape:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=DOLLY;Database=cdt_workflow_api_20260527;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
+    "DefaultConnection": "Server=DOLLY;Database=workflowengine;Integrated Security=true;TrustServerCertificate=True;Encrypt=False"
   },
   "Notifications": {
     "Sender": "Console"
