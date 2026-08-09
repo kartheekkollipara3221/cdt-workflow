@@ -10,6 +10,7 @@ using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Application.WorkflowExecution;
+using WorkflowEngine.Infrastructure.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 using WorkflowEngine.Infrastructure.Sla;
@@ -23,6 +24,7 @@ public sealed class WorkflowExecutionService(
     WorkflowActionResultBuilder resultBuilder,
     CanonicalWorkflowResultSerializer resultSerializer,
     NotificationTemplateRenderer templateRenderer,
+    NotificationRecipientResolver notificationRecipientResolver,
     IWorkflowSlaSynchronizationService slaSynchronizationService) : IWorkflowExecutionService
 {
     public WorkflowExecutionService(
@@ -39,6 +41,7 @@ public sealed class WorkflowExecutionService(
             resultBuilder,
             resultSerializer,
             templateRenderer,
+            new NotificationRecipientResolver(dbContext),
             new WorkflowSlaSynchronizationService(
                 dbContext,
                 timeProvider,
@@ -206,12 +209,70 @@ public sealed class WorkflowExecutionService(
             return slaInputValidation;
         }
 
+        var notificationRecipients = workflow.NotificationRecipients ?? new NotificationRecipients();
+        if (request.NotificationInput is not null)
+        {
+            if (string.IsNullOrWhiteSpace(transition.NotificationRouteKey))
+            {
+                if (request.NotificationInput.RecipientInputs.Count > 0)
+                {
+                    return resultBuilder.BuildValidationFailed(normalized,
+                    [
+                        new WorkflowValidationError(
+                            "notification.recipientInputs",
+                            "The selected workflow action does not declare recipient inputs.")
+                    ]);
+                }
+
+                notificationRecipients = new NotificationRecipients();
+            }
+            else
+            {
+                var route = dbContext.NotificationRoutes
+                    .AsNoTracking()
+                    .SingleOrDefault(row =>
+                        row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                        && row.RouteKey == transition.NotificationRouteKey
+                        && row.IsActive);
+                if (route is null)
+                {
+                    return resultBuilder.BuildValidationFailed(normalized,
+                    [
+                        new WorkflowValidationError(
+                            "notification.recipientInputs",
+                            $"Notification route '{transition.NotificationRouteKey}' was not found.")
+                    ]);
+                }
+
+                var resolution = notificationRecipientResolver.Resolve(
+                    route.Id,
+                    instance.WorkflowInstanceId,
+                    request.NotificationInput);
+                if (resolution.Errors.Count > 0)
+                {
+                    return resultBuilder.BuildValidationFailed(
+                        normalized,
+                        resolution.Errors
+                            .Select(error => new WorkflowValidationError("notification.recipientInputs", error))
+                            .ToArray());
+                }
+
+                notificationRecipients = resolution.Recipients;
+            }
+        }
+
         foreach (var warning in BuildOptionWarnings(envelope.Workflow?.Options, transition, instance.WorkflowDefinitionVersionId))
         {
             Console.Error.WriteLine(warning);
         }
 
-        return ExecuteSideEffects(request, instance, pendingTask, transition, performedByRoleKey);
+        return ExecuteSideEffects(
+            request,
+            instance,
+            pendingTask,
+            transition,
+            performedByRoleKey,
+            notificationRecipients);
     }
 
     private WorkflowActionResultEnvelope? ValidateSlaInput(
@@ -483,14 +544,15 @@ public sealed class WorkflowExecutionService(
         WorkflowInstance loadedInstance,
         WorkflowTask? pendingTask,
         WorkflowTransitionDefinition transition,
-        string performedByRoleKey)
+        string performedByRoleKey,
+        NotificationRecipients notificationRecipients)
     {
         var normalized = request.Normalized;
         var envelope = normalized.Envelope;
         var workflow = envelope.Workflow!;
         var now = timeProvider.GetUtcNow();
         var notificationRecipientsJson = JsonSerializer.Serialize(
-            workflow.NotificationRecipients ?? new NotificationRecipients(),
+            notificationRecipients,
             WorkflowJson.Options);
         WorkflowTaskChange? closedTask = null;
         WorkflowTaskChange? createdTask = null;

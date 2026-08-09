@@ -222,6 +222,40 @@ public sealed class WorkflowActionResultBuilder
         };
     }
 
+    public WorkflowActionResultEnvelope BuildStartWorkflowValidationFailed(
+        string businessObjectType,
+        string businessObjectId,
+        string workflowInstanceId,
+        IReadOnlyList<WorkflowValidationError> errors)
+    {
+        return new WorkflowActionResultEnvelope
+        {
+            Result = new WorkflowActionResult
+            {
+                Success = false,
+                ResultCode = "ValidationFailed",
+                WorkflowInstanceId = workflowInstanceId,
+                BusinessObject = new WorkflowActionResultBusinessObject
+                {
+                    ObjectType = businessObjectType,
+                    ObjectId = businessObjectId
+                },
+                Message = "Workflow start validation failed: "
+                    + string.Join("; ", errors.Select(error => error.Message)),
+                Diagnostics = new WorkflowActionDiagnostics
+                {
+                    Replay = false,
+                    ValidationErrors = errors.Select(error => new WorkflowValidationDiagnostic
+                    {
+                        Field = error.Field,
+                        Rule = InferValidationRule(error),
+                        Message = error.Message
+                    }).ToList()
+                }
+            }
+        };
+    }
+
     public WorkflowActionResultEnvelope BuildExecutionValidatedSuccess(
         NormalizedWorkflowAction normalized,
         string requestHash,

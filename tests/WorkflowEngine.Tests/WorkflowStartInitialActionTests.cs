@@ -15,6 +15,76 @@ namespace WorkflowEngine.Tests;
 public sealed class WorkflowStartInitialActionTests
 {
     [Fact]
+    public void StartWithNotificationInputDerivesTypeCapturesMakerAndResolvesInitialRecipients()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var service = CreateService(dbContext);
+
+        var result = service.Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "caller-type-must-not-win",
+            "PT-START-OPTIMIZED",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "SubmitForChecker",
+            StartedByDisplayName: "Maker One",
+            StartedByRoles: ["Maker"],
+            NotificationInput: new WorkflowNotificationInput
+            {
+                RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+                {
+                    ["originalMaker"] = [new("maker1", "maker-opaque", "Maker One")],
+                    ["selectedCcUsers"] =
+                    [
+                        new("manager1", "manager@example.test", "Manager One"),
+                        new("manager2", "MANAGER@example.test", "Manager Two")
+                    ]
+                },
+                TemplateData = NotificationContext()
+            }));
+
+        Assert.True(result.Envelope.Result.Success);
+        Assert.Equal("PortfolioTrade", Assert.Single(dbContext.WorkflowInstances).BusinessObjectType);
+        var participant = Assert.Single(dbContext.WorkflowParticipants);
+        Assert.Equal("originalMaker", participant.ParticipantKey);
+        Assert.Equal("maker-opaque", participant.EmailAddress);
+
+        var task = Assert.Single(dbContext.WorkflowTasks);
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            task.NotificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(["checker@example.test"], recipients.ToEmailAddresses);
+        Assert.Equal(["manager@example.test"], recipients.CcEmailAddresses);
+        Assert.Equal(task.NotificationRecipientsJson, Assert.Single(dbContext.NotificationOutbox).NotificationRecipientsJson);
+    }
+
+    [Fact]
+    public void StartWithNotificationInputRollsBackWhenRequiredMakerIsMissing()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var service = CreateService(dbContext);
+
+        var result = service.Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "ignored",
+            "PT-START-MISSING-MAKER",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "SubmitForChecker",
+            StartedByRoles: ["Maker"],
+            NotificationInput: new WorkflowNotificationInput()));
+
+        Assert.False(result.Envelope.Result.Success);
+        Assert.Equal("ValidationFailed", result.Envelope.Result.ResultCode);
+        Assert.Contains("originalMaker", result.Envelope.Result.Message, StringComparison.Ordinal);
+        Assert.Empty(dbContext.WorkflowInstances);
+        Assert.Empty(dbContext.WorkflowParticipants);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+    }
+
+    [Fact]
     public void StartWithInitialSubmitMovesToCheckerReviewWithoutMockSectionData()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();

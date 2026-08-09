@@ -4,6 +4,7 @@ using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Application.WorkflowStart;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -19,7 +20,8 @@ public sealed class StartWorkflowService(
     WorkflowActionResultBuilder resultBuilder,
     WorkflowActionEnvelopeNormalizer normalizer,
     CanonicalRequestHasher hasher,
-    WorkflowExecutionService workflowExecutionService) : IStartWorkflowService
+    WorkflowExecutionService workflowExecutionService,
+    WorkflowParticipantCaptureService participantCaptureService) : IStartWorkflowService
 {
     public StartWorkflowService(
         WorkflowDbContext dbContext,
@@ -37,13 +39,34 @@ public sealed class StartWorkflowService(
                 timeProvider,
                 resultBuilder,
                 new CanonicalWorkflowResultSerializer(),
-                new NotificationTemplateRenderer()))
+                new NotificationTemplateRenderer()),
+            new WorkflowParticipantCaptureService(dbContext, timeProvider))
+    {
+    }
+
+    public StartWorkflowService(
+        WorkflowDbContext dbContext,
+        TimeProvider timeProvider,
+        WorkflowActionResultBuilder resultBuilder,
+        WorkflowActionEnvelopeNormalizer normalizer,
+        CanonicalRequestHasher hasher,
+        WorkflowExecutionService workflowExecutionService)
+        : this(
+            dbContext,
+            timeProvider,
+            resultBuilder,
+            normalizer,
+            hasher,
+            workflowExecutionService,
+            new WorkflowParticipantCaptureService(dbContext, timeProvider))
     {
     }
 
     public StartWorkflowResult Start(StartWorkflowRequest request)
     {
         Validate(request);
+        var activeDefinition = ResolveActiveDefinition(request.WorkflowKey);
+        request = request with { BusinessObjectType = activeDefinition.BusinessObjectType };
 
         var workflowInstanceId = $"WF-{request.BusinessObjectId}";
         var initialActionKey = OptionalText(request.InitialActionKey);
@@ -53,10 +76,11 @@ public sealed class StartWorkflowService(
             {
                 return ResetAndStartWithInitialAction(
                     request with { InitialActionKey = initialActionKey },
-                    workflowInstanceId);
+                    workflowInstanceId,
+                    activeDefinition.VersionId);
             }
 
-            return ResetAndStart(request, workflowInstanceId);
+            return ResetAndStart(request, workflowInstanceId, activeDefinition.VersionId);
         }
 
         var existing = FindExisting(request);
@@ -75,13 +99,23 @@ public sealed class StartWorkflowService(
         {
             return StartWithInitialAction(
                 request with { InitialActionKey = initialActionKey },
-                workflowInstanceId);
+                workflowInstanceId,
+                activeDefinition.VersionId);
         }
 
         using var transaction = dbContext.Database.BeginTransaction();
         try
         {
-            var envelope = InsertFreshInstance(request, workflowInstanceId);
+            var envelope = InsertFreshInstance(request, workflowInstanceId, activeDefinition.VersionId);
+            var capture = CaptureParticipants(request, workflowInstanceId, activeDefinition.VersionId);
+            if (capture.Errors.Count > 0)
+            {
+                transaction.Rollback();
+                dbContext.ChangeTracker.Clear();
+                return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
+            }
+
+            dbContext.SaveChanges();
             transaction.Commit();
             return new StartWorkflowResult(envelope, ResetCounts: null);
         }
@@ -105,29 +139,51 @@ public sealed class StartWorkflowService(
         }
     }
 
-    private StartWorkflowResult ResetAndStart(StartWorkflowRequest request, string workflowInstanceId)
+    private StartWorkflowResult ResetAndStart(
+        StartWorkflowRequest request,
+        string workflowInstanceId,
+        long workflowDefinitionVersionId)
     {
         using var transaction = dbContext.Database.BeginTransaction();
 
         var counts = DeleteRuntimeRows(request, workflowInstanceId);
 
         dbContext.ChangeTracker.Clear();
-        var envelope = InsertFreshInstance(request, workflowInstanceId);
+        var envelope = InsertFreshInstance(request, workflowInstanceId, workflowDefinitionVersionId);
+        var capture = CaptureParticipants(request, workflowInstanceId, workflowDefinitionVersionId);
+        if (capture.Errors.Count > 0)
+        {
+            transaction.Rollback();
+            dbContext.ChangeTracker.Clear();
+            return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
+        }
+
+        dbContext.SaveChanges();
         transaction.Commit();
         return new StartWorkflowResult(envelope, counts);
     }
 
     private StartWorkflowResult ResetAndStartWithInitialAction(
         StartWorkflowRequest request,
-        string workflowInstanceId)
+        string workflowInstanceId,
+        long workflowDefinitionVersionId)
     {
         using var transaction = dbContext.Database.BeginTransaction();
 
         var counts = DeleteRuntimeRows(request, workflowInstanceId);
 
         dbContext.ChangeTracker.Clear();
-        InsertFreshInstance(request, workflowInstanceId);
-        var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId);
+        InsertFreshInstance(request, workflowInstanceId, workflowDefinitionVersionId);
+        var capture = CaptureParticipants(request, workflowInstanceId, workflowDefinitionVersionId);
+        if (capture.Errors.Count > 0)
+        {
+            transaction.Rollback();
+            dbContext.ChangeTracker.Clear();
+            return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
+        }
+
+        dbContext.SaveChanges();
+        var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId, capture.ActionNotificationInput);
         if (!actionEnvelope.Result.Success)
         {
             transaction.Rollback();
@@ -140,14 +196,24 @@ public sealed class StartWorkflowService(
 
     private StartWorkflowResult StartWithInitialAction(
         StartWorkflowRequest request,
-        string workflowInstanceId)
+        string workflowInstanceId,
+        long workflowDefinitionVersionId)
     {
         using var transaction = dbContext.Database.BeginTransaction();
 
         try
         {
-            InsertFreshInstance(request, workflowInstanceId);
-            var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId);
+            InsertFreshInstance(request, workflowInstanceId, workflowDefinitionVersionId);
+            var capture = CaptureParticipants(request, workflowInstanceId, workflowDefinitionVersionId);
+            if (capture.Errors.Count > 0)
+            {
+                transaction.Rollback();
+                dbContext.ChangeTracker.Clear();
+                return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
+            }
+
+            dbContext.SaveChanges();
+            var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId, capture.ActionNotificationInput);
             if (!actionEnvelope.Result.Success)
             {
                 transaction.Rollback();
@@ -179,7 +245,8 @@ public sealed class StartWorkflowService(
 
     private WorkflowActionResultEnvelope ExecuteInitialAction(
         StartWorkflowRequest request,
-        string workflowInstanceId)
+        string workflowInstanceId,
+        WorkflowNotificationInput? actionNotificationInput)
     {
         var generatedId = Guid.NewGuid().ToString("N");
         var effectiveIdempotencyKey = OptionalText(request.IdempotencyKey) ?? generatedId;
@@ -212,8 +279,13 @@ public sealed class StartWorkflowService(
                 SlaInput = request.SlaInput is null
                     ? null
                     : new WorkflowSlaInput { TargetDate = request.SlaInput.TargetDate },
-                NotificationContext = CopyNotificationContext(request.NotificationContext),
-                NotificationRecipients = CopyNotificationRecipients(request.NotificationRecipients),
+                NotificationContext = CopyNotificationContext(
+                    request.NotificationInput is null
+                        ? request.NotificationContext
+                        : actionNotificationInput?.TemplateData),
+                NotificationRecipients = request.NotificationInput is null
+                    ? CopyNotificationRecipients(request.NotificationRecipients)
+                    : null,
                 IdempotencyKey = effectiveIdempotencyKey
             }
         };
@@ -225,13 +297,52 @@ public sealed class StartWorkflowService(
 
         return workflowExecutionService.Execute(new WorkflowExecutionRequest(
                 normalized,
-                hasher.ComputeHash(normalized.Envelope),
+                hasher.ComputeHash(normalized.Envelope, actionNotificationInput),
                 AdminOverride: false)
             {
                 DeriveIdentityFromPersistence = true,
                 PersistSectionData = false,
-                ValidateActionEcho = false
+                ValidateActionEcho = false,
+                NotificationInput = actionNotificationInput
             });
+    }
+
+    private StartParticipantCaptureOutcome CaptureParticipants(
+        StartWorkflowRequest request,
+        string workflowInstanceId,
+        long workflowDefinitionVersionId)
+    {
+        if (request.NotificationInput is null)
+        {
+            return new StartParticipantCaptureOutcome(null, []);
+        }
+
+        var result = participantCaptureService.Capture(
+            workflowDefinitionVersionId,
+            workflowInstanceId,
+            request.NotificationInput);
+        return new StartParticipantCaptureOutcome(
+            result.ActionNotificationInput,
+            result.Errors);
+    }
+
+    private StartWorkflowResult BuildParticipantValidationFailed(
+        StartWorkflowRequest request,
+        string workflowInstanceId,
+        IReadOnlyList<string> errors)
+    {
+        var validationErrors = errors
+            .Select(error => new WorkflowValidationError(
+                "notification.recipientInputs",
+                error))
+            .ToArray();
+        return new StartWorkflowResult(
+            resultBuilder.BuildStartWorkflowValidationFailed(
+                request.BusinessObjectType,
+                request.BusinessObjectId,
+                workflowInstanceId,
+                validationErrors),
+            ResetCounts: null);
     }
 
     private StartWorkflowResetCounts DeleteRuntimeRows(
@@ -265,15 +376,17 @@ public sealed class StartWorkflowService(
                 .ExecuteDelete());
     }
 
-    private WorkflowActionResultEnvelope InsertFreshInstance(StartWorkflowRequest request, string workflowInstanceId)
+    private WorkflowActionResultEnvelope InsertFreshInstance(
+        StartWorkflowRequest request,
+        string workflowInstanceId,
+        long workflowDefinitionVersionId)
     {
         var now = timeProvider.GetUtcNow();
-        var versionId = ResolveActiveDefinitionVersionId(request.WorkflowKey);
         var instance = new WorkflowInstance
         {
             WorkflowInstanceId = workflowInstanceId,
             WorkflowKey = request.WorkflowKey,
-            WorkflowDefinitionVersionId = versionId,
+            WorkflowDefinitionVersionId = workflowDefinitionVersionId,
             BusinessObjectType = request.BusinessObjectType,
             BusinessObjectId = request.BusinessObjectId,
             CurrentStateKey = "Draft",
@@ -317,15 +430,17 @@ public sealed class StartWorkflowService(
             .SingleOrDefault();
     }
 
-    private long ResolveActiveDefinitionVersionId(string workflowKey)
+    private ActiveWorkflowDefinition ResolveActiveDefinition(string workflowKey)
     {
-        var versionId = dbContext.WorkflowDefinitionVersions
+        var definition = dbContext.WorkflowDefinitionVersions
             .AsNoTracking()
             .Where(row => row.IsActive && row.WorkflowDefinition != null && row.WorkflowDefinition.WorkflowKey == workflowKey)
-            .Select(row => (long?)row.Id)
+            .Select(row => new ActiveWorkflowDefinition(
+                row.Id,
+                row.WorkflowDefinition!.BusinessObjectType))
             .SingleOrDefault();
 
-        return versionId ?? throw new InvalidOperationException($"Workflow key '{workflowKey}' does not have an active definition version.");
+        return definition ?? throw new InvalidOperationException($"Workflow key '{workflowKey}' does not have an active definition version.");
     }
 
     private static void Validate(StartWorkflowRequest request)
@@ -333,11 +448,6 @@ public sealed class StartWorkflowService(
         if (string.IsNullOrWhiteSpace(request.WorkflowKey))
         {
             throw new ArgumentException("workflowKey is required.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.BusinessObjectType))
-        {
-            throw new ArgumentException("businessObjectType is required.", nameof(request));
         }
 
         if (string.IsNullOrWhiteSpace(request.BusinessObjectId))
@@ -400,4 +510,10 @@ public sealed class StartWorkflowService(
                 (error.Number == 2601 || error.Number == 2627)
                 && error.Message.Contains("WorkflowInstance", StringComparison.OrdinalIgnoreCase));
     }
+
+    private sealed record ActiveWorkflowDefinition(long VersionId, string BusinessObjectType);
+
+    private sealed record StartParticipantCaptureOutcome(
+        WorkflowNotificationInput? ActionNotificationInput,
+        IReadOnlyList<string> Errors);
 }

@@ -326,6 +326,88 @@ public sealed class WorkflowExecutionValidationTests
     }
 
     [Fact]
+    public void NotificationInputResolvesMetadataParticipantAndRequestSourcesBeforeSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        AddTask(dbContext, "WF-PT-1001", "CheckerReviewTask", "Checker");
+        dbContext.WorkflowParticipants.Add(new WorkflowParticipant
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ParticipantKey = "originalMaker",
+            UserId = "maker1",
+            EmailAddress = "maker@example.test",
+            DisplayName = "Maker One",
+            SortOrder = 1,
+            CreatedAtUtc = Now
+        });
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            actionKey: "CheckerReturnToMaker",
+            roles: ["Checker"]);
+        envelope.Workflow!.NotificationRecipients = new NotificationRecipients
+        {
+            ToEmailAddresses = ["legacy-must-not-win"],
+            CcEmailAddresses = []
+        };
+        var request = Request(envelope) with
+        {
+            NotificationInput = new WorkflowNotificationInput
+            {
+                RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+                {
+                    ["selectedCcUsers"] = [new("manager", "manager@example.test", "Manager")]
+                },
+                TemplateData = NotificationContext()
+            }
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.True(result.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks.Where(row => row.Status == "Pending"));
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(task.NotificationRecipientsJson, WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(["maker@example.test"], recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["manager@example.test", "workflow-operations@example.test"],
+            recipients.CcEmailAddresses);
+        Assert.Equal(task.NotificationRecipientsJson, Assert.Single(dbContext.NotificationOutbox).NotificationRecipientsJson);
+    }
+
+    [Fact]
+    public void UnknownNotificationInputFailsBeforeWorkflowSideEffects()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        dbContext.SaveChanges();
+        var request = Request(Envelope()) with
+        {
+            NotificationInput = new WorkflowNotificationInput
+            {
+                RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+                {
+                    ["unexpectedUsers"] = [new("user", "opaque", null)]
+                }
+            }
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.False(result.Result.Success);
+        Assert.Equal("ValidationFailed", result.Result.ResultCode);
+        Assert.Contains("unexpectedUsers", result.Result.Message, StringComparison.Ordinal);
+        Assert.Equal("Draft", Assert.Single(dbContext.WorkflowInstances).CurrentStateKey);
+        Assert.Empty(dbContext.WorkflowTasks);
+        Assert.Empty(dbContext.NotificationOutbox);
+        Assert.Empty(dbContext.WorkflowAudits);
+        Assert.Empty(dbContext.IdempotencyRecords);
+        Assert.Empty(dbContext.MockSectionData);
+    }
+
+    [Fact]
     public void StateConcurrencyConflictWinsBeforeVersionConflict()
     {
         using var dbContext = CreateSeededContext();
