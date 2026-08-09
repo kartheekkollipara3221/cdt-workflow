@@ -1,0 +1,28 @@
+{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectId": "PT-1001",
+  "actionKey": "SubmitForChecker",
+  "notification": {
+    "recipientInputs": {
+      "originalMaker": [
+        {
+          "userId": "maker1",
+          "emailAddress": "maker@example.test",
+          "displayName": "Maker One"
+        }
+      ],
+      "selectedCcUsers": [
+        {
+          "userId": "manager1",
+          "emailAddress": "manager@example.test",
+          "displayName": "Manager One"
+        }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Maker One",
+      "tradeLink": "https://example.test/trades/PT-1001"
+    }
+  }
+}

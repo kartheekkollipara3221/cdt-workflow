@@ -1,0 +1,14 @@
+{
+  "workflowInstanceId": "WF-PT-1001",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable",
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "templateData": {
+      "referenceNumber": "1050",
+      "submitterDisplayName": "Maker One",
+      "deskName": "Taxable",
+      "tradeLink": "https://example.test/trades/PT-1001"
+    }
+  }
+}

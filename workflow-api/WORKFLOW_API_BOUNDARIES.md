@@ -230,15 +230,6 @@ Application-target-date action example:
   "assignedRoleKey": "TradingDeskTaxable",
   "slaTargetDate": "2030-01-20",
   "notification": {
-    "recipientInputs": {
-      "selectedCcUsers": [
-        {
-          "userId": "user-42",
-          "emailAddress": "opaque-address-value",
-          "displayName": "Selected user"
-        }
-      ]
-    },
     "templateData": {}
   }
 }

@@ -134,6 +134,33 @@ public sealed class WorkflowRequestContractTests
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<WorkflowActionRequest>(json));
     }
 
+    [Fact]
+    public void PublicStartSampleMatchesTheLiveRequestContract()
+    {
+        var json = File.ReadAllText(SamplePath("01-workflow-start-submit.json"));
+
+        var request = JsonSerializer.Deserialize<WorkflowStartRequest>(json);
+
+        Assert.NotNull(request);
+        Assert.Equal("PortfolioTrade", request.WorkflowKey);
+        Assert.Equal("SubmitForChecker", request.ActionKey);
+        Assert.True(request.Notification?.RecipientInputs?.ContainsKey("originalMaker") == true);
+    }
+
+    [Theory]
+    [InlineData("02-workflow-action-target-date.json", "CheckerSendToTradingDesk")]
+    [InlineData("03-workflow-action-return-to-maker.json", "CheckerReturnToMaker")]
+    public void PublicActionSamplesMatchTheLiveRequestContract(string fileName, string actionKey)
+    {
+        var json = File.ReadAllText(SamplePath(fileName));
+
+        var request = JsonSerializer.Deserialize<WorkflowActionRequest>(json);
+
+        Assert.NotNull(request);
+        Assert.Equal("WF-PT-1001", request.WorkflowInstanceId);
+        Assert.Equal(actionKey, request.ActionKey);
+    }
+
     private static string[] PublicPropertyNames<T>()
     {
         return typeof(T)
@@ -141,5 +168,18 @@ public sealed class WorkflowRequestContractTests
             .Select(property => property.Name)
             .Order(StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static string SamplePath(string fileName)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "PROJECT.md")))
+        {
+            directory = directory.Parent;
+        }
+
+        var repositoryRoot = directory?.FullName
+            ?? throw new InvalidOperationException("Could not locate repository root.");
+        return Path.Combine(repositoryRoot, "workflow-api", "samples", fileName);
     }
 }

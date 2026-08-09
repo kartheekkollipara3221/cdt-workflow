@@ -1,0 +1,20 @@
+{
+  "workflowInstanceId": "WF-PT-1001",
+  "actionKey": "CheckerReturnToMaker",
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager2",
+          "emailAddress": "manager2@example.test",
+          "displayName": "Manager Two"
+        }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "1050",
+      "returnedByDisplayName": "Checker One",
+      "tradeLink": "https://example.test/trades/PT-1001"
+    }
+  }
+}

@@ -148,11 +148,55 @@ Abbreviated shape:
 }
 ```
 
-The UI uses `availableActions` and `requestDefaults` to build the later button-click envelope. It does not compute next state. See `PROJECT.md` §8.1 for the full field reference.
+The UI uses `availableActions` and `requestDefaults` to build the later public workflow action request. It submits `actionKey`; it does not compute next state. See `PROJECT.md` §8.1 for the full field reference.
 
-### Button-click contract: WorkflowActionEnvelope
+### UI-facing Workflow API contract
 
-`execute-json` accepts one composite envelope for a user click: request metadata, business object identity, actor, UI action, section data save, workflow action, and optional `testExpectations` in samples.
+`POST /v1/WorkflowStart` accepts only workflow identity, an optional first action, an optional flat SLA date, and named notification inputs:
+
+```json
+{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectId": "PT-1001",
+  "actionKey": "SubmitForChecker",
+  "notification": {
+    "recipientInputs": {
+      "originalMaker": [
+        {
+          "userId": "maker1",
+          "emailAddress": "maker@example.test",
+          "displayName": "Maker One"
+        }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "1050"
+    }
+  }
+}
+```
+
+`POST /v1/WorkflowAction` uses the persisted instance plus the metadata action key. `assignedRoleKey`, `slaTargetDate`, and `notification` are optional and used only when the selected metadata requires them:
+
+```json
+{
+  "workflowInstanceId": "WF-PT-1001",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable",
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "templateData": {
+      "referenceNumber": "1050"
+    }
+  }
+}
+```
+
+The active workflow definition supplies `businessObjectType`; the API generates correlation and idempotency identity. Current state, task, version, route, final To/Cc placement, and SLA timing rules come from persistence and versioned metadata. Unknown root or nested fields are rejected. See `workflow-api/WORKFLOW_API_BOUNDARIES.md` for the full boundary and `workflow-api/samples` for complete request examples.
+
+### Console-only contract: WorkflowActionEnvelope
+
+`execute-json` accepts one composite test/demo envelope: request metadata, business object identity, actor, UI action, section data save, workflow action, and optional `testExpectations` in samples. This is not the UI-facing HTTP request DTO.
 
 Abbreviated shape:
 
@@ -174,7 +218,7 @@ Abbreviated shape:
 
 `MakerPrimary` uses one physical Maker button: `saveAsDraft=true` maps to `SaveDraft`; `saveAsDraft=false` maps to submit/resubmit. Idempotency and concurrency guards belong in this envelope. See `PROJECT.md` §9 for the full field reference.
 
-For application-date policies, the caller maps its business date to generic `slaInput.targetDate` on the same normal workflow request. It sends no duration, reminder time, timezone, overdue offset, recurrence, route, or `dueAtUtc`; those fields are rejected because versioned `SlaPolicy` metadata owns them. The engine does not parse `dataSave.payload`.
+For application-date policies, the public caller maps its business date to flat `slaTargetDate`. The API maps that value to internal `slaInput.targetDate`. The caller sends no duration, reminder time, timezone, overdue offset, recurrence, route, or `dueAtUtc`; versioned `SlaPolicy` metadata owns them. The engine does not parse public form data.
 
 ### Action result contract: WorkflowActionResult
 
@@ -214,7 +258,7 @@ See `PROJECT.md` §8.3 for result field details.
 
 ### Idempotency and concurrency
 
-`idempotencyKey` is the canonical dedupe key; absent that, `clientActionId` is used. Matching replays return the stored result and do not re-run side effects. Same key plus different normalized request returns `IdempotencyConflict`.
+The public Workflow API generates its correlation, client-action, and idempotency identities inside the trusted service boundary. In the internal console envelope, `idempotencyKey` is the canonical dedupe key; absent that, `clientActionId` is used. Matching replays return the stored result and do not re-run side effects. Same key plus different normalized request returns `IdempotencyConflict`.
 
 Concurrency guards are independent: `expectedCurrentState`, `expectedCurrentTaskId`, `expectedCurrentTaskKey`, and `expectedInstanceVersion`. Any supplied guard must match persisted state. `--admin-override` bypasses role authorization only; it does not bypass validation, idempotency, concurrency, or definition-version checks. See `PROJECT.md` §9.
 
@@ -222,7 +266,7 @@ Concurrency guards are independent: `expectedCurrentState`, `expectedCurrentTask
 
 SLA is task-driven and metadata-driven. Task definitions may point at either a configured duration policy or an application-target-date policy; tasks without a policy get `DueAtUtc = null`. `MakerReworkTask` intentionally has no SLA.
 
-`TradingDeskReviewTask` is the seeded application-date example. The normal start/action request forwards the application's current `targetDate`. The engine creates schedule version 1, treats the same date as a no-op, and automatically supersedes/reschedules when a later request carries a changed date. Pending old occurrences are cancelled; sent history is preserved. An actionless body on the same `POST /v1/WorkflowAction` can synchronize the current pending task without moving workflow state or writing audit—there is no second SLA API.
+`TradingDeskReviewTask` is the seeded application-date example. The public start/action request forwards the application's current date as `slaTargetDate`. The engine creates schedule version 1, treats the same date as a no-op, and automatically supersedes/reschedules when a later request carries a changed date. Pending old occurrences are cancelled; sent history is preserved. An actionless body on the same `POST /v1/WorkflowAction` can synchronize the current pending task without moving workflow state or writing audit—there is no second SLA API.
 
 The Trading Desk policy sends `SlaTaskDueToday` at configured 09:00 `America/New_York` on the target date, becomes overdue on target + 1 calendar day, then queues one `SlaTaskOverdue` occurrence per calendar day including weekends. `run-sla` deduplicates by schedule/date/kind, never backfills every missed day, and stops when the task completes. `show-context` computes `OnTrack`, `Overdue`, or `NoSla` from the persisted schedule projection and current time. See `PROJECT.md` sections 12 and 13.
 
@@ -230,18 +274,28 @@ The Trading Desk policy sends `SlaTaskDueToday` at configured 09:00 `America/New
 
 Notifications use an outbox table. Workflow transitions queue rows; `process-notification-outbox` sends pending rows through `INotificationSender`.
 
-Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. Workflow start/action callers supply ordered typed recipient arrays outside `notificationContext`:
+Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. Public callers supply only named metadata-declared inputs:
 
 ```json
 {
-  "notificationRecipients": {
-    "toEmailAddresses": ["primary@example.test", "secondary@example.test"],
-    "ccEmailAddresses": ["manager@example.test", "operations@example.test"]
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager1",
+          "emailAddress": "manager@example.test",
+          "displayName": "Manager One"
+        }
+      ]
+    },
+    "templateData": {
+      "referenceNumber": "1050"
+    }
   }
 }
 ```
 
-The caller owns address selection and validation. The engine does not trim, normalize, deduplicate, parse delimited strings, or resolve roles/directories. It stores the exact snapshot on the task and initial outbox row; SLA reminders reuse the task snapshot unchanged. One outbox row is one email with all To/Cc recipients and one message-level retry lifecycle. Email rows persist both plain text and HTML bodies; `notificationContext` remains template data only. `Smtp:RecipientOverride` sends only to the override mailbox, suppresses intended envelope recipients, and adds the intended ordered To/Cc lists to diagnostic content. See `PROJECT.md` §14.
+Start captures immutable participants such as `originalMaker`; action requests may add only route-declared inputs such as `selectedCcUsers`. Metadata resolves final To/Cc placement. Address strings are stored without syntax, directory, mailbox, or SMTP validation. Resolution preserves source/rule order, compares duplicates case-insensitively, retains the first opaque string, and gives To precedence over Cc. The final snapshot is stored on the task and initial outbox row; SLA reminders reuse it unchanged. One outbox row is one email with all To/Cc recipients and one message-level retry lifecycle. Internal console samples continue supplying final arrays directly for console testing only. `Smtp:RecipientOverride` sends only to the override mailbox and adds intended recipients to controlled diagnostic content. See `PROJECT.md` §14.
 
 ### Configuration
 
