@@ -54,17 +54,47 @@ public sealed class SchemaConstraintTests
     }
 
     [Fact]
-    public void NotificationOutboxHasSlaOccurrenceUniqueIndex()
+    public void NotificationOutboxHasExactSlaOccurrenceUniqueIndex()
     {
         var entityType = dbContext.Model.FindEntityType(typeof(NotificationOutbox));
         Assert.NotNull(entityType);
 
         var index = Assert.Single(entityType.GetIndexes(), item =>
             item.Properties.Select(property => property.Name).SequenceEqual(
-                ["WorkflowTaskSlaScheduleId", "SlaOccurrenceDate", "SlaReminderKind"]));
+                ["WorkflowTaskSlaScheduleId", "SlaOccurrenceAtUtc", "SlaReminderKind"]));
 
         Assert.True(index.IsUnique);
-        Assert.Equal("[WorkflowTaskSlaScheduleId] IS NOT NULL", index.GetFilter());
+        Assert.Equal(
+            "[WorkflowTaskSlaScheduleId] IS NOT NULL AND [SlaOccurrenceAtUtc] IS NOT NULL",
+            index.GetFilter());
+    }
+
+    [Fact]
+    public void SlaModelsConstrainMinuteRecurrence()
+    {
+        var designTimeModel = dbContext.GetService<IDesignTimeModel>().Model;
+        var policy = designTimeModel.FindEntityType(typeof(SlaPolicy));
+        var schedule = designTimeModel.FindEntityType(typeof(WorkflowTaskSlaSchedule));
+        var outbox = designTimeModel.FindEntityType(typeof(NotificationOutbox));
+
+        Assert.NotNull(policy);
+        Assert.NotNull(schedule);
+        Assert.NotNull(outbox);
+        Assert.True(policy.FindProperty("RecurrenceIntervalMinutes")?.IsNullable);
+        Assert.True(schedule.FindProperty("RecurrenceIntervalMinutes")?.IsNullable);
+        Assert.True(outbox.FindProperty("SlaOccurrenceAtUtc")?.IsNullable);
+        Assert.Contains(policy.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_SlaPolicy_RecurrenceIntervalMinutes"
+            && constraint.Sql.Contains("> 0", StringComparison.Ordinal));
+        Assert.Contains(policy.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_SlaPolicy_RecurrenceIntervalsMutuallyExclusive"
+            && constraint.Sql.Contains("[RecurrenceIntervalDays] IS NULL", StringComparison.Ordinal));
+        Assert.Contains(schedule.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_WorkflowTaskSlaSchedule_RecurrenceIntervalMinutes"
+            && constraint.Sql.Contains("> 0", StringComparison.Ordinal));
+        Assert.Contains(schedule.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_WorkflowTaskSlaSchedule_RecurrenceIntervalsMutuallyExclusive"
+            && constraint.Sql.Contains("[RecurrenceIntervalDays] IS NULL", StringComparison.Ordinal));
     }
 
     [Fact]

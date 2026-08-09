@@ -199,6 +199,12 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
                 table.HasCheckConstraint(
                     "CK_SlaPolicy_RecurrenceIntervalDays",
                     "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+                table.HasCheckConstraint(
+                    "CK_SlaPolicy_RecurrenceIntervalMinutes",
+                    "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalMinutes] > 0");
+                table.HasCheckConstraint(
+                    "CK_SlaPolicy_RecurrenceIntervalsMutuallyExclusive",
+                    "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalDays] IS NULL");
             });
         });
 
@@ -360,6 +366,12 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
                 table.HasCheckConstraint(
                     "CK_WorkflowTaskSlaSchedule_RecurrenceIntervalDays",
                     "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+                table.HasCheckConstraint(
+                    "CK_WorkflowTaskSlaSchedule_RecurrenceIntervalMinutes",
+                    "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalMinutes] > 0");
+                table.HasCheckConstraint(
+                    "CK_WorkflowTaskSlaSchedule_RecurrenceIntervalsMutuallyExclusive",
+                    "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalDays] IS NULL");
             });
         });
 
@@ -408,11 +420,11 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.HasIndex(row => new
                 {
                     row.WorkflowTaskSlaScheduleId,
-                    row.SlaOccurrenceDate,
+                    row.SlaOccurrenceAtUtc,
                     row.SlaReminderKind
                 })
                 .IsUnique()
-                .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL");
+                .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL AND [SlaOccurrenceAtUtc] IS NOT NULL");
             entity.HasOne<WorkflowInstance>()
                 .WithMany()
                 .HasForeignKey(row => row.WorkflowInstanceId)

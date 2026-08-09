@@ -6,6 +6,7 @@ public sealed class NotificationOutbox
     public string WorkflowInstanceId { get; set; } = string.Empty;
     public long? WorkflowTaskId { get; set; }
     public long? WorkflowTaskSlaScheduleId { get; set; }
+    public DateTimeOffset? SlaOccurrenceAtUtc { get; set; }
     public DateOnly? SlaOccurrenceDate { get; set; }
     public string? SlaReminderKind { get; set; }
     public string BusinessObjectType { get; set; } = string.Empty;

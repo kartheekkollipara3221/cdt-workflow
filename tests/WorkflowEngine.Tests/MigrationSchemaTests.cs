@@ -87,6 +87,49 @@ public sealed class MigrationSchemaTests
     }
 
     [Fact]
+    public void DurationMinuteRecurrenceMigrationPreservesExistingSchedulesAndNotificationHistory()
+    {
+        using var dbContext = CreateDbContext();
+
+        var script = dbContext.GetService<IMigrator>().GenerateScript();
+
+        Assert.Contains(
+            "ALTER TABLE [dbo].[SlaPolicy] ADD [RecurrenceIntervalMinutes] int NULL;",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ALTER TABLE [dbo].[WorkflowTaskSlaSchedule] ADD [RecurrenceIntervalMinutes] int NULL;",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ALTER TABLE [dbo].[NotificationOutbox] ADD [SlaOccurrenceAtUtc] datetimeoffset NULL;",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "CREATE UNIQUE INDEX [IX_NotificationOutbox_WorkflowTaskSlaScheduleId_SlaOccurrenceAtUtc_SlaReminderKind]",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "WHERE [WorkflowTaskSlaScheduleId] IS NOT NULL AND [SlaOccurrenceAtUtc] IS NOT NULL",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains("CK_SlaPolicy_RecurrenceIntervalMinutes", script, StringComparison.Ordinal);
+        Assert.Contains("CK_SlaPolicy_RecurrenceIntervalsMutuallyExclusive", script, StringComparison.Ordinal);
+        Assert.Contains("CK_WorkflowTaskSlaSchedule_RecurrenceIntervalMinutes", script, StringComparison.Ordinal);
+        Assert.Contains("CK_WorkflowTaskSlaSchedule_RecurrenceIntervalsMutuallyExclusive", script, StringComparison.Ordinal);
+
+        var migrationStart = script.IndexOf(
+            "ALTER TABLE [dbo].[SlaPolicy] ADD [RecurrenceIntervalMinutes] int NULL;",
+            StringComparison.Ordinal);
+        Assert.True(migrationStart >= 0);
+        var migrationSegment = script[migrationStart..];
+        Assert.DoesNotContain("UPDATE [dbo].[WorkflowTaskSlaSchedule]", migrationSegment, StringComparison.Ordinal);
+        Assert.DoesNotContain("UPDATE [dbo].[NotificationOutbox]", migrationSegment, StringComparison.Ordinal);
+        Assert.DoesNotContain("INSERT INTO [dbo].[WorkflowTaskSlaSchedule]", migrationSegment, StringComparison.Ordinal);
+        Assert.DoesNotContain("INSERT INTO [dbo].[NotificationOutbox]", migrationSegment, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OptimizedEnvelopeMigrationCreatesMetadataParticipantsAndRecipientRules()
     {
         using var dbContext = CreateDbContext();

@@ -14,6 +14,7 @@ public sealed class WorkflowTaskSlaSchedule
     public string? TimeZoneId { get; set; }
     public TimeOnly? ReminderLocalTime { get; set; }
     public int OverdueStartOffsetDays { get; set; }
+    public int? RecurrenceIntervalMinutes { get; set; }
     public int? RecurrenceIntervalDays { get; set; }
     public string? DueNotificationRouteKey { get; set; }
     public string? OverdueNotificationRouteKey { get; set; }

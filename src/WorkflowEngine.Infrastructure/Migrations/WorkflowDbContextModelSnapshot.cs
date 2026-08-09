@@ -191,6 +191,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("SentAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTimeOffset?>("SlaOccurrenceAtUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateOnly?>("SlaOccurrenceDate")
                         .HasColumnType("date");
 
@@ -223,9 +226,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.HasIndex("WorkflowInstanceId");
 
-                    b.HasIndex("WorkflowTaskSlaScheduleId", "SlaOccurrenceDate", "SlaReminderKind")
+                    b.HasIndex("WorkflowTaskSlaScheduleId", "SlaOccurrenceAtUtc", "SlaReminderKind")
                         .IsUnique()
-                        .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL");
+                        .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL AND [SlaOccurrenceAtUtc] IS NOT NULL");
 
                     b.ToTable("NotificationOutbox", "dbo", t =>
                         {
@@ -370,6 +373,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<int?>("RecurrenceIntervalDays")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RecurrenceIntervalMinutes")
+                        .HasColumnType("int");
+
                     b.Property<TimeOnly?>("ReminderLocalTime")
                         .HasColumnType("time");
 
@@ -400,6 +406,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_SlaPolicy_OverdueStartOffsetDays", "[OverdueStartOffsetDays] >= 0");
 
                             t.HasCheckConstraint("CK_SlaPolicy_RecurrenceIntervalDays", "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+
+                            t.HasCheckConstraint("CK_SlaPolicy_RecurrenceIntervalMinutes", "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalMinutes] > 0");
+
+                            t.HasCheckConstraint("CK_SlaPolicy_RecurrenceIntervalsMutuallyExclusive", "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalDays] IS NULL");
                         });
                 });
 
@@ -1021,6 +1031,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<int?>("RecurrenceIntervalDays")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RecurrenceIntervalMinutes")
+                        .HasColumnType("int");
+
                     b.Property<TimeOnly?>("ReminderLocalTime")
                         .HasColumnType("time");
 
@@ -1072,6 +1085,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.ToTable("WorkflowTaskSlaSchedule", "dbo", t =>
                         {
                             t.HasCheckConstraint("CK_WorkflowTaskSlaSchedule_RecurrenceIntervalDays", "[RecurrenceIntervalDays] IS NULL OR [RecurrenceIntervalDays] > 0");
+
+                            t.HasCheckConstraint("CK_WorkflowTaskSlaSchedule_RecurrenceIntervalMinutes", "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalMinutes] > 0");
+
+                            t.HasCheckConstraint("CK_WorkflowTaskSlaSchedule_RecurrenceIntervalsMutuallyExclusive", "[RecurrenceIntervalMinutes] IS NULL OR [RecurrenceIntervalDays] IS NULL");
 
                             t.HasCheckConstraint("CK_WorkflowTaskSlaSchedule_ScheduleVersion", "[ScheduleVersion] > 0");
 
