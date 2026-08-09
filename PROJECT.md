@@ -38,15 +38,15 @@ The console app is a proof of concept for the reusable workflow engine, not the 
 | Checker | Role that reviews a Maker submission and can either return it to Maker or send it to Trading Desk. |
 | Trading Desk | Role that reviews/executes the trade and can either return it to Maker or mark trade executed. |
 | BDRM Client Service | Role that confirms the trade was fulfilled correctly or sends it back to Trading Desk Rework. |
-| WorkflowActionEnvelope | Standard JSON request shape that drives `execute-json`; this is the button-click request object. |
+| WorkflowActionEnvelope | Internal console JSON fixture that drives `execute-json`; it is not the public ASP.NET Start/Action request DTO. |
 | WorkflowContextResponse | Standard response object returned when the form opens or when `show-context` is executed; this tells the UI current state, task, SLA, and available actions. |
 | AvailableWorkflowAction | A metadata-derived action the current actor can perform from the current workflow state. |
 | WorkflowActionResult | Standard response object returned after processing a `WorkflowActionEnvelope`; it summarizes state/task changes and may include refreshed workflow context. |
 | Workflow instance | A single in-flight workflow record, usually one per business object. |
 | Transition | A metadata row that maps `(fromState, actionKey, allowedRole)` to `(toState, taskClose, taskCreate)`. |
-| Notification recipients | Caller-supplied `notificationRecipients.toEmailAddresses` and `ccEmailAddresses` ordered arrays. The caller owns address selection and validation; the engine preserves the supplied values, order, whitespace, and duplicates without lookup or normalization. |
+| Notification recipients | Final ordered To/Cc arrays resolved by generic versioned route rules from static metadata, immutable workflow participants, and route-declared request inputs. Address strings are opaque and are stored without syntax, directory, mailbox, or SMTP validation. Resolution deduplicates case-insensitively, retains the first opaque value, and gives To precedence over Cc. |
 | Notification outbox | Persisted notification records containing an exact typed recipient snapshot. One outbox row represents one complete message and one message-level retry lifecycle. |
-| SLA | Metadata-driven task schedule. Duration policies derive a deadline from task creation; application-date policies use caller-supplied `slaInput.targetDate` plus versioned policy timing/cadence. `WorkflowTask.DueAtUtc` is the overdue-start projection. |
+| SLA | Metadata-driven task schedule. Duration policies derive a deadline from task creation; application-date policies use public `slaTargetDate` (mapped internally to `slaInput.targetDate`) plus versioned policy timing/cadence. `WorkflowTask.DueAtUtc` is the overdue-start projection. |
 | Single-active-state | One current workflow state and at most one pending task for a workflow instance in the MVP. |
 | Return to Maker | A workflow route where Checker or Trading Desk sends the request back to Maker for correction/rework. |
 
@@ -470,12 +470,12 @@ The workflow context is **not** form metadata and does **not** contain field def
 Rules:
 
 - `WorkflowContextResponse` must be computed from persisted workflow state, the current pending task, SQL workflow metadata, actor role(s), and SLA status.
-- `workflow.workflowInstanceVersion` mirrors `WorkflowInstance.Version`. It exists so the UI can detect when the workflow has moved between form-open and button-click. The UI should echo it back in `workflow.expectedInstanceVersion` of the next `WorkflowActionEnvelope`.
+- `workflow.workflowInstanceVersion` mirrors `WorkflowInstance.Version`. It lets the UI recognize that a view changed, but the optimized public Action DTO does not require the browser to echo it; the engine reloads and validates current persisted state/task/version.
 - `availableActions` must come from SQL transition metadata. Do not hardcode Portfolio Trade action availability in the UI.
-- `availableActions[].sectionKey` tells the UI where to render the action button and must be echoed back in `WorkflowActionEnvelope.uiAction.sectionKey` and `WorkflowActionEnvelope.dataSave.sectionKey` when that action is clicked.
+- `availableActions[].sectionKey` tells the UI where to render the action button. It is not echoed in the public workflow request; form persistence stays outside the workflow API.
 - The UI must not compute workflow next state.
 - The UI must not send `toState`.
-- The UI should use `availableActions[*].requestDefaults` when building the later `WorkflowActionEnvelope`.
+- The UI uses each available action's `actionKey` when building the optimized public Action request. Console fixtures may continue using `requestDefaults` to build an internal `WorkflowActionEnvelope`.
 - In the real API, actor identity comes from authentication/claims. In the console POC, `--user` and `--roles` simulate the actor.
 - If the current user has no valid workflow action from the current state, `availableActions` must be empty and `actorAccess.canAct` should be false.
 
@@ -508,10 +508,10 @@ Membership in `availableActions` is itself the enabled signal. The contract inte
 
 #### Rules for `requestDefaults`
 
-- `requestDefaults` are suggested values. The UI is expected to copy them into the next `WorkflowActionEnvelope`, but normal validation, concurrency, and authorization checks still apply even if the UI builds the envelope manually.
+- `requestDefaults` are internal console/testing suggestions. Public UI integration uses the optimized API request DTO and does not echo internal envelope guards or UI/form fields.
 - `requestDefaults` are stable for a given `(workflowInstanceId, currentState, currentTaskId, workflowInstanceVersion)` snapshot. Any change to those values produces a new `WorkflowContextResponse` with new defaults.
-- The UI should send all four concurrency guards (`expectedCurrentState`, `expectedCurrentTaskId`, `expectedCurrentTaskKey`, `expectedInstanceVersion`) when present. Sending fewer guards is allowed but reduces stale-state detection precision.
-- `requestDefaults` does not include `actor`, `dataSave.payload`, `actionReason`, `clientActionId`, `correlationId`, or `idempotencyKey`; those are owned by the UI at click time.
+- Internal console envelopes may use all four concurrency guards (`expectedCurrentState`, `expectedCurrentTaskId`, `expectedCurrentTaskKey`, `expectedInstanceVersion`) when present. Public Action requests do not expose those fields.
+- `requestDefaults` does not include `actor`, `dataSave.payload`, `actionReason`, `clientActionId`, `correlationId`, or `idempotencyKey`. The optimized public API does not accept those fields from the browser.
 
 #### Rules for `actorAccess`
 
@@ -724,6 +724,8 @@ The refreshed context should still include `actorAccess` for the submitting acto
 
 ## 9. Standard JSON object: WorkflowActionEnvelope
 
+This section defines the internal console `execute-json` fixture envelope only. It is not the public ASP.NET request body. The optimized public Start/Action contract is defined in section 14 and `workflow-api/WORKFLOW_API_BOUNDARIES.md`.
+
 The console app must support:
 
 ```bash
@@ -818,21 +820,21 @@ The JSON object should be workflow-heavy. Form section data can be mocked.
   - Reject the request with `ActorRolesMismatch` if `actor.roles` is present and contains a role the authenticated user does not actually hold.
   - For the console POC, the envelope's `actor` block is honored as-is (this is what makes single-process role testing possible).
 - Actor resolution belongs in the application/API layer. The reusable workflow engine receives an already-resolved actor user ID and effective role set. The console actor resolver reads the envelope. The future API actor resolver reads authenticated identity/claims and ignores request-body user identity.
-- `clientActionId` / `idempotencyKey` must be used to prevent duplicate processing.
-- `idempotencyKey` is the canonical key used by the engine for dedupe. If `idempotencyKey` is absent, the engine uses `clientActionId` as the idempotency key. If both are present and differ, `idempotencyKey` wins. The simplest UI integration is for the UI to send the same value in both fields.
+- Console `clientActionId` / `idempotencyKey` values must be used to prevent duplicate processing. Public API request identity is generated inside the trusted API/workflow layer.
+- For the console envelope, `idempotencyKey` is the canonical key used by the engine for dedupe. If `idempotencyKey` is absent, the engine uses `clientActionId` as the idempotency key. If both are present and differ, `idempotencyKey` wins.
 - The idempotency lookup key (`IdempotencyRecord.IdempotencyKey`) is separate from `RequestHash`. Two requests that differ only in whether `idempotencyKey` is set will share the same normalized `RequestHash` but use different lookup keys (`idempotencyKey` vs `clientActionId`) and are therefore treated as independent actions for idempotency purposes. This is intentional — `idempotencyKey` is the UI's explicit dedup token; `clientActionId` is the fallback. They are not interchangeable lookup aliases.
 - `correlationId` must be copied into audit and notification records.
 - `workflow.notificationRecipients` is separate from `workflow.notificationContext`. Recipients are ordered typed arrays; notification context contains template data only.
 - `workflow.slaInput` is optional and contains only `targetDate` (`yyyy-MM-dd`). Duration, reminder time, timezone, overdue offset, recurrence, route keys, and `dueAtUtc` are metadata-owned and are rejected if supplied inside `slaInput`.
-- For an `ApplicationTargetDate` policy, the calling application maps its own business field to `workflow.slaInput.targetDate` on the existing start/action request. The engine never parses `dataSave.payload` and never knows the application's field name.
+- In the internal console envelope, an `ApplicationTargetDate` policy uses `workflow.slaInput.targetDate`. Public API requests use flat `slaTargetDate`, which the API maps internally. The engine never parses form payload and never knows the application's field name.
 - The caller forwards its current target date but does not compare it with prior values. The engine creates, retains, or reschedules the active task schedule in the same transaction.
-- A workflow API action request may omit `actionKey` only when it supplies `slaInput.targetDate`; this performs an SLA-only synchronization through the existing `POST /v1/WorkflowAction`. It does not move state, write workflow audit, or increment `WorkflowInstance.Version`.
-- The caller owns recipient lookup, authorization, and email-address validation. The engine does not trim, normalize, validate, deduplicate, expand roles, query a directory, or parse singular/delimited recipient fields.
+- A public workflow API action request may omit `actionKey` only when it supplies flat `slaTargetDate`; the API maps it to the internal SLA input and performs same-endpoint synchronization without moving state, writing workflow audit, or incrementing `WorkflowInstance.Version`.
+- Internal console samples continue supplying final `workflow.notificationRecipients` arrays for the console execution path only. Public API requests instead supply metadata-declared `notification.recipientInputs`, and the engine resolves the final To/Cc snapshot. Neither path validates opaque address strings.
 - The canonical request hash includes every `toEmailAddresses` and `ccEmailAddresses` value in its supplied order and To/Cc placement. Changing any value, order, or placement under the same idempotency key produces `IdempotencyConflict`.
 - `expectedCurrentState` is a concurrency guard, not the source of truth.
 - `expectedCurrentTaskId` is a concurrency guard for exact task ownership.
 - For console sample JSON, `expectedCurrentTaskKey` may be used because task IDs are generated at runtime.
-- `expectedInstanceVersion` is a concurrency guard for the workflow instance's `Version` field. The UI receives this value in `WorkflowContextResponse.workflow.workflowInstanceVersion` and should echo it in every state-changing envelope. A mismatch returns `ConcurrencyConflict`. It is optional in console samples, but required in production UI envelopes.
+- `expectedInstanceVersion` is a concurrency guard for the workflow instance's `Version` field in the console envelope. A mismatch returns `ConcurrencyConflict`. The optimized public Action DTO does not accept this echo field; it loads current instance/task/version state from persistence.
 - If multiple concurrency guards are provided (`expectedCurrentState`, `expectedCurrentTaskId`, `expectedCurrentTaskKey`, `expectedInstanceVersion`), **all** of them must match the persisted state. No guard silently overrides another. Any mismatch returns `ConcurrencyConflict`.
 - `businessObject.objectVersion` is informational only for the POC. The engine does not validate it and does not record it in `WorkflowAudit`. `WorkflowAudit` has no `BusinessObjectVersion` column. The field is accepted in the envelope without error and silently ignored by the engine. If a future requirement needs object version tracking in audit, a column addition and a stop-and-ask approval are required.
 - If `workflow.workflowDefinitionVersion` does not match the persisted instance definition version, return `WorkflowDefinitionVersionMismatch` (a distinct result code from `ConcurrencyConflict`) and do not save section data. `ConcurrencyConflict` means "your view is stale, retry"; `WorkflowDefinitionVersionMismatch` means "the workflow definition itself was upgraded and the UI must be updated before retry."
@@ -1323,41 +1325,63 @@ Note: v1 does not seed a user-to-role mapping table. The console POC simulates a
 
 ### Notification route seed table
 
-`init-db` must seed exactly these `NotificationRoute` rows (workflow definition version 1). The recipient-role column is retained only as dormant legacy metadata and is not used to select runtime email addresses:
+`init-db` must seed exactly these `NotificationRoute` rows (workflow definition version 1). A route selects notification type and templates; ordered `NotificationRecipientRule` rows select recipient sources and To/Cc placement:
 
-| Transition (FromState → Action → Role) | NotificationRouteKey | NotificationType | RecipientRoleKey (dormant legacy metadata) |
-|---|---|---|---|
-| `Draft` → `SubmitForChecker` → `Maker` | `RouteCheckerAssignedOnSubmit` | `WorkflowTaskAssigned` | `Checker` |
-| `ReturnedToMaker` → `ResubmitForChecker` → `Maker` | `RouteCheckerAssignedOnResubmit` | `WorkflowTaskAssigned` | `Checker` |
-| `CheckerReview` → `CheckerReturnToMaker` → `Checker` | `RouteReturnedToMakerFromChecker` | `WorkflowReturnedToMaker` | `Maker` |
-| `CheckerReview` → `CheckerSendToTradingDesk` → `Checker` | `RouteTradingDeskAssigned` | `WorkflowTaskAssigned` | `TradingDesk` |
-| `TradingDeskReview` → `TradingReturnToMaker` → `TradingDesk` | `RouteReturnedToMakerFromTradingDesk` | `WorkflowReturnedToMaker` | `Maker` |
-| `TradingDeskReview` → `TradingTradeExecuted` → `TradingDesk` | `RouteBdrmAssigned` | `WorkflowTaskAssigned` | `BDRMClientService` |
-| `TradingDeskRework` → `TradingTradeExecuted` → `TradingDesk` | `RouteBdrmAssigned` | `WorkflowTaskAssigned` | `BDRMClientService` |
-| `BdrmClientServiceReview` → `BdrmTradeFulfilled` → `BDRMClientService` | `RouteWorkflowCompleted` | `WorkflowCompleted` | `Maker` |
-| `BdrmClientServiceReview` → `BdrmTradeNotExecutedProperly` → `BDRMClientService` | `RouteTradingDeskReworkAssigned` | `WorkflowTaskAssigned` | `TradingDesk` |
+| Transition (FromState → Action → Role) | NotificationRouteKey | NotificationType |
+|---|---|---|
+| `Draft` → `SubmitForChecker` → `Maker` | `RouteCheckerAssignedOnSubmit` | `WorkflowTaskAssigned` |
+| `ReturnedToMaker` → `ResubmitForChecker` → `Maker` | `RouteCheckerAssignedOnResubmit` | `WorkflowTaskAssigned` |
+| `CheckerReview` → `CheckerReturnToMaker` → `Checker` | `RouteReturnedToMakerFromChecker` | `WorkflowReturnedToMaker` |
+| `CheckerReview` → `CheckerSendToTradingDesk` → `Checker` | `RouteTradingDeskAssigned` | `WorkflowTaskAssigned` |
+| `TradingDeskReview` → `TradingReturnToMaker` → `TradingDesk` | `RouteReturnedToMakerFromTradingDesk` | `WorkflowReturnedToMaker` |
+| `TradingDeskReview` → `TradingTradeExecuted` → `TradingDesk` | `RouteBdrmAssigned` | `WorkflowTaskAssigned` |
+| `TradingDeskRework` → `TradingTradeExecuted` → `TradingDesk` | `RouteBdrmAssigned` | `WorkflowTaskAssigned` |
+| `BdrmClientServiceReview` → `BdrmTradeFulfilled` → `BDRMClientService` | `RouteWorkflowCompleted` | `WorkflowCompleted` |
+| `BdrmClientServiceReview` → `BdrmTradeNotExecutedProperly` → `BDRMClientService` | `RouteTradingDeskReworkAssigned` | `WorkflowTaskAssigned` |
 
 Plus an SLA route used by `run-sla` (not bound to a transition):
 
-| RouteKey | NotificationType | RecipientRoleKey (dormant legacy metadata) |
-|---|---|---|
-| `RouteSlaTaskOverdue` | `SlaTaskOverdue` | (dormant; no runtime recipient resolution) |
+| RouteKey | NotificationType |
+|---|---|
+| `RouteSlaTaskOverdue` | `SlaTaskOverdue` |
 
 `RouteReturnedToMakerFromChecker` and `RouteReturnedToMakerFromTradingDesk` are intentionally separate routes because they carry different subject/body templates. `RouteBdrmAssigned` is intentionally shared between happy-path and rework paths because BDRM does not need to distinguish them. `RouteCheckerAssignedOnSubmit` and `RouteCheckerAssignedOnResubmit` are separate so Checker can distinguish a new submission from a resubmission.
 
-`NotificationRoute.RecipientRoleKey` and `RecipientUserId` remain only as dormant legacy seed/schema metadata. Runtime task creation, outbox creation, SLA reuse, inspection, and SMTP delivery must not read them to select addresses. Routes select notification type/templates; callers supply delivery addresses through `notificationRecipients`.
+The seeded workflow declares one required, immutable, single `originalMaker` participant captured at Start. Its address is stored exactly as supplied and is never resolved from `StartedByUserId`.
+
+Seed these ordered recipient rules. `.example.test` values are sample metadata, not real delivery addresses:
+
+| RouteKey | Order | Kind | SourceType | Source value | Required |
+|---|---:|---|---|---|---|
+| `RouteCheckerAssignedOnSubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Yes |
+| `RouteCheckerAssignedOnSubmit` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
+| `RouteCheckerAssignedOnResubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Yes |
+| `RouteReturnedToMakerFromChecker` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteReturnedToMakerFromChecker` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
+| `RouteReturnedToMakerFromChecker` | 3 | Cc | `StaticAddress` | `workflow-operations@example.test` | No |
+| `RouteTradingDeskAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
+| `RouteReturnedToMakerFromTradingDesk` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteBdrmAssigned` | 1 | To | `StaticAddress` | `bdrm-client-service@example.test` | Yes |
+| `RouteTradingDeskReworkAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
+| `RouteWorkflowCompleted` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
+
+SLA routes have no recipient rules because `run-sla` copies the saved task snapshot unchanged. `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are removed from the active schema; there is no legacy role or user fallback.
 
 ### `verify-seed` validations
 
 `verify-seed` must validate:
 
 - Workflow definition exists.
+- Workflow definition has required `BusinessObjectType`.
 - Workflow version exists.
+- Required participant definitions exist with valid cardinality/capture-stage structure.
 - All required states exist.
 - All required actions exist.
 - All required roles exist.
 - All required task definitions exist.
 - All transitions from the action matrix exist, including both Return-to-Maker transitions and `ResubmitForChecker`.
+- Every transition notification route has the exact ordered recipient rules defined above, with at least one To rule.
+- Every participant/request/static recipient rule has structurally consistent source fields, unique route order, and same-version ownership. Address contents are not parsed or validated.
 - Every transition references valid states/actions/roles/tasks for the same `WorkflowDefinitionVersionId`.
 - Every task definition has an owner role.
 - Every SLA-enabled task has an `SlaPolicy` row resolvable by `(WorkflowDefinitionVersionId, SlaPolicyKey)`.
@@ -1384,12 +1408,15 @@ Required concepts:
 - `WorkflowRoleDefinition`
 - `WorkflowTransitionDefinition`
 - `WorkflowTaskDefinition`
+- `WorkflowParticipantDefinition`
 - `WorkflowInstance`
+- `WorkflowParticipant`
 - `WorkflowTask`
 - `MockSectionData`
 - `WorkflowAudit`
 - `SlaPolicy`
 - `NotificationRoute`
+- `NotificationRecipientRule`
 - `NotificationOutbox`
 - `IdempotencyRecord`
 
@@ -1399,6 +1426,7 @@ Required concepts:
 Id
 WorkflowKey
 DisplayName
+BusinessObjectType
 IsActive
 ```
 
@@ -1407,6 +1435,8 @@ Required uniqueness:
 ```text
 UNIQUE (WorkflowKey)
 ```
+
+`BusinessObjectType` is required definition metadata. Public Workflow Start derives it from the active definition and does not accept it from request JSON.
 
 ### WorkflowDefinitionVersion
 
@@ -1423,6 +1453,27 @@ Required uniqueness:
 ```text
 UNIQUE (WorkflowDefinitionId, VersionNumber)
 ```
+
+### WorkflowParticipantDefinition
+
+```text
+Id
+WorkflowDefinitionVersionId
+ParticipantKey
+Cardinality              -- Single or Many
+CaptureStage             -- Start in v1
+IsRequired
+IsImmutable
+IsActive
+```
+
+Required uniqueness:
+
+```text
+UNIQUE (WorkflowDefinitionVersionId, ParticipantKey)
+```
+
+The seeded `originalMaker` definition is `Single`, captured at `Start`, required, immutable, and active. Participant keys are generic metadata; reusable engine code must not hardcode Portfolio Trade Maker behavior.
 
 ### WorkflowStateDefinition
 
@@ -1565,6 +1616,27 @@ UNIQUE (WorkflowKey, BusinessObjectType, BusinessObjectId)
 
 The POC supports one workflow instance per business object. Historical multiple-instance behavior is out of scope.
 
+### WorkflowParticipant
+
+```text
+Id
+WorkflowInstanceId
+ParticipantKey
+UserId nullable
+EmailAddress
+DisplayName nullable
+SortOrder
+CreatedAtUtc
+```
+
+Required uniqueness:
+
+```text
+UNIQUE (WorkflowInstanceId, ParticipantKey, SortOrder)
+```
+
+Start captures only participant keys declared for the workflow definition version. `EmailAddress` is a required opaque string: the API and engine do not trim it or perform syntax, directory, mailbox, or SMTP validation. An immutable participant cannot be replaced, removed, or resubmitted by later actions.
+
 ### WorkflowTask
 
 ```text
@@ -1701,8 +1773,6 @@ Id
 WorkflowDefinitionVersionId
 RouteKey
 NotificationType
-RecipientRoleKey nullable  -- dormant legacy metadata; never used for runtime address selection
-RecipientUserId nullable  -- dormant legacy metadata; never used for runtime address selection
 SubjectTemplate
 BodyTemplate
 HtmlBodyTemplate
@@ -1715,6 +1785,28 @@ Required uniqueness:
 ```text
 UNIQUE (WorkflowDefinitionVersionId, RouteKey)
 ```
+
+### NotificationRecipientRule
+
+```text
+Id
+NotificationRouteId
+RecipientKind            -- To or Cc
+SourceType               -- StaticAddress, WorkflowParticipant, or RequestInput
+SourceKey nullable        -- participant key or request-input key
+StaticAddress nullable    -- opaque metadata value for StaticAddress
+SortOrder
+IsRequired
+IsActive
+```
+
+Required uniqueness:
+
+```text
+UNIQUE (NotificationRouteId, SortOrder)
+```
+
+Structural check constraints enforce valid kind/source values and the matching source fields. They must not parse or validate `StaticAddress`. A notification-producing transition route must resolve at least one To value before effects commit. Rules are evaluated in `SortOrder`; address duplicates are compared case-insensitively, the first opaque string is retained, and To wins over Cc.
 
 ### NotificationOutbox
 
@@ -1787,6 +1879,7 @@ These constraints must exist in the SQL schema:
 
 - `WorkflowDefinition`: `UNIQUE (WorkflowKey)`
 - `WorkflowDefinitionVersion`: `UNIQUE (WorkflowDefinitionId, VersionNumber)`
+- `WorkflowParticipantDefinition`: `UNIQUE (WorkflowDefinitionVersionId, ParticipantKey)`
 - `WorkflowStateDefinition`: `UNIQUE (WorkflowDefinitionVersionId, StateKey)`
 - `WorkflowActionDefinition`: `UNIQUE (WorkflowDefinitionVersionId, ActionKey)`
 - `WorkflowRoleDefinition`: `UNIQUE (WorkflowDefinitionVersionId, RoleKey)`
@@ -1794,9 +1887,11 @@ These constraints must exist in the SQL schema:
 - `SlaPolicy`: `UNIQUE (WorkflowDefinitionVersionId, SlaPolicyKey)`
 - `WorkflowTaskSlaSchedule`: `UNIQUE (WorkflowTaskId, ScheduleVersion)` and one filtered active schedule per task
 - `NotificationRoute`: `UNIQUE (WorkflowDefinitionVersionId, RouteKey)`
+- `NotificationRecipientRule`: `UNIQUE (NotificationRouteId, SortOrder)`
 - `NotificationOutbox`: `UNIQUE (WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` for SLA rows
 - `WorkflowTransitionDefinition`: `UNIQUE (WorkflowDefinitionVersionId, FromStateKey, ActionKey, AllowedRoleKey)`
 - `WorkflowInstance`: `UNIQUE (WorkflowInstanceId)` and `UNIQUE (WorkflowKey, BusinessObjectType, BusinessObjectId)`
+- `WorkflowParticipant`: `UNIQUE (WorkflowInstanceId, ParticipantKey, SortOrder)`
 - `WorkflowTask`: only one pending task per workflow instance for the MVP
 - `IdempotencyRecord`: `UNIQUE (IdempotencyKey)`
 
@@ -1817,7 +1912,7 @@ CheckerReturnToMaker
 CheckerSendToTradingDesk
   -> closes CheckerReviewTask
   -> creates TradingDeskReviewTask
-  -> requires current slaInput.targetDate
+  -> requires current public slaTargetDate mapped to internal slaInput.targetDate
   -> starts application-target-date Trading Desk SLA
 
 TradingReturnToMaker
@@ -1858,14 +1953,14 @@ Duration policies use short demo durations. Trading Desk review uses the same re
 When metadata creates an SLA-enabled task, the engine resolves its versioned policy and creates schedule version 1 in the same workflow transaction:
 
 - `DurationFromTaskCreation`: `OverdueAtUtc = task.CreatedAtUtc + SlaPolicy.DurationMinutes`; `TargetDate` and `DueReminderAtUtc` are null; `NextReminderAtUtc` is the overdue instant (or current injected time for catch-up); recurrence is null.
-- `ApplicationTargetDate`: the request must supply `slaInput.targetDate`. The engine converts the target date and target + `OverdueStartOffsetDays` independently from configured local time/timezone to UTC. It never calculates recurrence as previous UTC + 24 hours.
+- `ApplicationTargetDate`: the public request must supply `slaTargetDate`, which the API maps to internal `slaInput.targetDate`. The engine converts the target date and target + `OverdueStartOffsetDays` independently from configured local time/timezone to UTC. It never calculates recurrence as previous UTC + 24 hours.
 - No SLA policy: create no schedule and set `WorkflowTask.DueAtUtc = null`.
 
 For every active schedule, `WorkflowTask.DueAtUtc = WorkflowTaskSlaSchedule.OverdueAtUtc`. The engine never accepts `dueAtUtc`, duration, timezone, cadence, offset, or route keys from the caller and never inherits a deadline from the closing task.
 
 ### Same-API synchronization and rescheduling
 
-The application forwards the current business target date through `slaInput.targetDate` on its existing workflow request. It does not remember the prior value or decide whether rescheduling is required. The engine compares the input with the active schedule:
+The application forwards the current business target date through public `slaTargetDate` on its existing workflow request. The API maps it to internal `slaInput.targetDate`; the application does not remember the prior value or decide whether rescheduling is required. The engine compares the input with the active schedule:
 
 - No active schedule: create version 1.
 - Same target date: successful no-op.
@@ -1873,7 +1968,7 @@ The application forwards the current business target date through `slaInput.targ
 
 Sent occurrences are immutable history. A revised schedule has a new identity and may send a new due-today occurrence for its revised target date. Closing the task marks its active schedule `Completed`, clears `NextReminderAtUtc`, and cancels undelivered future occurrences.
 
-`POST /v1/WorkflowAction` is the single HTTP command for both action execution and SLA-only synchronization. An actionless body supplies `workflowInstanceId`, optional `idempotencyKey`, and `slaInput.targetDate`. The workflow engine identifies the current pending task and performs create/no-op/reschedule without moving state, incrementing `WorkflowInstance.Version`, or writing workflow audit. The application cannot change an SLA invisibly: its existing request must reach the engine, but no second SLA endpoint or application-side comparison exists.
+`POST /v1/WorkflowAction` is the single HTTP command for both action execution and SLA-only synchronization. An actionless public body supplies `workflowInstanceId` and flat `slaTargetDate`; request identity is generated internally. The workflow engine identifies the current pending task and performs create/no-op/reschedule without moving state, incrementing `WorkflowInstance.Version`, or writing workflow audit. The application cannot change an SLA invisibly: its existing request must reach the engine, but no second SLA endpoint or application-side comparison exists.
 
 ### SLA state and monitor occurrences
 
@@ -1913,28 +2008,28 @@ Required notification examples:
 
 ```text
 SubmitForChecker
-  -> queue WorkflowTaskAssigned via RouteCheckerAssignedOnSubmit using caller-supplied notificationRecipients
+  -> resolve RouteCheckerAssignedOnSubmit rules, snapshot recipients, and queue WorkflowTaskAssigned
 
 ResubmitForChecker
-  -> queue WorkflowTaskAssigned via RouteCheckerAssignedOnResubmit using caller-supplied notificationRecipients
+  -> resolve RouteCheckerAssignedOnResubmit rules, snapshot recipients, and queue WorkflowTaskAssigned
 
 CheckerReturnToMaker
-  -> queue WorkflowReturnedToMaker via RouteReturnedToMakerFromChecker using caller-supplied notificationRecipients
+  -> resolve RouteReturnedToMakerFromChecker rules, including immutable originalMaker, and queue WorkflowReturnedToMaker
 
 CheckerSendToTradingDesk
-  -> queue WorkflowTaskAssigned via RouteTradingDeskAssigned using caller-supplied notificationRecipients
+  -> resolve RouteTradingDeskAssigned rules, snapshot recipients, and queue WorkflowTaskAssigned
 
 TradingReturnToMaker
-  -> queue WorkflowReturnedToMaker via RouteReturnedToMakerFromTradingDesk using caller-supplied notificationRecipients
+  -> resolve RouteReturnedToMakerFromTradingDesk rules, including immutable originalMaker, and queue WorkflowReturnedToMaker
 
 TradingTradeExecuted (from TradingDeskReview or TradingDeskRework)
-  -> queue WorkflowTaskAssigned via RouteBdrmAssigned using caller-supplied notificationRecipients
+  -> resolve RouteBdrmAssigned rules, snapshot recipients, and queue WorkflowTaskAssigned
 
 BdrmTradeNotExecutedProperly
-  -> queue WorkflowTaskAssigned via RouteTradingDeskReworkAssigned using caller-supplied notificationRecipients
+  -> resolve RouteTradingDeskReworkAssigned rules, snapshot recipients, and queue WorkflowTaskAssigned
 
 BdrmTradeFulfilled
-  -> queue WorkflowCompleted via RouteWorkflowCompleted using caller-supplied notificationRecipients
+  -> resolve RouteWorkflowCompleted rules, including immutable originalMaker, and queue WorkflowCompleted
 
 run-sla reaches target-date occurrence
   -> queue SlaTaskDueToday via the schedule's DueNotificationRouteKey using the exact recipient snapshot stored on the task
@@ -1943,11 +2038,11 @@ run-sla reaches overdue calendar occurrence
   -> queue SlaTaskOverdue via the schedule's OverdueNotificationRouteKey using the exact recipient snapshot stored on the task
 ```
 
-Notification routes carry `SubjectTemplate`, plain-text `BodyTemplate`, and HTML `HtmlBodyTemplate`. Transition execution and SLA processing render both body formats into `NotificationOutbox.Body` and `NotificationOutbox.HtmlBody`. Token values come from `workflow.notificationContext`, are trimmed for both formats, and are HTML-encoded when rendered into `HtmlBodyTemplate` so caller-provided data cannot inject markup. Template-owned markup is preserved, so seeded templates can bold important values with `<strong>{{token}}</strong>` and render `tradeLink` as `<a href="{{tradeLink}}">Open trade</a>`.
+Notification routes carry `SubjectTemplate`, plain-text `BodyTemplate`, and HTML `HtmlBodyTemplate`. Transition execution and SLA processing render both body formats into `NotificationOutbox.Body` and `NotificationOutbox.HtmlBody`. Public `notification.templateData` maps to the internal console envelope's `workflow.notificationContext`. Token values are trimmed for both formats and HTML-encoded when rendered into `HtmlBodyTemplate` so caller-provided data cannot inject markup. Template-owned markup is preserved, so seeded templates can bold important values with `<strong>{{token}}</strong>` and render `tradeLink` as `<a href="{{tradeLink}}">Open trade</a>`.
 
-Recipient addresses do not come from notification templates or `notificationContext`. A notification-producing action receives a separate `workflow.notificationRecipients` object containing ordered `toEmailAddresses` and `ccEmailAddresses` arrays. The caller owns address selection and validation. The engine performs no trimming, normalization, deduplication, role/directory lookup, singular-field fallback, or delimited-string parsing.
+Recipient addresses do not come from notification templates or template data. Versioned route rules resolve addresses from `StaticAddress`, immutable `WorkflowParticipant`, and route-declared `RequestInput` sources. Public requests group the latter two caller values under `notification.recipientInputs`; callers cannot choose final To/Cc placement. Address strings are opaque and receive no syntax, directory, mailbox, or SMTP validation.
 
-Transition execution serializes the supplied recipient object once and stores the same snapshot on the created `WorkflowTask` and initial `NotificationOutbox` row. `run-sla` validates the task snapshot and copies it unchanged to due-today and overdue occurrence rows; a missing or malformed task snapshot is warned and skipped rather than reconstructed. `PayloadJson` contains template context only, including schedule target date, occurrence date/kind, due-reminder instant, and overdue-start instant.
+Transition execution resolves rules before side effects, applies case-insensitive deduplication with first-value retention and To-over-Cc precedence, and serializes the final recipient object once. The same snapshot is stored on the created `WorkflowTask` and initial `NotificationOutbox` row. `run-sla` validates the task snapshot and copies it unchanged to due-today and overdue occurrence rows; a missing or malformed task snapshot is warned and skipped rather than reconstructed. `PayloadJson` contains template data only, including schedule target date, occurrence date/kind, due-reminder instant, and overdue-start instant.
 
 ### `NotificationOutbox.Status` allowed values
 
@@ -2070,17 +2165,70 @@ Tier 1 is mandatory for v1. Tier 2 is mandatory for v1 (proves `SmtpNotification
 | Unit tests | `Console` or `NoOp` | In-memory test double via DI override | No |
 | Integration tests (Tier 2) | `Smtp` (with localhost fake server) | Sends to `smtp4dev` / `Papercut` on `localhost` | No (caught by fake server) |
 | UI integration smoke test (Tier 3, manual) | `Smtp` (with `RecipientOverride` set) | Sends to operator's mailbox only | One controlled email |
-| Production (post-CDT, out of scope here) | `Smtp` (no override) | Sends one message to caller-supplied To/Cc recipients | Yes |
+| Production (post-CDT, out of scope here) | `Smtp` (no override) | Sends one message to metadata-resolved To/Cc recipients | Yes |
 
 The CDT POC ships with the first two rows working out of the box. The third and fourth rows are exercised manually during UI integration. The fifth row is enabled by configuration only — no code change.
 
-### Caller-supplied recipient snapshots in v1
+### Optimized public Start/Action contract and recipient snapshots
 
-- Workflow start and action callers supply `notificationRecipients.toEmailAddresses` and `notificationRecipients.ccEmailAddresses` as typed arrays outside `notificationContext`.
-- The API replaces only actor identity from its trusted boundary; recipient strings pass through unchanged.
-- A created task stores `NotificationRecipientsJson` for SLA reuse. The initial outbox row stores the same serialized snapshot. SLA reminders copy the task snapshot unchanged.
-- `show-notifications` displays the persisted To/Cc lists. `process-notification-outbox` materializes the same lists into `NotificationDelivery`.
-- `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are dormant legacy metadata only. They may remain in seed/schema history, but runtime delivery never reads them.
+The public ASP.NET API request DTOs are intentionally separate from the internal console `WorkflowActionEnvelope`.
+
+`POST /v1/WorkflowStart` accepts:
+
+```json
+{
+  "workflowKey": "PortfolioTrade",
+  "businessObjectId": "PT-1001",
+  "actionKey": "SubmitForChecker",
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "recipientInputs": {
+      "originalMaker": [
+        {
+          "userId": "maker123",
+          "emailAddress": "maker@example.test",
+          "displayName": "Maker One"
+        }
+      ]
+    },
+    "templateData": {}
+  }
+}
+```
+
+`POST /v1/WorkflowAction` accepts:
+
+```json
+{
+  "workflowInstanceId": "WF-PT-1001",
+  "actionKey": "CheckerReturnToMaker",
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager456",
+          "emailAddress": "opaque-address-value",
+          "displayName": "Manager One"
+        }
+      ]
+    },
+    "templateData": {}
+  }
+}
+```
+
+- Start derives `businessObjectType` from active `WorkflowDefinition.BusinessObjectType`; it is not a public field.
+- Public Start uses `actionKey`, not `initialActionKey`.
+- Public requests use flat `slaTargetDate`, not nested `slaInput`. An actionless Action request may contain `workflowInstanceId` plus `slaTargetDate` for same-endpoint SLA synchronization.
+- Client action, correlation, and idempotency values are generated inside the trusted API/workflow layer and are not public body fields.
+- Public template values use `notification.templateData`; public participant/dynamic recipients use `notification.recipientInputs`.
+- Unknown root or nested fields are rejected. The API must not silently accept legacy `businessObjectType`, `initialActionKey`, `idempotencyKey`, `slaInput`, `notificationContext`, or `notificationRecipients` public fields.
+- Start captures `originalMaker` once when declared by participant metadata. Later actions cannot replace or remove that immutable participant.
+- Action callers may supply only route-declared named recipient inputs such as `selectedCcUsers`. Route metadata determines whether a source contributes to To or Cc.
+- Neither the UI nor the engine validates address syntax, directory membership, mailbox existence, or SMTP deliverability before storage.
+- A created task stores the resolved `NotificationRecipientsJson` for SLA reuse. The initial outbox row stores the same serialized snapshot. SLA reminders copy the task snapshot unchanged.
+- `show-notifications` displays the persisted final To/Cc lists. `process-notification-outbox` materializes the same lists into `NotificationDelivery`.
+- `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are removed from the active schema and runtime. There is no legacy fallback.
 
 ## 15. Transaction rule
 
@@ -2101,8 +2249,9 @@ Transaction should include:
 1. Close current task if the transition requires it. Closing a task means: `UPDATE WorkflowTask SET Status = 'Completed', CompletedAtUtc = TimeProvider.GetUtcNow(), CompletedByUserId = actor.userId, ClosedByActionKey = actionKey WHERE Id = @taskId`. When `--admin-override` is used, `CompletedByUserId` still records `actor.userId` from the envelope (the human who triggered the action); the override is noted in `WorkflowAudit`, not in the task row.
 1. Move workflow state using optimistic concurrency.
 1. If moving to `Completed`, set `WorkflowInstance.Status = 'Completed'` and `WorkflowInstance.CompletedAtUtc = TimeProvider.GetUtcNow()` and ensure no pending task remains.
-1. Create next task if the transition requires it, storing the caller's exact serialized `notificationRecipients` snapshot on the task for later SLA reuse.
-1. Create one notification outbox record if required, storing the same recipient snapshot separately from template-only `PayloadJson`.
+1. Resolve the route's ordered recipient rules from static metadata, immutable workflow participants, and permitted request inputs. Reject unknown inputs, missing required sources, or a final result with no To value before side effects.
+1. Create next task if the transition requires it, storing the exact resolved serialized `NotificationRecipients` snapshot on the task for later SLA reuse.
+1. Create one notification outbox record if required, storing the same resolved recipient snapshot separately from template-only `PayloadJson`.
 1. Write workflow audit record. For `SaveDraft`, `ToStateKey` records the unchanged current state (e.g., `Draft → Draft` or `ReturnedToMaker → ReturnedToMaker`). This is intentional — `SaveDraft` does not move state, so `FromStateKey` and `ToStateKey` are equal. Audit queries that interpret `ToStateKey` as "forward movement" must exclude `SaveDraft` rows when computing state progression.
 1. Write idempotency record.
 1. Commit.
@@ -2589,7 +2738,7 @@ dotnet test workflow-api/WorkflowEngine.WorkflowApi.slnx --filter "FullyQualifie
 dotnet test src/WorkflowEngine.sln --filter "FullyQualifiedName~WorkflowSamplesTests|FullyQualifiedName~SampleExpectationTests|FullyQualifiedName~ShowInspectionCommandTests"
 ```
 
-Recipient changes also require negative searches over active source/API/samples/docs/tests: no runtime singular-recipient field, no SMTP role-address map, and no `RecipientRoleKey`/`RecipientUserId` use outside dormant `NotificationRoute` seed/schema metadata or historical migrations.
+Recipient changes also require negative searches over active source/API/samples/docs/tests: no runtime singular-recipient field, no SMTP role-address map, and no active `NotificationRoute.RecipientRoleKey`/`RecipientUserId` use. Historical migrations may retain the old column names.
 
 Recommended project settings:
 
@@ -2636,7 +2785,8 @@ Stop before doing any of the following:
 - Allowing multiple sequential workflow instances on the same `(WorkflowKey, BusinessObjectType, BusinessObjectId)` (re-trade scenarios). v1 enforces one workflow lifetime per business object identifier. Schema changes (filtered unique on `Status = 'Active'`, sequence-aware ID generation) are required and out of scope.
 - Adding `Smtp:Username`, `Smtp:Password`, or any SMTP credential support. v1 assumes IP-restricted on-prem relay with no credentials. Authenticated relay requires secret management.
 - Adding any third-party NuGet package other than MailKit (which is pre-approved for `SmtpNotificationSender` in §14).
-- Adding engine recipient validation, normalization, deduplication, directory/role lookup, singular recipient fields, delimited recipient parsing, or any fallback other than `Smtp:RecipientOverride`.
+- Adding recipient syntax/directory/mailbox/SMTP validation, trimming or rewriting opaque address strings, role lookup, singular recipient fields, delimited recipient parsing, or any fallback other than `Smtp:RecipientOverride`.
+- Changing the approved recipient resolution semantics: route-order evaluation, case-insensitive duplicate comparison, first opaque value retention, and To-over-Cc precedence.
 
 ## 23. Completion summary format for coding agents
 
@@ -2774,9 +2924,9 @@ The README should explain:
 - The application service saves data and executes workflow in one transaction.
 - The workflow engine manages state, tasks, SLA, notifications, and audit.
 - The UI should combine user identity, form metadata, form data, and workflow context on form open.
-- The UI should use workflow context `requestDefaults` when building `WorkflowActionEnvelope`.
+- The UI should send an available action's `actionKey` through the optimized public Action DTO; internal console fixtures may use workflow context `requestDefaults` when building `WorkflowActionEnvelope`.
 - SLA notifications are task-driven and created by a monitor command, not by form buttons.
-- Notification delivery is abstracted via `INotificationSender`. Default is `ConsoleNotificationSender` (no real email). Callers supply ordered typed To/Cc arrays; the engine snapshots them for initial and SLA delivery. `SmtpNotificationSender` is enabled by setting `Notifications:Sender = "Smtp"` and providing `Smtp:Host` and `Smtp:From`; `Smtp:RecipientOverride` is the only delivery-address override.
+- Notification delivery is abstracted via `INotificationSender`. Default is `ConsoleNotificationSender` (no real email). Versioned metadata resolves ordered To/Cc arrays from static, participant, and permitted request-input sources; the engine snapshots them for initial and SLA delivery. `SmtpNotificationSender` is enabled by setting `Notifications:Sender = "Smtp"` and providing `Smtp:Host` and `Smtp:From`; `Smtp:RecipientOverride` is the only delivery-address override.
 
 ## 27. Final success definition
 
@@ -2824,9 +2974,9 @@ This section captures known implementation pitfalls. Coding agents must use this
 | Idempotency conflicts when reusing samples with overrides. | `execute-json --business-object` / `--workflow-instance` must derive effective clientActionId, idempotencyKey, and correlationId before dedupe. |
 | SLA duplicates. | Use `(WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` as the durable occurrence identity. Repeated/concurrent scans cannot create a second row for the same occurrence. |
 | Application must remember whether its target date changed. | The application forwards its current date on the existing workflow request. The engine compares against the active schedule and owns create/no-op/reschedule behavior. |
-| A second SLA endpoint is added for rescheduling. | Use the existing `POST /v1/WorkflowAction`; an actionless request with `slaInput.targetDate` performs SLA-only synchronization. |
-| Engine parses CDT's Target Completion Date from form payload. | `dataSave.payload` remains opaque. The application explicitly maps its field to generic `slaInput.targetDate`. |
-| Request overrides SLA configuration. | `slaInput` contains only `targetDate`. Duration, local time, timezone, overdue offset, recurrence, and routes come only from versioned `SlaPolicy` metadata. |
+| A second SLA endpoint is added for rescheduling. | Use the existing `POST /v1/WorkflowAction`; an actionless public request with flat `slaTargetDate` performs SLA-only synchronization. |
+| Engine parses CDT's Target Completion Date from form payload. | Form payload remains outside the workflow API. The application explicitly maps its field to generic public `slaTargetDate`. |
+| Request overrides SLA configuration. | Public JSON contains only flat `slaTargetDate`; duration, local time, timezone, overdue offset, recurrence, and routes come only from versioned `SlaPolicy` metadata. |
 | UTC recurrence drifts across DST. | Convert every local calendar occurrence independently through `TimeZoneInfo`; never add 24 hours to the prior UTC instant. |
 | Parallel workflow sneaks into v1. | MVP is single-active-state only. No fan-out/fan-in or multiple pending tasks. |
 | Portfolio Trade is hardcoded into the engine. | Portfolio Trade belongs in seed metadata and sample JSON only. Engine remains generic. |
@@ -2860,7 +3010,7 @@ This section captures known implementation pitfalls. Coding agents must use this
 | `AlreadyExists` result lacks status information. | The result must include `existingInstanceStatus` (`Active` or `Completed`) and `existingInstanceVersion` so the caller can distinguish "in progress" from "already finished." |
 | Coding agent hardcodes SMTP delivery into `process-notification-outbox`. | Use the `INotificationSender` interface and configuration-driven registration. Hardcoded SMTP defeats the testability and dev-vs-prod separation. |
 | Coding agent uses `System.Net.Mail.SmtpClient` for the SMTP implementation. | Use MailKit. `System.Net.Mail.SmtpClient` is deprecated by Microsoft for new development. MailKit is pre-approved for this project. |
-| Coding agent resolves recipients from roles, SQL, configuration maps, template context, singular fields, or delimited strings. | The authenticated/integrated caller supplies typed ordered To/Cc arrays. The engine snapshots and reuses them exactly; route role columns are dormant legacy metadata only. |
+| Coding agent resolves recipients from roles, configuration maps, template context, singular fields, or delimited strings. | Versioned `NotificationRecipientRule` rows select `StaticAddress`, immutable `WorkflowParticipant`, or permitted `RequestInput` sources. The engine resolves one final snapshot and reuses it exactly; legacy route role columns do not exist in the active schema. |
 | `SmtpNotificationSender` partially succeeds or tracks retry per recipient. | One outbox row is one complete message. Any address parse/send failure returns the entire row to `Pending`, increments one `RetryCount`, and stores one `LastError`. |
 | Coding agent enables real SMTP delivery in dev/test default config. | Default `Notifications:Sender` is `"Console"` everywhere except production. Tier 2 SMTP integration tests opt in explicitly via `Category=Smtp` filter and target a local fake server. |
 | Tier 2 SMTP tests run by default and slow down CI or hit a real relay. | Tier 2 tests must be marked with `Category=Smtp` and excluded from default `dotnet test`. They run only when explicitly requested. |

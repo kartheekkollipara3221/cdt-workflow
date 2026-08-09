@@ -1,7 +1,27 @@
 # Multiple Notification Recipients Design
 
 Date: 2026-08-03
-Status: Approved for implementation planning
+Status: Partially superseded by the approved 2026-08-09 Workflow API Envelope Optimization design
+
+## Supersession Note
+
+The following parts of this design remain authoritative:
+
+- One resolved task/outbox recipient snapshot.
+- Exact snapshot reuse by immediate notification and later SLA reminders.
+- One email and one message-level outbox status/retry lifecycle.
+- No syntax, directory, mailbox, or SMTP validation of stored address strings.
+- No backward compatibility with singular or delimited recipient fields.
+
+The following parts are superseded by `2026-08-09-workflow-api-envelope-optimization-design.md`:
+
+- Calling applications no longer supply the final To/Cc arrays through public `notificationRecipients`.
+- Versioned `NotificationRecipientRule` metadata owns recipient source selection and To/Cc placement.
+- Workflow Start captures `originalMaker` once as an immutable workflow participant; actions may supply only route-declared named recipient inputs.
+- The engine resolves and case-insensitively deduplicates final addresses, retains the first opaque string, and gives To precedence over Cc.
+- Neither the UI nor the engine is required to validate an address before it is stored.
+
+Historical sections below describe the original caller-owned snapshot design and must not be used as the current public API contract.
 
 ## Goal
 

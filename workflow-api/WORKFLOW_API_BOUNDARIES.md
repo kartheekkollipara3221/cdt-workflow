@@ -51,14 +51,15 @@ The workflow API must not validate, save, or persist form/section payload data.
 The upstream form/business API owns form data persistence. `WorkflowEngine.WorkflowApi`
 executes workflow state, task, notification, audit, SLA, and idempotency behavior only.
 
-For notification-producing actions, the workflow engine stores the caller-supplied recipient arrays as an exact `WorkflowTask` and `NotificationOutbox` snapshot. SLA due-today and overdue notifications reuse the task snapshot unchanged. `notificationContext` remains template data and never carries recipient addresses.
+For notification-producing actions, versioned metadata declares the recipient sources and To/Cc placement. Workflow Start captures declared participants such as `originalMaker` once, while an action may provide only named recipient inputs declared by the selected route. The engine resolves and stores one final `WorkflowTask` and `NotificationOutbox` recipient snapshot. SLA due-today and overdue notifications reuse the task snapshot unchanged. `notification.templateData` remains template data and never carries recipient addresses.
 
 Allowed:
 
 - Require the workflow envelope blocks needed by workflow execution.
-- Accept workflow action identity such as action key, workflow instance, expected state/version/task guards, and actor evidence.
-- Accept idempotency and correlation identifiers needed for safe workflow execution.
-- Accept generic `slaInput.targetDate` supplied by the upstream application for metadata policies using `ApplicationTargetDate`.
+- Accept public workflow action identity such as action key and workflow instance; load current state/version/task from persistence.
+- Generate idempotency and correlation identifiers inside the trusted API/workflow layer.
+- Accept generic public `slaTargetDate` supplied by the upstream application for metadata policies using `ApplicationTargetDate`.
+- Accept opaque address strings for metadata-declared participant and request recipient inputs without syntax, directory, mailbox, or SMTP validation.
 
 Not allowed:
 
@@ -66,8 +67,8 @@ Not allowed:
 - Add form completeness rules.
 - Reject or modify payload fields based on business meaning.
 - Use payload field values to decide workflow transitions.
-- Parse an application-specific date from form payload. The upstream application must explicitly map its field to generic `slaInput.targetDate`.
-- Accept duration, reminder time, timezone, overdue offset, recurrence, route keys, or `dueAtUtc` in `slaInput`; those are versioned metadata.
+- Parse an application-specific date from form payload. The upstream application must explicitly map its field to generic `slaTargetDate`.
+- Accept duration, reminder time, timezone, overdue offset, recurrence, route keys, or `dueAtUtc`; those are versioned metadata.
 - Persist `dataSave.payload`.
 - Add API behavior that saves form sections as part of workflow action execution.
 - Accept UI echo fields such as `sectionKey`, `buttonKey`, `buttonLabelShown`, or `saveAsDraft`.
@@ -149,20 +150,22 @@ Existing intended endpoints:
 
 - `POST /v1/WorkflowStart`
   - Starts one workflow instance for an upstream business object.
-  - Request input is `workflowKey`, `businessObjectType`, and `businessObjectId`.
-  - Optional request input `initialActionKey` starts the workflow and immediately executes one metadata-valid first action from the newly-created workflow state.
-  - Optional `idempotencyKey` supplies the workflow idempotency identity; the engine generates one only when omitted.
-  - Optional `slaInput` contains only `targetDate`. It is required when the initial action creates an `ApplicationTargetDate` task.
-  - Optional `notificationContext`, a string key/value dictionary supplied by the upstream external API for email template rendering.
-  - `notificationContext` is notification data only. It is not form payload, is not persisted as form data, and does not drive workflow transitions.
-  - Optional `notificationRecipients` uses the shared application contract with ordered `toEmailAddresses` and `ccEmailAddresses` arrays. It is separate from `notificationContext`.
-  - The upstream authenticated/integrated caller owns recipient selection and email validation. The API and engine preserve recipient values, order, whitespace, and duplicates without validation, trimming, normalization, deduplication, lookup, or delimited parsing.
-  - Send values as plain data, not HTML. The workflow engine HTML-escapes `notificationContext` values when rendering HTML email bodies, bolds important seeded template values, and turns `tradeLink` into a clickable link.
+  - Required request input is `workflowKey` and `businessObjectId`.
+  - `businessObjectType` is derived from the active `WorkflowDefinition` metadata and is not accepted from the browser.
+  - Optional public `actionKey` starts the workflow and immediately executes one metadata-valid first action from the newly-created workflow state.
+  - Request identity and idempotency values are generated inside the trusted API/workflow layer and are not public body fields.
+  - Optional flat `slaTargetDate` is required when the initial action creates an `ApplicationTargetDate` task.
+  - Optional `notification.templateData` is a string key/value dictionary supplied for email template rendering.
+  - Optional `notification.recipientInputs` is a dictionary of metadata-declared source keys to ordered user/address values. For the seeded Portfolio Trade workflow, Start captures `originalMaker` as an immutable workflow participant.
+  - A participant value captured by an immutable participant definition cannot be changed by later actions.
+  - Recipient input address strings are opaque. The API and engine do not perform syntax, directory, mailbox, SMTP, trimming, or rewriting validation before storage.
+  - Metadata owns final To/Cc placement. The engine applies route rule order, case-insensitive address deduplication, first-value retention, and To-over-Cc precedence when it resolves the final task snapshot.
+  - Send template values as plain data, not HTML. The workflow engine HTML-escapes `notification.templateData` values when rendering HTML email bodies, bolds important seeded template values, and turns `tradeLink` into a clickable link.
   - Actor identity comes from the temporary trusted-header adapter and is recorded as the starting user.
   - The endpoint does not accept `reset`.
   - The endpoint does not require `SaveDraft`; `SaveDraft` and submit actions are ordinary metadata actions from `Draft` when seeded.
-  - If `initialActionKey` is omitted, the endpoint does not send email unless a future metadata-backed start notification is added.
-  - If `initialActionKey` queues a metadata notification, the endpoint delivers only notification rows created by that initial action before returning success.
+  - If `actionKey` is omitted, the endpoint does not send email unless a future metadata-backed start notification is added.
+  - If `actionKey` queues a metadata notification, the endpoint delivers only notification rows created by that initial action before returning success.
   - If the initial action fails before commit, the newly-created workflow instance is rolled back.
   - If initial-action notification delivery fails after commit, the response is converted to `NotificationDeliveryFailed` and HTTP 500, and the notification row remains pending for retry.
   - The endpoint does not create, update, validate, or read form/business object data.
@@ -182,30 +185,29 @@ Existing intended endpoints:
   - The API request DTO must omit `dataSave` entirely.
   - The API request DTO must not accept form section payloads.
   - The API request DTO must not accept UI echo fields such as `sectionKey`, `buttonKey`, `buttonLabelShown`, or `saveAsDraft`.
-  - The API request DTO should contain only pure workflow fields plus notification-only context:
+  - The API request DTO contains only pure workflow fields plus notification input:
     - workflow instance ID
     - optional action key
     - optional `assignedRoleKey` for metadata-defined dynamic task assignment
-    - optional `idempotencyKey`
-    - optional `slaInput.targetDate`
-    - optional `notificationContext` for email template rendering data
-    - optional `notificationRecipients` typed ordered To/Cc arrays
-  - A normal action body contains `workflowInstanceId`, `actionKey`, optional `assignedRoleKey`, optional `idempotencyKey`, optional `slaInput`, optional `notificationContext`, and optional `notificationRecipients`.
-  - `slaInput` accepts only `targetDate`. Unknown SLA configuration fields are rejected during JSON deserialization.
+    - optional flat `slaTargetDate`
+    - optional `notification.templateData`
+    - optional `notification.recipientInputs` containing only named sources permitted by route metadata
+  - A normal action body contains `workflowInstanceId`, `actionKey`, optional `assignedRoleKey`, optional `slaTargetDate`, and optional `notification`.
+  - Unknown root or nested request fields are rejected during JSON deserialization; obsolete public fields are not silently ignored.
   - For an `ApplicationTargetDate` task, the upstream application forwards its current date on every existing save/action call. The engine compares it with the active schedule and owns create/no-op/reschedule behavior.
-  - `actionKey` may be omitted only when `slaInput.targetDate` is present. That actionless request synchronizes the current pending task's SLA through the same endpoint without moving workflow state, incrementing `WorkflowInstance.Version`, or writing workflow audit.
+  - `actionKey` may be omitted only when `slaTargetDate` is present. That actionless request synchronizes the current pending task's SLA through the same endpoint without moving workflow state, incrementing `WorkflowInstance.Version`, or writing workflow audit.
   - There is no second create/reschedule SLA endpoint. The workflow API does not ask the application to compare old/new dates.
   - `assignedRoleKey` is accepted only for transitions whose created task supports dynamic assignment metadata; for `CheckerSendToTradingDesk`, the upstream form/business API supplies one of `TradingDeskTaxable`, `TradingDeskTaxExempt`, or `TradingDeskEquity`.
-  - Optional `notificationContext`, a string key/value dictionary supplied by the upstream external API for email template rendering.
-  - `notificationContext` is notification data only. It is not form payload, is not persisted as form data, and does not drive workflow transitions.
-  - Optional `notificationRecipients` uses the shared application contract with ordered `toEmailAddresses` and `ccEmailAddresses` arrays. The service passes it unchanged while replacing only actor identity from trusted headers.
-  - The upstream caller owns recipient selection and validation. No API/engine trimming, normalization, deduplication, role mapping, directory lookup, singular-field fallback, or delimited parsing is allowed.
-  - Send values as plain data, not HTML. The workflow engine HTML-escapes `notificationContext` values when rendering HTML email bodies, bolds important seeded template values, and turns `tradeLink` into a clickable link.
+  - `notification.templateData` is notification data only. It is not form payload, is not persisted as form data, and does not drive workflow transitions.
+  - `notification.recipientInputs` may contain only route-declared source keys, such as `selectedCcUsers`. A later action cannot replace immutable `originalMaker` participant data.
+  - Recipient input address strings are stored without syntax, directory, mailbox, or SMTP validation. Metadata resolution, rather than the request, owns final To/Cc placement.
+  - Final recipient resolution is generic: route rules are evaluated in order; repeated address strings are compared case-insensitively; the first opaque value is retained; and an address selected for To is removed from Cc.
+  - Send template values as plain data, not HTML. The workflow engine HTML-escapes `notification.templateData` values when rendering HTML email bodies, bolds important seeded template values, and turns `tradeLink` into a clickable link.
   - `workflowInstanceId` is the lookup key.
   - Workflow key and workflow definition version are derived from persisted workflow metadata, not echoed by the request.
   - Business object identity is derived from the persisted workflow instance, not echoed by the request.
   - Current state, current task, and workflow instance version are validated from persisted workflow data and metadata, not echoed by the request.
-  - Client action ID and correlation ID are generated internally by the API/workflow layer. A caller-supplied `idempotencyKey` is preserved; otherwise the workflow layer generates one.
+  - Client action ID, correlation ID, and idempotency identity are generated internally by the API/workflow layer.
   - Response includes the action result and refreshed workflow context.
   - Refreshed workflow context is computed for the submitting actor from trusted headers.
   - Workflow-level failures return custom error code `500` rather than HTTP 200 with `result.success = false`.
@@ -226,14 +228,18 @@ Application-target-date action example:
   "workflowInstanceId": "WF-PT-1001",
   "actionKey": "CheckerSendToTradingDesk",
   "assignedRoleKey": "TradingDeskTaxable",
-  "idempotencyKey": "checker-to-desk-1001",
-  "slaInput": {
-    "targetDate": "2030-01-20"
-  },
-  "notificationContext": {},
-  "notificationRecipients": {
-    "toEmailAddresses": ["desk@example.test"],
-    "ccEmailAddresses": []
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "user-42",
+          "emailAddress": "opaque-address-value",
+          "displayName": "Selected user"
+        }
+      ]
+    },
+    "templateData": {}
   }
 }
 ```
@@ -243,10 +249,7 @@ Same-endpoint SLA-only synchronization example:
 ```json
 {
   "workflowInstanceId": "WF-PT-1001",
-  "idempotencyKey": "target-date-save-1001-20300125",
-  "slaInput": {
-    "targetDate": "2030-01-25"
-  }
+  "slaTargetDate": "2030-01-25"
 }
 ```
 
@@ -306,15 +309,15 @@ Do not require or accept `objectType` or `objectId` in the workflow action reque
 
 ## Seventh Open Clarification
 
-Answered: the workflow action request DTO should only accept `workflowInstanceId`, `actionKey`, and optional `assignedRoleKey`.
+Answered: the workflow action request DTO accepts `workflowInstanceId`, optional `actionKey`, optional `assignedRoleKey`, optional `slaTargetDate`, and optional `notification`.
 
 Do not require or accept `expectedCurrentState`, `expectedCurrentTaskId`, `expectedCurrentTaskKey`, or `expectedInstanceVersion` in the public API request DTO. The engine validates current state and task from persisted workflow data and metadata.
 
 ## Eighth Open Clarification
 
-Answered: the API generates IDs and correlation internally.
+Answered: the API generates IDs, correlation, and idempotency identity internally.
 
-Do not accept `actionReason`, `clientActionId`, `correlationId`, `idempotencyKey`, or source-system/command metadata in the public workflow action request DTO. The request body should contain only `workflowInstanceId`, `actionKey`, and optional `assignedRoleKey`.
+Do not accept `actionReason`, `clientActionId`, `correlationId`, `idempotencyKey`, or source-system/command metadata in the public workflow action request DTO. The request body uses only the optimized fields documented in the endpoint boundary above.
 
 ## Ninth Open Clarification
 
