@@ -1936,14 +1936,14 @@ BdrmTradeNotExecutedProperly
   -> starts Trading Desk rework SLA
 ```
 
-Duration policies use short demo durations. Trading Desk review uses the same real calendar policy in local, SIT, and UAT; local verification fast-forwards the injected monitor time instead of changing the policy to minutes.
+Duration policies use short demo durations for their first overdue instant. BDRM then uses metadata-driven calendar recurrence at 9:00 AM Eastern, while Trading Desk review uses its application-target-date calendar policy. Local verification fast-forwards the injected monitor time instead of changing either calendar policy.
 
 | Task key | Calculation mode | Seeded configuration | SLA enabled |
 |---|---|---|---|
 | `CheckerReviewTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
 | `TradingDeskReviewTask` | `ApplicationTargetDate` | 09:00 `America/New_York`; due-today on target date; overdue target + 1 calendar day; repeat every calendar day | Yes |
 | `TradingDeskReworkTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
-| `BdrmClientServiceReviewTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
+| `BdrmClientServiceReviewTask` | `DurationFromTaskCreation` | 2 minutes to first overdue reminder; then 09:00 `America/New_York` every calendar day, including weekends and holidays, while pending | Yes |
 | `MakerReworkTask` | None | None | No |
 
 `MakerReworkTask` is intentionally not SLA-tracked in v1: a returned request sitting in Maker's queue does not generate overdue notifications. This is acceptable for the POC because Maker holds the request and is expected to act on it. The schema fully supports adding a `MakerReworkTask` SLA later — it requires only seeding an `SlaPolicy` row and updating the `WorkflowTaskDefinition.SlaPolicyKey` reference. No engine code changes are required.
@@ -1952,7 +1952,7 @@ Duration policies use short demo durations. Trading Desk review uses the same re
 
 When metadata creates an SLA-enabled task, the engine resolves its versioned policy and creates schedule version 1 in the same workflow transaction:
 
-- `DurationFromTaskCreation`: `OverdueAtUtc = task.CreatedAtUtc + SlaPolicy.DurationMinutes`; `TargetDate` and `DueReminderAtUtc` are null; `NextReminderAtUtc` is the overdue instant (or current injected time for catch-up); recurrence is null.
+- `DurationFromTaskCreation`: `OverdueAtUtc = task.CreatedAtUtc + SlaPolicy.DurationMinutes`; `TargetDate` and `DueReminderAtUtc` are null; `NextReminderAtUtc` initially identifies the overdue instant. Null recurrence produces one overdue reminder. Positive recurrence requires `ReminderLocalTime` and `TimeZoneId`; after the first duration occurrence, later reminders use the next configured local calendar date/time.
 - `ApplicationTargetDate`: the public request must supply `slaTargetDate`, which the API maps to internal `slaInput.targetDate`. The engine converts the target date and target + `OverdueStartOffsetDays` independently from configured local time/timezone to UTC. It never calculates recurrence as previous UTC + 24 hours.
 - No SLA policy: create no schedule and set `WorkflowTask.DueAtUtc = null`.
 
@@ -1983,6 +1983,7 @@ Sent occurrences are immutable history. A revised schedule has a new identity an
 - Insert at most one occurrence for the current local date. If the monitor missed several dates, queue only the current applicable occurrence and never backfill every historical date.
 - Deduplicate by `(WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` and advance `NextReminderAtUtc` by independently converting the next configured calendar date through `TimeZoneInfo`.
 - Set `NextReminderAtUtc = null` after a one-time duration reminder.
+- For a recurring duration policy, queue the first overdue occurrence at `OverdueAtUtc`, then advance to `ReminderLocalTime` on the next configured local calendar date. Delayed scans queue at most the current eligible local-date occurrence and do not backfill missed dates.
 - Not close tasks or move workflow state.
 
 The configured time is an eligibility boundary, not an in-process scheduler. An external scheduler invokes `run-sla` regularly. Local tests use `run-sla --now` to fast-forward the real seeded calendar policy and finish multi-day scenarios in minutes; SIT/UAT omit `--now` and use wall-clock time.
@@ -2593,6 +2594,7 @@ Add tests for:
 - Actionless `POST /v1/WorkflowAction` SLA synchronization does not move workflow state, increment `WorkflowInstance.Version`, or write workflow audit.
 - SLA monitor queues one due-today occurrence on the target date and one overdue occurrence on each eligible calendar date, including weekends.
 - Repeated same-date scans do not duplicate an occurrence; delayed scans queue only the current applicable local-date occurrence and honor the configured local-time boundary.
+- BDRM queues its first overdue occurrence two minutes after task creation, then queues at 9:00 AM `America/New_York` on every later calendar date, including weekends and holidays, until the task closes.
 - Completing an SLA task stops later occurrences; an outbox row claimed for an inactive schedule becomes `Cancelled` before sender invocation.
 - `process-notification-outbox` marks `Pending` rows as `Sent` and is safe to run twice.
 - `execute-json` command handles every sample envelope successfully.
