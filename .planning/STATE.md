@@ -30,7 +30,7 @@ See: `.planning/PROJECT.md` and repository-root `PROJECT.md`.
 
 **Current focus:** Phase 06 — Samples, Tests, and Demo
 
-Last activity: 2026-08-09 - Completed quick task 260809-f8m: Optimize the UI-facing Workflow Start and Action envelope
+Last activity: 2026-08-09 - Completed quick task 260809-lb6: Create executable public Workflow API envelope scenario packs
 
 ## Current Position
 
@@ -79,6 +79,7 @@ Phase 6 is signed off. The v1 milestone is ready for milestone completion or rel
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260809-f8m | Optimize the UI-facing Workflow Start and Action envelope | 2026-08-09 | 9317013 | [260809-f8m-optimize-the-ui-facing-workflowstart-and](./quick/260809-f8m-optimize-the-ui-facing-workflowstart-and/) |
+| 260809-lb6 | Create executable public Workflow API envelope scenario packs | 2026-08-09 | ceb3999 | [260809-lb6-create-executable-public-workflow-api-en](./quick/260809-lb6-create-executable-public-workflow-api-en/) |
 
 ## Open Issues
 
