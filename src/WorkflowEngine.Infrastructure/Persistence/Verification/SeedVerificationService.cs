@@ -254,10 +254,19 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         {
             if (policy.CalculationMode == "DurationFromTaskCreation")
             {
+                var hasRecurrence = policy.RecurrenceIntervalDays is > 0;
                 if (policy.DurationMinutes is null or <= 0
                     || policy.SendDueDateReminder
-                    || policy.ReminderLocalTime is not null
-                    || policy.TimeZoneId is not null)
+                    || policy.OverdueStartOffsetDays != 0
+                    || policy.RecurrenceIntervalDays is <= 0
+                    || (hasRecurrence
+                        && (policy.ReminderLocalTime is null
+                            || string.IsNullOrWhiteSpace(policy.TimeZoneId)))
+                    || (!hasRecurrence
+                        && (policy.ReminderLocalTime is not null
+                            || policy.TimeZoneId is not null))
+                    || policy.DueNotificationRouteKey is not null
+                    || string.IsNullOrWhiteSpace(policy.OverdueNotificationRouteKey))
                 {
                     errors.Add($"SLA policy '{policy.SlaPolicyKey}' has invalid duration-mode metadata.");
                 }

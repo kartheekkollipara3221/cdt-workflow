@@ -51,7 +51,7 @@ internal static class PortfolioTradeSeedData
         new("CheckerReviewSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue"),
         new("TradingDeskReviewSla", "ApplicationTargetDate", null, true, new TimeOnly(9, 0), "America/New_York", 1, 1, "RouteSlaTaskDueToday", "RouteSlaTaskOverdue"),
         new("TradingDeskReworkSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue"),
-        new("BdrmClientServiceReviewSla", "DurationFromTaskCreation", 2, false, null, null, 0, null, null, "RouteSlaTaskOverdue")
+        new("BdrmClientServiceReviewSla", "DurationFromTaskCreation", 2, false, new TimeOnly(9, 0), "America/New_York", 0, 1, null, "RouteSlaTaskOverdue")
     ];
 
     public static readonly TaskSeed[] Tasks =

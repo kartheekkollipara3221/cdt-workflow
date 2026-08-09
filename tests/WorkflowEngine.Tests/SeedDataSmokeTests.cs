@@ -234,21 +234,30 @@ public sealed class SeedDataSmokeTests
         var policies = dbContext.SlaPolicies
             .Where(row => row.WorkflowDefinitionVersionId == versionId
                 && row.SlaPolicyKey != "TradingDeskReviewSla")
-            .ToList();
+            .ToDictionary(row => row.SlaPolicyKey, StringComparer.Ordinal);
 
         Assert.Equal(3, policies.Count);
-        Assert.All(policies, policy =>
+        Assert.All(policies.Values, policy =>
         {
             Assert.Equal("DurationFromTaskCreation", policy.CalculationMode);
             Assert.Equal(2, policy.DurationMinutes);
             Assert.False(policy.SendDueDateReminder);
-            Assert.Null(policy.ReminderLocalTime);
-            Assert.Null(policy.TimeZoneId);
             Assert.Equal(0, policy.OverdueStartOffsetDays);
-            Assert.Null(policy.RecurrenceIntervalDays);
             Assert.Null(policy.DueNotificationRouteKey);
             Assert.Equal("RouteSlaTaskOverdue", policy.OverdueNotificationRouteKey);
         });
+
+        foreach (var policyKey in new[] { "CheckerReviewSla", "TradingDeskReworkSla" })
+        {
+            Assert.Null(policies[policyKey].ReminderLocalTime);
+            Assert.Null(policies[policyKey].TimeZoneId);
+            Assert.Null(policies[policyKey].RecurrenceIntervalDays);
+        }
+
+        var bdrm = policies["BdrmClientServiceReviewSla"];
+        Assert.Equal(new TimeOnly(9, 0), bdrm.ReminderLocalTime);
+        Assert.Equal("America/New_York", bdrm.TimeZoneId);
+        Assert.Equal(1, bdrm.RecurrenceIntervalDays);
     }
 
     private static WorkflowDbContext CreateDbContext()
