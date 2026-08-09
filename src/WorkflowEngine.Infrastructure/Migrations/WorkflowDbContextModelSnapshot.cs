@@ -233,6 +233,60 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.NotificationRecipientRule", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("NotificationRouteId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("RecipientKind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("StaticAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotificationRouteId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("NotificationRecipientRule", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_NotificationRecipientRule_RecipientKind", "[RecipientKind] IN ('To', 'Cc')");
+
+                            t.HasCheckConstraint("CK_NotificationRecipientRule_SortOrder", "[SortOrder] > 0");
+
+                            t.HasCheckConstraint("CK_NotificationRecipientRule_SourceFields", "([SourceType] = 'StaticAddress' AND [StaticAddress] IS NOT NULL AND [SourceKey] IS NULL) OR ([SourceType] IN ('WorkflowParticipant', 'RequestInput') AND [SourceKey] IS NOT NULL AND [StaticAddress] IS NULL)");
+
+                            t.HasCheckConstraint("CK_NotificationRecipientRule_SourceType", "[SourceType] IN ('StaticAddress', 'WorkflowParticipant', 'RequestInput')");
+                        });
+                });
+
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.NotificationRoute", b =>
                 {
                     b.Property<long>("Id")
@@ -261,14 +315,6 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("RecipientRoleKey")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("RecipientUserId")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("RouteKey")
                         .IsRequired()
@@ -486,6 +532,11 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("BusinessObjectType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -598,6 +649,101 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.ToTable("WorkflowInstance", "dbo", t =>
                         {
                             t.HasCheckConstraint("CK_WorkflowInstance_Status", "[Status] IN ('Active', 'Completed')");
+                        });
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowParticipant", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmailAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ParticipantKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("WorkflowInstanceId")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowInstanceId", "ParticipantKey", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowParticipant", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkflowParticipant_SortOrder", "[SortOrder] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowParticipantDefinition", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CaptureStage")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Cardinality")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsImmutable")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ParticipantKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<long>("WorkflowDefinitionVersionId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowDefinitionVersionId", "ParticipantKey")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowParticipantDefinition", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkflowParticipantDefinition_CaptureStage", "[CaptureStage] IN ('Start')");
+
+                            t.HasCheckConstraint("CK_WorkflowParticipantDefinition_Cardinality", "[Cardinality] IN ('Single', 'Many')");
                         });
                 });
 
@@ -1017,6 +1163,15 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.NotificationRecipientRule", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.NotificationRoute", null)
+                        .WithMany()
+                        .HasForeignKey("NotificationRouteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowAudit", b =>
                 {
                     b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowInstance", null)
@@ -1036,6 +1191,25 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("WorkflowDefinition");
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowParticipant", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowInstance", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowInstanceId")
+                        .HasPrincipalKey("WorkflowInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowParticipantDefinition", b =>
+                {
+                    b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowDefinitionVersion", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowDefinitionVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTask", b =>

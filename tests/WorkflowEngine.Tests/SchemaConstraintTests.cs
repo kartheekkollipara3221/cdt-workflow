@@ -105,6 +105,72 @@ public sealed class SchemaConstraintTests
         Assert.Null(entityType.FindProperty("RecipientUserId"));
     }
 
+    [Fact]
+    public void WorkflowDefinitionMapsRequiredBusinessObjectType()
+    {
+        var entityType = dbContext.Model.FindEntityType(typeof(WorkflowDefinition));
+        Assert.NotNull(entityType);
+
+        var property = entityType.FindProperty("BusinessObjectType");
+
+        Assert.NotNull(property);
+        Assert.False(property.IsNullable);
+        Assert.Equal(100, property.GetMaxLength());
+    }
+
+    [Fact]
+    public void NotificationRouteDoesNotMapLegacyRecipientHints()
+    {
+        var entityType = dbContext.Model.FindEntityType(typeof(NotificationRoute));
+        Assert.NotNull(entityType);
+
+        Assert.Null(entityType.FindProperty("RecipientRoleKey"));
+        Assert.Null(entityType.FindProperty("RecipientUserId"));
+    }
+
+    [Fact]
+    public void ParticipantAndRecipientRuleEntitiesHaveRequiredRelationshipsAndChecks()
+    {
+        var participantDefinition = dbContext.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(WorkflowParticipantDefinition));
+        Assert.NotNull(participantDefinition);
+        Assert.Contains(participantDefinition.GetForeignKeys(), foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(WorkflowDefinitionVersion));
+        Assert.Contains(participantDefinition.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_WorkflowParticipantDefinition_Cardinality"
+            && constraint.Sql.Contains("'Single'", StringComparison.Ordinal)
+            && constraint.Sql.Contains("'Many'", StringComparison.Ordinal));
+        Assert.Contains(participantDefinition.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_WorkflowParticipantDefinition_CaptureStage"
+            && constraint.Sql.Contains("'Start'", StringComparison.Ordinal));
+
+        var participant = dbContext.Model.FindEntityType(typeof(WorkflowParticipant));
+        Assert.NotNull(participant);
+        Assert.Contains(participant.GetForeignKeys(), foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(WorkflowInstance));
+        var emailAddress = participant.FindProperty("EmailAddress");
+        Assert.NotNull(emailAddress);
+        Assert.False(emailAddress.IsNullable);
+
+        var recipientRule = dbContext.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(NotificationRecipientRule));
+        Assert.NotNull(recipientRule);
+        Assert.Contains(recipientRule.GetForeignKeys(), foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(NotificationRoute));
+        Assert.Contains(recipientRule.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_NotificationRecipientRule_RecipientKind"
+            && constraint.Sql.Contains("'To'", StringComparison.Ordinal)
+            && constraint.Sql.Contains("'Cc'", StringComparison.Ordinal));
+        Assert.Contains(recipientRule.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_NotificationRecipientRule_SourceType"
+            && constraint.Sql.Contains("'StaticAddress'", StringComparison.Ordinal)
+            && constraint.Sql.Contains("'WorkflowParticipant'", StringComparison.Ordinal)
+            && constraint.Sql.Contains("'RequestInput'", StringComparison.Ordinal));
+        Assert.DoesNotContain(recipientRule.GetCheckConstraints(), constraint =>
+            (constraint.Name?.Contains("Email", StringComparison.OrdinalIgnoreCase) ?? false)
+            || constraint.Sql.Contains("@", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(typeof(WorkflowInstance), "CK_WorkflowInstance_Status")]
     [InlineData(typeof(WorkflowTask), "CK_WorkflowTask_Status")]
@@ -164,6 +230,9 @@ public sealed class SchemaConstraintTests
     [InlineData(typeof(WorkflowTaskDefinition), "WorkflowDefinitionVersionId", "TaskKey")]
     [InlineData(typeof(SlaPolicy), "WorkflowDefinitionVersionId", "SlaPolicyKey")]
     [InlineData(typeof(NotificationRoute), "WorkflowDefinitionVersionId", "RouteKey")]
+    [InlineData(typeof(WorkflowParticipantDefinition), "WorkflowDefinitionVersionId", "ParticipantKey")]
+    [InlineData(typeof(WorkflowParticipant), "WorkflowInstanceId", "ParticipantKey", "SortOrder")]
+    [InlineData(typeof(NotificationRecipientRule), "NotificationRouteId", "SortOrder")]
     [InlineData(typeof(WorkflowTransitionDefinition), "WorkflowDefinitionVersionId", "FromStateKey", "ActionKey", "AllowedRoleKey")]
     [InlineData(typeof(WorkflowInstance), "WorkflowKey", "BusinessObjectType", "BusinessObjectId")]
     public void RequiredCompositeUniqueIndexesExist(Type entityClrType, params string[] propertyNames)

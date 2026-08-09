@@ -3,7 +3,13 @@ namespace WorkflowEngine.Infrastructure.Persistence.Seed;
 internal static class PortfolioTradeSeedData
 {
     public const string WorkflowKey = "PortfolioTrade";
+    public const string BusinessObjectType = "PortfolioTrade";
     public const int VersionNumber = 1;
+
+    public static readonly ParticipantDefinitionSeed[] ParticipantDefinitions =
+    [
+        new("originalMaker", "Single", "Start", true, true)
+    ];
 
     public static readonly StateSeed[] States =
     [
@@ -146,16 +152,31 @@ internal static class PortfolioTradeSeedData
 
     public static readonly NotificationRouteSeed[] NotificationRoutes =
     [
-        new("RouteCheckerAssignedOnSubmit", "WorkflowTaskAssigned", "Checker", "Directed Trade Pending Checker Approval", CheckerAssignedBody, CheckerAssignedHtmlBody, "Overdue: "),
-        new("RouteCheckerAssignedOnResubmit", "WorkflowTaskAssigned", "Checker", "Directed Trade Pending Checker Approval", CheckerAssignedBody, CheckerAssignedHtmlBody, "Overdue: "),
-        new("RouteReturnedToMakerFromChecker", "WorkflowReturnedToMaker", "Maker", "Updates Required to Directed Trade Request", ReturnedToMakerBody, ReturnedToMakerHtmlBody, "Overdue: "),
-        new("RouteTradingDeskAssigned", "WorkflowTaskAssigned", null, "Directed Trade Request Pending Execution", TradingDeskAssignedBody, TradingDeskAssignedHtmlBody, "Overdue: "),
-        new("RouteReturnedToMakerFromTradingDesk", "WorkflowReturnedToMaker", "Maker", "Updates Required to Directed Trade Request", ReturnedToMakerBody, ReturnedToMakerHtmlBody, "Overdue: "),
-        new("RouteBdrmAssigned", "WorkflowTaskAssigned", "BDRMClientService", "Trade Execution Pending Confirmation", BdrmAssignedBody, BdrmAssignedHtmlBody, "Overdue: "),
-        new("RouteWorkflowCompleted", "WorkflowCompleted", "Maker", "Confirmation that Trade settled in account", WorkflowCompletedBody, WorkflowCompletedHtmlBody, "Overdue: "),
-        new("RouteTradingDeskReworkAssigned", "WorkflowTaskAssigned", "TradingDesk", "Directed Trade Request Pending Rework", TradingDeskReworkAssignedBody, TradingDeskReworkAssignedHtmlBody, "Overdue: "),
-        new("RouteSlaTaskDueToday", "SlaTaskDueToday", null, "Workflow task due today", SlaTaskDueTodayBody, SlaTaskDueTodayHtmlBody, string.Empty),
-        new("RouteSlaTaskOverdue", "SlaTaskOverdue", null, "Workflow task overdue", SlaTaskOverdueBody, SlaTaskOverdueHtmlBody, "Overdue: ")
+        new("RouteCheckerAssignedOnSubmit", "WorkflowTaskAssigned", "Directed Trade Pending Checker Approval", CheckerAssignedBody, CheckerAssignedHtmlBody, "Overdue: "),
+        new("RouteCheckerAssignedOnResubmit", "WorkflowTaskAssigned", "Directed Trade Pending Checker Approval", CheckerAssignedBody, CheckerAssignedHtmlBody, "Overdue: "),
+        new("RouteReturnedToMakerFromChecker", "WorkflowReturnedToMaker", "Updates Required to Directed Trade Request", ReturnedToMakerBody, ReturnedToMakerHtmlBody, "Overdue: "),
+        new("RouteTradingDeskAssigned", "WorkflowTaskAssigned", "Directed Trade Request Pending Execution", TradingDeskAssignedBody, TradingDeskAssignedHtmlBody, "Overdue: "),
+        new("RouteReturnedToMakerFromTradingDesk", "WorkflowReturnedToMaker", "Updates Required to Directed Trade Request", ReturnedToMakerBody, ReturnedToMakerHtmlBody, "Overdue: "),
+        new("RouteBdrmAssigned", "WorkflowTaskAssigned", "Trade Execution Pending Confirmation", BdrmAssignedBody, BdrmAssignedHtmlBody, "Overdue: "),
+        new("RouteWorkflowCompleted", "WorkflowCompleted", "Confirmation that Trade settled in account", WorkflowCompletedBody, WorkflowCompletedHtmlBody, "Overdue: "),
+        new("RouteTradingDeskReworkAssigned", "WorkflowTaskAssigned", "Directed Trade Request Pending Rework", TradingDeskReworkAssignedBody, TradingDeskReworkAssignedHtmlBody, "Overdue: "),
+        new("RouteSlaTaskDueToday", "SlaTaskDueToday", "Workflow task due today", SlaTaskDueTodayBody, SlaTaskDueTodayHtmlBody, string.Empty),
+        new("RouteSlaTaskOverdue", "SlaTaskOverdue", "Workflow task overdue", SlaTaskOverdueBody, SlaTaskOverdueHtmlBody, "Overdue: ")
+    ];
+
+    public static readonly NotificationRecipientRuleSeed[] NotificationRecipientRules =
+    [
+        new("RouteCheckerAssignedOnSubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
+        new("RouteCheckerAssignedOnSubmit", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
+        new("RouteCheckerAssignedOnResubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
+        new("RouteReturnedToMakerFromChecker", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
+        new("RouteReturnedToMakerFromChecker", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
+        new("RouteReturnedToMakerFromChecker", "Cc", "StaticAddress", null, "workflow-operations@example.test", 3, false),
+        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
+        new("RouteReturnedToMakerFromTradingDesk", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
+        new("RouteBdrmAssigned", "To", "StaticAddress", null, "bdrm-client-service@example.test", 1, true),
+        new("RouteTradingDeskReworkAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
+        new("RouteWorkflowCompleted", "To", "WorkflowParticipant", "originalMaker", null, 1, true)
     ];
 
     public static readonly TaskAssignmentRoleSeed[] TaskAssignmentRoles =
@@ -182,6 +203,13 @@ internal static class PortfolioTradeSeedData
 }
 
 internal sealed record StateSeed(string Key, string DisplayName, bool IsTerminal);
+
+internal sealed record ParticipantDefinitionSeed(
+    string ParticipantKey,
+    string Cardinality,
+    string CaptureStage,
+    bool IsRequired,
+    bool IsImmutable);
 
 internal sealed record RoleSeed(string Key, string DisplayName);
 
@@ -214,11 +242,19 @@ internal sealed record TaskAssignmentRoleSeed(string TaskKey, string RoleKey);
 internal sealed record NotificationRouteSeed(
     string Key,
     string NotificationType,
-    string? RecipientRoleKey,
     string SubjectTemplate,
     string BodyTemplate,
     string HtmlBodyTemplate,
     string OverdueSubjectPrefix);
+
+internal sealed record NotificationRecipientRuleSeed(
+    string RouteKey,
+    string RecipientKind,
+    string SourceType,
+    string? SourceKey,
+    string? StaticAddress,
+    int SortOrder,
+    bool IsRequired);
 
 internal sealed record TransitionSeed(
     string FromStateKey,

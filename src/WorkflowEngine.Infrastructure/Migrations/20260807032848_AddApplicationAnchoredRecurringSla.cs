@@ -177,6 +177,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.Sql(
+                "UPDATE [dbo].[SlaPolicy] SET [CalculationMode] = N'DurationFromTaskCreation' WHERE [CalculationMode] = N'';");
+
             migrationBuilder.AddCheckConstraint(
                 name: "CK_SlaPolicy_CalculationMode",
                 schema: "dbo",

@@ -19,11 +19,15 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
 
     public DbSet<WorkflowTaskDefinition> WorkflowTaskDefinitions => Set<WorkflowTaskDefinition>();
 
+    public DbSet<WorkflowParticipantDefinition> WorkflowParticipantDefinitions => Set<WorkflowParticipantDefinition>();
+
     public DbSet<WorkflowTaskAssignmentRoleDefinition> WorkflowTaskAssignmentRoleDefinitions => Set<WorkflowTaskAssignmentRoleDefinition>();
 
     public DbSet<WorkflowTransitionDefinition> WorkflowTransitionDefinitions => Set<WorkflowTransitionDefinition>();
 
     public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
+
+    public DbSet<WorkflowParticipant> WorkflowParticipants => Set<WorkflowParticipant>();
 
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
 
@@ -36,6 +40,8 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
     public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>();
 
     public DbSet<NotificationRoute> NotificationRoutes => Set<NotificationRoute>();
+
+    public DbSet<NotificationRecipientRule> NotificationRecipientRules => Set<NotificationRecipientRule>();
 
     public DbSet<NotificationOutbox> NotificationOutbox => Set<NotificationOutbox>();
 
@@ -59,6 +65,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.HasKey(row => row.Id);
             entity.Property(row => row.WorkflowKey).HasMaxLength(100).IsRequired();
             entity.Property(row => row.DisplayName).HasMaxLength(200).IsRequired();
+            entity.Property(row => row.BusinessObjectType).HasMaxLength(100).IsRequired();
             entity.HasIndex(row => row.WorkflowKey).IsUnique();
         });
     }
@@ -123,6 +130,29 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.HasIndex(row => new { row.WorkflowDefinitionVersionId, row.TaskKey }).IsUnique();
         });
 
+        modelBuilder.Entity<WorkflowParticipantDefinition>(entity =>
+        {
+            entity.ToTable("WorkflowParticipantDefinition");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.ParticipantKey).HasMaxLength(100).IsRequired();
+            entity.Property(row => row.Cardinality).HasMaxLength(20).IsRequired();
+            entity.Property(row => row.CaptureStage).HasMaxLength(20).IsRequired();
+            entity.HasIndex(row => new { row.WorkflowDefinitionVersionId, row.ParticipantKey }).IsUnique();
+            entity.HasOne<WorkflowDefinitionVersion>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowDefinitionVersionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_WorkflowParticipantDefinition_Cardinality",
+                    "[Cardinality] IN ('Single', 'Many')");
+                table.HasCheckConstraint(
+                    "CK_WorkflowParticipantDefinition_CaptureStage",
+                    "[CaptureStage] IN ('Start')");
+            });
+        });
+
         modelBuilder.Entity<WorkflowTaskAssignmentRoleDefinition>(entity =>
         {
             entity.ToTable("WorkflowTaskAssignmentRoleDefinition");
@@ -178,13 +208,41 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.HasKey(row => row.Id);
             entity.Property(row => row.RouteKey).HasMaxLength(100).IsRequired();
             entity.Property(row => row.NotificationType).HasMaxLength(100).IsRequired();
-            entity.Property(row => row.RecipientRoleKey).HasMaxLength(100);
-            entity.Property(row => row.RecipientUserId).HasMaxLength(200);
             entity.Property(row => row.SubjectTemplate).HasMaxLength(300).IsRequired();
             entity.Property(row => row.BodyTemplate).IsRequired();
             entity.Property(row => row.HtmlBodyTemplate).IsRequired();
             entity.Property(row => row.OverdueSubjectPrefix).HasMaxLength(100).IsRequired();
             entity.HasIndex(row => new { row.WorkflowDefinitionVersionId, row.RouteKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<NotificationRecipientRule>(entity =>
+        {
+            entity.ToTable("NotificationRecipientRule");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.RecipientKind).HasMaxLength(10).IsRequired();
+            entity.Property(row => row.SourceType).HasMaxLength(40).IsRequired();
+            entity.Property(row => row.SourceKey).HasMaxLength(100);
+            entity.Property(row => row.StaticAddress);
+            entity.HasIndex(row => new { row.NotificationRouteId, row.SortOrder }).IsUnique();
+            entity.HasOne<NotificationRoute>()
+                .WithMany()
+                .HasForeignKey(row => row.NotificationRouteId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_NotificationRecipientRule_RecipientKind",
+                    "[RecipientKind] IN ('To', 'Cc')");
+                table.HasCheckConstraint(
+                    "CK_NotificationRecipientRule_SourceType",
+                    "[SourceType] IN ('StaticAddress', 'WorkflowParticipant', 'RequestInput')");
+                table.HasCheckConstraint(
+                    "CK_NotificationRecipientRule_SourceFields",
+                    "([SourceType] = 'StaticAddress' AND [StaticAddress] IS NOT NULL AND [SourceKey] IS NULL) OR ([SourceType] IN ('WorkflowParticipant', 'RequestInput') AND [SourceKey] IS NOT NULL AND [StaticAddress] IS NULL)");
+                table.HasCheckConstraint(
+                    "CK_NotificationRecipientRule_SortOrder",
+                    "[SortOrder] > 0");
+            });
         });
     }
 
@@ -204,6 +262,27 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.HasAlternateKey(row => row.WorkflowInstanceId);
             entity.HasIndex(row => new { row.WorkflowKey, row.BusinessObjectType, row.BusinessObjectId }).IsUnique();
             entity.ToTable(table => table.HasCheckConstraint("CK_WorkflowInstance_Status", "[Status] IN ('Active', 'Completed')"));
+        });
+
+        modelBuilder.Entity<WorkflowParticipant>(entity =>
+        {
+            entity.ToTable("WorkflowParticipant");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.WorkflowInstanceId).HasMaxLength(150).IsRequired();
+            entity.Property(row => row.ParticipantKey).HasMaxLength(100).IsRequired();
+            entity.Property(row => row.UserId).HasMaxLength(200);
+            entity.Property(row => row.EmailAddress).IsRequired();
+            entity.Property(row => row.DisplayName).HasMaxLength(200);
+            entity.Property(row => row.CreatedAtUtc).IsRequired();
+            entity.HasIndex(row => new { row.WorkflowInstanceId, row.ParticipantKey, row.SortOrder }).IsUnique();
+            entity.HasOne<WorkflowInstance>()
+                .WithMany()
+                .HasForeignKey(row => row.WorkflowInstanceId)
+                .HasPrincipalKey(row => row.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_WorkflowParticipant_SortOrder",
+                "[SortOrder] > 0"));
         });
 
         modelBuilder.Entity<WorkflowTask>(entity =>

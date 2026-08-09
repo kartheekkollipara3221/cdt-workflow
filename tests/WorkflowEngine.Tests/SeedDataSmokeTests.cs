@@ -80,9 +80,78 @@ public sealed class SeedDataSmokeTests
             ["TradingDeskEquity", "TradingDeskTaxExempt", "TradingDeskTaxable"],
             assignmentRoles);
 
-        var route = Assert.Single(dbContext.NotificationRoutes.Where(row =>
-            row.WorkflowDefinitionVersionId == versionId && row.RouteKey == "RouteTradingDeskAssigned"));
-        Assert.Null(route.RecipientRoleKey);
+    }
+
+    [Fact]
+    public void PortfolioTradeBusinessObjectParticipantAndRecipientRulesAreSeeded()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        dbContext.Database.Migrate();
+
+        new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
+        var definition = Assert.Single(dbContext.WorkflowDefinitions.Where(row =>
+            row.WorkflowKey == "PortfolioTrade"));
+        Assert.Equal("PortfolioTrade", definition.BusinessObjectType);
+
+        var versionId = GetPortfolioTradeVersionId(dbContext);
+        var participant = Assert.Single(dbContext.WorkflowParticipantDefinitions.Where(row =>
+            row.WorkflowDefinitionVersionId == versionId));
+        Assert.Equal("originalMaker", participant.ParticipantKey);
+        Assert.Equal("Single", participant.Cardinality);
+        Assert.Equal("Start", participant.CaptureStage);
+        Assert.True(participant.IsRequired);
+        Assert.True(participant.IsImmutable);
+        Assert.True(participant.IsActive);
+
+        var rules = (
+            from rule in dbContext.NotificationRecipientRules
+            join route in dbContext.NotificationRoutes on rule.NotificationRouteId equals route.Id
+            where route.WorkflowDefinitionVersionId == versionId
+            select new
+            {
+                route.RouteKey,
+                rule.RecipientKind,
+                rule.SourceType,
+                rule.SourceKey,
+                rule.StaticAddress,
+                rule.SortOrder,
+                rule.IsRequired
+            }).ToList();
+
+        Assert.Equal(11, rules.Count);
+        Assert.Contains(rules, row =>
+            row.RouteKey == "RouteCheckerAssignedOnSubmit"
+            && row.RecipientKind == "Cc"
+            && row.SourceType == "RequestInput"
+            && row.SourceKey == "selectedCcUsers"
+            && !row.IsRequired);
+        Assert.Contains(rules, row =>
+            row.RouteKey == "RouteReturnedToMakerFromChecker"
+            && row.RecipientKind == "To"
+            && row.SourceType == "WorkflowParticipant"
+            && row.SourceKey == "originalMaker"
+            && row.IsRequired);
+        Assert.Contains(rules, row =>
+            row.RouteKey == "RouteReturnedToMakerFromChecker"
+            && row.RecipientKind == "Cc"
+            && row.SourceType == "StaticAddress"
+            && row.StaticAddress == "workflow-operations@example.test");
+        Assert.Contains(rules, row =>
+            row.RouteKey == "RouteTradingDeskAssigned"
+            && row.RecipientKind == "To"
+            && row.SourceType == "StaticAddress"
+            && row.StaticAddress == "trading-desk@example.test");
+        Assert.DoesNotContain(rules, row =>
+            row.RouteKey is "RouteSlaTaskDueToday" or "RouteSlaTaskOverdue");
+
+        var transitionRouteKeys = dbContext.WorkflowTransitionDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.NotificationRouteKey != null)
+            .Select(row => row.NotificationRouteKey!)
+            .Distinct()
+            .ToList();
+        Assert.All(transitionRouteKeys, routeKey =>
+            Assert.Contains(rules, rule => rule.RouteKey == routeKey && rule.RecipientKind == "To"));
     }
 
     [Fact]

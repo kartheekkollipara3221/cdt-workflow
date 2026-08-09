@@ -14,6 +14,14 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             return new SeedVerificationResult(["Missing workflow definition 'PortfolioTrade'."]);
         }
 
+        if (!string.Equals(
+                definition.BusinessObjectType,
+                PortfolioTradeSeedData.BusinessObjectType,
+                StringComparison.Ordinal))
+        {
+            errors.Add($"Workflow definition 'PortfolioTrade' must use BusinessObjectType '{PortfolioTradeSeedData.BusinessObjectType}'.");
+        }
+
         var version = dbContext.WorkflowDefinitionVersions.SingleOrDefault(row =>
             row.WorkflowDefinitionId == definition.Id && row.VersionNumber == PortfolioTradeSeedData.VersionNumber);
         if (version is null)
@@ -51,11 +59,13 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
                 .Select(row => row.TaskKey));
 
         VerifyNoAdminDemoOverride(errors, version.Id);
+        VerifyParticipantDefinitions(errors, version.Id);
         VerifyActionHints(errors, version.Id);
         VerifyTaskReferences(errors, version.Id);
         VerifySlaPolicies(errors, version.Id);
         VerifyTaskAssignmentRoles(errors, version.Id);
         VerifyNotificationRoutes(errors, version.Id);
+        VerifyNotificationRecipientRules(errors, version.Id);
         VerifyTransitions(errors, version.Id);
         VerifyNoDuplicateTransitions(errors, version.Id);
 
@@ -94,6 +104,35 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             row.WorkflowDefinitionVersionId == versionId && row.AllowedRoleKey == "AdminDemoOverride"))
         {
             errors.Add("AdminDemoOverride must not be seeded as a transition AllowedRoleKey.");
+        }
+    }
+
+    private void VerifyParticipantDefinitions(ICollection<string> errors, long versionId)
+    {
+        var definitions = dbContext.WorkflowParticipantDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .ToDictionary(row => row.ParticipantKey, StringComparer.Ordinal);
+        VerifyKeySet(
+            errors,
+            "participant definition",
+            PortfolioTradeSeedData.ParticipantDefinitions.Select(row => row.ParticipantKey),
+            definitions.Keys);
+
+        foreach (var seed in PortfolioTradeSeedData.ParticipantDefinitions)
+        {
+            if (!definitions.TryGetValue(seed.ParticipantKey, out var row))
+            {
+                continue;
+            }
+
+            if (!string.Equals(row.Cardinality, seed.Cardinality, StringComparison.Ordinal)
+                || !string.Equals(row.CaptureStage, seed.CaptureStage, StringComparison.Ordinal)
+                || row.IsRequired != seed.IsRequired
+                || row.IsImmutable != seed.IsImmutable
+                || !row.IsActive)
+            {
+                errors.Add($"Participant definition '{seed.ParticipantKey}' does not match required metadata.");
+            }
         }
     }
 
@@ -269,13 +308,97 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             }
 
             if (!string.Equals(row.NotificationType, seed.NotificationType, StringComparison.Ordinal)
-                || !string.Equals(row.RecipientRoleKey, seed.RecipientRoleKey, StringComparison.Ordinal)
                 || !string.Equals(row.SubjectTemplate, seed.SubjectTemplate, StringComparison.Ordinal)
                 || !string.Equals(row.BodyTemplate, seed.BodyTemplate, StringComparison.Ordinal)
                 || !string.Equals(row.HtmlBodyTemplate, seed.HtmlBodyTemplate, StringComparison.Ordinal)
                 || !string.Equals(row.OverdueSubjectPrefix, seed.OverdueSubjectPrefix, StringComparison.Ordinal))
             {
                 errors.Add($"Notification route '{seed.Key}' does not match required template metadata.");
+            }
+        }
+    }
+
+    private void VerifyNotificationRecipientRules(ICollection<string> errors, long versionId)
+    {
+        var routes = dbContext.NotificationRoutes
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .ToDictionary(row => row.RouteKey, StringComparer.Ordinal);
+        var routeKeysById = routes.Values.ToDictionary(row => row.Id, row => row.RouteKey);
+        var rules = dbContext.NotificationRecipientRules
+            .Where(row => routeKeysById.Keys.Contains(row.NotificationRouteId))
+            .ToList();
+
+        var actualKeys = rules.Select(row => $"{routeKeysById[row.NotificationRouteId]}/{row.SortOrder}");
+        var expectedKeys = PortfolioTradeSeedData.NotificationRecipientRules
+            .Select(row => $"{row.RouteKey}/{row.SortOrder}");
+        VerifyKeySet(errors, "notification recipient rule", expectedKeys, actualKeys);
+
+        var participantKeys = dbContext.WorkflowParticipantDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.IsActive)
+            .Select(row => row.ParticipantKey)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var seed in PortfolioTradeSeedData.NotificationRecipientRules)
+        {
+            if (!routes.TryGetValue(seed.RouteKey, out var route))
+            {
+                continue;
+            }
+
+            var row = rules.SingleOrDefault(item =>
+                item.NotificationRouteId == route.Id && item.SortOrder == seed.SortOrder);
+            if (row is null)
+            {
+                continue;
+            }
+
+            if (!string.Equals(row.RecipientKind, seed.RecipientKind, StringComparison.Ordinal)
+                || !string.Equals(row.SourceType, seed.SourceType, StringComparison.Ordinal)
+                || !string.Equals(row.SourceKey, seed.SourceKey, StringComparison.Ordinal)
+                || !string.Equals(row.StaticAddress, seed.StaticAddress, StringComparison.Ordinal)
+                || row.IsRequired != seed.IsRequired
+                || !row.IsActive)
+            {
+                errors.Add($"Notification recipient rule '{seed.RouteKey}/{seed.SortOrder}' does not match required metadata.");
+            }
+
+            if (row.SourceType == "StaticAddress")
+            {
+                if (row.StaticAddress is null || row.SourceKey is not null)
+                {
+                    errors.Add($"Static recipient rule '{seed.RouteKey}/{seed.SortOrder}' has inconsistent source fields.");
+                }
+            }
+            else
+            {
+                if (row.SourceKey is null || row.StaticAddress is not null)
+                {
+                    errors.Add($"Dynamic recipient rule '{seed.RouteKey}/{seed.SortOrder}' has inconsistent source fields.");
+                }
+
+                if (row.SourceType == "WorkflowParticipant"
+                    && row.SourceKey is not null
+                    && !participantKeys.Contains(row.SourceKey))
+                {
+                    errors.Add($"Recipient rule '{seed.RouteKey}/{seed.SortOrder}' references missing participant '{row.SourceKey}'.");
+                }
+            }
+        }
+
+        var transitionRouteKeys = dbContext.WorkflowTransitionDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.NotificationRouteKey != null)
+            .Select(row => row.NotificationRouteKey!)
+            .Distinct()
+            .ToList();
+        foreach (var routeKey in transitionRouteKeys)
+        {
+            if (!routes.TryGetValue(routeKey, out var route)
+                || !rules.Any(row =>
+                    row.NotificationRouteId == route.Id
+                    && row.IsActive
+                    && row.RecipientKind == "To"))
+            {
+                errors.Add($"Notification route '{routeKey}' must have at least one active To recipient rule.");
             }
         }
     }

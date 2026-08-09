@@ -14,6 +14,7 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
         }
 
         definition.DisplayName = "Portfolio Trade";
+        definition.BusinessObjectType = PortfolioTradeSeedData.BusinessObjectType;
         definition.IsActive = true;
         dbContext.SaveChanges();
 
@@ -34,14 +35,42 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
         dbContext.SaveChanges();
 
         UpsertStates(version.Id);
+        UpsertParticipantDefinitions(version.Id);
         UpsertRoles(version.Id);
         UpsertActions(version.Id);
         UpsertSlaPolicies(version.Id);
         UpsertTasks(version.Id);
         UpsertTaskAssignmentRoles(version.Id);
         UpsertNotificationRoutes(version.Id);
+        dbContext.SaveChanges();
+        UpsertNotificationRecipientRules(version.Id);
         UpsertTransitions(version.Id);
         dbContext.SaveChanges();
+    }
+
+    private void UpsertParticipantDefinitions(long versionId)
+    {
+        foreach (var seed in PortfolioTradeSeedData.ParticipantDefinitions)
+        {
+            var row = dbContext.WorkflowParticipantDefinitions.SingleOrDefault(item =>
+                item.WorkflowDefinitionVersionId == versionId
+                && item.ParticipantKey == seed.ParticipantKey);
+            if (row is null)
+            {
+                row = new WorkflowParticipantDefinition
+                {
+                    WorkflowDefinitionVersionId = versionId,
+                    ParticipantKey = seed.ParticipantKey
+                };
+                dbContext.WorkflowParticipantDefinitions.Add(row);
+            }
+
+            row.Cardinality = seed.Cardinality;
+            row.CaptureStage = seed.CaptureStage;
+            row.IsRequired = seed.IsRequired;
+            row.IsImmutable = seed.IsImmutable;
+            row.IsActive = true;
+        }
     }
 
     private void UpsertStates(long versionId)
@@ -182,12 +211,40 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
             }
 
             row.NotificationType = seed.NotificationType;
-            row.RecipientRoleKey = seed.RecipientRoleKey;
-            row.RecipientUserId = null;
             row.SubjectTemplate = seed.SubjectTemplate;
             row.BodyTemplate = seed.BodyTemplate;
             row.HtmlBodyTemplate = seed.HtmlBodyTemplate;
             row.OverdueSubjectPrefix = seed.OverdueSubjectPrefix;
+            row.IsActive = true;
+        }
+    }
+
+    private void UpsertNotificationRecipientRules(long versionId)
+    {
+        var routes = dbContext.NotificationRoutes
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .ToDictionary(row => row.RouteKey, StringComparer.Ordinal);
+
+        foreach (var seed in PortfolioTradeSeedData.NotificationRecipientRules)
+        {
+            var route = routes[seed.RouteKey];
+            var row = dbContext.NotificationRecipientRules.SingleOrDefault(item =>
+                item.NotificationRouteId == route.Id && item.SortOrder == seed.SortOrder);
+            if (row is null)
+            {
+                row = new NotificationRecipientRule
+                {
+                    NotificationRouteId = route.Id,
+                    SortOrder = seed.SortOrder
+                };
+                dbContext.NotificationRecipientRules.Add(row);
+            }
+
+            row.RecipientKind = seed.RecipientKind;
+            row.SourceType = seed.SourceType;
+            row.SourceKey = seed.SourceKey;
+            row.StaticAddress = seed.StaticAddress;
+            row.IsRequired = seed.IsRequired;
             row.IsActive = true;
         }
     }

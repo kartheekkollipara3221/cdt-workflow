@@ -6,8 +6,6 @@ public sealed class NotificationRoute
     public long WorkflowDefinitionVersionId { get; set; }
     public string RouteKey { get; set; } = string.Empty;
     public string NotificationType { get; set; } = string.Empty;
-    public string? RecipientRoleKey { get; set; }
-    public string? RecipientUserId { get; set; }
     public string SubjectTemplate { get; set; } = string.Empty;
     public string BodyTemplate { get; set; } = string.Empty;
     public string HtmlBodyTemplate { get; set; } = string.Empty;

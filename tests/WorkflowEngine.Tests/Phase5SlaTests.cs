@@ -98,8 +98,6 @@ public sealed class Phase5SlaTests
             Now.AddMinutes(-5),
             storeNotificationSnapshot: false,
             notificationRecipientsJson: null);
-        var route = dbContext.NotificationRoutes.Single(row => row.RouteKey == "RouteSlaTaskOverdue");
-        route.RecipientRoleKey = "Maker";
         dbContext.SaveChanges();
 
         var result = await new RunSlaService(
