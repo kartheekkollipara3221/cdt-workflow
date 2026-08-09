@@ -105,11 +105,11 @@ public sealed class WorkflowTransitionTests
     }
 
     [Fact]
-    public void CheckerReturnToMakerClosesCheckerTaskAndCreatesMakerReworkTask()
+    public void CheckerReturnToMakerClosesMinuteRecurringScheduleAndCreatesMakerReworkTask()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
         AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
-        dbContext.WorkflowTasks.Add(new WorkflowTask
+        var checkerTask = new WorkflowTask
         {
             WorkflowInstanceId = "WF-PT-1001",
             TaskKey = "CheckerReviewTask",
@@ -117,6 +117,47 @@ public sealed class WorkflowTransitionTests
             Status = "Pending",
             CreatedAtUtc = Now,
             DueAtUtc = Now.AddMinutes(2)
+        };
+        dbContext.WorkflowTasks.Add(checkerTask);
+        dbContext.SaveChanges();
+        var checkerSchedule = new WorkflowTaskSlaSchedule
+        {
+            WorkflowTaskId = checkerTask.Id,
+            ScheduleVersion = 1,
+            SlaPolicyKey = "CheckerReviewSla",
+            OverdueAtUtc = Now.AddMinutes(2),
+            NextReminderAtUtc = Now.AddMinutes(2),
+            CalculationMode = "DurationFromTaskCreation",
+            OverdueStartOffsetDays = 0,
+            RecurrenceIntervalMinutes = 2,
+            OverdueNotificationRouteKey = "RouteSlaTaskOverdue",
+            Status = "Active",
+            CreatedAtUtc = Now,
+            CreatedByUserId = "system",
+            CorrelationId = "corr-checker-minute-sla",
+            IdempotencyKey = "idem-checker-minute-sla"
+        };
+        dbContext.WorkflowTaskSlaSchedules.Add(checkerSchedule);
+        dbContext.SaveChanges();
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = checkerTask.WorkflowInstanceId,
+            WorkflowTaskId = checkerTask.Id,
+            WorkflowTaskSlaScheduleId = checkerSchedule.Id,
+            SlaOccurrenceAtUtc = Now.AddMinutes(2),
+            SlaOccurrenceDate = new DateOnly(2030, 1, 15),
+            SlaReminderKind = "Overdue",
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-1001",
+            NotificationType = "SlaTaskOverdue",
+            NotificationRecipientsJson = """{"toEmailAddresses":["checker@example.test"],"ccEmailAddresses":[]}""",
+            Subject = "Overdue",
+            Body = "body",
+            HtmlBody = "<p>body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = "sla-checker-minute-pending",
+            CreatedAtUtc = Now
         });
         dbContext.SaveChanges();
 
@@ -136,7 +177,14 @@ public sealed class WorkflowTransitionTests
         var rework = Assert.Single(dbContext.WorkflowTasks.Where(row => row.TaskKey == "MakerReworkTask"));
         Assert.Equal("Pending", rework.Status);
         Assert.Null(rework.DueAtUtc);
-        var notification = dbContext.NotificationOutbox.Single();
+        Assert.Equal("Completed", checkerSchedule.Status);
+        Assert.Null(checkerSchedule.NextReminderAtUtc);
+        Assert.Equal(2, checkerSchedule.RecurrenceIntervalMinutes);
+        var cancelledReminder = dbContext.NotificationOutbox.Single(row =>
+            row.WorkflowTaskSlaScheduleId == checkerSchedule.Id);
+        Assert.Equal("Cancelled", cancelledReminder.Status);
+        Assert.Equal("WorkflowTaskCompleted", cancelledReminder.CancellationReason);
+        var notification = dbContext.NotificationOutbox.Single(row => row.NotificationType == "WorkflowReturnedToMaker");
         Assert.Equal("WorkflowReturnedToMaker", notification.NotificationType);
         AssertRecipientSnapshot(rework.NotificationRecipientsJson);
         Assert.Equal(rework.NotificationRecipientsJson, notification.NotificationRecipientsJson);

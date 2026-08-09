@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Notifications;
+using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 using WorkflowEngine.Infrastructure.Sla;
@@ -162,6 +163,50 @@ public sealed class Phase5SlaTests
         Assert.Equal(
             Now.AddMinutes(12),
             dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == task.Id).NextReminderAtUtc);
+    }
+
+    [Fact]
+    public async Task ConcurrentMinuteScansQueueOneExactOccurrence()
+    {
+        using var setupContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(setupContext);
+        AddInstance(setupContext, "WF-PT-CHECKER-CONCURRENT", "PT-CHECKER-CONCURRENT", "Active", versionId);
+        var task = AddTask(
+            setupContext,
+            "WF-PT-CHECKER-CONCURRENT",
+            "CheckerReviewTask",
+            "Checker",
+            Now,
+            recurrenceIntervalMinutes: 2);
+        setupContext.SaveChanges();
+        var scheduleId = setupContext.WorkflowTaskSlaSchedules
+            .Single(row => row.WorkflowTaskId == task.Id)
+            .Id;
+        var options = new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(TestSqlConnectionFactory.ConnectionString("burrito_phase4_execution_tests"))
+            .Options;
+
+        async Task<RunSlaResult> ScanAsync()
+        {
+            await using var scanContext = new WorkflowDbContext(options);
+            return await new RunSlaService(
+                scanContext,
+                new NotificationTemplateRenderer(),
+                new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+        }
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => ScanAsync()));
+
+        setupContext.ChangeTracker.Clear();
+        var occurrence = Assert.Single(setupContext.NotificationOutbox.Where(row =>
+            row.WorkflowTaskSlaScheduleId == scheduleId
+            && row.SlaOccurrenceAtUtc == Now
+            && row.SlaReminderKind == "Overdue"));
+        Assert.Equal(Now, occurrence.SlaOccurrenceAtUtc);
+        Assert.Equal(1, results.Sum(result => result.QueuedNotifications.Count));
+        Assert.Equal(
+            Now.AddMinutes(2),
+            setupContext.WorkflowTaskSlaSchedules.Single(row => row.Id == scheduleId).NextReminderAtUtc);
     }
 
     [Fact]

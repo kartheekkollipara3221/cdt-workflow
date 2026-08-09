@@ -1720,13 +1720,14 @@ SendDueDateReminder
 ReminderLocalTime nullable
 TimeZoneId nullable
 OverdueStartOffsetDays
+RecurrenceIntervalMinutes nullable
 RecurrenceIntervalDays nullable
 DueNotificationRouteKey nullable
 OverdueNotificationRouteKey nullable
 IsActive
 ```
 
-`CalculationMode` is `DurationFromTaskCreation` or `ApplicationTargetDate`. `DurationMinutes` is required only for duration mode and is versioned workflow/application configuration, never request or per-task input. Application-date policies require local reminder time, timezone, overdue offset, and recurrence metadata. Request JSON can supply only `targetDate`.
+`CalculationMode` is `DurationFromTaskCreation` or `ApplicationTargetDate`. `DurationMinutes` is required only for duration mode and is versioned workflow/application configuration, never request or per-task input. Positive `RecurrenceIntervalMinutes` is valid only for duration mode. Minute and calendar-day recurrence are mutually exclusive. Application-date policies require local reminder time, timezone, overdue offset, and calendar-day recurrence metadata. Request JSON can supply only `targetDate`.
 
 Required uniqueness:
 
@@ -1749,6 +1750,7 @@ CalculationMode
 TimeZoneId nullable
 ReminderLocalTime nullable
 OverdueStartOffsetDays
+RecurrenceIntervalMinutes nullable
 RecurrenceIntervalDays nullable
 DueNotificationRouteKey nullable
 OverdueNotificationRouteKey nullable
@@ -1815,6 +1817,7 @@ Id
 WorkflowInstanceId
 WorkflowTaskId nullable
 WorkflowTaskSlaScheduleId nullable
+SlaOccurrenceAtUtc nullable
 SlaOccurrenceDate nullable
 SlaReminderKind nullable
 BusinessObjectType
@@ -1842,14 +1845,14 @@ CancellationReason nullable
 SLA duplicate rule:
 
 ```text
-One SLA reminder is queued per schedule version, occurrence date, and reminder kind.
+One SLA reminder is queued per schedule version, exact eligible occurrence instant, and reminder kind. `SlaOccurrenceDate` remains a reporting field and is not the durable identity because minute recurrence can produce multiple reminders on the same date.
 ```
 
 Preferred SQL Server implementation:
 
 ```text
-UNIQUE (WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)
-WHERE WorkflowTaskSlaScheduleId IS NOT NULL
+UNIQUE (WorkflowTaskSlaScheduleId, SlaOccurrenceAtUtc, SlaReminderKind)
+WHERE WorkflowTaskSlaScheduleId IS NOT NULL AND SlaOccurrenceAtUtc IS NOT NULL
 ```
 
 ### IdempotencyRecord
@@ -1888,7 +1891,7 @@ These constraints must exist in the SQL schema:
 - `WorkflowTaskSlaSchedule`: `UNIQUE (WorkflowTaskId, ScheduleVersion)` and one filtered active schedule per task
 - `NotificationRoute`: `UNIQUE (WorkflowDefinitionVersionId, RouteKey)`
 - `NotificationRecipientRule`: `UNIQUE (NotificationRouteId, SortOrder)`
-- `NotificationOutbox`: `UNIQUE (WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` for SLA rows
+- `NotificationOutbox`: `UNIQUE (WorkflowTaskSlaScheduleId, SlaOccurrenceAtUtc, SlaReminderKind)` for SLA rows with an exact occurrence instant
 - `WorkflowTransitionDefinition`: `UNIQUE (WorkflowDefinitionVersionId, FromStateKey, ActionKey, AllowedRoleKey)`
 - `WorkflowInstance`: `UNIQUE (WorkflowInstanceId)` and `UNIQUE (WorkflowKey, BusinessObjectType, BusinessObjectId)`
 - `WorkflowParticipant`: `UNIQUE (WorkflowInstanceId, ParticipantKey, SortOrder)`
@@ -1936,11 +1939,11 @@ BdrmTradeNotExecutedProperly
   -> starts Trading Desk rework SLA
 ```
 
-Duration policies use short demo durations for their first overdue instant. BDRM then uses metadata-driven calendar recurrence at 9:00 AM Eastern, while Trading Desk review uses its application-target-date calendar policy. Local verification fast-forwards the injected monitor time instead of changing either calendar policy.
+Duration policies use short demo durations for their first overdue instant. Checker then repeats on a metadata-owned minute cadence, BDRM uses metadata-driven calendar recurrence at 9:00 AM Eastern, and Trading Desk review uses its application-target-date calendar policy. Local verification fast-forwards the injected monitor time instead of changing calendar policies.
 
 | Task key | Calculation mode | Seeded configuration | SLA enabled |
 |---|---|---|---|
-| `CheckerReviewTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
+| `CheckerReviewTask` | `DurationFromTaskCreation` | Demo: first overdue at 2 minutes, then every 2 minutes. Production metadata: first overdue at 240 minutes, then every 60 minutes. | Yes |
 | `TradingDeskReviewTask` | `ApplicationTargetDate` | 09:00 `America/New_York`; due-today on target date; overdue target + 1 calendar day; repeat every calendar day | Yes |
 | `TradingDeskReworkTask` | `DurationFromTaskCreation` | 2 minutes; one overdue reminder | Yes |
 | `BdrmClientServiceReviewTask` | `DurationFromTaskCreation` | 2 minutes to first overdue reminder; then 09:00 `America/New_York` every calendar day, including weekends and holidays, while pending | Yes |
@@ -1952,7 +1955,7 @@ Duration policies use short demo durations for their first overdue instant. BDRM
 
 When metadata creates an SLA-enabled task, the engine resolves its versioned policy and creates schedule version 1 in the same workflow transaction:
 
-- `DurationFromTaskCreation`: `OverdueAtUtc = task.CreatedAtUtc + SlaPolicy.DurationMinutes`; `TargetDate` and `DueReminderAtUtc` are null; `NextReminderAtUtc` initially identifies the overdue instant. Null recurrence produces one overdue reminder. Positive recurrence requires `ReminderLocalTime` and `TimeZoneId`; after the first duration occurrence, later reminders use the next configured local calendar date/time.
+- `DurationFromTaskCreation`: `OverdueAtUtc = task.CreatedAtUtc + SlaPolicy.DurationMinutes`; `TargetDate` and `DueReminderAtUtc` are null; `NextReminderAtUtc` initially identifies the overdue instant. Null recurrence produces one overdue reminder. Positive minute recurrence advances from the anchored overdue instant by `RecurrenceIntervalMinutes`. Positive calendar-day recurrence requires `ReminderLocalTime` and `TimeZoneId`; after the first duration occurrence, later reminders use the next configured local calendar date/time.
 - `ApplicationTargetDate`: the public request must supply `slaTargetDate`, which the API maps to internal `slaInput.targetDate`. The engine converts the target date and target + `OverdueStartOffsetDays` independently from configured local time/timezone to UTC. It never calculates recurrence as previous UTC + 24 hours.
 - No SLA policy: create no schedule and set `WorkflowTask.DueAtUtc = null`.
 
@@ -1980,15 +1983,17 @@ Sent occurrences are immutable history. A revised schedule has a new identity an
 - Re-read each candidate inside its own short transaction.
 - Convert `now` to the snapshotted policy timezone and honor the configured local-time eligibility boundary.
 - Queue `SlaTaskDueToday` on the applicable pre-overdue target-date occurrence and `SlaTaskOverdue` on the overdue-start date and recurring calendar dates.
-- Insert at most one occurrence for the current local date. If the monitor missed several dates, queue only the current applicable occurrence and never backfill every historical date.
-- Deduplicate by `(WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` and advance `NextReminderAtUtc` by independently converting the next configured calendar date through `TimeZoneInfo`.
-- Set `NextReminderAtUtc = null` after a one-time duration reminder.
+- For calendar recurrence, insert at most one occurrence for the current local date. If the monitor missed several dates, queue only the current applicable occurrence and never backfill every historical date.
+- For minute recurrence, compute the latest eligible anchored slot at or before `now`, queue only that slot, and advance to the next anchored slot. A delayed scan does not backfill every missed minute slot.
+- Deduplicate by `(WorkflowTaskSlaScheduleId, SlaOccurrenceAtUtc, SlaReminderKind)`. Advance minute recurrence from the exact anchored slot; advance calendar recurrence by independently converting the next configured calendar date through `TimeZoneInfo`.
+- Set `NextReminderAtUtc = null` after a duration reminder only when both recurrence fields are null.
+- For a recurring minute duration policy, queue the first overdue occurrence at `OverdueAtUtc`, then repeat every `RecurrenceIntervalMinutes` while the task remains pending and its schedule remains active.
 - For a recurring duration policy, queue the first overdue occurrence at `OverdueAtUtc`, then advance to `ReminderLocalTime` on the next configured local calendar date. Delayed scans queue at most the current eligible local-date occurrence and do not backfill missed dates.
 - Not close tasks or move workflow state.
 
 The configured time is an eligibility boundary, not an in-process scheduler. An external scheduler invokes `run-sla` regularly. Local tests use `run-sla --now` to fast-forward the real seeded calendar policy and finish multi-day scenarios in minutes; SIT/UAT omit `--now` and use wall-clock time.
 
-This feature targets a clean latest-schema database. The migration deliberately does not backfill legacy active SLA tasks or legacy SLA outbox rows. Do not silently delete/recreate an existing application database; obtain explicit approval before destructive recreation.
+This feature targets a clean latest-schema database. The migration deliberately does not backfill legacy active SLA tasks or legacy SLA outbox rows. Existing active schedules retain their snapshotted cadence; metadata changes apply only to newly created tasks. The migration `Down` path is not data-preserving after multiple same-day occurrences exist because the prior date-only unique key cannot represent that history; archive or otherwise resolve such rows before an intentional rollback. Do not silently delete/recreate an existing application database; obtain explicit approval before destructive recreation.
 
 ## 14. Notification behavior
 
@@ -2646,6 +2651,10 @@ Add tests for:
 - `SmtpNotificationSender` honors `Smtp:RecipientOverride`, sends only to the override address, suppresses intended To/Cc envelope recipients, and preserves both ordered intended lists in plain-text and HTML diagnostic content.
 - `SmtpNotificationSender` integration test (Tier 2, `Category=Smtp`) sends to `smtp4dev`/`Papercut` on `localhost` and asserts the fake server received the email with the expected subject, recipient, and body.
 - Tier 2 SMTP tests are excluded from default `dotnet test` runs and only execute under `dotnet test --filter Category=Smtp`.
+- Checker duration recurrence uses exact same-day occurrence instants, queues only the latest eligible anchored slot after a delayed scan, and advances to the following slot.
+- Two independent database contexts scanning the same Checker occurrence concurrently leave exactly one outbox row for that occurrence.
+- A production-style Checker policy of 240 initial minutes and 60 recurrence minutes queues at hour 4 and again at hour 5 without changing engine code.
+- Completing a Checker task through its normal workflow action completes the active minute-recurring schedule and prevents future Checker reminders.
 
 Example test names:
 
@@ -2686,6 +2695,10 @@ MockSectionDataTests.IdempotentReplay_DoesNotInsertDuplicateSectionDataRow
 AuditTests.FailedActions_WriteNoAuditRow
 SlaMonitorTests.OverdueTask_QueuesNotificationOnce
 SlaMonitorTests.QueuedSlaNeverDuplicatedRegardlessOfOutboxStatus
+SlaMonitorTests.MinuteRecurrence_QueuesExactSameDaySlotsAndSkipsMissedOccurrences
+SlaMonitorTests.ConcurrentMinuteScans_QueueOneExactOccurrence
+SlaMonitorTests.ProductionCheckerCadence_QueuesAtFourHoursThenHourly
+WorkflowExecutionTests.CheckerAction_CompletesMinuteRecurringSchedule
 NotificationOutboxTests.ProcessOutbox_MarksPendingAsSent
 NotificationOutboxTests.ProcessOutbox_RunTwice_IsSafe
 ExecuteJsonCommandTests.CheckerReturnToMakerSample_PassesExpectations
@@ -2828,7 +2841,7 @@ Transition resolver, role/action/state validation, task close/create, audit writ
 
 ### Milestone 5: SLA monitor and notification senders
 
-`run-sla` and `process-notification-outbox` work. Duration-mode tasks use short configured demo durations; application-date tasks use versioned local time/timezone, overdue offset, and recurrence metadata. The monitor queues occurrence-level due-today/overdue reminders, catches up without backfill, and supports injected `--now`. The outbox suppresses inactive-schedule delivery. The `INotificationSender` abstraction is in place with `ConsoleNotificationSender` (default), `NoOpNotificationSender`, and `SmtpNotificationSender` registered by configuration. Tier 1 unit tests against a recording test double pass. Tier 2 SMTP integration tests against local `smtp4dev`/`Papercut`, including cancelled-SLA suppression, pass when run with `--filter Category=Smtp`. Default `dotnet test` does not invoke Tier 2 tests.
+`run-sla` and `process-notification-outbox` work. Duration-mode tasks use short configured demo durations; Checker repeats every 2 minutes in demo metadata and is configured as 240 minutes then every 60 minutes in production metadata. Application-date tasks use versioned local time/timezone, overdue offset, and calendar recurrence metadata. The monitor queues exact occurrence-level due-today/overdue reminders, catches up without backfill, and supports injected `--now`. The outbox suppresses inactive-schedule delivery. The `INotificationSender` abstraction is in place with `ConsoleNotificationSender` (default), `NoOpNotificationSender`, and `SmtpNotificationSender` registered by configuration. Tier 1 unit tests against a recording test double pass. Tier 2 SMTP integration tests against local `smtp4dev`/`Papercut`, including cancelled-SLA suppression, pass when run with `--filter Category=Smtp`. Default `dotnet test` does not invoke Tier 2 tests.
 
 ### Milestone 6: Samples, tests, and demo
 
@@ -2974,7 +2987,7 @@ This section captures known implementation pitfalls. Coding agents must use this
 | Duplicate workflow definition keys cause ambiguous metadata. | SQL unique constraints enforce definition-key uniqueness per workflow definition version. |
 | Workflow definition version comparison is wrong. | JSON carries version number. Persisted instance carries `WorkflowDefinitionVersionId`; join to compare against `WorkflowDefinitionVersion.VersionNumber`. |
 | Idempotency conflicts when reusing samples with overrides. | `execute-json --business-object` / `--workflow-instance` must derive effective clientActionId, idempotencyKey, and correlationId before dedupe. |
-| SLA duplicates. | Use `(WorkflowTaskSlaScheduleId, SlaOccurrenceDate, SlaReminderKind)` as the durable occurrence identity. Repeated/concurrent scans cannot create a second row for the same occurrence. |
+| SLA duplicates. | Use `(WorkflowTaskSlaScheduleId, SlaOccurrenceAtUtc, SlaReminderKind)` as the durable occurrence identity; retain `SlaOccurrenceDate` only for reporting. Repeated/concurrent scans cannot create a second row for the same exact occurrence, while multiple minute occurrences on one date remain valid. |
 | Application must remember whether its target date changed. | The application forwards its current date on the existing workflow request. The engine compares against the active schedule and owns create/no-op/reschedule behavior. |
 | A second SLA endpoint is added for rescheduling. | Use the existing `POST /v1/WorkflowAction`; an actionless public request with flat `slaTargetDate` performs SLA-only synchronization. |
 | Engine parses CDT's Target Completion Date from form payload. | Form payload remains outside the workflow API. The application explicitly maps its field to generic public `slaTargetDate`. |

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
@@ -90,7 +91,7 @@ public sealed class WorkflowSlaSynchronizationTests
     }
 
     [Fact]
-    public void DurationScheduleSnapshotsProductionStyleInitialDelayAndRecurrence()
+    public async Task DurationScheduleRunsProductionStyleInitialDelayAndHourlyRecurrence()
     {
         using var dbContext = CreateSeededContext();
         var checkerPolicy = dbContext.SlaPolicies.Single(row => row.SlaPolicyKey == "CheckerReviewSla");
@@ -98,8 +99,16 @@ public sealed class WorkflowSlaSynchronizationTests
         checkerPolicy.RecurrenceIntervalMinutes = 60;
         dbContext.SaveChanges();
         var task = AddTask(dbContext, "CheckerReviewTask", Now);
+        task.NotificationContextJson = """{"tradeLink":"https://example.test/workflows/WF-SLA-1"}""";
+        dbContext.SaveChanges();
 
         var result = CreateService(dbContext).Synchronize(Request(task.Id, targetDate: null, "idem-production"));
+        var monitor = new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator());
+        var first = await monitor.RunAsync(new(Now.AddHours(4)), CancellationToken.None);
+        var second = await monitor.RunAsync(new(Now.AddHours(5)), CancellationToken.None);
 
         Assert.True(result.Changed);
         Assert.Equal(Now.AddHours(4), result.DueAtUtc);
@@ -108,6 +117,16 @@ public sealed class WorkflowSlaSynchronizationTests
         Assert.Equal(240, checkerPolicy.DurationMinutes);
         Assert.Equal(60, schedule.RecurrenceIntervalMinutes);
         Assert.Null(schedule.RecurrenceIntervalDays);
+        Assert.Single(first.QueuedNotifications);
+        Assert.Single(second.QueuedNotifications);
+        Assert.Equal(
+            [Now.AddHours(4), Now.AddHours(5)],
+            dbContext.NotificationOutbox
+                .Where(row => row.WorkflowTaskSlaScheduleId == schedule.Id)
+                .OrderBy(row => row.SlaOccurrenceAtUtc)
+                .Select(row => row.SlaOccurrenceAtUtc!.Value)
+                .ToArray());
+        Assert.Equal(Now.AddHours(6), schedule.NextReminderAtUtc);
     }
 
     [Fact]
