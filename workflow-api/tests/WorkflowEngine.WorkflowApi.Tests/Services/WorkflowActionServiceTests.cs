@@ -124,7 +124,11 @@ public sealed class WorkflowActionServiceTests
         Assert.Equal("CheckerSendToTradingDesk", envelope.Workflow?.ActionKey);
         Assert.Equal("TradingDeskTaxable", envelope.Workflow?.AssignedRoleKey);
         Assert.Equal(new DateOnly(2030, 1, 20), envelope.Workflow?.SlaInput?.TargetDate);
-        Assert.Null(envelope.Workflow?.NotificationContext);
+        Assert.Equal(
+            " Kollipara, Kartheek ",
+            envelope.Workflow?.NotificationContext?["submitterDisplayName"]);
+        Assert.Equal("Taxable", envelope.Workflow?.NotificationContext?["deskName"]);
+        Assert.Equal(" ", envelope.Workflow?.NotificationContext?["emptyValue"]);
         Assert.Equal(
             " Kollipara, Kartheek ",
             executionService.LastRequest.NotificationInput?.TemplateData["submitterDisplayName"]);

@@ -22,6 +22,10 @@
     "templateData": {
       "referenceNumber": "1050",
       "submitterDisplayName": "Maker One",
+      "deskName": "Taxable",
+      "securityType": "Equity",
+      "accountShortName": "ABC123",
+      "accountDisplayName": "ABC Growth Account",
       "tradeLink": "https://example.test/trades/PT-1001"
     }
   }

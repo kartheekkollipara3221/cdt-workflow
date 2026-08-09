@@ -66,7 +66,9 @@ public sealed class WorkflowActionService(
                 SlaInput = request.SlaTargetDate is null
                     ? null
                     : new WorkflowSlaInput { TargetDate = request.SlaTargetDate },
-                NotificationContext = null,
+                NotificationContext = notificationInput.TemplateData.Count == 0
+                    ? null
+                    : new Dictionary<string, string?>(notificationInput.TemplateData, StringComparer.Ordinal),
                 NotificationRecipients = null,
                 IdempotencyKey = effectiveIdempotencyKey
             }
