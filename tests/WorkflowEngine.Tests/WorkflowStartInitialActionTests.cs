@@ -5,6 +5,7 @@ using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.WorkflowStart;
 using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.Infrastructure.Sla;
 using WorkflowEngine.Infrastructure.WorkflowContext;
 using WorkflowEngine.Infrastructure.WorkflowExecution;
 using WorkflowEngine.Infrastructure.WorkflowStart;
@@ -283,6 +284,68 @@ public sealed class WorkflowStartInitialActionTests
         Assert.Equal(DateTimeOffset.Parse("2030-01-21T14:00:00Z"), task.DueAtUtc);
         var schedule = Assert.Single(dbContext.WorkflowTaskSlaSchedules);
         Assert.Equal(new DateOnly(2030, 1, 20), schedule.TargetDate);
+    }
+
+    [Fact]
+    public async Task SlaReminderReusesResolvedTaskRecipientSnapshotAfterMetadataChanges()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var checkerPolicy = dbContext.SlaPolicies.Single(row => row.SlaPolicyKey == "CheckerReviewSla");
+        checkerPolicy.CalculationMode = "ApplicationTargetDate";
+        checkerPolicy.DurationMinutes = null;
+        checkerPolicy.SendDueDateReminder = true;
+        checkerPolicy.ReminderLocalTime = new TimeOnly(9, 0);
+        checkerPolicy.TimeZoneId = "America/New_York";
+        checkerPolicy.OverdueStartOffsetDays = 1;
+        checkerPolicy.RecurrenceIntervalDays = 1;
+        checkerPolicy.DueNotificationRouteKey = "RouteSlaTaskDueToday";
+        checkerPolicy.OverdueNotificationRouteKey = "RouteSlaTaskOverdue";
+        dbContext.SaveChanges();
+
+        var result = CreateService(dbContext).Start(new StartWorkflowRequest(
+            "PortfolioTrade",
+            "ignored",
+            "PT-SLA-SNAPSHOT",
+            "maker1",
+            Reset: false,
+            InitialActionKey: "SubmitForChecker",
+            StartedByDisplayName: "Maker One",
+            StartedByRoles: ["Maker"],
+            SlaInput: new WorkflowSlaInput { TargetDate = new DateOnly(2030, 1, 20) },
+            NotificationInput: new WorkflowNotificationInput
+            {
+                RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+                {
+                    ["originalMaker"] = [new("maker1", "maker-opaque", "Maker One")],
+                    ["selectedCcUsers"] = [new("manager1", "manager@example.test", "Manager One")]
+                },
+                TemplateData = NotificationContext()
+            }));
+
+        Assert.True(result.Envelope.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks);
+        var resolvedSnapshot = task.NotificationRecipientsJson;
+
+        var checkerRouteId = dbContext.NotificationRoutes.Single(row =>
+            row.RouteKey == "RouteCheckerAssignedOnSubmit").Id;
+        var checkerRule = dbContext.NotificationRecipientRules.Single(row =>
+            row.NotificationRouteId == checkerRouteId
+            && row.SourceType == "StaticAddress");
+        checkerRule.StaticAddress = "changed-checker@example.test";
+        var maker = Assert.Single(dbContext.WorkflowParticipants);
+        maker.EmailAddress = "changed-maker@example.test";
+        dbContext.SaveChanges();
+
+        var slaResult = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(
+                new(DateTimeOffset.Parse("2030-01-20T14:00:00Z")),
+                CancellationToken.None);
+
+        Assert.Equal("DueToday", Assert.Single(slaResult.QueuedNotifications).ReminderKind);
+        var reminder = dbContext.NotificationOutbox.Single(row => row.SlaReminderKind == "DueToday");
+        Assert.Equal(resolvedSnapshot, reminder.NotificationRecipientsJson);
     }
 
     private static StartWorkflowService CreateService(WorkflowDbContext dbContext)
