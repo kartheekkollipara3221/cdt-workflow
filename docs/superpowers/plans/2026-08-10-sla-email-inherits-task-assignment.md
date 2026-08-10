@@ -16,7 +16,7 @@
 - Modify: `tests/WorkflowEngine.Tests/Phase5SlaTests.cs`
 - Modify: `tests/WorkflowEngine.Tests/RecurringSlaMonitorTests.cs`
 
-- [ ] **Step 1: Add primary-email setup to the SLA test fixtures**
+- [x] **Step 1: Add primary-email setup to the SLA test fixtures**
 
 Persist one non-SLA outbox row after the task ID exists. Use distinctive historical content and an arbitrary notification type so lookup cannot depend on Portfolio Trade:
 
@@ -39,7 +39,7 @@ dbContext.NotificationOutbox.Add(new NotificationOutbox
 });
 ```
 
-- [ ] **Step 2: Change focused expectations to exact historical content**
+- [x] **Step 2: Change focused expectations to exact historical content**
 
 ```csharp
 Assert.Equal("Overdue: Original assignment subject", overdueNotification.Subject);
@@ -61,7 +61,7 @@ Assert.All(slaOccurrences, row => Assert.Equal("Original assignment plain body",
 Assert.All(slaOccurrences, row => Assert.Equal("<p>Original assignment HTML body</p>", row.HtmlBody));
 ```
 
-- [ ] **Step 3: Run focused tests and observe RED**
+- [x] **Step 3: Run focused tests and observe RED**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Phase5SlaTests|FullyQualifiedName~RecurringSlaMonitorTests"
@@ -76,7 +76,7 @@ Expected: FAIL because the service still renders generic SLA templates and does 
 - Modify: `src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs`
 - Modify: `tests/WorkflowEngine.Tests/SeedDataSmokeTests.cs`
 
-- [ ] **Step 1: Resolve exactly one primary task email**
+- [x] **Step 1: Resolve exactly one primary task email**
 
 ```csharp
 var primaryEmails = await dbContext.NotificationOutbox
@@ -103,7 +103,7 @@ if (subject.Length > 300)
 
 Keep `TryBuildNotificationContext` for the SLA occurrence payload, but remove route-template rendering from this delivery path.
 
-- [ ] **Step 2: Copy historical content into the SLA outbox**
+- [x] **Step 2: Copy historical content into the SLA outbox**
 
 ```csharp
 NotificationRecipientsJson = task.NotificationRecipientsJson,
@@ -113,7 +113,7 @@ HtmlBody = primaryEmail.HtmlBody,
 PayloadJson = JsonSerializer.Serialize(context),
 ```
 
-- [ ] **Step 3: Seed and test exact prefixes**
+- [x] **Step 3: Seed and test exact prefixes**
 
 ```csharp
 new("RouteSlaTaskDueToday", "SlaTaskDueToday", "Workflow task due today", SlaTaskDueTodayBody, SlaTaskDueTodayHtmlBody, "Due today: "),
@@ -122,7 +122,7 @@ new("RouteSlaTaskOverdue", "SlaTaskOverdue", "Workflow task overdue", SlaTaskOve
 
 Update `SeedDataSmokeTests.NotificationRoutes_HaveSubjectBodyHtmlBodyAndOverduePrefix` to assert both exact SLA prefixes.
 
-- [ ] **Step 4: Run focused tests and observe GREEN**
+- [x] **Step 4: Run focused tests and observe GREEN**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Phase5SlaTests|FullyQualifiedName~RecurringSlaMonitorTests|FullyQualifiedName~SeedDataSmokeTests"
@@ -130,7 +130,7 @@ dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Pha
 
 Expected: PASS with zero failures.
 
-- [ ] **Step 5: Commit core behavior**
+- [x] **Step 5: Commit core behavior**
 
 ```powershell
 git add -- src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs tests/WorkflowEngine.Tests/Phase5SlaTests.cs tests/WorkflowEngine.Tests/RecurringSlaMonitorTests.cs tests/WorkflowEngine.Tests/SeedDataSmokeTests.cs
@@ -142,7 +142,7 @@ git commit -m "feat: inherit task email content in SLA reminders"
 **Files:**
 - Modify: `tests/WorkflowEngine.Tests/Phase5SlaTests.cs`
 
-- [ ] **Step 1: Add missing, ambiguous, and oversized-primary tests**
+- [x] **Step 1: Add missing, ambiguous, and oversized-primary tests**
 
 Each test captures the original schedule boundary, then proves no SLA row and no advance. The missing-primary assertions are:
 
@@ -171,7 +171,7 @@ Assert.Contains(result.Warnings, warning =>
 Assert.Equal(originalNextReminderAtUtc, schedule.NextReminderAtUtc);
 ```
 
-- [ ] **Step 2: Run focused edge tests**
+- [x] **Step 2: Run focused edge tests**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Phase5SlaTests"
@@ -179,7 +179,7 @@ dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Pha
 
 Expected: PASS with zero failures.
 
-- [ ] **Step 3: Commit edge coverage**
+- [x] **Step 3: Commit edge coverage**
 
 ```powershell
 git add -- tests/WorkflowEngine.Tests/Phase5SlaTests.cs
@@ -191,7 +191,7 @@ git commit -m "test: cover SLA primary email failures"
 **Files:**
 - Modify: `CODEX_HANDOFF.md`
 
-- [ ] **Step 1: Run warnings-as-errors builds**
+- [x] **Step 1: Run warnings-as-errors builds**
 
 ```powershell
 dotnet build src/WorkflowEngine.sln --no-restore -warnaserror
@@ -200,7 +200,7 @@ dotnet build workflow-api/WorkflowEngine.WorkflowApi.slnx --no-restore -warnaser
 
 Expected: both exit 0 with zero warnings and zero errors.
 
-- [ ] **Step 2: Run complete default test suites**
+- [x] **Step 2: Run complete default test suites**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-build --filter "Category!=Smtp"
@@ -209,7 +209,7 @@ dotnet test workflow-api/WorkflowEngine.WorkflowApi.slnx --no-build
 
 Expected: zero failures; opt-in SMTP tests stay excluded from the shared default suite.
 
-- [ ] **Step 3: Initialize and verify a fresh isolated SQL database**
+- [x] **Step 3: Initialize and verify a fresh isolated SQL database**
 
 Set `ConnectionStrings__DefaultConnection` to a fresh database and run:
 
@@ -225,24 +225,24 @@ Expected: migration/seed and prefix verification pass.
 **Files:**
 - Modify: `CODEX_HANDOFF.md`
 
-- [ ] **Step 1: Start isolated smtp4dev and rebuilt Workflow API**
+- [x] **Step 1: Start isolated smtp4dev and rebuilt Workflow API**
 
 Resolve listener PIDs before stopping only processes on ports 5058, 5000, and 3025. Launch smtp4dev with a fresh data directory. Launch the API at `http://localhost:5058` against the isolated SQL database with explicit SMTP sender, host `localhost`, port `3025`, and sender address.
 
-- [ ] **Step 2: Run the public API action path**
+- [x] **Step 2: Run the public API action path**
 
 Use a fresh business object and execute Maker SaveDraft, Maker SubmitForChecker, Checker ReturnToMaker, Maker SaveDraft, Maker ResubmitForChecker, Checker SendToTradingDesk, TradingDesk TradeExecuted, and BDRMClientService TradeFulfilled.
 
 Before every action, print endpoint, trusted actor headers, and exact public JSON. Include `selectedCcUsers` on every notification-producing request and retain the immutable original Maker.
 
-- [ ] **Step 3: Exercise every active task SLA**
+- [x] **Step 3: Exercise every active task SLA**
 
 Run Console `run-sla` and `process-notification-outbox` at controlled occurrence times for both Checker tasks, Trading Desk due-today and overdue, and BDRM overdue. Process every assignment before its SLA occurrence so smtp4dev presents paired evidence.
 
-- [ ] **Step 4: Verify SQL, context, outbox, and smtp4dev**
+- [x] **Step 4: Verify SQL, context, outbox, and smtp4dev**
 
 Prove final `Completed` state/status; all tasks and schedules completed; every scenario outbox row sent with no retry/error; SLA recipient JSON equals its task snapshot; exact prefixed subjects; byte-equal plain/HTML bodies; and zero smtp4dev warnings. Leave smtp4dev and API running for user UAT.
 
-- [ ] **Step 5: Update and commit the handoff**
+- [x] **Step 5: Update the handoff while preserving pre-existing handoff changes**
 
-Append scenario identifiers, listener PIDs, database, message IDs, verification results, and next-session prompt to `CODEX_HANDOFF.md`. Stage only intentional files and preserve unrelated changes.
+Append scenario identifiers, listener PIDs, database, message IDs, verification results, and next-session prompt to `CODEX_HANDOFF.md`. Because that file already contained substantial uncommitted session history, leave it in place without staging unrelated content; commit only the completed plan tracker.
