@@ -119,56 +119,50 @@ public sealed class SeedDataSmokeTests
                 rule.IsRequired
             }).ToList();
 
-        Assert.Equal(13, rules.Count);
-        Assert.Contains(rules, row =>
-            row.RouteKey == "RouteCheckerAssignedOnSubmit"
-            && row.RecipientKind == "Cc"
-            && row.SourceType == "RequestInput"
-            && row.SourceKey == "selectedCcUsers"
-            && !row.IsRequired);
-        Assert.Contains(rules, row =>
-            row.RouteKey == "RouteReturnedToMakerFromChecker"
-            && row.RecipientKind == "To"
-            && row.SourceType == "WorkflowParticipant"
-            && row.SourceKey == "originalMaker"
-            && row.IsRequired);
-        Assert.Contains(rules, row =>
-            row.RouteKey == "RouteReturnedToMakerFromChecker"
-            && row.RecipientKind == "Cc"
-            && row.SourceType == "StaticAddress"
-            && row.StaticAddress == "workflow-operations@example.test");
-        Assert.Contains(rules, row =>
-            row.RouteKey == "RouteTradingDeskAssigned"
-            && row.RecipientKind == "To"
-            && row.SourceType == "StaticAddress"
-            && row.StaticAddress == "trading-desk@example.test");
-        var bdrmRules = rules
-            .Where(row => row.RouteKey == "RouteBdrmAssigned")
-            .OrderBy(row => row.SortOrder)
+        var expectedRules = new RecipientRuleExpectation[]
+        {
+            new("RouteCheckerAssignedOnSubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
+            new("RouteCheckerAssignedOnSubmit", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+            new("RouteCheckerAssignedOnSubmit", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
+            new("RouteCheckerAssignedOnResubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
+            new("RouteCheckerAssignedOnResubmit", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+            new("RouteCheckerAssignedOnResubmit", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
+            new("RouteReturnedToMakerFromChecker", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
+            new("RouteReturnedToMakerFromChecker", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
+            new("RouteReturnedToMakerFromChecker", "Cc", "StaticAddress", null, "workflow-operations@example.test", 3, false),
+            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
+            new("RouteTradingDeskAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+            new("RouteTradingDeskAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
+            new("RouteReturnedToMakerFromTradingDesk", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
+            new("RouteReturnedToMakerFromTradingDesk", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
+            new("RouteBdrmAssigned", "To", "StaticAddress", null, "bdrm-client-service@example.test", 1, true),
+            new("RouteBdrmAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+            new("RouteBdrmAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
+            new("RouteTradingDeskReworkAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
+            new("RouteTradingDeskReworkAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+            new("RouteTradingDeskReworkAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
+            new("RouteWorkflowCompleted", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
+            new("RouteWorkflowCompleted", "Cc", "RequestInput", "selectedCcUsers", null, 2, false)
+        };
+        var routeOrder = expectedRules
+            .Select(row => row.RouteKey)
+            .Distinct(StringComparer.Ordinal)
             .ToArray();
-        Assert.Collection(
-            bdrmRules,
-            row =>
-            {
-                Assert.Equal("To", row.RecipientKind);
-                Assert.Equal("StaticAddress", row.SourceType);
-                Assert.Equal("bdrm-client-service@example.test", row.StaticAddress);
-                Assert.True(row.IsRequired);
-            },
-            row =>
-            {
-                Assert.Equal("Cc", row.RecipientKind);
-                Assert.Equal("WorkflowParticipant", row.SourceType);
-                Assert.Equal("originalMaker", row.SourceKey);
-                Assert.True(row.IsRequired);
-            },
-            row =>
-            {
-                Assert.Equal("Cc", row.RecipientKind);
-                Assert.Equal("RequestInput", row.SourceType);
-                Assert.Equal("selectedCcUsers", row.SourceKey);
-                Assert.False(row.IsRequired);
-            });
+        var actualRules = rules
+            .Select(row => new RecipientRuleExpectation(
+                row.RouteKey,
+                row.RecipientKind,
+                row.SourceType,
+                row.SourceKey,
+                row.StaticAddress,
+                row.SortOrder,
+                row.IsRequired))
+            .OrderBy(row => Array.IndexOf(routeOrder, row.RouteKey))
+            .ThenBy(row => row.SortOrder)
+            .ToArray();
+
+        Assert.Equal(22, rules.Count);
+        Assert.Equal(expectedRules, actualRules);
         Assert.DoesNotContain(rules, row =>
             row.RouteKey is "RouteSlaTaskDueToday" or "RouteSlaTaskOverdue");
 
@@ -318,4 +312,13 @@ public sealed class SeedDataSmokeTests
         return dbContext.WorkflowDefinitionVersions.Single(row =>
             row.WorkflowDefinitionId == definition.Id && row.VersionNumber == 1).Id;
     }
+
+    private sealed record RecipientRuleExpectation(
+        string RouteKey,
+        string RecipientKind,
+        string SourceType,
+        string? SourceKey,
+        string? StaticAddress,
+        int SortOrder,
+        bool IsRequired);
 }
