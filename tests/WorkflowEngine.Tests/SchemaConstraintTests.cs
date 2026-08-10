@@ -196,6 +196,10 @@ public sealed class SchemaConstraintTests
             && constraint.Sql.Contains("'StaticAddress'", StringComparison.Ordinal)
             && constraint.Sql.Contains("'WorkflowParticipant'", StringComparison.Ordinal)
             && constraint.Sql.Contains("'RequestInput'", StringComparison.Ordinal));
+        var assignedRoleKey = recipientRule.FindProperty("AssignedRoleKey");
+        Assert.NotNull(assignedRoleKey);
+        Assert.True(assignedRoleKey.IsNullable);
+        Assert.Equal(100, assignedRoleKey.GetMaxLength());
         Assert.DoesNotContain(recipientRule.GetCheckConstraints(), constraint =>
             (constraint.Name?.Contains("Email", StringComparison.OrdinalIgnoreCase) ?? false)
             || constraint.Sql.Contains("@", StringComparison.Ordinal));

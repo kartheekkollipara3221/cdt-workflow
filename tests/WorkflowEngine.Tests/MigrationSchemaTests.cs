@@ -170,6 +170,23 @@ public sealed class MigrationSchemaTests
         Assert.DoesNotContain("DELETE FROM [dbo].[MockSectionData]", script, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AssignedRoleRecipientFilterMigrationAddsOnlyNullableMetadataColumn()
+    {
+        using var dbContext = CreateDbContext();
+
+        var script = dbContext.GetService<IMigrator>().GenerateScript();
+        var migrationStart = script.IndexOf(
+            "ALTER TABLE [dbo].[NotificationRecipientRule] ADD [AssignedRoleKey] nvarchar(100) NULL;",
+            StringComparison.Ordinal);
+
+        Assert.True(migrationStart >= 0, "Expected the nullable assigned-role recipient filter column.");
+        var migrationSegment = script[migrationStart..];
+        Assert.DoesNotContain("DROP TABLE", migrationSegment, StringComparison.Ordinal);
+        Assert.DoesNotContain("DELETE FROM", migrationSegment, StringComparison.Ordinal);
+        Assert.DoesNotContain("UPDATE [dbo].[NotificationRecipientRule]", migrationSegment, StringComparison.Ordinal);
+    }
+
     private static WorkflowDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()

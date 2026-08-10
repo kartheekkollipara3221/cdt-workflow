@@ -10,12 +10,17 @@ public sealed class NotificationRecipientResolver(WorkflowDbContext dbContext)
     public NotificationRecipientResolution Resolve(
         long notificationRouteId,
         string workflowInstanceId,
-        WorkflowNotificationInput? notificationInput)
+        WorkflowNotificationInput? notificationInput,
+        string? assignedRoleKey = null)
     {
         var input = notificationInput ?? new WorkflowNotificationInput();
         var rules = dbContext.NotificationRecipientRules
             .AsNoTracking()
             .Where(row => row.NotificationRouteId == notificationRouteId && row.IsActive)
+            .ToList()
+            .Where(row =>
+                row.AssignedRoleKey is null
+                || string.Equals(row.AssignedRoleKey, assignedRoleKey, StringComparison.Ordinal))
             .OrderBy(row => row.SortOrder)
             .ToList();
         var errors = new List<string>();

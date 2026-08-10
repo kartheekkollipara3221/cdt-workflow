@@ -194,6 +194,8 @@ The UI uses `availableActions` and `requestDefaults` to build the later public w
 
 The active workflow definition supplies `businessObjectType`; the API generates correlation and idempotency identity. Current state, task, version, route, final To/Cc placement, and SLA timing rules come from persistence and versioned metadata. Unknown root or nested fields are rejected. See `workflow-api/WORKFLOW_API_BOUNDARIES.md` for the full boundary and `workflow-api/samples` for complete request examples.
 
+For `CheckerSendToTradingDesk`, `assignedRoleKey` is the stable metadata key used for both task assignment and notification-rule selection. The seeded `RouteTradingDeskAssigned` metadata can map one desk role to multiple ordered To addresses; the engine sends one message to all matching addresses and snapshots the same audience for SLA reminders. `notification.templateData.deskName` is display-only. The UI does not send desk email addresses.
+
 ### Console-only contract: WorkflowActionEnvelope
 
 `execute-json` accepts one composite test/demo envelope: request metadata, business object identity, actor, UI action, section data save, workflow action, and optional `testExpectations` in samples. This is not the UI-facing HTTP request DTO.

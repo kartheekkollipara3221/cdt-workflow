@@ -101,6 +101,57 @@ public sealed class NotificationRecipientResolverTests
         Assert.Equal(["maker@example.test", "first", "second"], result.Recipients.CcEmailAddresses);
     }
 
+    [Theory]
+    [InlineData("TradingDeskTaxable", "taxable-trading-desk@example.test", "taxable-trading-operations@example.test")]
+    [InlineData("TradingDeskTaxExempt", "tax-exempt-trading-desk@example.test", "tax-exempt-trading-operations@example.test")]
+    [InlineData("TradingDeskEquity", "equity-trading-desk@example.test", "equity-trading-operations@example.test")]
+    public void ResolveSelectsOnlyRulesForAssignedRoleAndKeepsCommonRules(
+        string assignedRoleKey,
+        string firstExpectedAddress,
+        string secondExpectedAddress)
+    {
+        using var dbContext = CreateContextWithMaker("maker@example.test");
+        var routeId = RouteId(dbContext, "RouteTradingDeskAssigned");
+        var input = new WorkflowNotificationInput
+        {
+            RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+            {
+                ["selectedCcUsers"] = [new("selected", "selected@example.test", null)]
+            }
+        };
+
+        var result = new NotificationRecipientResolver(dbContext).Resolve(
+            routeId,
+            "WF-PT-RESOLVE",
+            input,
+            assignedRoleKey);
+
+        Assert.Empty(result.Errors);
+        Assert.Equal(
+            [firstExpectedAddress, secondExpectedAddress],
+            result.Recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["maker@example.test", "selected@example.test"],
+            result.Recipients.CcEmailAddresses);
+    }
+
+    [Fact]
+    public void ResolveWithUnmappedAssignedRoleReportsZeroTo()
+    {
+        using var dbContext = CreateContextWithMaker("maker@example.test");
+        var routeId = RouteId(dbContext, "RouteTradingDeskAssigned");
+
+        var result = new NotificationRecipientResolver(dbContext).Resolve(
+            routeId,
+            "WF-PT-RESOLVE",
+            null,
+            "TradingDeskMunicipal");
+
+        Assert.Contains(result.Errors, error => error.Contains("To recipient", StringComparison.Ordinal));
+        Assert.Empty(result.Recipients.ToEmailAddresses);
+        Assert.Equal(["maker@example.test"], result.Recipients.CcEmailAddresses);
+    }
+
     private static WorkflowDbContext CreateContextWithMaker(string? makerAddress)
     {
         var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();

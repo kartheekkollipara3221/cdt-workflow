@@ -162,6 +162,8 @@ Only include optional properties when the scenario requires them.
 | `slaTargetDate` | Trading Desk assignment or SLA sync | Application target date in `YYYY-MM-DD` format |
 | `notification` | Notification-producing actions | `selectedCcUsers` and the applicable template profile |
 
+For scenarios 09-11, `assignedRoleKey` selects both the persisted task assignment and the applicable versioned recipient rules. A desk can have multiple matching To addresses; the engine aggregates them into one email and saves the complete recipient snapshot for later SLA messages. `notification.templateData.deskName` only renders the email body and subject. It does not select the desk or its addresses.
+
 ## 5. Action values by scenario
 
 | # | Current state | Scenario | `actionKey` | Actor role | Additional JSON values | Notification | Resulting state | Exact sample |

@@ -8,6 +8,7 @@ public sealed class NotificationRecipientRule
     public string SourceType { get; set; } = string.Empty;
     public string? SourceKey { get; set; }
     public string? StaticAddress { get; set; }
+    public string? AssignedRoleKey { get; set; }
     public int SortOrder { get; set; }
     public bool IsRequired { get; set; }
     public bool IsActive { get; set; }

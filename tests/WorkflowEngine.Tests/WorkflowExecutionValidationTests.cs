@@ -411,8 +411,14 @@ public sealed class WorkflowExecutionValidationTests
         Assert.Equal(task.NotificationRecipientsJson, assignment.NotificationRecipientsJson);
     }
 
-    [Fact]
-    public void CheckerSendToTradingDeskResolvesOwnerMakerAndCumulativeAudience()
+    [Theory]
+    [InlineData("TradingDeskTaxable", "taxable-trading-desk@example.test", "taxable-trading-operations@example.test")]
+    [InlineData("TradingDeskTaxExempt", "tax-exempt-trading-desk@example.test", "tax-exempt-trading-operations@example.test")]
+    [InlineData("TradingDeskEquity", "equity-trading-desk@example.test", "equity-trading-operations@example.test")]
+    public void CheckerSendToTradingDeskResolvesSelectedDeskMakerAndCumulativeAudience(
+        string assignedRoleKey,
+        string firstDeskAddress,
+        string secondDeskAddress)
     {
         using var dbContext = CreateSeededContext();
         AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
@@ -426,7 +432,7 @@ public sealed class WorkflowExecutionValidationTests
             roles: ["Checker"]);
         envelope.Actor!.UserId = "checker1";
         envelope.Workflow!.ExpectedCurrentTaskKey = "CheckerReviewTask";
-        envelope.Workflow.AssignedRoleKey = "TradingDeskTaxable";
+        envelope.Workflow.AssignedRoleKey = assignedRoleKey;
         envelope.Workflow.SlaInput = new WorkflowSlaInput
         {
             TargetDate = new DateOnly(2030, 1, 20)
@@ -446,7 +452,7 @@ public sealed class WorkflowExecutionValidationTests
             && row.Status == "Pending"));
         AssertRecipientSnapshot(
             task.NotificationRecipientsJson,
-            ["trading-desk@example.test"],
+            [firstDeskAddress, secondDeskAddress],
             ["maker@example.test", "manager@example.test", "checker@example.test"]);
         var assignment = Assert.Single(dbContext.NotificationOutbox.Where(row =>
             row.WorkflowTaskId == task.Id

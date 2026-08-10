@@ -229,6 +229,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.SourceType).HasMaxLength(40).IsRequired();
             entity.Property(row => row.SourceKey).HasMaxLength(100);
             entity.Property(row => row.StaticAddress);
+            entity.Property(row => row.AssignedRoleKey).HasMaxLength(100);
             entity.HasIndex(row => new { row.NotificationRouteId, row.SortOrder }).IsUnique();
             entity.HasOne<NotificationRoute>()
                 .WithMany()

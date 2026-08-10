@@ -18,11 +18,11 @@
 - Modify: `src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs`
 - Modify: `src/WorkflowEngine.Infrastructure/Notifications/NotificationRecipientResolver.cs`
 
-- [ ] **Step 1: Write failing resolver tests**
+- [x] **Step 1: Write failing resolver tests**
 
 Add tests proving a supplied assignment role selects common rules plus only matching role-specific rules, preserves multiple matching addresses in sort order, and produces no To recipient for an unmapped role.
 
-- [ ] **Step 2: Run the resolver tests and verify RED**
+- [x] **Step 2: Run the resolver tests and verify RED**
 
 ```powershell
 $env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING='Server=DOLLY;Database=workflowengine;Integrated Security=true;TrustServerCertificate=True;Encrypt=False'
@@ -31,11 +31,11 @@ dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Not
 
 Expected: compilation or assertion failure because recipient rules and resolver calls do not yet support `AssignedRoleKey`.
 
-- [ ] **Step 3: Implement the minimal generic filter**
+- [x] **Step 3: Implement the minimal generic filter**
 
 Add nullable `AssignedRoleKey` with `nvarchar(100)` model configuration. Extend `Resolve` with a nullable assignment-role argument and load only active rules where the filter is null or equals that argument. Do not change source resolution, address handling, ordering, deduplication, or To/Cc precedence.
 
-- [ ] **Step 4: Run the resolver tests and verify GREEN**
+- [x] **Step 4: Run the resolver tests and verify GREEN**
 
 Run the same focused command and require zero failures.
 
@@ -47,11 +47,11 @@ Run the same focused command and require zero failures.
 - Modify: `src/WorkflowEngine.Infrastructure/Persistence/Seed/WorkflowSeedService.cs`
 - Modify: `src/WorkflowEngine.Infrastructure/Persistence/Verification/SeedVerificationService.cs`
 
-- [ ] **Step 1: Write failing seed expectations**
+- [x] **Step 1: Write failing seed expectations**
 
 Extend recipient-rule expectations with `AssignedRoleKey` and expect two ordered To addresses for each of `TradingDeskTaxable`, `TradingDeskTaxExempt`, and `TradingDeskEquity`, followed by common Maker and selected-Cc rules.
 
-- [ ] **Step 2: Run the seed test and verify RED**
+- [x] **Step 2: Run the seed test and verify RED**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~SeedDataSmokeTests.PortfolioTradeBusinessObjectParticipantAndRecipientRulesAreSeeded"
@@ -59,11 +59,11 @@ dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~See
 
 Expected: failure because current seed has one common Trading Desk address.
 
-- [ ] **Step 3: Update seed persistence and verification**
+- [x] **Step 3: Update seed persistence and verification**
 
 Persist and compare the optional role filter. Replace only `RouteTradingDeskAssigned` recipient rows. Verify every active assignment role for `TradingDeskReviewTask` has an applicable active To rule; leave `RouteTradingDeskReworkAssigned` unchanged.
 
-- [ ] **Step 4: Run focused seed tests and verify GREEN**
+- [x] **Step 4: Run focused seed tests and verify GREEN**
 
 Run the focused seed test plus `SeedVerificationTests` and require zero failures.
 
@@ -73,11 +73,11 @@ Run the focused seed test plus `SeedVerificationTests` and require zero failures
 - Modify: `tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs`
 - Modify: `src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs`
 
-- [ ] **Step 1: Strengthen the existing desk-assignment theory**
+- [x] **Step 1: Strengthen the existing desk-assignment theory**
 
 For each allowed desk role, assert the exact ordered desk-specific To list, Maker/selected-Cc behavior, and identical task/outbox recipient JSON.
 
-- [ ] **Step 2: Run the transition theory and verify RED**
+- [x] **Step 2: Run the transition theory and verify RED**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~WorkflowTransitionTests.CheckerSendToTradingDeskAssignsSpecificDeskTaskAndNotification"
@@ -85,11 +85,11 @@ dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Wor
 
 Expected: failure because execution currently calls the resolver without the selected role.
 
-- [ ] **Step 3: Pass the normalized assignment key to the resolver**
+- [x] **Step 3: Pass the normalized assignment key to the resolver**
 
 Use the existing validated `workflow.assignedRoleKey`; do not add a public field, change transition selection, or derive routing from template data.
 
-- [ ] **Step 4: Run transition and SLA snapshot tests and verify GREEN**
+- [x] **Step 4: Run transition and SLA snapshot tests and verify GREEN**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~WorkflowTransitionTests|FullyQualifiedName~Phase5SlaTests"
@@ -98,27 +98,27 @@ dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Wor
 ### Task 4: Add the EF Core migration and schema assertions
 
 **Files:**
-- Create: `src/WorkflowEngine.Infrastructure/Migrations/20260810150000_AddNotificationRecipientAssignedRoleFilter.cs`
-- Create: `src/WorkflowEngine.Infrastructure/Migrations/20260810150000_AddNotificationRecipientAssignedRoleFilter.Designer.cs`
+- Create: `src/WorkflowEngine.Infrastructure/Migrations/20260810173812_AddNotificationRecipientAssignedRoleFilter.cs`
+- Create: `src/WorkflowEngine.Infrastructure/Migrations/20260810173812_AddNotificationRecipientAssignedRoleFilter.Designer.cs`
 - Modify: `src/WorkflowEngine.Infrastructure/Migrations/WorkflowDbContextModelSnapshot.cs`
 - Modify: `tests/WorkflowEngine.Tests/MigrationSchemaTests.cs`
 - Modify: `tests/WorkflowEngine.Tests/SchemaConstraintTests.cs`
 
-- [ ] **Step 1: Write failing schema assertions**
+- [x] **Step 1: Write failing schema assertions**
 
 Assert the EF model exposes nullable `AssignedRoleKey` with maximum length 100 and the generated migration adds `[AssignedRoleKey] nvarchar(100) NULL` under `dbo.NotificationRecipientRule`.
 
-- [ ] **Step 2: Run schema tests and verify RED**
+- [x] **Step 2: Run schema tests and verify RED**
 
 ```powershell
 dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~MigrationSchemaTests|FullyQualifiedName~SchemaConstraintTests"
 ```
 
-- [ ] **Step 3: Scaffold and review the migration**
+- [x] **Step 3: Scaffold and review the migration**
 
 Generate the migration from the existing design-time context. Confirm it only adds/drops the nullable column and updates the model snapshot; do not recreate tables or delete data.
 
-- [ ] **Step 4: Run schema tests and verify GREEN**
+- [x] **Step 4: Run schema tests and verify GREEN**
 
 Run the same focused command and require zero failures.
 
@@ -130,11 +130,11 @@ Run the same focused command and require zero failures.
 - Modify: `workflow-api/docs/WORKFLOW_API_ENVELOPES.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Update recipient metadata documentation**
+- [x] **Step 1: Update recipient metadata documentation**
 
 Document the optional rule filter, the desk-specific sample mappings, unchanged API shape, display-only `deskName`, one-message/multiple-address behavior, and unchanged common rework route.
 
-- [ ] **Step 2: Run documentation and API contract tests**
+- [x] **Step 2: Run documentation and API contract tests**
 
 ```powershell
 dotnet test workflow-api/WorkflowEngine.WorkflowApi.slnx --no-restore --filter "FullyQualifiedName~WorkflowRequestContractTests|FullyQualifiedName~WorkflowScenarioSampleTests"
@@ -146,11 +146,11 @@ dotnet test src/WorkflowEngine.sln --no-restore --filter "FullyQualifiedName~Rea
 **Files:**
 - Update: `CODEX_HANDOFF.md` without overwriting pre-existing unrelated edits
 
-- [ ] **Step 1: Run formatting and negative searches**
+- [x] **Step 1: Run formatting and negative searches**
 
 Run `dotnet format --verify-no-changes`, `git diff --check`, and the recipient negative searches required by `PROJECT.md` section 21.
 
-- [ ] **Step 2: Run build and automated tests**
+- [x] **Step 2: Run build and automated tests**
 
 ```powershell
 dotnet restore
@@ -159,17 +159,17 @@ dotnet test src/WorkflowEngine.sln --no-build
 dotnet test workflow-api/WorkflowEngine.WorkflowApi.slnx --no-build
 ```
 
-- [ ] **Step 3: Run SQL seed gates**
+- [x] **Step 3: Run SQL seed gates**
 
 ```powershell
 dotnet run --project src/WorkflowEngine.Console -- init-db
 dotnet run --project src/WorkflowEngine.Console -- verify-seed
 ```
 
-- [ ] **Step 4: Execute the public Checker-to-Trading-Desk sample**
+- [x] **Step 4: Execute the public Checker-to-Trading-Desk sample**
 
 Run the live/local Workflow API scenario for each desk role or, if a live API is unavailable, execute the SQL-backed application/console equivalent and report the limitation exactly. Verify the selected role's task and outbox recipient snapshot.
 
-- [ ] **Step 5: Review the final diff and commit only task-owned files**
+- [x] **Step 5: Review the final diff and commit only task-owned files**
 
 Preserve unrelated dirty files. Commit the implementation atomically after fresh verification.

@@ -247,7 +247,8 @@ public sealed class WorkflowExecutionService(
                 var resolution = notificationRecipientResolver.Resolve(
                     route.Id,
                     instance.WorkflowInstanceId,
-                    request.NotificationInput);
+                    request.NotificationInput,
+                    workflow.AssignedRoleKey?.Trim());
                 if (resolution.Errors.Count > 0)
                 {
                     return resultBuilder.BuildValidationFailed(

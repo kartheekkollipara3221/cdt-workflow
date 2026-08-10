@@ -44,7 +44,7 @@ The console app is a proof of concept for the reusable workflow engine, not the 
 | WorkflowActionResult | Standard response object returned after processing a `WorkflowActionEnvelope`; it summarizes state/task changes and may include refreshed workflow context. |
 | Workflow instance | A single in-flight workflow record, usually one per business object. |
 | Transition | A metadata row that maps `(fromState, actionKey, allowedRole)` to `(toState, taskClose, taskCreate)`. |
-| Notification recipients | Final ordered To/Cc arrays resolved by generic versioned route rules from static metadata, immutable workflow participants, and route-declared request inputs. Address strings are opaque and are stored without syntax, directory, mailbox, or SMTP validation. Resolution deduplicates case-insensitively, retains the first opaque value, and gives To precedence over Cc. |
+| Notification recipients | Final ordered To/Cc arrays resolved by generic versioned route rules from static metadata, immutable workflow participants, and route-declared request inputs. A rule may optionally apply only to the action's metadata-validated `assignedRoleKey`; null applies to every assignment role. Address strings are opaque and are stored without syntax, directory, mailbox, or SMTP validation. Resolution deduplicates case-insensitively, retains the first opaque value, and gives To precedence over Cc. |
 | Notification outbox | Persisted notification records containing an exact typed recipient snapshot. One outbox row represents one complete message and one message-level retry lifecycle. |
 | SLA | Metadata-driven task schedule. Duration policies derive a deadline from task creation; application-date policies use public `slaTargetDate` (mapped internally to `slaInput.targetDate`) plus versioned policy timing/cadence. `WorkflowTask.DueAtUtc` is the overdue-start projection. |
 | Single-active-state | One current workflow state and at most one pending task for a workflow instance in the MVP. |
@@ -1351,30 +1351,37 @@ The seeded workflow declares one required, immutable, single `originalMaker` par
 
 Seed these ordered recipient rules. `.example.test` values are sample metadata, not real delivery addresses:
 
-| RouteKey | Order | Kind | SourceType | Source value | Required |
-|---|---:|---|---|---|---|
-| `RouteCheckerAssignedOnSubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Yes |
-| `RouteCheckerAssignedOnSubmit` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteCheckerAssignedOnSubmit` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
-| `RouteCheckerAssignedOnResubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Yes |
-| `RouteCheckerAssignedOnResubmit` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteCheckerAssignedOnResubmit` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
-| `RouteReturnedToMakerFromChecker` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteReturnedToMakerFromChecker` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
-| `RouteReturnedToMakerFromChecker` | 3 | Cc | `StaticAddress` | `workflow-operations@example.test` | No |
-| `RouteTradingDeskAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
-| `RouteTradingDeskAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteTradingDeskAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
-| `RouteReturnedToMakerFromTradingDesk` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteReturnedToMakerFromTradingDesk` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
-| `RouteBdrmAssigned` | 1 | To | `StaticAddress` | `bdrm-client-service@example.test` | Yes |
-| `RouteBdrmAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteBdrmAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
-| `RouteTradingDeskReworkAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
-| `RouteTradingDeskReworkAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteTradingDeskReworkAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
-| `RouteWorkflowCompleted` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
-| `RouteWorkflowCompleted` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
+| RouteKey | Order | Kind | SourceType | Source value | Assigned role filter | Required |
+|---|---:|---|---|---|---|---|
+| `RouteCheckerAssignedOnSubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Any | Yes |
+| `RouteCheckerAssignedOnSubmit` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteCheckerAssignedOnSubmit` | 3 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+| `RouteCheckerAssignedOnResubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Any | Yes |
+| `RouteCheckerAssignedOnResubmit` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteCheckerAssignedOnResubmit` | 3 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+| `RouteReturnedToMakerFromChecker` | 1 | To | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteReturnedToMakerFromChecker` | 2 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+| `RouteReturnedToMakerFromChecker` | 3 | Cc | `StaticAddress` | `workflow-operations@example.test` | Any | No |
+| `RouteTradingDeskAssigned` | 1 | To | `StaticAddress` | `taxable-trading-desk@example.test` | `TradingDeskTaxable` | Yes |
+| `RouteTradingDeskAssigned` | 2 | To | `StaticAddress` | `taxable-trading-operations@example.test` | `TradingDeskTaxable` | Yes |
+| `RouteTradingDeskAssigned` | 3 | To | `StaticAddress` | `tax-exempt-trading-desk@example.test` | `TradingDeskTaxExempt` | Yes |
+| `RouteTradingDeskAssigned` | 4 | To | `StaticAddress` | `tax-exempt-trading-operations@example.test` | `TradingDeskTaxExempt` | Yes |
+| `RouteTradingDeskAssigned` | 5 | To | `StaticAddress` | `equity-trading-desk@example.test` | `TradingDeskEquity` | Yes |
+| `RouteTradingDeskAssigned` | 6 | To | `StaticAddress` | `equity-trading-operations@example.test` | `TradingDeskEquity` | Yes |
+| `RouteTradingDeskAssigned` | 7 | Cc | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteTradingDeskAssigned` | 8 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+| `RouteReturnedToMakerFromTradingDesk` | 1 | To | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteReturnedToMakerFromTradingDesk` | 2 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+| `RouteBdrmAssigned` | 1 | To | `StaticAddress` | `bdrm-client-service@example.test` | Any | Yes |
+| `RouteBdrmAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteBdrmAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+| `RouteTradingDeskReworkAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Any | Yes |
+| `RouteTradingDeskReworkAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteTradingDeskReworkAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+| `RouteWorkflowCompleted` | 1 | To | `WorkflowParticipant` | `originalMaker` | Any | Yes |
+| `RouteWorkflowCompleted` | 2 | Cc | `RequestInput` | `selectedCcUsers` | Any | No |
+
+`Any` above is stored as null. A non-null `NotificationRecipientRule.AssignedRoleKey` is an applicability filter over the already-validated dynamic task assignment; it is not an address lookup and it never changes task assignment or workflow state. `CheckerSendToTradingDesk` supplies the selected role through the existing public `assignedRoleKey`. `notification.templateData.deskName` remains display-only. Multiple matching To rows produce one message with all matching addresses. The common `RouteTradingDeskReworkAssigned` recipient remains unchanged in v1.
 
 SLA routes have no recipient rules because `run-sla` copies the saved task snapshot unchanged. `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are removed from the active schema; there is no legacy role or user fallback.
 
@@ -1396,6 +1403,7 @@ Each action resolves and persists a new task/outbox recipient snapshot without m
 - All required task definitions exist.
 - All transitions from the action matrix exist, including both Return-to-Maker transitions and `ResubmitForChecker`.
 - Every transition notification route has the exact ordered recipient rules defined above, with at least one To rule.
+- Every active dynamic assignment role for a notification-producing task has at least one applicable active To rule (`AssignedRoleKey` null or exact match).
 - Every participant/request/static recipient rule has structurally consistent source fields, unique route order, and same-version ownership. Address contents are not parsed or validated.
 - Every transition references valid states/actions/roles/tasks for the same `WorkflowDefinitionVersionId`.
 - Every task definition has an owner role.
@@ -1812,6 +1820,7 @@ RecipientKind            -- To or Cc
 SourceType               -- StaticAddress, WorkflowParticipant, or RequestInput
 SourceKey nullable        -- participant key or request-input key
 StaticAddress nullable    -- opaque metadata value for StaticAddress
+AssignedRoleKey nullable  -- optional applicability filter over validated task assignment metadata
 SortOrder
 IsRequired
 IsActive
@@ -1823,7 +1832,7 @@ Required uniqueness:
 UNIQUE (NotificationRouteId, SortOrder)
 ```
 
-Structural check constraints enforce valid kind/source values and the matching source fields. They must not parse or validate `StaticAddress`. A notification-producing transition route must resolve at least one To value before effects commit. Rules are evaluated in `SortOrder`; address duplicates are compared case-insensitively, the first opaque string is retained, and To wins over Cc.
+Structural check constraints enforce valid kind/source values and the matching source fields. They must not parse or validate `StaticAddress`. A null assignment filter applies to every role; a non-null filter applies only when it ordinally matches the action's metadata-validated `assignedRoleKey`. A notification-producing transition route must resolve at least one To value before effects commit. Rules are evaluated in `SortOrder`; address duplicates are compared case-insensitively, the first opaque string is retained, and To wins over Cc.
 
 ### NotificationOutbox
 
@@ -2062,7 +2071,7 @@ run-sla reaches overdue calendar occurrence
 
 Notification routes carry `SubjectTemplate`, plain-text `BodyTemplate`, and HTML `HtmlBodyTemplate`. Transition execution and SLA processing render both body formats into `NotificationOutbox.Body` and `NotificationOutbox.HtmlBody`. Public `notification.templateData` maps to the internal console envelope's `workflow.notificationContext`. Token values are trimmed for both formats and HTML-encoded when rendered into `HtmlBodyTemplate` so caller-provided data cannot inject markup. Template-owned markup is preserved, so seeded templates can bold important values with `<strong>{{token}}</strong>` and render `tradeLink` as `<a href="{{tradeLink}}">Open trade</a>`.
 
-Recipient addresses do not come from notification templates or template data. Versioned route rules resolve addresses from `StaticAddress`, immutable `WorkflowParticipant`, and route-declared `RequestInput` sources. Public requests group the latter two caller values under `notification.recipientInputs`; callers cannot choose final To/Cc placement. Address strings are opaque and receive no syntax, directory, mailbox, or SMTP validation.
+Recipient addresses do not come from notification templates or template data. Versioned route rules resolve addresses from `StaticAddress`, immutable `WorkflowParticipant`, and route-declared `RequestInput` sources. Rules may be common or filtered by the action's validated `assignedRoleKey`; for Trading Desk assignment, this lets one selected desk resolve several static To addresses. Public requests group caller-supplied recipient values under `notification.recipientInputs`; callers cannot choose final To/Cc placement. Address strings are opaque and receive no syntax, directory, mailbox, or SMTP validation.
 
 Transition execution resolves rules before side effects, applies case-insensitive deduplication with first-value retention and To-over-Cc precedence, and serializes the final recipient object once. The same snapshot is stored on the created `WorkflowTask` and initial `NotificationOutbox` row. `run-sla` validates the task snapshot and copies it unchanged to due-today and overdue occurrence rows; a missing or malformed task snapshot is warned and skipped rather than reconstructed. `PayloadJson` contains template data only, including schedule target date, occurrence date/kind, due-reminder instant, and overdue-start instant.
 
@@ -2271,7 +2280,7 @@ Transaction should include:
 1. Close current task if the transition requires it. Closing a task means: `UPDATE WorkflowTask SET Status = 'Completed', CompletedAtUtc = TimeProvider.GetUtcNow(), CompletedByUserId = actor.userId, ClosedByActionKey = actionKey WHERE Id = @taskId`. When `--admin-override` is used, `CompletedByUserId` still records `actor.userId` from the envelope (the human who triggered the action); the override is noted in `WorkflowAudit`, not in the task row.
 1. Move workflow state using optimistic concurrency.
 1. If moving to `Completed`, set `WorkflowInstance.Status = 'Completed'` and `WorkflowInstance.CompletedAtUtc = TimeProvider.GetUtcNow()` and ensure no pending task remains.
-1. Resolve the route's ordered recipient rules from static metadata, immutable workflow participants, and permitted request inputs. Reject unknown inputs, missing required sources, or a final result with no To value before side effects.
+1. Resolve the route's ordered recipient rules from static metadata, immutable workflow participants, and permitted request inputs, applying any optional `AssignedRoleKey` filter to the already-validated task assignment. Reject unknown inputs, missing required sources, or a final result with no To value before side effects.
 1. Create next task if the transition requires it, storing the exact resolved serialized `NotificationRecipients` snapshot on the task for later SLA reuse.
 1. Create one notification outbox record if required, storing the same resolved recipient snapshot separately from template-only `PayloadJson`.
 1. Write workflow audit record. For `SaveDraft`, `ToStateKey` records the unchanged current state (e.g., `Draft → Draft` or `ReturnedToMaker → ReturnedToMaker`). This is intentional — `SaveDraft` does not move state, so `FromStateKey` and `ToStateKey` are equal. Audit queries that interpret `ToStateKey` as "forward movement" must exclude `SaveDraft` rows when computing state progression.
@@ -2657,6 +2666,8 @@ Add tests for:
 - `RecordingNotificationSender` (test double) captures sent rows in memory for unit-test assertions.
 - `SmtpNotificationSender` throws at startup when `Notifications:Sender = "Smtp"` and `Smtp:Host` is missing or empty.
 - Workflow start/action API services preserve ordered multiple To/Cc arrays exactly while replacing only actor identity from trusted headers.
+- `CheckerSendToTradingDesk` resolves only the selected `assignedRoleKey` recipient rules, aggregates every matching desk address, and stores the same ordered snapshot on the task and outbox.
+- Every seeded Trading Desk assignment role has at least one applicable active To rule; an unmapped valid role fails before workflow side effects.
 - Notification-producing samples use `notificationRecipients` outside `notificationContext`, with at least two ordered To and two ordered Cc addresses; `01-save-draft.json` has no recipients.
 - A notification-producing transition stores one identical recipient snapshot on the created task and initial outbox row; SLA copies that stored task snapshot unchanged.
 - Notification routes seed plain-text and HTML body templates, including separate due-today and overdue SLA templates.
@@ -2816,7 +2827,7 @@ Stop before doing any of the following:
 - Allowing multiple sequential workflow instances on the same `(WorkflowKey, BusinessObjectType, BusinessObjectId)` (re-trade scenarios). v1 enforces one workflow lifetime per business object identifier. Schema changes (filtered unique on `Status = 'Active'`, sequence-aware ID generation) are required and out of scope.
 - Adding `Smtp:Username`, `Smtp:Password`, or any SMTP credential support. v1 assumes IP-restricted on-prem relay with no credentials. Authenticated relay requires secret management.
 - Adding any third-party NuGet package other than MailKit (which is pre-approved for `SmtpNotificationSender` in §14).
-- Adding recipient syntax/directory/mailbox/SMTP validation, trimming or rewriting opaque address strings, role lookup, singular recipient fields, delimited recipient parsing, or any fallback other than `Smtp:RecipientOverride`.
+- Adding recipient syntax/directory/mailbox/SMTP validation, trimming or rewriting opaque address strings, external role-to-address lookup, singular recipient fields, delimited recipient parsing, or any fallback other than `Smtp:RecipientOverride`.
 - Changing the approved recipient resolution semantics: route-order evaluation, case-insensitive duplicate comparison, first opaque value retention, and To-over-Cc precedence.
 
 ## 23. Completion summary format for coding agents
@@ -3041,7 +3052,7 @@ This section captures known implementation pitfalls. Coding agents must use this
 | `AlreadyExists` result lacks status information. | The result must include `existingInstanceStatus` (`Active` or `Completed`) and `existingInstanceVersion` so the caller can distinguish "in progress" from "already finished." |
 | Coding agent hardcodes SMTP delivery into `process-notification-outbox`. | Use the `INotificationSender` interface and configuration-driven registration. Hardcoded SMTP defeats the testability and dev-vs-prod separation. |
 | Coding agent uses `System.Net.Mail.SmtpClient` for the SMTP implementation. | Use MailKit. `System.Net.Mail.SmtpClient` is deprecated by Microsoft for new development. MailKit is pre-approved for this project. |
-| Coding agent resolves recipients from roles, configuration maps, template context, singular fields, or delimited strings. | Versioned `NotificationRecipientRule` rows select `StaticAddress`, immutable `WorkflowParticipant`, or permitted `RequestInput` sources. The engine resolves one final snapshot and reuses it exactly; legacy route role columns do not exist in the active schema. |
+| Coding agent resolves recipients directly from task roles, configuration maps, template context, singular fields, or delimited strings. | Versioned `NotificationRecipientRule` rows select `StaticAddress`, immutable `WorkflowParticipant`, or permitted `RequestInput` sources. An optional rule-level `AssignedRoleKey` only filters which of those metadata rows apply. The engine resolves one final snapshot and reuses it exactly; legacy route role columns do not exist in the active schema. |
 | `SmtpNotificationSender` partially succeeds or tracks retry per recipient. | One outbox row is one complete message. Any address parse/send failure returns the entire row to `Pending`, increments one `RetryCount`, and stores one `LastError`. |
 | Coding agent enables real SMTP delivery in dev/test default config. | Default `Notifications:Sender` is `"Console"` everywhere except production. Tier 2 SMTP integration tests opt in explicitly via `Category=Smtp` filter and target a local fake server. |
 | Tier 2 SMTP tests run by default and slow down CI or hit a real relay. | Tier 2 tests must be marked with `Category=Smtp` and excluded from default `dotnet test`. They run only when explicitly requested. |

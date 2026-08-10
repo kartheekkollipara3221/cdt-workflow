@@ -177,9 +177,14 @@ internal static class PortfolioTradeSeedData
         new("RouteReturnedToMakerFromChecker", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
         new("RouteReturnedToMakerFromChecker", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
         new("RouteReturnedToMakerFromChecker", "Cc", "StaticAddress", null, "workflow-operations@example.test", 3, false),
-        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
-        new("RouteTradingDeskAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
-        new("RouteTradingDeskAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
+        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "taxable-trading-desk@example.test", 1, true, "TradingDeskTaxable"),
+        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "taxable-trading-operations@example.test", 2, true, "TradingDeskTaxable"),
+        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "tax-exempt-trading-desk@example.test", 3, true, "TradingDeskTaxExempt"),
+        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "tax-exempt-trading-operations@example.test", 4, true, "TradingDeskTaxExempt"),
+        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "equity-trading-desk@example.test", 5, true, "TradingDeskEquity"),
+        new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "equity-trading-operations@example.test", 6, true, "TradingDeskEquity"),
+        new("RouteTradingDeskAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 7, true),
+        new("RouteTradingDeskAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 8, false),
         new("RouteReturnedToMakerFromTradingDesk", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
         new("RouteReturnedToMakerFromTradingDesk", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
         new("RouteBdrmAssigned", "To", "StaticAddress", null, "bdrm-client-service@example.test", 1, true),
@@ -268,7 +273,8 @@ internal sealed record NotificationRecipientRuleSeed(
     string? SourceKey,
     string? StaticAddress,
     int SortOrder,
-    bool IsRequired);
+    bool IsRequired,
+    string? AssignedRoleKey = null);
 
 internal sealed record TransitionSeed(
     string FromStateKey,

@@ -369,6 +369,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
                 || !string.Equals(row.SourceType, seed.SourceType, StringComparison.Ordinal)
                 || !string.Equals(row.SourceKey, seed.SourceKey, StringComparison.Ordinal)
                 || !string.Equals(row.StaticAddress, seed.StaticAddress, StringComparison.Ordinal)
+                || !string.Equals(row.AssignedRoleKey, seed.AssignedRoleKey, StringComparison.Ordinal)
                 || row.IsRequired != seed.IsRequired
                 || !row.IsActive)
             {
@@ -412,6 +413,41 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
                     && row.RecipientKind == "To"))
             {
                 errors.Add($"Notification route '{routeKey}' must have at least one active To recipient rule.");
+            }
+        }
+
+        var dynamicallyAssignedTransitions = dbContext.WorkflowTransitionDefinitions
+            .Where(row =>
+                row.WorkflowDefinitionVersionId == versionId
+                && row.NotificationRouteKey != null
+                && row.TaskToCreateKey != null)
+            .ToList();
+        var assignmentRoles = dbContext.WorkflowTaskAssignmentRoleDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.IsActive)
+            .ToList();
+        foreach (var transition in dynamicallyAssignedTransitions)
+        {
+            var allowedRoles = assignmentRoles
+                .Where(row => row.TaskKey == transition.TaskToCreateKey)
+                .Select(row => row.RoleKey)
+                .ToArray();
+            if (allowedRoles.Length == 0
+                || !routes.TryGetValue(transition.NotificationRouteKey!, out var route))
+            {
+                continue;
+            }
+
+            foreach (var roleKey in allowedRoles)
+            {
+                if (!rules.Any(row =>
+                        row.NotificationRouteId == route.Id
+                        && row.IsActive
+                        && row.RecipientKind == "To"
+                        && (row.AssignedRoleKey == null || row.AssignedRoleKey == roleKey)))
+                {
+                    errors.Add(
+                        $"Notification route '{transition.NotificationRouteKey}' must have an active To recipient rule for assigned role '{roleKey}'.");
+                }
             }
         }
     }

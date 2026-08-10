@@ -24,6 +24,33 @@ public sealed class SeedDataSmokeTests
     }
 
     [Fact]
+    public void PortfolioTradeSeedVerificationReportsMissingAssignedRoleToRule()
+    {
+        using var dbContext = CreateDbContext();
+        dbContext.Database.EnsureDeleted();
+        dbContext.Database.Migrate();
+        new WorkflowSeedService(dbContext, TimeProvider.System).SeedPortfolioTrade();
+
+        var routeId = dbContext.NotificationRoutes.Single(row =>
+            row.RouteKey == "RouteTradingDeskAssigned").Id;
+        var taxableRules = dbContext.NotificationRecipientRules.Where(row =>
+            row.NotificationRouteId == routeId
+            && row.RecipientKind == "To"
+            && row.AssignedRoleKey == "TradingDeskTaxable");
+        foreach (var rule in taxableRules)
+        {
+            rule.IsActive = false;
+        }
+
+        dbContext.SaveChanges();
+
+        var result = new SeedVerificationService(dbContext).Verify();
+
+        Assert.Contains(result.Errors, error => error ==
+            "Notification route 'RouteTradingDeskAssigned' must have an active To recipient rule for assigned role 'TradingDeskTaxable'.");
+    }
+
+    [Fact]
     public void PortfolioTradeTransitionsMatchRequiredMatrix()
     {
         using var dbContext = CreateDbContext();
@@ -115,34 +142,40 @@ public sealed class SeedDataSmokeTests
                 rule.SourceType,
                 rule.SourceKey,
                 rule.StaticAddress,
+                rule.AssignedRoleKey,
                 rule.SortOrder,
                 rule.IsRequired
             }).ToList();
 
         var expectedRules = new RecipientRuleExpectation[]
         {
-            new("RouteCheckerAssignedOnSubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
-            new("RouteCheckerAssignedOnSubmit", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
-            new("RouteCheckerAssignedOnSubmit", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
-            new("RouteCheckerAssignedOnResubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
-            new("RouteCheckerAssignedOnResubmit", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
-            new("RouteCheckerAssignedOnResubmit", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
-            new("RouteReturnedToMakerFromChecker", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
-            new("RouteReturnedToMakerFromChecker", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
-            new("RouteReturnedToMakerFromChecker", "Cc", "StaticAddress", null, "workflow-operations@example.test", 3, false),
-            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
-            new("RouteTradingDeskAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
-            new("RouteTradingDeskAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
-            new("RouteReturnedToMakerFromTradingDesk", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
-            new("RouteReturnedToMakerFromTradingDesk", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
-            new("RouteBdrmAssigned", "To", "StaticAddress", null, "bdrm-client-service@example.test", 1, true),
-            new("RouteBdrmAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
-            new("RouteBdrmAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
-            new("RouteTradingDeskReworkAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
-            new("RouteTradingDeskReworkAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
-            new("RouteTradingDeskReworkAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
-            new("RouteWorkflowCompleted", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
-            new("RouteWorkflowCompleted", "Cc", "RequestInput", "selectedCcUsers", null, 2, false)
+            new("RouteCheckerAssignedOnSubmit", "To", "StaticAddress", null, "checker@example.test", null, 1, true),
+            new("RouteCheckerAssignedOnSubmit", "Cc", "WorkflowParticipant", "originalMaker", null, null, 2, true),
+            new("RouteCheckerAssignedOnSubmit", "Cc", "RequestInput", "selectedCcUsers", null, null, 3, false),
+            new("RouteCheckerAssignedOnResubmit", "To", "StaticAddress", null, "checker@example.test", null, 1, true),
+            new("RouteCheckerAssignedOnResubmit", "Cc", "WorkflowParticipant", "originalMaker", null, null, 2, true),
+            new("RouteCheckerAssignedOnResubmit", "Cc", "RequestInput", "selectedCcUsers", null, null, 3, false),
+            new("RouteReturnedToMakerFromChecker", "To", "WorkflowParticipant", "originalMaker", null, null, 1, true),
+            new("RouteReturnedToMakerFromChecker", "Cc", "RequestInput", "selectedCcUsers", null, null, 2, false),
+            new("RouteReturnedToMakerFromChecker", "Cc", "StaticAddress", null, "workflow-operations@example.test", null, 3, false),
+            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "taxable-trading-desk@example.test", "TradingDeskTaxable", 1, true),
+            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "taxable-trading-operations@example.test", "TradingDeskTaxable", 2, true),
+            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "tax-exempt-trading-desk@example.test", "TradingDeskTaxExempt", 3, true),
+            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "tax-exempt-trading-operations@example.test", "TradingDeskTaxExempt", 4, true),
+            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "equity-trading-desk@example.test", "TradingDeskEquity", 5, true),
+            new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "equity-trading-operations@example.test", "TradingDeskEquity", 6, true),
+            new("RouteTradingDeskAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, null, 7, true),
+            new("RouteTradingDeskAssigned", "Cc", "RequestInput", "selectedCcUsers", null, null, 8, false),
+            new("RouteReturnedToMakerFromTradingDesk", "To", "WorkflowParticipant", "originalMaker", null, null, 1, true),
+            new("RouteReturnedToMakerFromTradingDesk", "Cc", "RequestInput", "selectedCcUsers", null, null, 2, false),
+            new("RouteBdrmAssigned", "To", "StaticAddress", null, "bdrm-client-service@example.test", null, 1, true),
+            new("RouteBdrmAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, null, 2, true),
+            new("RouteBdrmAssigned", "Cc", "RequestInput", "selectedCcUsers", null, null, 3, false),
+            new("RouteTradingDeskReworkAssigned", "To", "StaticAddress", null, "trading-desk@example.test", null, 1, true),
+            new("RouteTradingDeskReworkAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, null, 2, true),
+            new("RouteTradingDeskReworkAssigned", "Cc", "RequestInput", "selectedCcUsers", null, null, 3, false),
+            new("RouteWorkflowCompleted", "To", "WorkflowParticipant", "originalMaker", null, null, 1, true),
+            new("RouteWorkflowCompleted", "Cc", "RequestInput", "selectedCcUsers", null, null, 2, false)
         };
         var routeOrder = expectedRules
             .Select(row => row.RouteKey)
@@ -155,13 +188,14 @@ public sealed class SeedDataSmokeTests
                 row.SourceType,
                 row.SourceKey,
                 row.StaticAddress,
+                row.AssignedRoleKey,
                 row.SortOrder,
                 row.IsRequired))
             .OrderBy(row => Array.IndexOf(routeOrder, row.RouteKey))
             .ThenBy(row => row.SortOrder)
             .ToArray();
 
-        Assert.Equal(22, rules.Count);
+        Assert.Equal(27, rules.Count);
         Assert.Equal(expectedRules, actualRules);
         Assert.DoesNotContain(rules, row =>
             row.RouteKey is "RouteSlaTaskDueToday" or "RouteSlaTaskOverdue");
@@ -322,6 +356,7 @@ public sealed class SeedDataSmokeTests
         string SourceType,
         string? SourceKey,
         string? StaticAddress,
+        string? AssignedRoleKey,
         int SortOrder,
         bool IsRequired);
 }

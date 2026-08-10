@@ -245,6 +245,7 @@ public sealed class WorkflowSeedService(WorkflowDbContext dbContext, TimeProvide
             row.SourceType = seed.SourceType;
             row.SourceKey = seed.SourceKey;
             row.StaticAddress = seed.StaticAddress;
+            row.AssignedRoleKey = seed.AssignedRoleKey;
             row.IsRequired = seed.IsRequired;
             row.IsActive = true;
         }
