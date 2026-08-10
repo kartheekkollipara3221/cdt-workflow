@@ -1,7 +1,7 @@
 # SLA Email Inherits Task Assignment Design
 
 **Date:** 2026-08-10
-**Status:** Design approved; awaiting written-spec review
+**Status:** Approved for implementation
 **Scope:** Shared workflow engine SLA notification content
 
 ## Goal
