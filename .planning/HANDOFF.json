@@ -1,86 +1,78 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-09T20:06:27.643Z",
+  "timestamp": "2026-08-10T04:03:48.840Z",
   "phase": "06",
-  "phase_name": "Samples, Tests, and Demo - post-milestone live acceptance",
-  "phase_dir": ".planning/phases/06-samples-tests-and-demo",
-  "plan": 4,
-  "task": 4,
-  "total_tasks": 4,
+  "phase_name": "samples-tests-and-demo",
+  "phase_dir": ".planning",
+  "plan": 1,
+  "task": 5,
+  "total_tasks": 5,
   "status": "paused",
   "completed_tasks": [
     {
       "id": 1,
-      "name": "Create the 18-pack public Workflow API scenario catalog",
+      "name": "Approve cumulative notification audience design and plan",
       "status": "done",
-      "commit": "ceb3999"
+      "commit": "7c0406a"
     },
     {
       "id": 2,
-      "name": "Start CDT workflow and SaveDraft through the live API",
-      "status": "done"
+      "name": "Implement exact 22-rule recipient metadata contract",
+      "status": "done",
+      "commit": "1da4064"
     },
     {
       "id": 3,
-      "name": "Submit the CDT workflow to CheckerReview",
-      "status": "done"
+      "name": "Verify cumulative runtime and SLA snapshots",
+      "status": "done",
+      "commit": "0566912"
     },
     {
       "id": 4,
-      "name": "Queue and send the Checker SLA overdue reminder through smtp4dev",
-      "status": "done"
-    }
-  ],
-  "remaining_tasks": [
+      "name": "Update public API cumulative-audience scenarios",
+      "status": "done",
+      "commit": "7b61d2e"
+    },
     {
       "id": 5,
-      "name": "Receive the user's next Checker action choice",
-      "status": "not_started"
-    },
-    {
-      "id": 6,
-      "name": "Continue the directed live scenario one request at a time",
-      "status": "not_started"
+      "name": "Verify, merge, and publish console-code-first-0518",
+      "status": "done",
+      "commit": "8985e17"
     }
   ],
-  "blockers": [
-    {
-      "description": "The immediate Checker assignment outbox row was marked Sent by the first NoOp-configured API process and therefore has no smtp4dev message.",
-      "type": "technical",
-      "workaround": "Do not rewrite or replay it. If assignment SMTP proof is required, create a fresh user-approved workflow scenario after confirming the API has explicit SMTP environment variables."
-    }
-  ],
+  "remaining_tasks": [],
+  "blockers": [],
   "async_jobs": [],
-  "human_actions_pending": [
-    {
-      "action": "Choose CheckerReturnToMaker or CheckerSendToTradingDesk as the next live action.",
-      "context": "The workflow is paused in CheckerReview with a pending Checker task.",
-      "blocking": true
-    }
-  ],
+  "human_actions_pending": [],
   "decisions": [
     {
-      "decision": "Print the exact endpoint, trusted actor headers, and public body before every live action.",
-      "rationale": "The user wants a transparent UI integration walkthrough.",
+      "decision": "Caller supplies the complete current selectedCcUsers snapshot on every notification-producing action.",
+      "rationale": "Keeps audience ownership in the application and avoids engine-owned user resolution or accumulation.",
       "phase": "06"
     },
     {
-      "decision": "The Checker task snapshot includes the original Maker and one UI-selected manager as Cc.",
-      "rationale": "Both must receive the task assignment/reminder snapshot selected by the UI.",
+      "decision": "Original Maker is captured once as an immutable participant and task SLA reminders reuse the exact task snapshot.",
+      "rationale": "Preserves deterministic metadata routing and immutable historical notification evidence.",
       "phase": "06"
+    }
+  ],
+  "blocking_constraints": [
+    {
+      "description": "Check port 5058 and its owning PID before restarting the live API.",
+      "severity": "blocking"
     },
     {
-      "decision": "Do not reset, replay, or directly edit the first Sent assignment outbox row.",
-      "rationale": "Preserve real workflow and outbox history unless the user explicitly authorizes a new scenario.",
-      "phase": "06"
+      "description": "After a test wrapper timeout, verify no worktree-scoped child test process remains before rerunning the SQL suite.",
+      "severity": "blocking"
     }
   ],
   "uncommitted_files": [
+    ".planning/STATE.md",
     "CODEX_HANDOFF.md",
     ".tools/",
     "SQMS/",
     "tareget-api-integration/"
   ],
-  "next_action": "Read the required files, verify PID/ports and GET WorkflowContext for WF-CDT-SAVE-DRAFT-20260809-01, then wait for the user to choose the next Checker action before printing and sending its request.",
-  "context_notes": "Phase 6 and the quick scenario-catalog task are complete. Live acceptance is paused with WF-CDT-SAVE-DRAFT-20260809-01 active in CheckerReview version 2, pending CheckerReviewTask 1. Task recipient snapshot is checker@example.test To and cdt.maker1@example.test plus cdt.manager1@example.test Cc. Outbox 1 assignment is Sent by NoOp with no smtp message. Outbox 2 overdue reminder is Sent through SMTP as smtp4dev message d9a07ff6-6733-4171-bffb-2e0cf7a7f986. API PID 7256 listens on 5058 with explicit SMTP configuration; smtp4dev PID 25560 listens on 5000/3025."
+  "next_action": "Run $gsd-resume-work, acknowledge the blocking constraints, verify branch and service state, then take the user's next request.",
+  "context_notes": "Cumulative-audience implementation is complete and published through 8985e17. API PID 17968 and smtp4dev PID 3060 remain running. Do not repeat implementation or disturb unrelated local files."
 }
