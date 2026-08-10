@@ -162,7 +162,7 @@ internal static class PortfolioTradeSeedData
         new("RouteBdrmAssigned", "WorkflowTaskAssigned", "Trade Execution Pending Confirmation", BdrmAssignedBody, BdrmAssignedHtmlBody, "Overdue: "),
         new("RouteWorkflowCompleted", "WorkflowCompleted", "Confirmation that Trade settled in account", WorkflowCompletedBody, WorkflowCompletedHtmlBody, "Overdue: "),
         new("RouteTradingDeskReworkAssigned", "WorkflowTaskAssigned", "Directed Trade Request Pending Rework", TradingDeskReworkAssignedBody, TradingDeskReworkAssignedHtmlBody, "Overdue: "),
-        new("RouteSlaTaskDueToday", "SlaTaskDueToday", "Workflow task due today", SlaTaskDueTodayBody, SlaTaskDueTodayHtmlBody, string.Empty),
+        new("RouteSlaTaskDueToday", "SlaTaskDueToday", "Workflow task due today", SlaTaskDueTodayBody, SlaTaskDueTodayHtmlBody, "Due today: "),
         new("RouteSlaTaskOverdue", "SlaTaskOverdue", "Workflow task overdue", SlaTaskOverdueBody, SlaTaskOverdueHtmlBody, "Overdue: ")
     ];
 

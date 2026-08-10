@@ -340,7 +340,6 @@ public sealed class WorkflowStartInitialActionTests
 
         var slaResult = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(
                 new(DateTimeOffset.Parse("2030-01-20T14:00:00Z")),
                 CancellationToken.None);

@@ -12,7 +12,6 @@ namespace WorkflowEngine.Infrastructure.Sla;
 
 public sealed class RunSlaService(
     WorkflowDbContext dbContext,
-    NotificationTemplateRenderer templateRenderer,
     SlaScheduleCalculator scheduleCalculator) : IRunSlaService
 {
     private static readonly TimeSpan FixedUtcMinusFiveOffset = TimeSpan.FromHours(-5);
@@ -137,27 +136,26 @@ public sealed class RunSlaService(
                     continue;
                 }
 
-                var renderedSubject = templateRenderer.Render(
-                    route.SubjectTemplate,
-                    context,
-                    "workflow.notificationContext");
-                var renderedBody = templateRenderer.Render(
-                    route.BodyTemplate,
-                    context,
-                    "workflow.notificationContext");
-                var renderedHtmlBody = templateRenderer.RenderHtml(
-                    route.HtmlBodyTemplate,
-                    context,
-                    "workflow.notificationContext");
-                var templateErrors = renderedSubject.Errors
-                    .Concat(renderedBody.Errors)
-                    .Concat(renderedHtmlBody.Errors)
-                    .ToArray();
-                if (templateErrors.Length > 0)
+                var primaryEmails = await dbContext.NotificationOutbox
+                    .AsNoTracking()
+                    .Where(outbox =>
+                        outbox.WorkflowTaskId == task.Id
+                        && outbox.SlaReminderKind == null)
+                    .Take(2)
+                    .ToListAsync(cancellationToken);
+                if (primaryEmails.Count != 1)
                 {
                     await transaction.RollbackAsync(CancellationToken.None);
-                    warnings.Add(
-                        $"task {task.Id} SLA notification template missing: {string.Join("; ", templateErrors.Select(error => error.Message))}");
+                    warnings.Add($"task {task.Id} SLA primary task email {(primaryEmails.Count == 0 ? "missing" : "ambiguous")}");
+                    continue;
+                }
+
+                var primaryEmail = primaryEmails[0];
+                var subject = route.OverdueSubjectPrefix + primaryEmail.Subject;
+                if (subject.Length > 300)
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    warnings.Add($"task {task.Id} SLA notification subject exceeds 300 characters");
                     continue;
                 }
 
@@ -173,11 +171,9 @@ public sealed class RunSlaService(
                     BusinessObjectId = instance.BusinessObjectId,
                     NotificationType = route.NotificationType,
                     NotificationRecipientsJson = task.NotificationRecipientsJson,
-                    Subject = occurrence.Kind == "Overdue"
-                        ? route.OverdueSubjectPrefix + renderedSubject.Rendered
-                        : renderedSubject.Rendered,
-                    Body = renderedBody.Rendered,
-                    HtmlBody = renderedHtmlBody.Rendered,
+                    Subject = subject,
+                    Body = primaryEmail.Body,
+                    HtmlBody = primaryEmail.HtmlBody,
                     PayloadJson = JsonSerializer.Serialize(context),
                     Status = "Pending",
                     CorrelationId = $"sla-{schedule.Id}-{occurrence.EligibleAtUtc.UtcTicks}-{occurrence.Kind}",

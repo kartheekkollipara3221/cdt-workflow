@@ -516,7 +516,6 @@ public sealed class WorkflowExecutionValidationTests
 
         var slaResult = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(
                 new RunSlaRequest(Now.AddMinutes(2)),
                 CancellationToken.None);

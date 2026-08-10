@@ -100,12 +100,27 @@ public sealed class WorkflowSlaSynchronizationTests
         dbContext.SaveChanges();
         var task = AddTask(dbContext, "CheckerReviewTask", Now);
         task.NotificationContextJson = """{"tradeLink":"https://example.test/workflows/WF-SLA-1"}""";
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = task.WorkflowInstanceId,
+            WorkflowTaskId = task.Id,
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-SLA-1",
+            NotificationType = "ArbitraryPrimaryTaskEmail",
+            NotificationRecipientsJson = task.NotificationRecipientsJson,
+            Subject = "Original production-cadence assignment",
+            Body = "Original production-cadence plain body",
+            HtmlBody = "<p>Original production-cadence HTML body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = $"primary-{task.Id}",
+            CreatedAtUtc = task.CreatedAtUtc
+        });
         dbContext.SaveChanges();
 
         var result = CreateService(dbContext).Synchronize(Request(task.Id, targetDate: null, "idem-production"));
         var monitor = new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator());
         var first = await monitor.RunAsync(new(Now.AddHours(4)), CancellationToken.None);
         var second = await monitor.RunAsync(new(Now.AddHours(5)), CancellationToken.None);

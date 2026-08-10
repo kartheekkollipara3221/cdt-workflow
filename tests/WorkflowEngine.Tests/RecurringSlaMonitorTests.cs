@@ -43,7 +43,9 @@ public sealed class RecurringSlaMonitorTests
             row.WorkflowTaskSlaScheduleId == schedule.Id
             && row.SlaReminderKind == "DueToday");
         Assert.Equal("SlaTaskDueToday", dueOccurrence.NotificationType);
-        Assert.Equal("Workflow task due today", dueOccurrence.Subject);
+        Assert.Equal("Due today: Original assignment subject", dueOccurrence.Subject);
+        Assert.Equal("Original assignment plain body", dueOccurrence.Body);
+        Assert.Equal("<p>Original assignment HTML body</p>", dueOccurrence.HtmlBody);
         using (var payload = JsonDocument.Parse(dueOccurrence.PayloadJson))
         {
             Assert.Equal("2030-01-18", payload.RootElement.GetProperty("targetDate").GetString());
@@ -52,17 +54,23 @@ public sealed class RecurringSlaMonitorTests
             Assert.Equal("2030-01-18T14:00:00.0000000+00:00", payload.RootElement.GetProperty("dueReminderAtUtc").GetString());
             Assert.Equal("2030-01-19T14:00:00.0000000+00:00", payload.RootElement.GetProperty("overdueAtUtc").GetString());
         }
+        var slaOccurrences = dbContext.NotificationOutbox
+            .Where(row => row.WorkflowTaskSlaScheduleId == schedule.Id)
+            .OrderBy(row => row.SlaOccurrenceDate)
+            .ToArray();
         Assert.Equal(
             [
                 (new DateOnly(2030, 1, 18), "DueToday"),
                 (new DateOnly(2030, 1, 19), "Overdue"),
                 (new DateOnly(2030, 1, 20), "Overdue")
             ],
-            dbContext.NotificationOutbox
-                .Where(row => row.WorkflowTaskSlaScheduleId == schedule.Id)
-                .OrderBy(row => row.SlaOccurrenceDate)
+            slaOccurrences
                 .Select(row => new ValueTuple<DateOnly, string>(row.SlaOccurrenceDate!.Value, row.SlaReminderKind!))
                 .ToArray());
+        Assert.Equal("Overdue: Original assignment subject", slaOccurrences[1].Subject);
+        Assert.Equal("Overdue: Original assignment subject", slaOccurrences[2].Subject);
+        Assert.All(slaOccurrences, row => Assert.Equal("Original assignment plain body", row.Body));
+        Assert.All(slaOccurrences, row => Assert.Equal("<p>Original assignment HTML body</p>", row.HtmlBody));
         Assert.Equal(DateTimeOffset.Parse("2030-01-21T14:00:00Z"), schedule.NextReminderAtUtc);
     }
 
@@ -81,7 +89,7 @@ public sealed class RecurringSlaMonitorTests
         Assert.Equal(1, queued.ScheduleVersion);
         Assert.Equal(new DateOnly(2030, 1, 23), queued.OccurrenceDate);
         Assert.Equal("Overdue", queued.ReminderKind);
-        var occurrence = Assert.Single(dbContext.NotificationOutbox);
+        var occurrence = Assert.Single(dbContext.NotificationOutbox.Where(row => row.SlaReminderKind != null));
         Assert.Equal(DateTimeOffset.Parse("2030-01-23T14:00:00Z"), occurrence.SlaOccurrenceAtUtc);
         Assert.Equal(new DateOnly(2030, 1, 23), occurrence.SlaOccurrenceDate);
         Assert.Equal("Overdue", occurrence.SlaReminderKind);
@@ -137,14 +145,13 @@ public sealed class RecurringSlaMonitorTests
         Assert.Empty(result.QueuedNotifications);
         Assert.Equal("Completed", schedule.Status);
         Assert.Null(schedule.NextReminderAtUtc);
-        Assert.Single(dbContext.NotificationOutbox);
+        Assert.Single(dbContext.NotificationOutbox.Where(row => row.SlaReminderKind != null));
     }
 
     private static RunSlaService CreateRunSlaService(WorkflowDbContext dbContext)
     {
         return new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator());
     }
 
@@ -185,6 +192,23 @@ public sealed class RecurringSlaMonitorTests
             NotificationContextJson = JsonSerializer.Serialize(NotificationContext())
         };
         dbContext.WorkflowTasks.Add(task);
+        dbContext.SaveChanges();
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = task.WorkflowInstanceId,
+            WorkflowTaskId = task.Id,
+            BusinessObjectType = "PortfolioTrade",
+            BusinessObjectId = "PT-RECURRING-SLA-1",
+            NotificationType = "ArbitraryPrimaryTaskEmail",
+            NotificationRecipientsJson = task.NotificationRecipientsJson,
+            Subject = "Original assignment subject",
+            Body = "Original assignment plain body",
+            HtmlBody = "<p>Original assignment HTML body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = $"primary-{task.Id}",
+            CreatedAtUtc = task.CreatedAtUtc
+        });
         dbContext.SaveChanges();
 
         new WorkflowSlaSynchronizationService(

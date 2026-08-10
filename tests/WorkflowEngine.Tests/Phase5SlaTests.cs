@@ -60,7 +60,6 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Equal(4, result.PendingTasksWithSla);
@@ -70,34 +69,10 @@ public sealed class Phase5SlaTests
         Assert.Equal(3, dbContext.NotificationOutbox.Count(row => row.NotificationType == "SlaTaskOverdue"));
         var overdueNotification = dbContext.NotificationOutbox.Single(row =>
             row.WorkflowTaskId == overdue.Id && row.NotificationType == "SlaTaskOverdue");
-        const string requestUrl = "https://sharepoint.example.test/trades/1050";
-        Assert.Equal("Overdue: Workflow task overdue", overdueNotification.Subject);
-        Assert.Contains("WF-PT-1", overdueNotification.Body, StringComparison.Ordinal);
-        Assert.Contains("CheckerReviewTask", overdueNotification.Body, StringComparison.Ordinal);
-        Assert.Contains("Task due date: 01/14/2030", overdueNotification.Body, StringComparison.Ordinal);
-        Assert.Contains("Overdue date: 01/14/2030", overdueNotification.Body, StringComparison.Ordinal);
-        Assert.Contains($"Request link: {requestUrl}", overdueNotification.Body, StringComparison.Ordinal);
-        Assert.Contains("<strong>WF-PT-1</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
-        Assert.Contains("<strong>CheckerReviewTask</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
-        Assert.Contains("Task due date: <strong>01/14/2030</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
-        Assert.Contains("Overdue date: <strong>01/14/2030</strong>", overdueNotification.HtmlBody, StringComparison.Ordinal);
-        Assert.Contains($"<a href=\"{requestUrl}\">Open request</a>", overdueNotification.HtmlBody, StringComparison.Ordinal);
+        Assert.Equal("Overdue: Original CheckerReviewTask subject", overdueNotification.Subject);
+        Assert.Equal("Original CheckerReviewTask plain body", overdueNotification.Body);
+        Assert.Equal("<p>Original CheckerReviewTask HTML body</p>", overdueNotification.HtmlBody);
         Assert.Equal(RecipientSnapshot, overdueNotification.NotificationRecipientsJson);
-
-        foreach (var forbidden in new[]
-                 {
-                     fixedOffsetBoundary.ToString("O"),
-                     "01/14/2030 +00:00",
-                     "01/14/2030 -05:00",
-                     "01/14/2030 UTC",
-                     "01/14/2030 UTC-5",
-                     "01/14/2030 EST",
-                     "01/14/2030 EDT"
-                 })
-        {
-            Assert.DoesNotContain(forbidden, overdueNotification.Body, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain(forbidden, overdueNotification.HtmlBody, StringComparison.OrdinalIgnoreCase);
-        }
 
         using var payload = JsonDocument.Parse(overdueNotification.PayloadJson);
         Assert.False(payload.RootElement.TryGetProperty("ccEmailAddresses", out _));
@@ -106,7 +81,6 @@ public sealed class Phase5SlaTests
 
         var second = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Empty(second.QueuedNotifications);
@@ -128,7 +102,6 @@ public sealed class Phase5SlaTests
         dbContext.SaveChanges();
         var service = new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator());
 
         var first = await service.RunAsync(new(Now), CancellationToken.None);
@@ -191,7 +164,6 @@ public sealed class Phase5SlaTests
             await using var scanContext = new WorkflowDbContext(options);
             return await new RunSlaService(
                 scanContext,
-                new NotificationTemplateRenderer(),
                 new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
         }
 
@@ -228,7 +200,6 @@ public sealed class Phase5SlaTests
 
         var service = new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator());
 
         var first = await service.RunAsync(new(Now), CancellationToken.None);
@@ -287,7 +258,6 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Contains(
@@ -323,7 +293,6 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Contains(
@@ -364,7 +333,6 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
         Assert.Contains(
@@ -382,7 +350,7 @@ public sealed class Phase5SlaTests
     }
 
     [Fact]
-    public async Task RunSlaWarnsAndSkipsWhenOverdueRequestLinkIsMissing()
+    public async Task RunSlaUsesOriginalTaskEmailWhenCurrentContextLacksLegacySlaTemplateToken()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
         var versionId = PortfolioTradeVersionId(dbContext);
@@ -400,21 +368,125 @@ public sealed class Phase5SlaTests
 
         var result = await new RunSlaService(
             dbContext,
-            new NotificationTemplateRenderer(),
             new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
 
-        Assert.Contains(
-            result.Warnings,
-            warning => warning.StartsWith(
-                    $"task {task.Id} SLA notification template missing:",
-                    StringComparison.Ordinal)
-                && warning.Contains(
-                    "Template token 'tradeLink' requires workflow.notificationContext.tradeLink.",
-                    StringComparison.Ordinal));
-        Assert.Empty(result.QueuedNotifications);
-        Assert.DoesNotContain(
+        Assert.Empty(result.Warnings);
+        Assert.Single(result.QueuedNotifications);
+        var notification = Assert.Single(
             dbContext.NotificationOutbox,
             row => row.WorkflowTaskId == task.Id && row.NotificationType == "SlaTaskOverdue");
+        Assert.Equal("Overdue: Original CheckerReviewTask subject", notification.Subject);
+        Assert.Equal("Original CheckerReviewTask plain body", notification.Body);
+        Assert.Equal("<p>Original CheckerReviewTask HTML body</p>", notification.HtmlBody);
+    }
+
+    [Fact]
+    public async Task RunSlaWarnsAndDoesNotAdvanceWhenPrimaryTaskEmailIsMissing()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-MISSING-PRIMARY", "PT-MISSING-PRIMARY", "Active", versionId);
+        var task = AddTask(
+            dbContext,
+            "WF-PT-MISSING-PRIMARY",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-5));
+        var primary = Assert.Single(dbContext.NotificationOutbox.Local, row => row.WorkflowTaskId == task.Id);
+        dbContext.NotificationOutbox.Remove(primary);
+        dbContext.SaveChanges();
+        var schedule = dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == task.Id);
+        var originalNextReminderAtUtc = schedule.NextReminderAtUtc;
+
+        var result = await new RunSlaService(
+            dbContext,
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+
+        Assert.Empty(result.QueuedNotifications);
+        Assert.Contains(result.Warnings, warning =>
+            warning == $"task {task.Id} SLA primary task email missing");
+        Assert.Equal(originalNextReminderAtUtc, schedule.NextReminderAtUtc);
+        Assert.DoesNotContain(dbContext.NotificationOutbox, row =>
+            row.WorkflowTaskId == task.Id && row.SlaReminderKind != null);
+    }
+
+    [Fact]
+    public async Task RunSlaWarnsAndDoesNotAdvanceWhenPrimaryTaskEmailIsAmbiguous()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-AMBIGUOUS-PRIMARY", "PT-AMBIGUOUS-PRIMARY", "Active", versionId);
+        var task = AddTask(
+            dbContext,
+            "WF-PT-AMBIGUOUS-PRIMARY",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-5));
+        dbContext.SaveChanges();
+        var primary = dbContext.NotificationOutbox.Single(row =>
+            row.WorkflowTaskId == task.Id && row.SlaReminderKind == null);
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = primary.WorkflowInstanceId,
+            WorkflowTaskId = primary.WorkflowTaskId,
+            BusinessObjectType = primary.BusinessObjectType,
+            BusinessObjectId = primary.BusinessObjectId,
+            NotificationType = "SecondArbitraryPrimaryTaskEmail",
+            NotificationRecipientsJson = primary.NotificationRecipientsJson,
+            Subject = "Second original subject",
+            Body = "Second original plain body",
+            HtmlBody = "<p>Second original HTML body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = $"second-primary-{task.Id}",
+            CreatedAtUtc = primary.CreatedAtUtc
+        });
+        dbContext.SaveChanges();
+        var schedule = dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == task.Id);
+        var originalNextReminderAtUtc = schedule.NextReminderAtUtc;
+
+        var result = await new RunSlaService(
+            dbContext,
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+
+        Assert.Empty(result.QueuedNotifications);
+        Assert.Contains(result.Warnings, warning =>
+            warning == $"task {task.Id} SLA primary task email ambiguous");
+        Assert.Equal(originalNextReminderAtUtc, schedule.NextReminderAtUtc);
+        Assert.DoesNotContain(dbContext.NotificationOutbox, row =>
+            row.WorkflowTaskId == task.Id && row.SlaReminderKind != null);
+    }
+
+    [Fact]
+    public async Task RunSlaWarnsAndDoesNotAdvanceWhenPrefixedSubjectExceedsLimit()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-PT-LONG-PRIMARY", "PT-LONG-PRIMARY", "Active", versionId);
+        var task = AddTask(
+            dbContext,
+            "WF-PT-LONG-PRIMARY",
+            "CheckerReviewTask",
+            "Checker",
+            Now.AddMinutes(-5));
+        dbContext.SaveChanges();
+        var primary = dbContext.NotificationOutbox.Single(row =>
+            row.WorkflowTaskId == task.Id && row.SlaReminderKind == null);
+        primary.Subject = new string('x', 300);
+        dbContext.SaveChanges();
+        var schedule = dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == task.Id);
+        var originalNextReminderAtUtc = schedule.NextReminderAtUtc;
+
+        var result = await new RunSlaService(
+            dbContext,
+            new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+
+        Assert.Empty(result.QueuedNotifications);
+        Assert.Contains(result.Warnings, warning =>
+            warning == $"task {task.Id} SLA notification subject exceeds 300 characters");
+        Assert.Equal(originalNextReminderAtUtc, schedule.NextReminderAtUtc);
+        Assert.DoesNotContain(dbContext.NotificationOutbox, row =>
+            row.WorkflowTaskId == task.Id && row.SlaReminderKind != null);
     }
 
     private static void AddInstance(WorkflowDbContext dbContext, string workflowInstanceId, string businessObjectId, string status, long versionId)
@@ -495,6 +567,26 @@ public sealed class Phase5SlaTests
                 CreatedByUserId = "system",
                 CorrelationId = $"corr-{workflowInstanceId}",
                 IdempotencyKey = $"idem-{workflowInstanceId}"
+            });
+        }
+
+        if (storeNotificationSnapshot)
+        {
+            dbContext.NotificationOutbox.Add(new NotificationOutbox
+            {
+                WorkflowInstanceId = workflowInstanceId,
+                WorkflowTaskId = task.Id,
+                BusinessObjectType = "PortfolioTrade",
+                BusinessObjectId = workflowInstanceId.Replace("WF-", string.Empty, StringComparison.Ordinal),
+                NotificationType = "ArbitraryPrimaryTaskEmail",
+                NotificationRecipientsJson = task.NotificationRecipientsJson,
+                Subject = $"Original {taskKey} subject",
+                Body = $"Original {taskKey} plain body",
+                HtmlBody = $"<p>Original {taskKey} HTML body</p>",
+                PayloadJson = "{}",
+                Status = "Pending",
+                CorrelationId = $"primary-{task.Id}",
+                CreatedAtUtc = task.CreatedAtUtc
             });
         }
 

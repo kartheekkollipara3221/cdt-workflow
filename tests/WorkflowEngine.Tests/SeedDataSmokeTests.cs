@@ -194,6 +194,9 @@ public sealed class SeedDataSmokeTests
         Assert.Contains("<strong>{{recipientDisplayName}}</strong>", returned.HtmlBodyTemplate, StringComparison.Ordinal);
 
         var overdue = routes["RouteSlaTaskOverdue"];
+        var dueToday = routes["RouteSlaTaskDueToday"];
+        Assert.Equal("Due today: ", dueToday.OverdueSubjectPrefix);
+        Assert.Equal("Overdue: ", overdue.OverdueSubjectPrefix);
         Assert.Contains("{{dueDateDisplay}}", overdue.BodyTemplate, StringComparison.Ordinal);
         Assert.Contains("{{overdueDateDisplay}}", overdue.BodyTemplate, StringComparison.Ordinal);
         Assert.Contains("{{tradeLink}}", overdue.BodyTemplate, StringComparison.Ordinal);
