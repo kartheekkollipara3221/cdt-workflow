@@ -169,18 +169,27 @@ internal static class PortfolioTradeSeedData
     public static readonly NotificationRecipientRuleSeed[] NotificationRecipientRules =
     [
         new("RouteCheckerAssignedOnSubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
-        new("RouteCheckerAssignedOnSubmit", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
+        new("RouteCheckerAssignedOnSubmit", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+        new("RouteCheckerAssignedOnSubmit", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
         new("RouteCheckerAssignedOnResubmit", "To", "StaticAddress", null, "checker@example.test", 1, true),
+        new("RouteCheckerAssignedOnResubmit", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+        new("RouteCheckerAssignedOnResubmit", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
         new("RouteReturnedToMakerFromChecker", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
         new("RouteReturnedToMakerFromChecker", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
         new("RouteReturnedToMakerFromChecker", "Cc", "StaticAddress", null, "workflow-operations@example.test", 3, false),
         new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
+        new("RouteTradingDeskAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+        new("RouteTradingDeskAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
         new("RouteReturnedToMakerFromTradingDesk", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
+        new("RouteReturnedToMakerFromTradingDesk", "Cc", "RequestInput", "selectedCcUsers", null, 2, false),
         new("RouteBdrmAssigned", "To", "StaticAddress", null, "bdrm-client-service@example.test", 1, true),
         new("RouteBdrmAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
         new("RouteBdrmAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
         new("RouteTradingDeskReworkAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
-        new("RouteWorkflowCompleted", "To", "WorkflowParticipant", "originalMaker", null, 1, true)
+        new("RouteTradingDeskReworkAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+        new("RouteTradingDeskReworkAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
+        new("RouteWorkflowCompleted", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
+        new("RouteWorkflowCompleted", "Cc", "RequestInput", "selectedCcUsers", null, 2, false)
     ];
 
     public static readonly TaskAssignmentRoleSeed[] TaskAssignmentRoles =

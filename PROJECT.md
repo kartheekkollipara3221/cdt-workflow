@@ -1354,22 +1354,33 @@ Seed these ordered recipient rules. `.example.test` values are sample metadata, 
 | RouteKey | Order | Kind | SourceType | Source value | Required |
 |---|---:|---|---|---|---|
 | `RouteCheckerAssignedOnSubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Yes |
-| `RouteCheckerAssignedOnSubmit` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
+| `RouteCheckerAssignedOnSubmit` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteCheckerAssignedOnSubmit` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteCheckerAssignedOnResubmit` | 1 | To | `StaticAddress` | `checker@example.test` | Yes |
+| `RouteCheckerAssignedOnResubmit` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteCheckerAssignedOnResubmit` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteReturnedToMakerFromChecker` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
 | `RouteReturnedToMakerFromChecker` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteReturnedToMakerFromChecker` | 3 | Cc | `StaticAddress` | `workflow-operations@example.test` | No |
 | `RouteTradingDeskAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
+| `RouteTradingDeskAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteTradingDeskAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteReturnedToMakerFromTradingDesk` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteReturnedToMakerFromTradingDesk` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteBdrmAssigned` | 1 | To | `StaticAddress` | `bdrm-client-service@example.test` | Yes |
 | `RouteBdrmAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
 | `RouteBdrmAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteTradingDeskReworkAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
+| `RouteTradingDeskReworkAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteTradingDeskReworkAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteWorkflowCompleted` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteWorkflowCompleted` | 2 | Cc | `RequestInput` | `selectedCcUsers` | No |
 
 SLA routes have no recipient rules because `run-sla` copies the saved task snapshot unchanged. `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are removed from the active schema; there is no legacy role or user fallback.
 
-For either `TradingTradeExecuted` transition, the calling application supplies the Checker and any other intended copied recipients under `notification.recipientInputs.selectedCcUsers`. `RouteBdrmAssigned` keeps BDRM/Client Service as the sole `To`, resolves the persisted immutable `originalMaker` as required `Cc`, and appends the optional caller-owned list as additional `Cc` recipients.
+`selectedCcUsers` is the caller-owned complete cumulative audience snapshot for the current notification-producing action, not a delta from the previous action. The calling application includes the acting Checker, Trader, or BDRM/Client Service user and anyone added along the way when they must remain copied. It supplies ready-to-send opaque email addresses; the engine does not perform directory lookup or accumulate prior request inputs. Assignment routes keep the current metadata task owner as `To`, resolve the immutable `originalMaker` as required `Cc`, and append `selectedCcUsers`. Return and completion routes place `originalMaker` in `To` and append `selectedCcUsers` in `Cc`. Normal route ordering, case-insensitive deduplication, first opaque value retention, and `To` precedence still apply.
+
+Each action resolves and persists a new task/outbox recipient snapshot without modifying historical rows. SLA due-today and overdue notifications copy the applicable task snapshot unchanged.
 
 ### `verify-seed` validations
 
