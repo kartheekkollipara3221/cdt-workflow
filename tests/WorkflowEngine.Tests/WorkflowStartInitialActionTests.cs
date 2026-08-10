@@ -56,7 +56,7 @@ public sealed class WorkflowStartInitialActionTests
             WorkflowJson.Options);
         Assert.NotNull(recipients);
         Assert.Equal(["checker@example.test"], recipients.ToEmailAddresses);
-        Assert.Equal(["manager@example.test"], recipients.CcEmailAddresses);
+        Assert.Equal(["maker-opaque", "manager@example.test"], recipients.CcEmailAddresses);
         Assert.Equal(task.NotificationRecipientsJson, Assert.Single(dbContext.NotificationOutbox).NotificationRecipientsJson);
     }
 

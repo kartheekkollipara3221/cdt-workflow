@@ -76,9 +76,9 @@ public sealed class NotificationRecipientResolverTests
     }
 
     [Fact]
-    public void ResolveStaticRouteAcceptsOptionalRequestInputAndPreservesInputOrder()
+    public void ResolveAssignmentRouteIncludesMakerAndPreservesOptionalInputOrder()
     {
-        using var dbContext = CreateContextWithMaker(null);
+        using var dbContext = CreateContextWithMaker("maker@example.test");
         var input = new WorkflowNotificationInput
         {
             RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
@@ -98,7 +98,7 @@ public sealed class NotificationRecipientResolverTests
 
         Assert.Empty(result.Errors);
         Assert.Equal(["checker@example.test"], result.Recipients.ToEmailAddresses);
-        Assert.Equal(["first", "second"], result.Recipients.CcEmailAddresses);
+        Assert.Equal(["maker@example.test", "first", "second"], result.Recipients.CcEmailAddresses);
     }
 
     private static WorkflowDbContext CreateContextWithMaker(string? makerAddress)
