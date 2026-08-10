@@ -380,6 +380,81 @@ public sealed class WorkflowExecutionValidationTests
     }
 
     [Fact]
+    public void SubmitForCheckerResolvesOwnerMakerAndCumulativeAudience()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        AddOriginalMaker(dbContext);
+        dbContext.SaveChanges();
+        var request = Request(Envelope()) with
+        {
+            NotificationInput = NotificationInput(
+                new("maker-copy", "MAKER@example.test", "Maker Duplicate"),
+                new("checker-copy", "CHECKER@example.test", "Checker Duplicate"),
+                new("manager1", "Manager@example.test", "Manager One"),
+                new("manager-duplicate", "manager@EXAMPLE.TEST", "Manager Duplicate"))
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.True(result.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks.Where(row =>
+            row.TaskKey == "CheckerReviewTask"
+            && row.Status == "Pending"));
+        AssertRecipientSnapshot(
+            task.NotificationRecipientsJson,
+            ["checker@example.test"],
+            ["maker@example.test", "Manager@example.test"]);
+        var assignment = Assert.Single(dbContext.NotificationOutbox.Where(row =>
+            row.WorkflowTaskId == task.Id
+            && row.NotificationType == "WorkflowTaskAssigned"));
+        Assert.Equal(task.NotificationRecipientsJson, assignment.NotificationRecipientsJson);
+    }
+
+    [Fact]
+    public void CheckerSendToTradingDeskResolvesOwnerMakerAndCumulativeAudience()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "CheckerReview", "Active", 2);
+        AddTask(dbContext, "WF-PT-1001", "CheckerReviewTask", "Checker");
+        AddOriginalMaker(dbContext);
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "CheckerReview",
+            expectedVersion: 2,
+            actionKey: "CheckerSendToTradingDesk",
+            roles: ["Checker"]);
+        envelope.Actor!.UserId = "checker1";
+        envelope.Workflow!.ExpectedCurrentTaskKey = "CheckerReviewTask";
+        envelope.Workflow.AssignedRoleKey = "TradingDeskTaxable";
+        envelope.Workflow.SlaInput = new WorkflowSlaInput
+        {
+            TargetDate = new DateOnly(2030, 1, 20)
+        };
+        var request = Request(envelope) with
+        {
+            NotificationInput = NotificationInput(
+                new("manager1", "manager@example.test", "Manager One"),
+                new("checker1", "checker@example.test", "Checker One"))
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.True(result.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks.Where(row =>
+            row.TaskKey == "TradingDeskReviewTask"
+            && row.Status == "Pending"));
+        AssertRecipientSnapshot(
+            task.NotificationRecipientsJson,
+            ["trading-desk@example.test"],
+            ["maker@example.test", "manager@example.test", "checker@example.test"]);
+        var assignment = Assert.Single(dbContext.NotificationOutbox.Where(row =>
+            row.WorkflowTaskId == task.Id
+            && row.NotificationType == "WorkflowTaskAssigned"));
+        Assert.Equal(task.NotificationRecipientsJson, assignment.NotificationRecipientsJson);
+    }
+
+    [Fact]
     public async Task TradingTradeExecutedResolvesBdrmAudienceAndSlaReusesSnapshot()
     {
         using var dbContext = CreateSeededContext();
@@ -411,8 +486,9 @@ public sealed class WorkflowExecutionValidationTests
                 {
                     ["selectedCcUsers"] =
                     [
+                        new("manager1", "manager@example.test", "Manager One"),
                         new("checker1", "checker@example.test", "Checker One"),
-                        new("manager1", "manager@example.test", "Manager One")
+                        new("trader1", "trader@example.test", "Trader One")
                     ]
                 },
                 TemplateData = NotificationContext()
@@ -431,7 +507,7 @@ public sealed class WorkflowExecutionValidationTests
         Assert.NotNull(recipients);
         Assert.Equal(["bdrm-client-service@example.test"], recipients.ToEmailAddresses);
         Assert.Equal(
-            ["maker@example.test", "checker@example.test", "manager@example.test"],
+            ["maker@example.test", "manager@example.test", "checker@example.test", "trader@example.test"],
             recipients.CcEmailAddresses);
         var assignment = Assert.Single(dbContext.NotificationOutbox.Where(row =>
             row.WorkflowTaskId == task.Id
@@ -451,6 +527,132 @@ public sealed class WorkflowExecutionValidationTests
             row.Id == queued.NotificationOutboxId);
         Assert.Equal("SlaTaskOverdue", overdue.NotificationType);
         Assert.Equal(task.NotificationRecipientsJson, overdue.NotificationRecipientsJson);
+    }
+
+    [Fact]
+    public void TradingReturnToMakerCopiesCompleteCumulativeAudience()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "TradingDeskReview", "Active", 3);
+        AddTask(dbContext, "WF-PT-1001", "TradingDeskReviewTask", "TradingDeskTaxable");
+        AddOriginalMaker(dbContext);
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "TradingDeskReview",
+            expectedVersion: 3,
+            actionKey: "TradingReturnToMaker",
+            roles: ["TradingDesk"]);
+        envelope.Actor!.UserId = "trader1";
+        envelope.Workflow!.ExpectedCurrentTaskKey = "TradingDeskReviewTask";
+        var request = Request(envelope) with
+        {
+            NotificationInput = NotificationInput(
+                new("manager1", "manager@example.test", "Manager One"),
+                new("checker1", "checker@example.test", "Checker One"),
+                new("trader1", "trader@example.test", "Trader One"))
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.True(result.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks.Where(row =>
+            row.TaskKey == "MakerReworkTask"
+            && row.Status == "Pending"));
+        AssertRecipientSnapshot(
+            task.NotificationRecipientsJson,
+            ["maker@example.test"],
+            ["manager@example.test", "checker@example.test", "trader@example.test"]);
+        var notification = Assert.Single(dbContext.NotificationOutbox.Where(row =>
+            row.WorkflowTaskId == task.Id
+            && row.NotificationType == "WorkflowReturnedToMaker"));
+        Assert.Equal(task.NotificationRecipientsJson, notification.NotificationRecipientsJson);
+    }
+
+    [Fact]
+    public void BdrmReworkAssignmentCopiesCompleteCumulativeAudience()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "BdrmClientServiceReview", "Active", 4);
+        AddTask(dbContext, "WF-PT-1001", "BdrmClientServiceReviewTask", "BDRMClientService");
+        AddOriginalMaker(dbContext);
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "BdrmClientServiceReview",
+            expectedVersion: 4,
+            actionKey: "BdrmTradeNotExecutedProperly",
+            roles: ["BDRMClientService"]);
+        envelope.Actor!.UserId = "bdrm1";
+        envelope.Workflow!.ExpectedCurrentTaskKey = "BdrmClientServiceReviewTask";
+        var request = Request(envelope) with
+        {
+            NotificationInput = NotificationInput(
+                new("manager1", "manager@example.test", "Manager One"),
+                new("checker1", "checker@example.test", "Checker One"),
+                new("trader1", "trader@example.test", "Trader One"),
+                new("bdrm1", "bdrm@example.test", "BDRM One"))
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.True(result.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks.Where(row =>
+            row.TaskKey == "TradingDeskReworkTask"
+            && row.Status == "Pending"));
+        AssertRecipientSnapshot(
+            task.NotificationRecipientsJson,
+            ["trading-desk@example.test"],
+            [
+                "maker@example.test",
+                "manager@example.test",
+                "checker@example.test",
+                "trader@example.test",
+                "bdrm@example.test"
+            ]);
+        var notification = Assert.Single(dbContext.NotificationOutbox.Where(row =>
+            row.WorkflowTaskId == task.Id
+            && row.NotificationType == "WorkflowTaskAssigned"));
+        Assert.Equal(task.NotificationRecipientsJson, notification.NotificationRecipientsJson);
+    }
+
+    [Fact]
+    public void BdrmCompletionCopiesCompleteCumulativeAudience()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "BdrmClientServiceReview", "Active", 4);
+        AddTask(dbContext, "WF-PT-1001", "BdrmClientServiceReviewTask", "BDRMClientService");
+        AddOriginalMaker(dbContext);
+        dbContext.SaveChanges();
+        var envelope = Envelope(
+            expectedState: "BdrmClientServiceReview",
+            expectedVersion: 4,
+            actionKey: "BdrmTradeFulfilled",
+            roles: ["BDRMClientService"]);
+        envelope.Actor!.UserId = "bdrm1";
+        envelope.Workflow!.ExpectedCurrentTaskKey = "BdrmClientServiceReviewTask";
+        var request = Request(envelope) with
+        {
+            NotificationInput = NotificationInput(
+                new("manager1", "manager@example.test", "Manager One"),
+                new("checker1", "checker@example.test", "Checker One"),
+                new("trader1", "trader@example.test", "Trader One"),
+                new("bdrm1", "bdrm@example.test", "BDRM One"))
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.True(result.Result.Success);
+        Assert.Equal("Completed", dbContext.WorkflowInstances.Single().Status);
+        var notification = Assert.Single(dbContext.NotificationOutbox.Where(row =>
+            row.NotificationType == "WorkflowCompleted"));
+        AssertRecipientSnapshot(
+            notification.NotificationRecipientsJson,
+            ["maker@example.test"],
+            [
+                "manager@example.test",
+                "checker@example.test",
+                "trader@example.test",
+                "bdrm@example.test"
+            ]);
     }
 
     [Fact]
@@ -777,6 +979,45 @@ public sealed class WorkflowExecutionValidationTests
             Status = "Pending",
             CreatedAtUtc = Now
         });
+    }
+
+    private static void AddOriginalMaker(WorkflowDbContext dbContext)
+    {
+        dbContext.WorkflowParticipants.Add(new WorkflowParticipant
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ParticipantKey = "originalMaker",
+            UserId = "maker1",
+            EmailAddress = "maker@example.test",
+            DisplayName = "Maker One",
+            SortOrder = 1,
+            CreatedAtUtc = Now
+        });
+    }
+
+    private static WorkflowNotificationInput NotificationInput(params WorkflowRecipientInput[] recipients)
+    {
+        return new WorkflowNotificationInput
+        {
+            RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+            {
+                ["selectedCcUsers"] = recipients
+            },
+            TemplateData = NotificationContext()
+        };
+    }
+
+    private static void AssertRecipientSnapshot(
+        string notificationRecipientsJson,
+        string[] expectedTo,
+        string[] expectedCc)
+    {
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            notificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(expectedTo, recipients.ToEmailAddresses);
+        Assert.Equal(expectedCc, recipients.CcEmailAddresses);
     }
 
     private static WorkflowTaskSlaSchedule AddBdrmSchedule(
