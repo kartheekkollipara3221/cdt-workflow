@@ -119,7 +119,7 @@ public sealed class SeedDataSmokeTests
                 rule.IsRequired
             }).ToList();
 
-        Assert.Equal(11, rules.Count);
+        Assert.Equal(13, rules.Count);
         Assert.Contains(rules, row =>
             row.RouteKey == "RouteCheckerAssignedOnSubmit"
             && row.RecipientKind == "Cc"
@@ -142,6 +142,33 @@ public sealed class SeedDataSmokeTests
             && row.RecipientKind == "To"
             && row.SourceType == "StaticAddress"
             && row.StaticAddress == "trading-desk@example.test");
+        var bdrmRules = rules
+            .Where(row => row.RouteKey == "RouteBdrmAssigned")
+            .OrderBy(row => row.SortOrder)
+            .ToArray();
+        Assert.Collection(
+            bdrmRules,
+            row =>
+            {
+                Assert.Equal("To", row.RecipientKind);
+                Assert.Equal("StaticAddress", row.SourceType);
+                Assert.Equal("bdrm-client-service@example.test", row.StaticAddress);
+                Assert.True(row.IsRequired);
+            },
+            row =>
+            {
+                Assert.Equal("Cc", row.RecipientKind);
+                Assert.Equal("WorkflowParticipant", row.SourceType);
+                Assert.Equal("originalMaker", row.SourceKey);
+                Assert.True(row.IsRequired);
+            },
+            row =>
+            {
+                Assert.Equal("Cc", row.RecipientKind);
+                Assert.Equal("RequestInput", row.SourceType);
+                Assert.Equal("selectedCcUsers", row.SourceKey);
+                Assert.False(row.IsRequired);
+            });
         Assert.DoesNotContain(rules, row =>
             row.RouteKey is "RouteSlaTaskDueToday" or "RouteSlaTaskOverdue");
 

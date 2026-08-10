@@ -5,10 +5,12 @@ using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 using WorkflowEngine.Infrastructure.Persistence.Seed;
+using WorkflowEngine.Infrastructure.Sla;
 using WorkflowEngine.Infrastructure.WorkflowContext;
 using WorkflowEngine.Infrastructure.WorkflowExecution;
 
@@ -375,6 +377,80 @@ public sealed class WorkflowExecutionValidationTests
             ["manager@example.test", "workflow-operations@example.test"],
             recipients.CcEmailAddresses);
         Assert.Equal(task.NotificationRecipientsJson, Assert.Single(dbContext.NotificationOutbox).NotificationRecipientsJson);
+    }
+
+    [Fact]
+    public async Task TradingTradeExecutedResolvesBdrmAudienceAndSlaReusesSnapshot()
+    {
+        using var dbContext = CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "TradingDeskReview", "Active", 3);
+        AddTask(dbContext, "WF-PT-1001", "TradingDeskReviewTask", "TradingDesk");
+        dbContext.WorkflowParticipants.Add(new WorkflowParticipant
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            ParticipantKey = "originalMaker",
+            UserId = "maker1",
+            EmailAddress = "maker@example.test",
+            DisplayName = "Maker One",
+            SortOrder = 1,
+            CreatedAtUtc = Now
+        });
+        dbContext.SaveChanges();
+
+        var envelope = Envelope(
+            expectedState: "TradingDeskReview",
+            expectedVersion: 3,
+            actionKey: "TradingTradeExecuted",
+            roles: ["TradingDesk"]);
+        envelope.Workflow!.ExpectedCurrentTaskKey = "TradingDeskReviewTask";
+        var request = Request(envelope) with
+        {
+            NotificationInput = new WorkflowNotificationInput
+            {
+                RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+                {
+                    ["selectedCcUsers"] =
+                    [
+                        new("checker1", "checker@example.test", "Checker One"),
+                        new("manager1", "manager@example.test", "Manager One")
+                    ]
+                },
+                TemplateData = NotificationContext()
+            }
+        };
+
+        var result = CreateService(dbContext).Execute(request);
+
+        Assert.True(result.Result.Success);
+        var task = Assert.Single(dbContext.WorkflowTasks.Where(row =>
+            row.TaskKey == "BdrmClientServiceReviewTask"
+            && row.Status == "Pending"));
+        var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
+            task.NotificationRecipientsJson,
+            WorkflowJson.Options);
+        Assert.NotNull(recipients);
+        Assert.Equal(["bdrm-client-service@example.test"], recipients.ToEmailAddresses);
+        Assert.Equal(
+            ["maker@example.test", "checker@example.test", "manager@example.test"],
+            recipients.CcEmailAddresses);
+        var assignment = Assert.Single(dbContext.NotificationOutbox.Where(row =>
+            row.WorkflowTaskId == task.Id
+            && row.NotificationType == "WorkflowTaskAssigned"));
+        Assert.Equal(task.NotificationRecipientsJson, assignment.NotificationRecipientsJson);
+
+        var slaResult = await new RunSlaService(
+            dbContext,
+            new NotificationTemplateRenderer(),
+            new SlaScheduleCalculator()).RunAsync(
+                new RunSlaRequest(Now.AddMinutes(2)),
+                CancellationToken.None);
+
+        var queued = Assert.Single(slaResult.QueuedNotifications);
+        Assert.Equal("Overdue", queued.ReminderKind);
+        var overdue = dbContext.NotificationOutbox.Single(row =>
+            row.Id == queued.NotificationOutboxId);
+        Assert.Equal("SlaTaskOverdue", overdue.NotificationType);
+        Assert.Equal(task.NotificationRecipientsJson, overdue.NotificationRecipientsJson);
     }
 
     [Fact]

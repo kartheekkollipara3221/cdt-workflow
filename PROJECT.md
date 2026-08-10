@@ -1362,10 +1362,14 @@ Seed these ordered recipient rules. `.example.test` values are sample metadata, 
 | `RouteTradingDeskAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
 | `RouteReturnedToMakerFromTradingDesk` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
 | `RouteBdrmAssigned` | 1 | To | `StaticAddress` | `bdrm-client-service@example.test` | Yes |
+| `RouteBdrmAssigned` | 2 | Cc | `WorkflowParticipant` | `originalMaker` | Yes |
+| `RouteBdrmAssigned` | 3 | Cc | `RequestInput` | `selectedCcUsers` | No |
 | `RouteTradingDeskReworkAssigned` | 1 | To | `StaticAddress` | `trading-desk@example.test` | Yes |
 | `RouteWorkflowCompleted` | 1 | To | `WorkflowParticipant` | `originalMaker` | Yes |
 
 SLA routes have no recipient rules because `run-sla` copies the saved task snapshot unchanged. `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are removed from the active schema; there is no legacy role or user fallback.
+
+For either `TradingTradeExecuted` transition, the calling application supplies the Checker and any other intended copied recipients under `notification.recipientInputs.selectedCcUsers`. `RouteBdrmAssigned` keeps BDRM/Client Service as the sole `To`, resolves the persisted immutable `originalMaker` as required `Cc`, and appends the optional caller-owned list as additional `Cc` recipients.
 
 ### `verify-seed` validations
 
@@ -2029,7 +2033,8 @@ TradingReturnToMaker
   -> resolve RouteReturnedToMakerFromTradingDesk rules, including immutable originalMaker, and queue WorkflowReturnedToMaker
 
 TradingTradeExecuted (from TradingDeskReview or TradingDeskRework)
-  -> resolve RouteBdrmAssigned rules, snapshot recipients, and queue WorkflowTaskAssigned
+  -> resolve RouteBdrmAssigned rules with BDRM as To, persisted originalMaker as Cc, and optional selectedCcUsers as additional Cc
+  -> snapshot recipients and queue WorkflowTaskAssigned
 
 BdrmTradeNotExecutedProperly
   -> resolve RouteTradingDeskReworkAssigned rules, snapshot recipients, and queue WorkflowTaskAssigned

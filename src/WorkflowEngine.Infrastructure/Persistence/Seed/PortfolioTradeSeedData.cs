@@ -177,6 +177,8 @@ internal static class PortfolioTradeSeedData
         new("RouteTradingDeskAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
         new("RouteReturnedToMakerFromTradingDesk", "To", "WorkflowParticipant", "originalMaker", null, 1, true),
         new("RouteBdrmAssigned", "To", "StaticAddress", null, "bdrm-client-service@example.test", 1, true),
+        new("RouteBdrmAssigned", "Cc", "WorkflowParticipant", "originalMaker", null, 2, true),
+        new("RouteBdrmAssigned", "Cc", "RequestInput", "selectedCcUsers", null, 3, false),
         new("RouteTradingDeskReworkAssigned", "To", "StaticAddress", null, "trading-desk@example.test", 1, true),
         new("RouteWorkflowCompleted", "To", "WorkflowParticipant", "originalMaker", null, 1, true)
     ];
