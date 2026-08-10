@@ -65,6 +65,24 @@ public sealed class WorkflowScenarioSampleTests
         }
     }
 
+    [Theory]
+    [InlineData("15-trading-desk-trade-executed")]
+    [InlineData("18-trading-desk-rework-trade-executed")]
+    public void TradingExecutionScenariosSupplySelectedCcUsers(string directoryName)
+    {
+        var json = File.ReadAllText(Path.Combine(ScenarioRoot(), directoryName, "request.json"));
+        var request = JsonSerializer.Deserialize<WorkflowActionRequest>(json);
+
+        var recipients = request?.Notification?.RecipientInputs?["selectedCcUsers"] ?? [];
+        Assert.Equal(2, recipients.Count);
+        Assert.All(recipients, recipient =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(recipient.UserId));
+            Assert.False(string.IsNullOrWhiteSpace(recipient.EmailAddress));
+            Assert.False(string.IsNullOrWhiteSpace(recipient.DisplayName));
+        });
+    }
+
     private static void VerifyScenarioPack(string scenarioRoot, ScenarioExpectation expectation)
     {
         var directory = Path.Combine(scenarioRoot, expectation.DirectoryName);

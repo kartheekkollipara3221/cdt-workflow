@@ -2,6 +2,20 @@
   "workflowInstanceId": "{{workflowInstanceId}}",
   "actionKey": "TradingTradeExecuted",
   "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "checker.scenario",
+          "emailAddress": "checker.scenario@example.test",
+          "displayName": "Scenario Checker"
+        },
+        {
+          "userId": "manager.scenario",
+          "emailAddress": "manager.scenario@example.test",
+          "displayName": "Scenario Manager"
+        }
+      ]
+    },
     "templateData": {
       "accountShortName": "API015",
       "accountDisplayName": "Scenario Executed Account",
