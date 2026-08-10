@@ -10,13 +10,13 @@ The workflow is in `TradingDeskRework` with one pending `TradingDeskReworkTask`;
 ## Request notes
 
 The JSON is the public Workflow Action DTO only. Actor identity is supplied by the trusted headers in `request.http`.
-The calling application supplies the Checker and any other intended copied recipients under `notification.recipientInputs.selectedCcUsers`; it does not resend the immutable original Maker.
+The calling application supplies the complete cumulative Cc snapshot under `notification.recipientInputs.selectedCcUsers`, not a delta. This pack carries Scenario Manager, Scenario Checker, Scenario Trader, and Scenario BDRM Reviewer; it does not resend the immutable original Maker.
 
 ## Expected effects
 
 - Closes `TradingDeskReworkTask`, cancels its SLA schedule, and moves the workflow back to `BdrmClientServiceReview`.
 - Creates a new pending `BdrmClientServiceReviewTask` with the configured recurring overdue-reminder schedule.
-- Queues `RouteBdrmAssigned` with BDRM/Client Service as `To`, persisted original Maker as required `Cc`, and the supplied `selectedCcUsers` as additional `Cc` recipients.
+- Queues `RouteBdrmAssigned` with BDRM/Client Service in To and persisted original Maker, Scenario Manager, Scenario Checker, Scenario Trader, and Scenario BDRM Reviewer in Cc.
 - Saves that final recipient snapshot on the new BDRM task so every later BDRM overdue reminder reuses it unchanged.
 
 ## Next valid packs

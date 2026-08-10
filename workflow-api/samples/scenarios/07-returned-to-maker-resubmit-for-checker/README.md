@@ -10,12 +10,14 @@ The workflow is in `ReturnedToMaker` with one pending `MakerReworkTask`; pack 08
 ## Request notes
 
 The JSON is the public Workflow Action DTO only. Actor identity is supplied by the trusted headers in `request.http`.
+`selectedCcUsers` is the complete cumulative Cc snapshot for this action, not a delta; it carries Scenario Manager and Scenario Checker forward.
 
 ## Expected effects
 
 - Closes `MakerReworkTask` and moves the workflow to `CheckerReview`.
 - Creates one pending `CheckerReviewTask` with the two-minute test SLA.
-- Queues `RouteCheckerAssignedOnResubmit` to the metadata Checker address; this route accepts no selected Cc input.
+- Queues `RouteCheckerAssignedOnResubmit` with the metadata Checker address in To and persisted original Maker, Scenario Manager, and Scenario Checker in Cc.
+- Saves that snapshot on `CheckerReviewTask`; Checker overdue reminders reuse it unchanged.
 
 ## Next valid packs
 

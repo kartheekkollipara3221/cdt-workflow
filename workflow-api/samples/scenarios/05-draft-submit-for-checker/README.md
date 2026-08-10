@@ -10,12 +10,14 @@ The workflow exists in `Draft`; pack 01 or 02 can create it. Its required `origi
 ## Request notes
 
 The JSON is the public Workflow Action DTO only. Actor identity is supplied by the trusted headers in `request.http`.
+`selectedCcUsers` is the complete cumulative Cc snapshot for this action, not a delta.
 
 ## Expected effects
 
 - Moves the workflow from `Draft` to `CheckerReview`.
 - Creates a pending `CheckerReviewTask` with the two-minute test SLA.
-- Queues `RouteCheckerAssignedOnSubmit` to the metadata Checker address and optional selected Cc user.
+- Queues `RouteCheckerAssignedOnSubmit` with the metadata Checker address in To and persisted original Maker plus Scenario Manager in Cc.
+- Saves that snapshot on `CheckerReviewTask`; Checker overdue reminders reuse it unchanged.
 
 ## Next valid packs
 

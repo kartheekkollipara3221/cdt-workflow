@@ -2,6 +2,30 @@
   "workflowInstanceId": "{{workflowInstanceId}}",
   "actionKey": "BdrmTradeNotExecutedProperly",
   "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager.scenario",
+          "emailAddress": "manager.scenario@example.test",
+          "displayName": "Scenario Manager"
+        },
+        {
+          "userId": "checker.scenario",
+          "emailAddress": "checker.scenario@example.test",
+          "displayName": "Scenario Checker"
+        },
+        {
+          "userId": "trader.scenario",
+          "emailAddress": "trader.scenario@example.test",
+          "displayName": "Scenario Trader"
+        },
+        {
+          "userId": "bdrm.scenario",
+          "emailAddress": "bdrm.scenario@example.test",
+          "displayName": "Scenario BDRM Reviewer"
+        }
+      ]
+    },
     "templateData": {
       "accountShortName": "API017",
       "accountDisplayName": "Scenario Rework Account",

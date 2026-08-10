@@ -7,24 +7,24 @@ public sealed class WorkflowScenarioSampleTests
 {
     private static readonly ScenarioExpectation[] Expectations =
     [
-        new("01-start-only", ScenarioEndpoint.Start, null, null, false, "Maker"),
-        new("02-start-save-draft", ScenarioEndpoint.Start, "SaveDraft", null, false, "Maker"),
-        new("03-start-submit-for-checker", ScenarioEndpoint.Start, "SubmitForChecker", null, false, "Maker"),
-        new("04-draft-save-draft", ScenarioEndpoint.Action, "SaveDraft", null, false, "Maker"),
-        new("05-draft-submit-for-checker", ScenarioEndpoint.Action, "SubmitForChecker", null, false, "Maker"),
-        new("06-returned-to-maker-save-draft", ScenarioEndpoint.Action, "SaveDraft", null, false, "Maker"),
-        new("07-returned-to-maker-resubmit-for-checker", ScenarioEndpoint.Action, "ResubmitForChecker", null, false, "Maker"),
-        new("08-checker-return-to-maker", ScenarioEndpoint.Action, "CheckerReturnToMaker", null, false, "Checker"),
-        new("09-checker-send-to-trading-taxable", ScenarioEndpoint.Action, "CheckerSendToTradingDesk", "TradingDeskTaxable", true, "Checker"),
-        new("10-checker-send-to-trading-tax-exempt", ScenarioEndpoint.Action, "CheckerSendToTradingDesk", "TradingDeskTaxExempt", true, "Checker"),
-        new("11-checker-send-to-trading-equity", ScenarioEndpoint.Action, "CheckerSendToTradingDesk", "TradingDeskEquity", true, "Checker"),
-        new("12-trading-desk-sla-sync-no-change", ScenarioEndpoint.Action, null, null, true, "TradingDesk"),
-        new("13-trading-desk-sla-reschedule", ScenarioEndpoint.Action, null, null, true, "TradingDesk"),
-        new("14-trading-desk-return-to-maker", ScenarioEndpoint.Action, "TradingReturnToMaker", null, false, "TradingDesk"),
-        new("15-trading-desk-trade-executed", ScenarioEndpoint.Action, "TradingTradeExecuted", null, false, "TradingDesk"),
-        new("16-bdrm-trade-fulfilled", ScenarioEndpoint.Action, "BdrmTradeFulfilled", null, false, "BDRMClientService"),
-        new("17-bdrm-trade-not-executed-properly", ScenarioEndpoint.Action, "BdrmTradeNotExecutedProperly", null, false, "BDRMClientService"),
-        new("18-trading-desk-rework-trade-executed", ScenarioEndpoint.Action, "TradingTradeExecuted", null, false, "TradingDesk")
+        new("01-start-only", ScenarioEndpoint.Start, null, null, false, "Maker", []),
+        new("02-start-save-draft", ScenarioEndpoint.Start, "SaveDraft", null, false, "Maker", []),
+        new("03-start-submit-for-checker", ScenarioEndpoint.Start, "SubmitForChecker", null, false, "Maker", ["manager.scenario"]),
+        new("04-draft-save-draft", ScenarioEndpoint.Action, "SaveDraft", null, false, "Maker", []),
+        new("05-draft-submit-for-checker", ScenarioEndpoint.Action, "SubmitForChecker", null, false, "Maker", ["manager.scenario"]),
+        new("06-returned-to-maker-save-draft", ScenarioEndpoint.Action, "SaveDraft", null, false, "Maker", []),
+        new("07-returned-to-maker-resubmit-for-checker", ScenarioEndpoint.Action, "ResubmitForChecker", null, false, "Maker", ["manager.scenario", "checker.scenario"]),
+        new("08-checker-return-to-maker", ScenarioEndpoint.Action, "CheckerReturnToMaker", null, false, "Checker", ["manager.scenario", "checker.scenario"]),
+        new("09-checker-send-to-trading-taxable", ScenarioEndpoint.Action, "CheckerSendToTradingDesk", "TradingDeskTaxable", true, "Checker", ["manager.scenario", "checker.scenario"]),
+        new("10-checker-send-to-trading-tax-exempt", ScenarioEndpoint.Action, "CheckerSendToTradingDesk", "TradingDeskTaxExempt", true, "Checker", ["manager.scenario", "checker.scenario"]),
+        new("11-checker-send-to-trading-equity", ScenarioEndpoint.Action, "CheckerSendToTradingDesk", "TradingDeskEquity", true, "Checker", ["manager.scenario", "checker.scenario"]),
+        new("12-trading-desk-sla-sync-no-change", ScenarioEndpoint.Action, null, null, true, "TradingDesk", []),
+        new("13-trading-desk-sla-reschedule", ScenarioEndpoint.Action, null, null, true, "TradingDesk", []),
+        new("14-trading-desk-return-to-maker", ScenarioEndpoint.Action, "TradingReturnToMaker", null, false, "TradingDesk", ["manager.scenario", "checker.scenario", "trader.scenario"]),
+        new("15-trading-desk-trade-executed", ScenarioEndpoint.Action, "TradingTradeExecuted", null, false, "TradingDesk", ["manager.scenario", "checker.scenario", "trader.scenario"]),
+        new("16-bdrm-trade-fulfilled", ScenarioEndpoint.Action, "BdrmTradeFulfilled", null, false, "BDRMClientService", ["manager.scenario", "checker.scenario", "trader.scenario", "bdrm.scenario"]),
+        new("17-bdrm-trade-not-executed-properly", ScenarioEndpoint.Action, "BdrmTradeNotExecutedProperly", null, false, "BDRMClientService", ["manager.scenario", "checker.scenario", "trader.scenario", "bdrm.scenario"]),
+        new("18-trading-desk-rework-trade-executed", ScenarioEndpoint.Action, "TradingTradeExecuted", null, false, "TradingDesk", ["manager.scenario", "checker.scenario", "trader.scenario", "bdrm.scenario"])
     ];
 
     private static readonly HashSet<string> ForbiddenProperties = new(StringComparer.Ordinal)
@@ -65,22 +65,33 @@ public sealed class WorkflowScenarioSampleTests
         }
     }
 
-    [Theory]
-    [InlineData("15-trading-desk-trade-executed")]
-    [InlineData("18-trading-desk-rework-trade-executed")]
-    public void TradingExecutionScenariosSupplySelectedCcUsers(string directoryName)
+    [Fact]
+    public void NotificationScenariosSupplyCompleteCumulativeSelectedCcUsers()
     {
-        var json = File.ReadAllText(Path.Combine(ScenarioRoot(), directoryName, "request.json"));
-        var request = JsonSerializer.Deserialize<WorkflowActionRequest>(json);
-
-        var recipients = request?.Notification?.RecipientInputs?["selectedCcUsers"] ?? [];
-        Assert.Equal(2, recipients.Count);
-        Assert.All(recipients, recipient =>
+        foreach (var expectation in Expectations.Where(row => row.ExpectedCcUserIds.Length > 0))
         {
-            Assert.False(string.IsNullOrWhiteSpace(recipient.UserId));
-            Assert.False(string.IsNullOrWhiteSpace(recipient.EmailAddress));
-            Assert.False(string.IsNullOrWhiteSpace(recipient.DisplayName));
-        });
+            var json = File.ReadAllText(Path.Combine(ScenarioRoot(), expectation.DirectoryName, "request.json"));
+            var recipients = SelectedCcRecipients(json, expectation.Endpoint);
+
+            Assert.Equal(
+                expectation.ExpectedCcUserIds,
+                recipients.Select(recipient => recipient.UserId).ToArray());
+            Assert.All(recipients, recipient =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(recipient.UserId));
+                Assert.False(string.IsNullOrWhiteSpace(recipient.EmailAddress));
+                Assert.False(string.IsNullOrWhiteSpace(recipient.DisplayName));
+            });
+        }
+    }
+
+    private static IReadOnlyList<WorkflowRecipientRequest> SelectedCcRecipients(
+        string json,
+        ScenarioEndpoint endpoint)
+    {
+        return endpoint == ScenarioEndpoint.Start
+            ? JsonSerializer.Deserialize<WorkflowStartRequest>(json)?.Notification?.RecipientInputs?["selectedCcUsers"] ?? []
+            : JsonSerializer.Deserialize<WorkflowActionRequest>(json)?.Notification?.RecipientInputs?["selectedCcUsers"] ?? [];
     }
 
     private static void VerifyScenarioPack(string scenarioRoot, ScenarioExpectation expectation)
@@ -199,5 +210,6 @@ public sealed class WorkflowScenarioSampleTests
         string? ActionKey,
         string? AssignedRoleKey,
         bool HasSlaTargetDate,
-        string ActorRole);
+        string ActorRole,
+        string[] ExpectedCcUserIds);
 }

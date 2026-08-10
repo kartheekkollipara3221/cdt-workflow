@@ -2,6 +2,20 @@
   "workflowInstanceId": "{{workflowInstanceId}}",
   "actionKey": "ResubmitForChecker",
   "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "manager.scenario",
+          "emailAddress": "manager.scenario@example.test",
+          "displayName": "Scenario Manager"
+        },
+        {
+          "userId": "checker.scenario",
+          "emailAddress": "checker.scenario@example.test",
+          "displayName": "Scenario Checker"
+        }
+      ]
+    },
     "templateData": {
       "referenceNumber": "API-07",
       "submitterDisplayName": "Scenario Maker",

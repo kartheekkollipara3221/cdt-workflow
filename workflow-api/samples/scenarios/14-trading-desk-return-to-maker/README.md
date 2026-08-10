@@ -10,12 +10,14 @@ The workflow is in `TradingDeskReview` with one pending `TradingDeskReviewTask`;
 ## Request notes
 
 The JSON is the public Workflow Action DTO only. Actor identity is supplied by the trusted headers in `request.http`.
+`selectedCcUsers` is the complete cumulative Cc snapshot for this action, not a delta; it includes Scenario Manager, Scenario Checker, and the acting Trader.
 
 ## Expected effects
 
 - Closes `TradingDeskReviewTask`, cancels its active SLA schedule, and moves the workflow to `ReturnedToMaker`.
 - Creates one pending `MakerReworkTask` with no SLA.
-- Queues `RouteReturnedToMakerFromTradingDesk` to persisted `originalMaker`.
+- Queues `RouteReturnedToMakerFromTradingDesk` with persisted original Maker in To and Scenario Manager, Scenario Checker, and Scenario Trader in Cc.
+- Saves the same snapshot on `MakerReworkTask`; that task intentionally has no SLA reminders.
 
 ## Next valid packs
 

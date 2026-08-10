@@ -8,6 +8,11 @@
           "userId": "manager.scenario",
           "emailAddress": "manager.scenario@example.test",
           "displayName": "Scenario Manager"
+        },
+        {
+          "userId": "checker.scenario",
+          "emailAddress": "checker.scenario@example.test",
+          "displayName": "Scenario Checker"
         }
       ]
     },
