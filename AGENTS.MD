@@ -35,6 +35,20 @@ Do not start the next phase until the current phase passes its quality gate.
 - Do not create a DemoUser table or SQL user-to-role mapping.
 - Treat warnings as errors.
 
+## Backward compatibility
+
+All future changes must be backward compatible by default.
+
+- Existing public HTTP endpoints, trusted actor headers, request JSON, response JSON, status-code behavior, and field semantics must continue to work for existing callers.
+- Public contract changes must be additive. New request fields must be optional unless introduced through a new explicitly versioned endpoint or contract.
+- Existing console commands, command arguments, `WorkflowActionEnvelope` fixtures, sample JSON, and restore-bundle usage must remain executable.
+- Database migrations must support in-place upgrades of existing databases and preserve existing data. Prefer additive nullable columns and new tables; do not rename, drop, or reinterpret persisted columns without an explicitly approved migration strategy.
+- Existing workflow, state, action, task, role, SLA-policy, notification-route, and template keys are stable integration identifiers. Do not rename, remove, or change their meaning in place.
+- Existing notification recipient snapshots, SLA behavior, email subject/body semantics, and target-application integration entry points must remain valid unless the user explicitly approves a versioned behavior change.
+- Preserve existing dependency-injection registration methods and public .NET integration surfaces used by the target API. Add overloads or optional parameters instead of breaking existing call sites.
+- Before completing a change, run regression coverage proving existing public samples and supported workflows still pass in addition to tests for the new behavior.
+- If a requirement cannot be delivered compatibly, stop and ask before implementation. Document the breaking impact, affected callers/data, versioning or migration plan, rollback path, and required integration-team action.
+
 ## Stop-and-ask rules
 Follow all stop-and-ask triggers in `PROJECT.md` section 22.
 
