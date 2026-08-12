@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SQMS Workflow and Scheduled Processing Flow</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #eef3f7;
+      --panel: #ffffff;
+      --ink: #17212b;
+      --muted: #526475;
+      --line: #cad6e0;
+      --navy: #14324b;
+      --navy-soft: #e8f0f7;
+      --blue: #176c9b;
+      --blue-soft: #e8f5fb;
+      --green: #23724c;
+      --green-soft: #e9f6ee;
+      --amber: #986616;
+      --amber-soft: #fff5dc;
+      --purple: #65479c;
+      --purple-soft: #f1ecfb;
+      --red: #a13b32;
+      --red-soft: #fcecea;
+      --shadow: 0 10px 28px rgba(24, 49, 71, 0.08);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    header {
+      color: #fff;
+      background: linear-gradient(125deg, #102a43, #176c9b);
+      padding: 44px 24px 38px;
+    }
+
+    header .wrap, main, footer { max-width: 1180px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.12; }
+    header p { margin: 0; max-width: 880px; color: #dcebf4; font-size: 1.05rem; }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(8px);
+    }
+
+    nav .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+    }
+
+    nav a {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-radius: 7px;
+      color: var(--navy);
+      text-decoration: none;
+      font-size: .9rem;
+      font-weight: 650;
+    }
+
+    nav a:hover { background: var(--navy-soft); }
+    main { padding: 28px 20px 50px; }
+    section { scroll-margin-top: 66px; margin: 0 0 28px; }
+    h2 { margin: 0 0 14px; color: var(--navy); font-size: 1.55rem; }
+    h3 { margin: 0 0 7px; font-size: 1rem; }
+    p { margin: 6px 0; }
+    ul { margin: 8px 0 0; padding-left: 21px; }
+    li + li { margin-top: 4px; }
+
+    .panel {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary .item {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .summary strong { display: block; color: var(--navy); font-size: 1.15rem; }
+    .summary span { color: var(--muted); font-size: .9rem; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+
+    .ui { color: var(--blue); background: var(--blue-soft); }
+    .job { color: var(--amber); background: var(--amber-soft); }
+    .data { color: var(--green); background: var(--green-soft); }
+    .wf { color: var(--purple); background: var(--purple-soft); }
+    .email { color: var(--red); background: var(--red-soft); }
+
+    .flow { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+    .node {
+      position: relative;
+      width: min(850px, 100%);
+      margin: 0 auto;
+      padding: 17px 19px;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 5px 16px rgba(24, 49, 71, 0.06);
+    }
+
+    .node.ui-node { border-color: #7dbad8; background: var(--blue-soft); }
+    .node.job-node { border-color: #d7b46c; background: var(--amber-soft); }
+    .node.data-node { border-color: #86bd9e; background: var(--green-soft); }
+    .node.wf-node { border-color: #aa91d2; background: var(--purple-soft); }
+    .node.email-node { border-color: #daa098; background: var(--red-soft); }
+    .node.failure-node { border-color: #d3867e; background: #fff5f3; }
+    .node .meta { color: var(--muted); font-size: .88rem; }
+
+    .arrow {
+      height: 36px;
+      width: 2px;
+      margin: 0 auto;
+      background: #73889a;
+      position: relative;
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      bottom: -1px;
+      left: -5px;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid #73889a;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      width: 100%;
+    }
+
+    .branch {
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #fff;
+    }
+
+    .branch h3 { color: var(--navy); }
+    .timeline { display: grid; grid-template-columns: 135px 1fr; gap: 0; }
+    .time {
+      padding: 15px 16px 15px 0;
+      text-align: right;
+      color: var(--navy);
+      font-weight: 750;
+      border-right: 3px solid #95aabd;
+    }
+
+    .event { position: relative; padding: 13px 0 17px 24px; }
+    .event::before {
+      content: "";
+      position: absolute;
+      left: -8px;
+      top: 20px;
+      width: 13px;
+      height: 13px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 2px var(--blue);
+    }
+
+    .event-card {
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+    }
+
+    .decision {
+      width: min(650px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+      border: 2px dashed #8067ad;
+      border-radius: 14px;
+      text-align: center;
+      background: #faf8ff;
+    }
+
+    .matrix { width: 100%; border-collapse: collapse; }
+    .matrix th, .matrix td { padding: 11px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .matrix th { color: #fff; background: var(--navy); }
+    .matrix tr:nth-child(even) td { background: #f7f9fb; }
+
+    .callout {
+      padding: 16px 18px;
+      border-left: 5px solid var(--amber);
+      border-radius: 8px;
+      background: var(--amber-soft);
+    }
+
+    .open-issue {
+      padding: 16px 18px;
+      border: 1px solid #daa098;
+      border-radius: 10px;
+      background: var(--red-soft);
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      color: #24364a;
+      background: #eaf0f5;
+      font-family: Consolas, monospace;
+      font-size: .9em;
+    }
+
+    footer { padding: 0 20px 35px; color: var(--muted); font-size: .88rem; }
+
+    @media (max-width: 780px) {
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split { grid-template-columns: 1fr; }
+      .timeline { grid-template-columns: 100px 1fr; }
+      header { padding-top: 34px; }
+    }
+
+    @media print {
+      body { background: #fff; font-size: 10pt; }
+      nav { display: none; }
+      header { padding: 22px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      main { max-width: none; padding: 18px 12px; }
+      .panel, .node { box-shadow: none; break-inside: avoid; }
+      section { break-inside: auto; margin-bottom: 18px; }
+      .tag, .node, .matrix th { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>SQMS Workflow and Scheduled Processing</h1>
+      <p>Team discussion handoff: approved Opportunity/Bid flow, scheduled jobs, data ownership, workflow-engine actions and notification delivery.</p>
+    </div>
+  </header>
+
+  <nav aria-label="Document sections">
+    <div class="wrap">
+      <a href="#overview">Overview</a>
+      <a href="#scenario">Real scenario</a>
+      <a href="#bids">Bid processing</a>
+      <a href="#close">Automatic close</a>
+      <a href="#seller">Seller review</a>
+      <a href="#ownership">Ownership</a>
+      <a href="#open-items">Open items</a>
+    </div>
+  </nav>
+
+  <main>
+    <section id="overview">
+      <h2>At a glance</h2>
+      <div class="summary">
+        <div class="item"><strong>2 forms</strong><span>One Opportunity parent and many Bid children</span></div>
+        <div class="item"><strong>7:30 AM</strong><span>Daily submitted-Bid aggregate reconciliation</span></div>
+        <div class="item"><strong>8:00 AM</strong><span>Daily notice, reminder and close coordination</span></div>
+        <div class="item"><strong>No engine changes</strong><span>Existing transitions, SLA and outbox are reused</span></div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <div class="legend" aria-label="Flowchart legend">
+          <span class="tag ui">UI — manual action</span>
+          <span class="tag job">JOB — scheduled coordinator</span>
+          <span class="tag data">DATA — SQMS business data</span>
+          <span class="tag wf">WF — generic workflow engine</span>
+          <span class="tag email">EMAIL — existing outbox</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="scenario">
+      <h2>Real scenario: Opportunity opens April 30, 2026</h2>
+      <div class="panel">
+        <div class="timeline">
+          <div class="time">Apr 30<br />1:00 PM</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag ui">UI</span>
+              <h3>Opportunity changes to OPEN TO BIDDING</h3>
+              <p>It becomes eligible for scheduled pickup. April 30 is not counted, and no email is sent immediately.</p>
+            </div>
+          </div>
+
+          <div class="time">May 1<br />7:30 AM</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag job">JOB</span> <span class="tag data">DATA</span>
+              <h3>Aggregate reconciliation</h3>
+              <p>Recalculate parent statistics using only Bids in <code>SUBMITTED</code>. Success is silent; failures go to operational logs.</p>
+            </div>
+          </div>
+
+          <div class="time">May 1<br />8:00 AM</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag job">JOB</span>
+              <h3>First SQMS coordinator pickup</h3>
+              <p>The pickup date becomes the logical bidding-cycle anchor. Physical storage is still to be decided.</p>
+              <p><code>CoordinatorPickupDate = 05/01/2026</code> · <code>ReminderDate = 05/14/2026</code> · <code>CloseDate = 05/16/2026</code></p>
+            </div>
+          </div>
+
+          <div class="time">May 1<br />8:00 AM</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag wf">WF</span> <span class="tag email">EMAIL</span>
+              <h3>Grouped original Open-to-Bidding notice</h3>
+              <p><code>SqmsNotificationBatch</code> queues one email per Effective Date of Sale quarter/year. An Effective Date of Sale of 07/01/2026 produces <strong>Q3 2026</strong> in the subject.</p>
+              <p>Recipients are centralized SMA To/Cc configuration. Delivery uses the existing outbox processor.</p>
+            </div>
+          </div>
+
+          <div class="time">May 14<br />8:00 AM</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag wf">WF</span> <span class="tag email">EMAIL</span>
+              <h3>Grouped reminder</h3>
+              <p>One reminder per Effective Date of Sale quarter/year, exactly two calendar days before closing.</p>
+            </div>
+          </div>
+
+          <div class="time">May 15</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag ui">UI</span>
+              <h3>Final full bidding day</h3>
+              <p>The Opportunity remains OPEN TO BIDDING and Bids may still be submitted.</p>
+            </div>
+          </div>
+
+          <div class="time">May 16<br />7:30 AM</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag job">JOB</span> <span class="tag data">DATA</span>
+              <h3>Final pre-close reconciliation</h3>
+              <p>Repair the Opportunity aggregates from currently submitted Bids.</p>
+            </div>
+          </div>
+
+          <div class="time">May 16<br />8:00 AM</div>
+          <div class="event">
+            <div class="event-card">
+              <span class="tag job">JOB</span> <span class="tag wf">WF</span>
+              <h3>Automatic closing and Bid classification</h3>
+              <p>Close the Opportunity first, then classify only the captured <code>SUBMITTED</code> Bids.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="bids">
+      <h2>Opportunity and Bid form flow</h2>
+      <div class="panel flow">
+        <div class="node ui-node">
+          <span class="tag ui">OPPORTUNITY FORM</span>
+          <h3>One parent Opportunity is OPEN TO BIDDING</h3>
+          <p>Multiple Bid records may be created against it.</p>
+        </div>
+        <div class="arrow"></div>
+        <div class="split">
+          <div class="branch">
+            <span class="tag ui">BID FORM</span>
+            <h3>Draft Bid</h3>
+            <p>The user may create and edit it. Draft Bids are excluded from scheduled aggregates and automatic classification.</p>
+          </div>
+          <div class="branch">
+            <span class="tag wf">WF ACTION</span>
+            <h3>Submit Bid</h3>
+            <p><code>Draft → Submitted</code>, followed by an immediate SQMS parent-aggregate refresh.</p>
+          </div>
+        </div>
+        <div class="arrow"></div>
+        <div class="node data-node">
+          <span class="tag data">SUBMITTED-ONLY DATA RULE</span>
+          <h3>Calculate parent Opportunity statistics</h3>
+          <p>Bid count, minimum/maximum purchase amount and lowest/highest fair-value percentage use only <code>SUBMITTED</code> Bids.</p>
+          <p class="meta">All Draft, advanced and final Bid statuses are excluded and remain unchanged.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="close">
+      <h2>Automatic close and classification</h2>
+      <div class="panel flow">
+        <div class="node job-node">
+          <span class="tag job">MAY 16 — 8:00 AM EASTERN</span>
+          <h3>Coordinator snapshots eligible Bids</h3>
+          <p>Eligibility requires the Bid to belong to the Opportunity and currently be in <code>SUBMITTED</code>.</p>
+        </div>
+        <div class="arrow"></div>
+        <div class="node wf-node">
+          <span class="tag wf">SqmsOpportunity</span>
+          <h3>OPEN TO BIDDING → CLOSED TO BIDDING</h3>
+          <p>Action: <code>SystemCloseBidding</code>. The engine validates metadata, concurrency and idempotency, then records audit history.</p>
+        </div>
+        <div class="arrow"></div>
+        <div class="decision">
+          <h3>Is Fair Value + Premium submitted commitment greater than the committed sale amount?</h3>
+        </div>
+        <div class="arrow"></div>
+        <div class="split">
+          <div class="branch">
+            <h3>YES</h3>
+            <p>Discount submitted Bids → <strong>NOT ALLOCATED</strong></p>
+            <p>Remaining submitted Bids → <strong>IPG REVIEW</strong></p>
+          </div>
+          <div class="branch">
+            <h3>NO</h3>
+            <p>All submitted Bids → <strong>IPG REVIEW</strong></p>
+          </div>
+        </div>
+        <div class="arrow"></div>
+        <div class="node email-node">
+          <span class="tag email">ONE CLOSE BATCH SUMMARY</span>
+          <h3>Delivered through the existing outbox</h3>
+          <ol>
+            <li>Opportunities closed during the run</li>
+            <li>Opportunities still open after the run</li>
+            <li>Processing failures</li>
+          </ol>
+          <p>Recipients come from centralized SMA To/Cc configuration. Bcc is out of scope.</p>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h3>Failure and recovery rules</h3>
+        <div class="split">
+          <div class="branch failure-node">
+            <strong>Parent close fails</strong>
+            <p>The Opportunity remains open, no Bids are classified, and the parent is retried later.</p>
+          </div>
+          <div class="branch failure-node">
+            <strong>One child classification fails</strong>
+            <p>The parent remains closed. Successful Bid actions remain complete. Only Bids still in <code>SUBMITTED</code> are retried.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="seller">
+      <h2>Seller review and SLA flow</h2>
+      <div class="panel flow">
+        <div class="node ui-node">
+          <span class="tag ui">MANUAL IPG PROCESSING</span>
+          <h3>Bid: IPG REVIEW → UNDER REVIEW BY SELLER</h3>
+          <p>No separate Bid-level Seller task or SLA is created.</p>
+        </div>
+        <div class="arrow"></div>
+        <div class="node wf-node">
+          <span class="tag wf">SqmsOpportunity</span>
+          <h3>Opportunity enters PENDING SELLER APPROVAL</h3>
+          <p>Create one Opportunity-level Seller task with a five-calendar-day SLA.</p>
+          <p><strong>To:</strong> Opportunity Seller and complete Seller RM team, resolved by the UI/application and snapshotted by the engine.</p>
+        </div>
+        <div class="arrow"></div>
+        <div class="split">
+          <div class="branch">
+            <span class="tag email">DAY 5 — 9:00 AM</span>
+            <h3>Due Today reminder</h3>
+            <p><code>Due Today - [original assignment subject]</code></p>
+          </div>
+          <div class="branch">
+            <span class="tag email">DAY 6+ — 9:00 AM DAILY</span>
+            <h3>Overdue reminder</h3>
+            <p><code>Overdue - [original assignment subject]</code></p>
+          </div>
+        </div>
+        <div class="arrow"></div>
+        <div class="node email-node">
+          <span class="tag email">BID DISPOSITION</span>
+          <h3>Seller manually records the outcome</h3>
+          <p><code>ACCEPTED</code> · <code>PARTIALLY ACCEPTED</code> · <code>NOT ACCEPTED</code></p>
+          <p><strong>Email To:</strong> complete Buyer RM team and Bid submitter. The existing outbox delivers the message.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ownership">
+      <h2>What is generic and what is custom?</h2>
+      <div class="panel" style="overflow-x:auto">
+        <table class="matrix">
+          <thead>
+            <tr><th>Owner</th><th>Responsibilities</th><th>Email behavior</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>SQMS UI/Application</strong></td>
+              <td>Opportunity/Bid business data, parent-child relationships, validation, manual decisions, record-specific recipient resolution and Opportunity-person updates on Bids.</td>
+              <td>Supplies recipients and template data; never sends SMTP through workflow integration.</td>
+            </tr>
+            <tr>
+              <td><strong>Custom SQMS Coordinator</strong></td>
+              <td>7:30 reconciliation, 8:00 pickup/notices/reminders/close, quarter/year grouping, submitted-only filtering, pricing classification and recovery.</td>
+              <td>Starts deterministic <code>SqmsNotificationBatch</code> workflows; does not call SMTP directly.</td>
+            </tr>
+            <tr>
+              <td><strong>Generic Workflow Engine</strong></td>
+              <td><code>SqmsOpportunity</code>, <code>SqmsBid</code> and <code>SqmsNotificationBatch</code> metadata; transitions, task/SLA, audit, idempotency and concurrency.</td>
+              <td>Existing templates, recipient snapshots, outbox processing, retry and SMTP sender.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout" style="margin-top:16px">
+        <strong>Backward-compatibility boundary:</strong> this design does not require changes to the generic outbox schema, sender, public workflow request contracts, transition engine, recipient contract or single-active-task model.
+      </div>
+    </section>
+
+    <section>
+      <h2>Scheduled command map</h2>
+      <div class="panel" style="overflow-x:auto">
+        <table class="matrix">
+          <thead><tr><th>Schedule</th><th>Command</th><th>Purpose</th><th>Email?</th></tr></thead>
+          <tbody>
+            <tr><td>Daily 7:30 AM Eastern</td><td><code>run-sqms-reconcile</code></td><td>Repair Opportunity aggregates from submitted Bids</td><td>No; log failures only</td></tr>
+            <tr><td>Daily 8:00 AM Eastern</td><td><code>run-sqms-daily</code></td><td>Pickup, opening notice, reminder, close, classification and close summary</td><td>Queues through workflow/outbox</td></tr>
+            <tr><td>Existing recurring schedule</td><td><code>run-sla</code></td><td>Queue Seller Due Today and Overdue reminders</td><td>Queues through outbox</td></tr>
+            <tr><td>Existing recurring schedule</td><td><code>process-notification-outbox</code></td><td>Deliver every queued notification and apply retry lifecycle</td><td>Sole SMTP delivery path</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="open-items">
+      <h2>Deliberately unresolved items</h2>
+      <div class="split">
+        <div class="open-issue">
+          <h3>Coordinator pickup-date persistence</h3>
+          <p>The first 8:00 AM pickup date must be stored once and reused for reminders, close timing and retry. The physical storage location has not yet been selected.</p>
+        </div>
+        <div class="open-issue">
+          <h3>Seller-task completion</h3>
+          <p>The rule for closing the single Opportunity-level Seller task is out of scope until SQMS users confirm the desired business behavior.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>SQMS team discussion artifact. This document records approved design decisions; it does not represent an implemented SQMS integration.</p>
+  </footer>
+</body>
+</html>
