@@ -1,0 +1,21 @@
+Config_SecondarySales_UploadAccountData.xml
+<?xml version="1.0" encoding="utf-8"?>
+
+<ConfigList>
+
+    <FeedConfig Name="SecondarySalesUploadAccountData">
+        <Config Key="SitePath" Value="https://pbsp.bbh.com/sites/secondarysales/" />
+        <Config Key="List_AddVAccountInfo" Value="AddVantageInfo" />
+        <Config Key="UpdateBatchSize" Value="500" />
+    </FeedConfig>
+
+    <FeedConfig Name="List_AddVAccountInfo">
+        <Config Key="ID" Value="SP_ID" />
+        <Config Key="Account_Number" Value="Account_Number" />
+        <Config Key="Account_Name" Value="Account_Name" />
+        <Config Key="RM_Name" Value="RM_Name" />
+        <Config Key="Account_Level_Coding" Value="Account_Level_Coding" />
+        <Config Key="AccountBranchOffice" Value="AccountBranchOffice" />
+    </FeedConfig>
+
+</ConfigList>

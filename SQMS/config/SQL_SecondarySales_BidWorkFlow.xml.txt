@@ -1,0 +1,45 @@
+SQL_SecondarySales_BidWorkFlow.xml
+<?xml version="1.0" encoding="utf-8"?>
+
+<SqlQueryList>
+
+    <SqlQuery Name="BidWorkFlow">
+        <Sql>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="OpportunityPersonInfo">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <Eq>
+                            <FieldRef Name="Opportunity_Status"/>
+                            <Value Type="Text">PENDING SELLER APPROVAL</Value>
+                        </Eq>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="BidsPersonInfo">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <Eq>
+                            <FieldRef Name="Opportunity_ID"/>
+                            <Value Type="Text">@OpportunityID</Value>
+                        </Eq>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+</SqlQueryList>

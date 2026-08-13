@@ -1,0 +1,56 @@
+SQL_SecondarySales_BidSubmitted.xml
+<?xml version="1.0" encoding="utf-8"?>
+
+<SqlQueryList>
+
+    <SqlQuery Name="BidsRequesterInfo">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <Eq>
+                            <FieldRef Name="ID"/>
+                            <Value Type="Text">@BidsIDNumText</Value>
+                        </Eq>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="BidsOfOpportunity">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <Eq>
+                            <FieldRef Name="Opportunity_ID"/>
+                            <Value Type="Text">@OpportunityIDNumText</Value>
+                        </Eq>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="OpportunityRequesterInfo">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <Eq>
+                            <FieldRef Name="ID"/>
+                            <Value Type="Text">@OpportunityIDNumText</Value>
+                        </Eq>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+</SqlQueryList>

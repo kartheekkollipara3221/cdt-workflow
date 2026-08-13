@@ -1,0 +1,966 @@
+using System;
+using System.Collections.Generic;
+using System.Ling;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+using System.Data;
+using PB.DataAccess;
+using PB.CommonLib;
+using PB.Logger;
+using PB.Emaillib;
+using System.Net;
+using Microsoft.SharePoint.Client;
+using Newtonsoft.Json;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Reflection.Emit;
+
+namespace Secondarysales
+{
+    class OpportunityStatusChange
+    {
+        #region Global Variables
+
+        private static readonly Logger log = LogManager-GetLogger(LogType.Log4Net, AppConfig.LogConfig);
+        private const string constitePath = "sitePath";
+        private const string constopportunitylistkey - "List_Secondaryopportunity";
+        private const string constRespondByDaysKey = "RespondByDaysKey";
+        private const string dateofopenToBiddingColumn = "dateofopenToBidding";
+        private const string IDColumn = "ID";
+        private const string OpportunitystatusColumn = "opportunity status";
+        private const string committedAmountForsaleColumn - "Committed Amount_For_Sale";
+        private const string closedToBiddingstatusValue = "CLOSED TO BIDDING";
+
+        #endregion
+
+        #region Public Methods
+
+        public bool OpportunitystatusDailyActivities(AddV_InterfaceMaster OAddVInterfaceMaster)
+        {
+            SharePointDAL oSharePointDal;
+            ClientContext oclientContext;
+            XMLParser oXmlParser;
+            List<Config> ICLConfig;
+            string spitePath;
+            bool status;
+
+try
+{
+oSharePointDal = new SharePointDAL () ;
+oXmlParser = new XMLParser () ;
+1CLConfig=oXmlParser.GetConfigDetails(oAddV_InterfaceMaster.InterfaceConfiglath, oAddV_InterfaceMaster.FeedName) ;
+spitePath - 1CLConfig. Where (i → i.Key == "sitePath").FirstOrDefault () . Value;
+ClientContext = oSharePointDal.CreateClientContext (spitePath,
+Add_InterfaceMaster. SPUserDomain,
+•Addv InterfaceMaster. SPUserID, Add_InterfaceMaster. SPUserPWD) ;
+status - EmailNotifcationOriginalOpenToBidding(oAddV_InterfaceMaster, oSharePointDal, OClientContext, ICIConfig, oXmlParser);
+status - EmailNotifcationReminderOpenToBidding(oAddV_InterfaceMaster, oSharePointDal, oClientContext, ICIConfig, oXmlParser);
+}
+finally
+{
+}
+
+return true;
+}
+public bool opportunitystatuscloseToBid (AddV_InterfaceMaster oAddV_InterfaceMaster)
+{
+SharePointDAL oSharePointDal;
+ClientContext oClientContext;
+XMLParser oXmlParser;
+List<Config> ICLConfig;
+string spitePath;
+bool status;
+try
+{
+oSharePointDal = new SharePointDAL () ;
+oXmIParser - new XMIParser () ;
+ICIConfig = 0Xmlparser. GetConfigDetails (oAddV_InterfaceMaster. InterfaceConfiglath, "opportunityStatusChange") ;
+spitepath - ICIConfig.Where (i => i.Key == "sitePath") FirstorDefault () . Value;
+ClientContext = osharePointDal. CreateClientContext (spitePath,
+oAddV_InterfaceMaster.SPUserDomain,
+oAddV_InterfaceMaster.SPUserID,
+oAddVInterfaceMaster.SPUserPWD) ;
+status = UpdateOpportunityCloseToBidding2(oAddV_InterfaceMaster, oSharePointDal, oClientContext, ICLConfig) ;
+}
+finally
+{
+}
+return true;
+}
+public bool OpportunityStatusChangePendingSellerApproval(Add_InterfaceMaster oAddV_InterfaceMaster)
+{
+bool status;
+string Quarter; int daysToRespondBy;
+string queryopportunityInfo;
+string QuarterYear; string vehicalName; string fundame;
+string accountNumber;
+string accountName;
+string amountCommited;
+string opportunitystatus;
+string opportunityld;
+Addv_EmailDetails oopportunityEmailDetails;
+DataTable opportunityData;
+SharePointDAL oSharePointDal;
+ClientContext oClientContext;
+List<Config> ISiteConfig;
+List<Config> 1opportunityConfig;
+List<Config> 1CLConfig;
+XMIPArser
+oxmularser;
+CamiQuery
+camlQueryopportinityInfo;
+SharePointPerson sellerPersonInfo;
+SharePointPerson submitterPersonInfo;
+EmailManager oEmailMgri
+EmailParameters oEmailParameters;
+DateTime respondByDate;
+try
+{
+status = true;
+oSharePointDal = new SharePointDAL () ;
+OXMLParser = new XMLParser () ;
+opportunityData
+= new DataTable () ;
+camlQueryopportinityInfo = new CamlQuery () ;
+oEmailMgr = new EmailManager () ;
+
+•Emailgr = new EmailManager ();
+oEmailParameters = new EmailParameters () ;
+opportunityId - Add_InterfaceMaster. RunParameters.FirstOrDefault () ;
+ISiteConfig = 0XMLParser.GetConfigDetails (oAddV_InterfaceMaster. InterfaceConfigPath, 0AddV_InterfaceMaster.FeedName) ;
+1CLConfig - OXMIParser. GetConfigDetails (AddV_InterfaceMaster. InterfaceConfigPath, "BidworkFlow") ;
+ClientContext = oSharePointDal. CreateClientContext (IsiteConfig.FirstOrDefault (i = i. Key == constSitePath). Value,
+oAddVInterfaceMaster.SPUserDomain,
+oAddv_
+InterfaceMaster. SPUserID,
+AddV InterfaceMaster. SPUserPWD) ;
+oOpportunityEmailDetails - oAddV_InterfaceMaster.AddV_EmailDetails.FirstOrDefault (i = i. Emailkey == oAddV_InterfaceMaster.FeedName) ;
+queryopportunityInfo AddY_InterfaceMaster. SQLQueries. FirstOrDefault (i →> i. Name oAddV_InterfaceMaster.FeedName) .Sql;
+camlQueryopportinityInfo.ViewXm1 = queryopportunityInfo.Replace ("@opportunityIDNumText", OpportunityId);
+>
+opportunityConfig-oXLParser.GetConfigDetails (oAdd_InterfaceMaster.InterfaceConfigPath, constopportunitylistkey);
+status
+= oSharePointDal. GetSharePointListData (oClientContext, ISiteConfig.FirstOrDefault (i => i. Key == constopportunitylistkey) .Value,
+opportunityconfig, opportunityData, camlQueryopportinityInfo);
+opportunityData.Columns. Add (1SiteConfig.FirstorDefault (i => i. Key == "Quarter"). Value); opportunityData.Columns Add (ISiteConfig.FirstOrDefault (i →> i.Key == "Quarter Year"). Value) ;
+#region Classifying the data by Quarter and Quarter Year
+foreach (DataRow opportunityDatarow in opportunityData.Rows)
+{
+opportunityDataRow.BeginEdit ();
+var effectiveDateofSaleQuarter - Convert. ToDateTime (opportunityDataRow["Effective_Date_Of_Sale"]) . getCurrentQuarter(true) ; opportunityDataRow ["Quarter"] - effectiveDateofSaleQuarter.Item1;
+opportunityDataRow ["Quarter Year"]
+-effectiveDateOfSaleQuarter.Item2.Tostring();
+}
+opportunityData. AcceptChanges () ;
+var grpopportunityData = from DataRow OptDataRow in opportunityData.Rows
+orderby
+OptDataRow ["Effective
+Date of Sale"]
+#endregion
+foreach (var OptDataRow in grpopportunityData)
+{
+
+var var
+cloneopportunityData = OptDataRow. AsEnumerable () ;
+tosellerRMTeam = OptDataRow. FirstOrDefault () Field<string>("Seller RM Team") = null ? string.Empty
+String. Join(",", Jsonconvert. Deserializeobject<T.ist<SharePointPerson>> (OptDataRow. FirstorDefault|) Field<string› ("seller _RM Team")) Select (*
+→ × == null ? string.Empty: x.Email)) ;
+Quarter - OptDataRow. FirstOrDefault () ["Quarter"]. Tostring ();
+QuarterYear - OptDataRow.FirstorDefault () ["Quarter_Year"]. ToString ();
+sellerPersonInfo
+JsonConvert. DeserializeObject<List<SharePointPerson>>(cloneopportunityData.FirstOrDefault ().Field<string>("seller")).FirstOrDefault ();
+submitterPersonInfo =
+JsonConvert. DeserializeObject<List<SharePointPerson>>(cloneOpportunityData.FirstOrDefault () Field‹string>("Submiter")) .FirstOrDefault () ;
+vehicalName
+= cloneopportunityData.FirstOrDefault () .Field<string>("VehicalName") ;
+fundName = cloneopportunityData.FirstOrDefault (). Field<string>("FundName") ;
+accountNumber - cloneopportunityData. FirstOrDefault (). Field<string> ("Investment_Account_Number");
+accountName
+- cloneopportunityData. FirstOrDefault () Field‹string> ("Investment_Account_Name") Replace ("\t", ""). Replace ("
+",
+" ");
+amountCommited - Decimal. Parse (cloneOpportunityData.FirstOrDefault (). Field‹string> ("Committed Amount_For_Sale") Trim ()) ToString ("C");
+opportunityStatus = cloneopportunityData.FirstorDefault ().Field<string>("Opportunity_Status");
+daysToRespondBy = int. Parse (ISiteConfig. FirstOrDefault (i => i.Key == constRespondByDaysKey). Value) ;
+respondByDate = DateTime.Now. AddDays (daysToRespondBy) ;
+•EmailParameters. Subject - oopportunityEmailDetails.Subject.Replace ("lOtr", Quarter)
+*   Replace ("@YYYY", QuarterYear)
+*   Replace ("(VehicalName", vehicalName)
+*   Replace (" AcctNum", accountNumber)
+. Replace ("@AcctName", accountName)
+. Replace ("@ResponseByDate", respondByDate. ToString ("MM/dd/YYYY")) ;
+EmallParameters. Body - oopportunityEmailDetails.Body. Replace ("@AcctNum",
+accountNumber)
+*   Replace ("(AcctName", accountName)
+*   Replace ("(FundName", fundame)
+. Replace ("@vehicalName", vehicalName)
+• Replace ("Committed Amount_
+For-
+Sale",
+amount Commited)
+. Replace ("@opportunityID", opportunityld);
+oEmallParameters. CC = oopportunityEmailDetails.CCEmail;
+oEmailParameters.BCC = 00pportunityEmailDetails.BCCEmail;
+oEmailParameters. From = opportunityEmailDetails.FromEmail;
+oEmailParameters.To = string.Join(",", sellerpersonInfo.Email, tosellerRMTeam) ;
+EmailParameters. Host = AppConfig. SMTPHost;
+oEmailParameters.Port = AppConfig. SMTPPort;
+EmailMgr. SendEmail (oEmailParameters);
+}
+status = TotalBidsCalculation (oAddV
+InterfaceMaster, oSharePointDal, oClientContext, 1CLConfig) ;
+status
+- UpdatePersonInfoInBids(0Add_InterfaceMaster, osharePointDal, oClientContext, ICLConfig) ;
+
+status - UpdatePersonInfoInBids (oAddV_InterfaceMaster,
+oSharePointDal, oClientContext, ICIConfig) ;
+return status;
+}
+finally
+{
+}
+}
+#endregion
+#region Private methods
+private bool EmailNotifcationOriginalopenToBidding(Add_InterfaceMaster oAdd_InterfaceMaster, SharePointDAL oSharePointDal, ClientContext ClientContext, List<Config> ICLConfig, XMIParser oXmlParser)
+{
+bool status;
+string queryopportunitiesopenToBid; int dayscloseToBidding;
+CamlQuery camlQueryopportunityopenoBid;
+DataTable opportunitiesData;
+List<Config> 10pportunitylistConfig;
+Addv EmailDetails oAddVEmailDetails;
+DateTime oDateResponseRegBy;
+string linkToopportunity;
+string linkToViewAllopenToBid;
+try
+{
+1og. MethodStart () ;
+camlQueryopportunityopenToBid=new
+CamiQuery ();
+opportunitiesData = new DataTable () ;
+oAddVEmailDetails = oAddv
+InterfaceMaster.AddV_EmailDetails.FirstOrDefault (i => i.Emailkey == "SecondarysalesopportunityEmailoriginalNoti");
+lopportunitylistConfig = 0XmlParser.GetConfigDetails (oAddV_InterfaceMaster. InterfaceConfigPath, "OpportunitylistMap") ;
+queryopportunitiesopenToBid = oAddV_
+InterfaceMaster. SQLQueries. FirstOrDefault (i => i.Name == "EmailNotifcationOpportunity"). Sql;
+camlQueryopportunityopenToBid.ViewXm1
+= queryopportunitiesOpenToBid;
+daysCloseToBidding = int. Parse (1CLConfig. FirstOrDefault (i => i.Key == "CloseToBid"). Value) ;
+linkToopportunity = 1CLConfig.FirstOrDefault (i => i.Key
+= "LinkToopportunity"). Value;
+linkToViewAllOpenToBid = 1CLConfig.FirstOrDefault (i => i.Key == "LinkToList0f0ppOpenToBid"). Value;
+//Get List Of Opportinities Open To Bidding
+status = oSharePointDal. GetSharePointListData (oClientContext,
+ICIConfig. FirstOrDefault (i => İ. Key == "Opportunities_List"). Value,
+
+1CLconfig.FirstOrDefault (i→> i.Key = "Opportunities_List"). Value,
+10pportunitylistConfig, opportunitiesData, camlQueryopportunityopenToBid);
+oopportunitiesData. Columns.Add (1CLConfig. FirstOrDefault (i => i. Key == "Quarter"). Value) ;
+opportunitiesData.Columns. Add (1CLConfig.FirstOrDefault (i => i. Key = "Quarter Year"). Value) ;
+oOpportunitiesData = ConvertDateTimeFromUTToLocal (opportunitiesData);
+//Get List Of Opportunities Created on Previous Day - AddDays (-1) is check for previous day
+var listofopportunitiesToBeNotified = (from DataRow opportunityDataRow in opportunitiesData. AsEnumerable ()
+where DateTime. Parse (opportunityDataRow. Field‹string>("dateOfOpenToBidding")). Date ==
+DateTime. Now. AddDays (-1). Date select opportunityDataRow) ;
+if (listofopportunitiesToBeNotified.Any())
+{
+#region Classifying the data by Quarter and Quarter Year
+foreach (DataRow opportunityDataRow in listofopportunitiesToBeNotified)
+{
+opportunityDataRow. BeginEdit () ;
+var effectiveDateofsaleQuarter = Convert. ToDateTime (opportunityDataRow[ "Effective_Date_Of_Sale"]).. getCurrentuarter (true) ;
+opportunityDataRow["Quarter"] = effectiveDateofSaleQuarter.Item1;
+opportunityDataRow I"Quarter_ Year"]
+= effectiveDateofSaleQuarter.Item2.ToString() ;
+opportunityDataRow. AcceptChanges () ;
+}
+var grpopportunityData - from DataRow optDataRow in listofopportunitiesToBeNotified orderby optDataRow["Effective_Date_Of_
+Sale"]
+#endregion
+group OptDataRow by new | Quarter F optDataRow l"Quarter"], Quarteryear = OptDataRow["Quarter_Year"] };
+foreach (var OptDataRow in grpopportunityData)
+{
+oDateResponseRegBy
+=
+DateTime. Parse (listOfopportunitiesToBeNotified.FirstOrDefault () ["dateOfOpenToBidding"]. Tostring()) .AddDays (daysCloseToBidding) ;
+status = SendEmailNotifcationLogic (oAddVEmailDetails, OptDataRow. ToList (), DateResponseReqBy, linkToOpportunity, linkToViewAllOpenToBid);
+}
+}
+else
+{
+log. Debug ("No Opportunities Opend To Bidding on previous day");
+status = true;
+}
+
+1og. MethodEnd () ; return status;
+}
+finally
+{
+}
+}
+private bool EmailNotifcationReminderOpenToBidding(AddV InterfaceMaster oAddV
+Interfa
+ceMaster,
+SharePointDAL osharePointDal, ClientContext oClientContext,
+List<Config> 1CLConfig, XMIParser oXmlParser)
+{
+bool status;
+string queryopportunitiesopenToBid; int daysCloseToBidding;
+CamlQuery camlQueryopportunityopenToBid;
+DataTable opportunitiesData;
+List<Config> 10pportunitylistConfig;
+AddV_EmailDetails oAddVEmailDetails;
+DateTime oDateResponseRegBy;
+string linkToopportunity;
+string linkToViewAllopenToBid;
+try
+{
+1og. MethodStart () ;
+camlQueryopportunityopenToBid
+- new CamiQuery () ;
+opportunitiesData = new DataTable () ;
+AddVEmailDetalls = oAddV_InterfaceMaster.AddV_EmailDetails.FirstorDefault (i = i.Emailkey == "SecondarysalesopportunityEmailReminderNoti");
+10pportunitylistConfig = 0XmlParser.GetConfigDetails (oAddV_InterfaceMaster. InterfaceConfigPath,
+"OpportunitylistMap");
+queryopportunitiesopenToBid = Addv_InterfaceMaster. SQLQueries.FirstOrDefault (i => i.Name == "EmailNotifcationopportunity").Sql;
+camlQueryopportunityopenToBid.ViewXm1 = queryopportunitiesopenToBid;
+daysCloseToBidding
+= int. Parse (1CLConfig. FirstOrDefault (i => i.Key == "CloseToBid"). Value) ;
+TinkToopportunity
+= 1CLConfig.FirstOrDefault (i => i.Key
+== "LinkToOpportunity"). Value;
+linkToViewAllopenToBid = 1CLConfig.FirstOrDefault (i => i.Key == "LinkToListOfOppOpenToBid"). Value;
+//Get List Of opportinities open To Bidding
+status = osharePointDal.GetsharePointlistData (oclientContext,
+ICIConfig. FirstOrDefault (i => i. Key == "Opportunities_List"). Value,
+
+1cLConfig.FirstorDefault (i => i.Key = "opportunities_List").Value,
+lopportunitylistConfig, opportunitiesData, camlQueryopportunityopenToBid);
+oOpportunitiesData.Columns.Add (ICLConfig.FirstOrDefault (i => i. Key == "Quarter"). Value) ; oOpportunitiesData.Columns.Add (ICLConfig.FirstOrDefault (i => i. Key == "Quarter_
+Year"). Value) ;
+oOpportunitiesData = ConvertDateTimeFromUTToLocal(oopportunitiesData) ;
+//Get List Of Opportunities Created on Previous Day - AddDays (-1) is check for previous day
+var listofopportunitiesToBeNotified = (from DataRow opportunityDataRow in opportunitiesData. AsEnumerable ()
+where DateTime. Parse (opportunityDataRow.Field<string>("dateOfOpenToBidding")).Date.AddDays ( (daysCloseToBiddin
+1)). Date == DateTime. Now. Date select opportunityDataRow) ;
+if (listofopportunitiesToBeNotified.Any ())
+{
+#region Classifying the data by Quarter and Quarter Year foreach (DataRow opportunityDataRow in listofopportunitiesToBeNotified)
+{
+opportunityDataRow. BeginEdit () ;
+var effectiveDateofsaleQuarter = Convert.ToDateTime (opportunityDataRow["Effective_Date_Of_Sale"]) . getCurrentQuarter (true) ;
+opportunityDataRow ["Quarter"] - effectiveDateOfSaleQuarter.Item1;
+opportunityDataRow ["Quarter_Year"] = effectiveDateofSaleQuarter.Item2. ToString () ;
+opportunityDataRow. AcceptChanges () ;
+}
+var grpopportunityData = from DataRow OptDataRow in listofopportunitiesTobeNotified
+orderby optDataRowl"Effective
+Date_Of_Sale"]
+group OptDatarow by new | Quarter - OptDataRow["Quarter"], Quarteryear = OptDataRow["Quarter_Year"] );
+#endregion
+foreach (var OptDataRow in grpopportunityData)
+{
+oDateResponseRegBy =
+DateTime. Parse (listofopportunitiesToBeNotified.FirstOrDefault () ["dateofOpenToBidding"]. ToString()) .AddDays (daysCloseToBidding) ;
+status - SendEmailNotifcationLogic(oAddVEmailDetails, OptDataRow. ToList () , oDateResponseRegBy,
+linkToopportunity, linkToViewAl10penToBid);
+
+status =
+SendEmailNotifcationLogic (oAddVEmailDetails, OptDataRow. ToList (), oDateResponseRegBy, linkToOpportunity, linkToViewAl10penToBid);
+}
+}
+else
+{
+1og. Debug ("No Opportunities Opend To Bidding on previous day");
+status = true;
+}
+1og. MethodEnd () ; return status;
+}
+finally
+{}
+}
+private bool SendEmailNotifcationLogic(AddV_EmailDetails oAddVEmailDetails, List<DataRow> listofopportunitiesToBeNotified, DateTime OResponseByDate, string linkToopportunity, string linkToViewA11openToBid)
+{
+EmailManager EmailMgr;
+EmailParameters EmailParameters;
+string Quarter;
+string QuarterYear;
+try
+{
+oEmailMgn = new EmailManager () ;
+oEmailParameters = new EmailParameters () ;
+Quarter = listofopportunitiesToBeNotified.Any () ? listofopportunitiesToBeNotified.FirstOrDefault () ["Quarter"]. ToString() : string. Empty;
+Quarteryear = listofopportunitiesToBeNotified.Any() ? listofopportunitiesToBeNotified.FirstOrDefault () ["Quarter_Year"].ToString() : string.Empty;
+oEmailParameters.From = oAddVEmailDetails.FromEmail;
+oEmailParameters.To = oAddVEmailDetails.ToEmail;
+oEmailParameters.CC = oAddVEmailDetails.CCEmail;
+oEmailParameters. BCC = oAddVEmailDetails.BCCEmail;
+•EmailParameters. Subject = oAddVEmailDetails.Subject
+.Replace ("COtr", Quarter)
+.Replace ("@YYYY",
+QuarterYear)
+•Replace ("@ResponseByDate",
+ResponseByDate. ToString ("MM/dd/yyyy")) ;
+Ema11 Parameters. Body FOAddVEmailDetails.Body.Replace ("@LinkToA110pp",
+linkToViewAllOpenToBid);
+
+oEmailParameters.Body - oAddVEmailDetails.Body.Replace ("@LinkToAl10pp", linkToViewAl10penToBid) ;
+EmailParameters. Host = AppConfig. SMTPHost;
+EmailParameters. Port = AppConfig. SMTPPort;
+EmailMgr. SendEmail (oEmailParameters) ;
+return true;
+}
+finally
+{
+}
+}
+private bool UpdateOpportunityCloseToBidding2(AddV_InterfaceMaster oAddV_Interfacemaster, SharePointDAL oSharePointDal, ClientContext oClientContext,
+List<Config> 1CLConfig)
+{
+Datatable dataopportunıtlesopenlob1ddıng.
+am-query cam opportunitiesopenToBidding
+DataTable dataBidsofopportunitiesOpenToBidding;
+CalQuery camldataBids0fopportunitiesopenToBidding;
+DataTable OpportunityDataToUpdate;
+DataTable BidsDataToUpdateNotAllocated;
+DataTable BidsDataToUpdateIPGReview;
+List<Config> lListOpportunityMapping;
+List<Config> lListBidsMapping;
+List<Config> lconfigsUpdateBidsInfo;
+List<Config> IconfigsUpdateopportunityInfo;
+List<string» listofopportunitiesIDsClosedToBidding;
+List<string> listofopportunitiesIDsOpenToBidding;
+XMLParser oXmlParser;
+AddV EmailDetails oAddVEmailDetails;
+string querybidsofopportunities;
+bool status;
+bool hasEmailBody = false;
+int daysCloseToBidding;
+decimal opportunityAmountCommitedForSale; string opportunityclosedToBiddingstring = "Below Is the List of Opportunities Closed To Bidding : <br/>(0}<br/>";
+string opportunityStillopenToBiddingstring="Below Is
+the
+List Of Opportunities Still Open To Bidding : <br/>(0}<br/>";
+string
+emailBodyResult - string. Empty;
+
+try
+{
+log. MethodStart () ;
+//Get the list of opportunities Open to Bidding
+oXmlParser = new XMLParser () ;
+dataopportunitiesopenToBidding
+=
+camlopportunitiesopenToBidding
+new DataTable () ; new CamQuery ():
+camldataBids0fopportunitiesOpenToBidding = new CamlQuery () ;
+listofopportunitiesIDsClosedToBidding = new List<string> ();
+listofopportunitiesIDsOpenToBidding = new List<string> ();
+lconfigsUpdateBidsInfo
+new List<Config> ();
+1configsUpdateOpportunityInfo = new List<Config> ();
+IListopportunityMapping-oXmlParser.GetConfigDetails(oAddV_InterfaceMaster.InterfaceConfigPath, "opportunitylistMap") ;
+lListBidsMapping = oXmlParser.GetConfigDetails(oAddV_InterfaceMaster.InterfaceConfigPath,
+"BidsListMap");
+camlopportunitiesOpenToBidding.ViewXm1 = 0AddV_InterfaceMaster.SQLQueries. FirstOrDefault (i →>
+i. Name =
+"OpportunityStatusChange"). Sql;
+querybidsofopportunities - Add_InterfaceMaster.SQLQueries. FirstOrDefault (i => i.Name == "BidsPeropportunities").Sql;
+daysCloseToBidding = int. Parse (1CLConfig. FirstorDefault (i => i. Key == "CloseToBid"). Value) ;
+//Get Data From SharePoint
+status - oSharePointDal.GetSharePointListData (oClientContext, ICIConfig. FirstOrDefault (i = i. Key == "opportunities_List"). Value,
+lListopportunityMapping, dataopportunitiesopenToBidding, camlopportunitiesopenToBidding) ;
+OpportunityDataToUpdate = dataOpportunitiesOpenToBidding.Clone();
+//Convert DataTime from GMT To Local Time dataopportunitiesopenToBidding
+= ConvertDateTimeFromUTCToLocal (dataopportunitiesOpenToBidding) ;
+foreach (DataRow opportunityDataRow in dataopportunitiesopenToBidding.AsEnumerable ())
+{
+//Check if opportunity should be Closed to Bidding
+if (DateTime. Parse (oOpportunityDataRow[dateOfOpenToBiddingColumn].ToString()) .Date.AddDays (daysCloseToBidding + 1) <= DateTime.Now. Date)
+{
+if (!Decimal. Tryparse (oopportunityDataRow [committedAmountForSaleColumn].ToString(), out opportunityAmountCommitedForSale))
+{
+Log. Error (new Exception (string. Format ("opportunity ID : \"(0)\" does not have a valid ["Committed_ Amount_For_Sale|"", oopportunityDataRow[IDColumn])));
+}
+
+dataBidsofopportunitiesopenToBidding = new DataTable () ;
+listofopportunitiesIDsClosedToBidding.Add (oOpportunityDataRow[IDColumn].ToString()) ;
+opportunityDataRow[opportunityStatusColumn] - closedToBiddingStatusValue;
+OpportunityDataToUpdate. ImportRow (oopportunityDataRow);
+//Get List Of
+Bids
+Part of this Opportunity
+camldataBids0fopportunitiesOpenToBidding.ViewXml = queryBidsofopportunities.Replace ("@opportunity_ID",
+oopportunityDataRow[IDColumn].ToString ());
+status
+- osharePointDal.GetsharePointlistData (oClientContext, "Bids", llistBidsmapping, databidsofopportunitiesopenTobidding, camldataBidsofopportunitiesOpenToBidding);
+//Implemented Business
+Logic PBS-815
+if (dataBidsofopportunitiesopenToBidding.Rows.Count > 0)
+{
+1configsUpdateBidsInfo.Add (IListBidsMapping.Where (i => i.Key == "ID"). FirstOrDefault ()) ;
+IconfigsUpdateBidsInfo.Add (lListBidsMapping.Where (i => i.Key == "Bid_Status"). FirstOrDefault ()) ;
+BidsDataToUpdateNotAllocated = BidNotAllocatedLogic(dataBids0fopportunitiesOpenToBidding, OpportunityAmountCommitedForSale);
+if
+(BidsDataToUpdateNotAllocated.Rows. Count > 0)
+{
+//Update Status of Bids status =
+oSharePointDal.UpdateDataInSharePointList(oClientContext,
+"Bids", "ID", IconfigsUpdateBidsInfo,
+BidsDataToUpdateNotAllocated) ;
+}
+BidsDataToUpdateIPGReview - BidupdateToIPGReviewStatus (dataBidsOfopportunitiesopenToBidding, BidsDataToUpdateNotAllocated) ;
+if BidsDataToUpdateIPReview.Rows.Count >0)
+{
+//Update Status
+of Bids
+status =oSharePointDal.UpdateDataInSharePointList(oClientContext, "Bids",
+"ID", IconfigsUpdateBidsInfo, BidsDataToUpdateIPGReview) ;
+}
+}
+}
+else
+{
+listofopportunitiesIDsOpenToBidding.Add(oopportunityDataRow[IDColumn].ToString())
+}
+}
+
+//Update Status Of Opportunities
+1configsUpdateopportunityInfo.Add(IListOpportunityMapping.Where (i => i.Key -- "ID"). FirstorDefault ()) ;
+configsUpdateopportunityInfo.Add(IlistopportunityMapping.Where (i => i.Key -= "Opportunity_Status"). FirstorDefault ()) ;
+status = osharePointDal. UpdateDataInSharePointlist (oClientContext, "Opportunities",
+//Create Email Body:-
+"ID", IconfigsUpdateopportunityInfo, OpportunityDataToUpdate);
+oAddVEmailDetails - oAddv_InterfaceMaster.AddV_EmailDetails.FirstorDefault (i => i.Emailkey -= "secondarysalesopportunityCloseToBidNoti");
+AddvEmailDetails.Subject = string.Format (oAddVEmailDetails.Subject, listofopportunitiesIDsClosedToBidding.Count) ;
+if (listofopportunitiesIDsClosedToBidding.Any))
+{
+opportunityclosedtoBiddingstring
+string. Format (opportunityClosedToBiddingString, string Join ("<br/>",
+listofopportunitiesIDsClosedToBidding.ToArray ())) ;
+hasEmailBody - true;
+}
+else
+{
+opportunityClosedToBiddingstring - string. Empty;
+}
+if (listofopportunitiesIDsopenToBidding.Any())
+{
+opportunityStillopenToBiddingString = string. Format (opportunityStillopenToBiddingString, string.Join ("<br/>",
+listofopportunitiesIDsOpenToBidding.ToArray ())) ;
+hasEmailBody = true;
+}
+else
+{
+opportunitystillOpenToBiddingstring = string. Empty;
+}
+emai 1BodyResult = string. Concat (opportunityClosedToBiddingString, "<br/>",
+opportunitystillopenToBiddingString);
+if (hasEmailBody)
+{
+oAddVEmailDetails.Body = emailBodyResult;
+}
+SendEmailNotifcationLogic (AddVEmailDetails, new List<DataRow> () , DateTime.Now,
+string. Empty, string.Empty) ;
+1og. MethodEnd () ; return status;
+}
+finally
+{
+}
+}
+
+private DataTable ConvertDateTimeFromUTCToLocal(DataTable oInputDataTable)
+{
+try
+{
+
+foreach (DataRow pInputDataRow in oInputDataTable.AsEnumerable())
+{
+var outPutDateTime = DateTime. Parse (pInputDataRow[dateOfOpenToBiddingColumn].ToString()).ToLocalTime ();
+pInputDataRow.SetField<string> (date0fOpenToBiddingColumn, outPutDateTime.ToString ("yyyy/MM/dd")) ;
+}
+
+return oInputDataTable;
+}
+finally {}
+}
+private DataTable BidNotAllocatedLogic/DataTable InboundBidsData, decimal opportunityAmountCommitedForsale)
+{
+decimal amountBidvailableForPurchase;
+DataTable outputDataToUpdate;
+const string BidAtFairValueColumn - "Bid Is At_ Fair_Value"; const string opportunityIDcolumn - "opportunity_ID";
+const
+string CommitmentAmountToPurchasedColumn = "Commitment Amount_To_Purchased";
+string BidstatusColumn = "Bid Status";
+const
+string YesAtFairValue = "Yes, Fair Value";
+const string NoPremium = "No, Premium";
+const string NoDiscount = "No, Discount";
+const string statusNotAllocated = "NOT ALLOCATED";
+try
+{
+// Business Logic Implemented Based on PBS-815
+///The requirement for allocating discounted
+bids reads:
+///If total bids received at fair value or a premium are in excess of sale amount, ///bids received at a discount will automatically have a status of NOT ALLOCATED after the opportunity is marked as
+CLOSED TO BIDDING.
+var TotalAmountofPurchase = (from DataRow
+oBidsDataRow in oInboundBidsData.AsEnumerable()
+where oBidsDataRow. Field<string> (BidAtFairValueColumn) == YesAtFairValue || oBidsDataRow.Field<string>(BidAtFairValueColumn)
+== NoPremium
+group BidsDataRow by
+oBidsDataRow. Field<string> (OpportunityIDColumn) into bidDataGroup
+select bidDataGroup. Sum (g = Decimal. Parse (g.Field<string>(CommitmentAmountToPurchasedColumn))));
+
+
+select bidDataGroup. Sum(g => Decimal. Parse (g. Field<string> (CommitmentAmountToPurchasedColumn)))) ;
+outputDataToUpdate = InboundBidsData.Clone () ;
+if (TotalAmountofPurchase.Any())
+{
+amountBidVailableForPurchase - TotalAmountOfPurchase.FirstOrDefault () ;
+if (amountBidvailableForPurchase> opportunityAmountCommitedForSale)
+{
+var bidtopopulate = (from DataRow obidsDataRow in oInboundbidsData. AsEnumerable ()
+where BidsDataRow. Field<string> (BidAtFairValueColumn) == NoDiscount select oBidsDataRow
+) ;
+if (bidToPopulate.Any ())
+{
+outputDataToUpdate = bidToPopulate.CopyToDataTable();
+foreach (DataRow outPutData in outputDataToUpdate.AsEnumerable ())
+{
+outPutData [BidStatusColumn] = statusNotAllocated;
+}
+}
+}
+}
+
+return outputDataToUpdate;
+}
+Finally
+{
+}
+}
+private Datatable BigupdatetoIPGReviewStatus (Datatable oAllbidsData, Datable oBidsnotAllocated)
+{
+DataTable outputData; const string BidstatusColumn
+= "Bid Status";
+const string statusIPGReview = "IPG REVIEW";
+try
+{
+outputData = new Datalable () ;
+var BidsToUpdateToIPGReviw = (from DataRow oBidData in AllBidsData. AsEnumerable ()
+join DataRow oBidNotAllocatedData in oBidsNotAllocated.AsEnumerable ()
+
+join DataRow obidnotAllocatedData in oBidsNotAllocated.AsEnumerable ()
+on oBiddata.Field<string>("ID") equals oBidNotAllocatedData.Field<string>("ID") into joinedBidData from obidNotAllocatedData in joinedBidData.DefaultIfEmpty()
+where oBidNotAllocatedData == null select oBidData) ;
+if (BidsToUpdateToIPGReviw.Any ())
+{
+oOutputData = BidsToUpdateToIPGRevi.CopyToDataTable () ;
+
+for (inti=0; i outputData.Rows.Count; i++)
+{
+oOutputData. Rows [i] [BidStatusColumn] = statusIPGReview;
+}
+}
+return outputData;
+}
+finally
+{
+}
+}
+#endregion
+#region BidworkFlow Private method for MFO Sync - PBS881
+private
+bool TotalBidsCalculation (Add_InterfaceMaster oAdd_InterfaceMaster,
+1CLConfig)
+SharePointDAL oSharePointDal, CLientContext
+ClientContext, List<Config>
+
+1CLConfig)
+{
+
+List<Config> bidListUploadMapping;
+List<Config> opportunityListUploadMapping;
+
+XMLParser oParser;
+
+DataTable bidData;
+DataTable bidCountData;
+DataTable bidValueData;
+DataTable bidValueCountData;
+
+bool status = true;
+
+Add_InterfaceDetails addInterfaceDetails;
+
+
+Add_InterfaceDetails addy_InterfaceDetails;
+try
+{
+log. MethodStart () ;
+
+log-MethodStart () ;
+1og. Debug ("Read Configuration");
+string Bidlist = 1CLConfig. Where (i => i. Key == "Bid List"). FirstOrDefault (). Value;
+string opportunitieslist = 1CLConfig.Where (i => i. Key == "Opportunitieslist"). FirstOrDefault (). Value;
+oParser = new XMLParser () ;
+biddata =
+new DataTable ();
+bidCountData = new DataTable () ;
+bidCountData. Columns Add ("ID");
+bidCountData. Columns. Add ("BidCount");
+bidvalueData = new DataTable () ;
+bidvalueData. Columns. Add ("ID");
+bidvalueData. Columns.Add ("BidMinValue"); bidvalueData.Columns Add ("BidMaxValue");
+bidValueData. Columns. Add ("BidPercentOfFairMinValue"); bidvalueData. Columns.Add ("BidPercentOfFairMaxValue");
+bidvalueCountData = new DataTable ();
+bidValueCountData.Columns. Add ("ID") ;
+bidvalueCountData.Columns .Add ("BidCount") ;
+bidvalueCountData.Columns.Add ("BidMinValue");
+b1dValueCountData.Columns.Add("BidMaxValue");
+oidvalueCountData.Columns.Add("Lowest ("Lowest Bid Percent Of FairValue"); bidvalueCountData.Columns. Add ("Largest Bid Percent Of FairValue");
+addv
+_ InterfaceDetails = new Addv_InterfaceDetails ();
+1og. Debug ("Read InterfaceDetails");
+add_InterfaceDetails = oAddv_InterfaceMaster.AddV_InterfaceDetails.FirstorDefault() ;
+if (addv
+InterfaceDetails== null)
+throw new Exception (Interface Details not available for download location");
+1og. Debug ("Get config for upload/download configuration");
+1BidListUploadMapping
+= Parser.GetConfigDetails (oAddV
+InterfaceMaster. InterfaceConfiglath,
+"BidlistMap") ;
+1opportunitylistUploadMapping =
+oParser. GetConfigdetails (oAdd_InterfaceMaster.InterfaceConfigPath,
+"OpportunitylistMap");
+string spluery Addy_
+InterfaceMaster. SQLQueries. FirstOrDefault (i => i. Name == "BidWorkFlow").sql;
+CamlQuery camlQuery = new CamlQuery () ;
+camiQuery. ViewX1 = spQuery;
+1og. Debug ("Getting data from sharepoint");
+status = oSharePointDal.GetSharePointListData (oClientContext, Bidlist, 1BidlistUploadMapping, biddata, camlQuery) ;
+
+var bidcount = biddata.AsEnumerable()
+    .GroupBy(dr => dr[1])
+    .Select(g => new
+    {
+        Opportunity_ID = g.Key,
+        BidCount = g.Count()
+    });
+
+var bidvalues = biddata.AsEnumerable()
+    .GroupBy(dr => dr[1])
+    .Select(g => new
+    {
+        opportunity_ID = g.Key,
+        BidAmountMinValue = g.Min(dr => Convert.ToString(dr["Commitment_Amount_To_Purchased"])),
+        BidAmountMaxValue = g.Max(dr => Convert.ToString(dr["Commitment_Amount_To_Purchased"])),
+        BidPercentFairMinValue = g.Min(dr => Convert.ToString(dr["Bid_Expressed_As_Fair_Value"])),
+        BidPercentFairMaxValue = g.Max(dr => Convert.ToString(dr["Bid_Expressed_As_Fair_Value"]))
+    });
+
+foreach (var a in bidcount)
+{
+    DataRow da = bidCountData.NewRow();
+    da["ID"] = a.Opportunity_ID;
+    da["BidCount"] = a.BidCount;
+    bidCountData.Rows.Add(da);
+    da.AcceptChanges();
+}
+
+foreach (var b in bidvalues)
+{
+    DataRow dd = bidValueData.NewRow();
+    dd["ID"] = b.opportunity_ID;
+    dd["BidMinValue"] = b.BidAmountMinValue;
+    dd["BidMaxValue"] = b.BidAmountMaxValue;
+    dd["BidPercentOfFairMinValue"] = b.BidPercentFairMinValue;
+    dd["BidPercentOfFairMaxValue"] = b.BidPercentFairMaxValue;
+    bidValueData.Rows.Add(dd);
+    dd.AcceptChanges();
+}
+
+if (bidCountData != null)
+{
+    if (bidCountData.Rows.Count > 0)
+    {
+        bidValueCountData = (from dt1 in bidCountData.AsEnumerable()
+                             join dt2 in bidValueData.AsEnumerable()
+                             on dt1.Field<string>("ID") equals dt2.Field<string>("ID")
+                             select new
+                             {
+                                 dt1,
+                                 dt2
+                             }).CopyToDataTable();
+    }
+}
+
+dt1.Field<String>("ID") equals dt2.Field<String>("ID")
+select bidValueCountData.LoadDataRow(new object[]
+{
+    dt1.Field<String>("ID"),
+    dt1.Field<String>("BidCount"),
+    dt2.Field<String>("BidMinValue"),
+    dt2.Field<String>("BidMaxValue"),
+    dt2.Field<String>("BidPercentOfFairMinValue"),
+    dt2.Field<String>("BidPercentofFairMaxValue")
+}, false)).CopyToDataTable();
+
+status = oSharePointDal.UpdateDataInSharePointList(
+    oClientContext,
+    Opportunitieslist,
+    "ID",
+    LopportunityListUploadMapping,
+    bidValueCountData
+);
+}
+else
+{
+    log.Debug("There are no Bids to be processed at this time");
+}
+else
+{
+    log.Debug("DataTable BidCount is null, please check data for Bids Counts");
+
+    throw new Exception(
+        "DataTable BidCount is null, please check data for Bids Counts"
+    );
+}
+finally
+{
+    return true;
+}
+
+private bool UpdatePersonInfoInBids(
+    Add_InterfaceMaster Addv_InterfaceMaster,
+    SharePointDAL oSharePointDal,
+    ClientContext oClientContext,
+    List<Config> lCLConfig)
+{
+    DataTable opportunityInfo;
+    DataTable oBidsInfo;
+    CamlQuery camlopportynity;
+
+CamlQuery camlopportynity;
+CamlQuery camlBids;
+List<Config> IsopportunityConfigInfo;
+List<Config> IsBidsConfigInfo;
+List<SharePointPerson> personFormsubmittedBy;
+List<SharePointPerson> personsSellerRMTeams;
+XMLParser oXmlParser;
+string queryopportunity;
+string queryBids;
+String personFormSubmittedByString;
+string personssellerRMTeamString;
+bool status;
+
+try
+{
+    oXmlParser = new XMLParser();
+    camlopportynity = new CamlQuery();
+    opportunityInfo = new DataTable();
+
+    IsopportunityConfigInfo = oXmlParser.GetConfigDetails(
+        oAddV_InterfaceMaster.InterfaceConfigPath,
+        "OpportunityPersonInfo"
+    );
+
+    queryopportunity = oAddV_InterfaceMaster.SQLQueries
+        .FirstOrDefault(i => i.Name == "OpportunitypersonInfo").Sql;
+
+    camlopportynity.ViewXml = queryopportunity;
+
+    status = oSharePointDal.GetSharePointListData(
+        oClientContext,
+        lCLConfig.FirstOrDefault(i => i.Key == "Opportunitieslist").Value,
+        IsopportunityConfigInfo,
+        opportunityInfo,
+        camlopportynity
+    );
+
+    if (opportunityInfo != null && opportunityInfo.Rows.Count >= 1)
+    {
+        foreach (DataRow opportunityDataRow in opportunityInfo.AsEnumerable())
+        {
+            oBidsInfo = new DataTable();
+            camlBids = new CamlQuery();
+
+            IsBidsConfigInfo = oXmlParser.GetConfigDetails(
+                oAddV_InterfaceMaster.InterfaceConfigPath,
+                "BidPersonInfo"
+            );
+
+            queryBids = Addv_InterfaceMaster.SQLQueries
+                .FirstOrDefault(i => i.Name == "BidsPersonInfo").Sql;
+
+            camlBids.ViewXml = queryBids.Replace(
+                "opportunityID",
+                opportunityDataRow["SP_ID"].ToString()
+            );
+
+            status = oSharePointDal.GetSharePointListData(
+                oClientContext,
+                lCLConfig.FirstOrDefault(i => i.Key == "Bid_List").Value,
+                IsBidsConfigInfo,
+                oBidsInfo,
+                camlBids
+            );
+
+            personFormsubmittedBy =
+                JsonConvert.DeserializeObject<List<SharePointPerson>>(
+                    opportunityDataRow["FormSubmittedByUser"].ToString()
+                );
+
+            personFormSubmittedByString = string.Join(
+                ";#",
+                (from SharePointPerson oSpPerson in personFormsubmittedBy
+                 select oSpPerson.Id + ";#" + oSpPerson.LoginName).ToArray()
+            );
+
+            personsSellerRMTeams =
+                JsonConvert.DeserializeObject<List<SharePointPerson>>(
+                    opportunityDataRow["Seller_RM_Team"].ToString()
+                );
+
+            personssellerRMTeamString = string.Join(
+                ";#",
+                (from SharePointPerson oSpPerson in personsSellerRMTeams
+                 select oSpPerson.Id + ";#" + oSpPerson.LoginName).ToArray()
+            );
+
+            foreach (DataRow bidsDataRow in oBidsInfo.AsEnumerable())
+            {
+                bidsDataRow.SetField<string>(
+                    "Opportunity_Form_Submitted_By",
+                    personFormSubmittedByString
+                );
+
+                bidsDataRow.SetField<string>(
+                    "Opportunity_RM_Seller_Team",
+                    personssellerRMTeamString
+                );
+            }
+
+            status = oSharePointDal.UpdateDataInSharePointList(
+                oClientContext,
+                lCLConfig.FirstOrDefault(i => i.Key == "Bid_List").Value,
+                "SP_ID",
+                IsBidsConfigInfo,
+                oBidsInfo
+            );
+        }
+    }
+    else
+    {
+        log.Debug("No Opportuintes Available for updates");
+        status = true;
+    }
+
+    return status;
+}
+finally
+{
+}
+#endregion

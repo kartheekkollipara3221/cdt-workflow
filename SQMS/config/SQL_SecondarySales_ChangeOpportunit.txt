@@ -1,0 +1,114 @@
+SQL_SecondarySales_ChangeOpportunityStatus.xml
+<?xml version="1.0" encoding="utf-8"?>
+
+<SqlQueryList>
+
+    <SqlQuery Name="OpportunityStatusChange">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <And>
+                            <IsNotNull>
+                                <FieldRef Name="dateOfOpenToBidding"/>
+                            </IsNotNull>
+                            <Eq>
+                                <FieldRef Name="Opportunity_Status"/>
+                                <Value Type="Text">OPEN TO BIDDING</Value>
+                            </Eq>
+                        </And>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="FairBidsStatusChange">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <And>
+                            <Eq>
+                                <FieldRef Name="Bid_Status"/>
+                                <Value Type="Text">SUBMITTED</Value>
+                            </Eq>
+                            <Or>
+                                <Eq>
+                                    <FieldRef Name="Bid_Is_At_Fair_Value"/>
+                                    <Value Type="Text">Yes, Fair Value</Value>
+                                </Eq>
+                                <Eq>
+                                    <FieldRef Name="Bid_Is_At_Fair_Value"/>
+                                    <Value Type="Text">No, Premium</Value>
+                                </Eq>
+                            </Or>
+                        </And>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="DiscountBidsStatusChange">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <And>
+                            <Eq>
+                                <FieldRef Name="Bid_Status"/>
+                                <Value Type="Text">SUBMITTED</Value>
+                            </Eq>
+                            <Eq>
+                                <FieldRef Name="Bid_Is_At_Fair_Value"/>
+                                <Value Type="Text">No, Discount</Value>
+                            </Eq>
+                        </And>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="EmailNotifcationOpportunity">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <Eq>
+                            <FieldRef Name="Opportunity_Status"/>
+                            <Value Type="Text">OPEN TO BIDDING</Value>
+                        </Eq>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+    <SqlQuery Name="BidsPerOpportunities">
+        <Sql>
+            <![CDATA[
+            <View>
+                <Query>
+                    <Where>
+                        <Eq>
+                            <FieldRef Name="Opportunity_ID"/>
+                            <Value Type="Text">@Opportunity_ID</Value>
+                        </Eq>
+                    </Where>
+                </Query>
+            </View>
+            ]]>
+        </Sql>
+    </SqlQuery>
+
+</SqlQueryList>

@@ -1,0 +1,378 @@
+BidWorkflow.cs
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+using System.Data;
+using PB.DataAccess;
+using PB.CommonLib;
+using PB.Logger;
+using System.Net;
+using Microsoft.SharePoint.Client;
+using Newtonsoft.Json;
+
+namespace Secondarysales
+{
+    class BidWorkFlow
+    {
+        #region Global Variables
+
+        private static readonly ILogger log =
+            LogManager.GetLogger(LogType.Log4Net, AppConfig.LogConfig);
+
+        #endregion
+
+        public bool BidsstatusDailyActivities(AddV_InterfaceMaster oAddV_InterfaceMaster)
+        {
+            SharePointDAL oSharePointDal;
+            ClientContext oClientContext;
+            List<Config> lCLConfig;
+            XMLParser oXmlParser;
+            string spSitePath;
+            bool status;
+
+            try
+            {
+                oXmlParser = new XMLParser();
+                oSharePointDal = new SharePointDAL();
+
+                lCLConfig = oXmlParser.GetConfigDetails(
+                    oAddV_InterfaceMaster.InterfaceConfigPath,
+                    oAddV_InterfaceMaster.FeedName);
+
+                spSitePath = lCLConfig
+                    .Where(i => i.Key == "SitePath")
+                    .FirstOrDefault().Value;
+
+                log.Debug("Initialize Client Context");
+
+                oClientContext = oSharePointDal.CreateClientContext(
+                    spSitePath,
+                    oAddV_InterfaceMaster.SPUserDomain,
+                    oAddV_InterfaceMaster.SPUserID,
+                    oAddV_InterfaceMaster.SPUserPWD);
+
+                status = UpdatePersonInfoInBids(
+                    oAddV_InterfaceMaster,
+                    oSharePointDal,
+                    oClientContext,
+                    lCLConfig);
+
+                status = TotalBidsCalculation(
+                    oAddV_InterfaceMaster,
+                    oSharePointDal,
+                    oClientContext,
+                    lCLConfig);
+
+                return status;
+            }
+            finally
+            {
+            }
+        }
+
+        #region Private Methods
+
+        private bool TotalBidsCalculation(
+            AddV_InterfaceMaster oAddV_InterfaceMaster,
+            SharePointDAL oSharePointDal,
+            ClientContext oClientContext,
+            List<Config> lCLConfig)
+        {
+            List<Config> lBidlistUploadMapping;
+            List<Config> lOpportunitylistUploadMapping;
+            XMLParser oParser;
+            DataTable bidData;
+            DataTable bidCountData;
+            DataTable bidValueData;
+            DataTable bidValueCountData;
+            bool status = true;
+            AddV_InterfaceDetails addV_InterfaceDetails;
+
+            try
+            {
+                log.MethodStart();
+                log.Debug("Read Configuration");
+
+                string BidList = lCLConfig.Where(i => i.Key == "Bid List").FirstOrDefault().Value;
+                string OpportunitiesList = lCLConfig.Where(i => i.Key == "OpportunitiesList").FirstOrDefault().Value;
+
+                oParser = new XMLParser();
+
+                bidData = new DataTable();
+
+                bidCountData = new DataTable();
+                bidCountData.Columns.Add("ID");
+                bidCountData.Columns.Add("BidCount");
+
+                bidValueData = new DataTable();
+                bidValueData.Columns.Add("ID");
+                bidValueData.Columns.Add("BidMinValue");
+                bidValueData.Columns.Add("BidMaxValue");
+                bidValueData.Columns.Add("BidPercentOfFairMinValue");
+                bidValueData.Columns.Add("BidPercentOfFairMaxValue");
+
+                bidValueCountData = new DataTable();
+                bidValueCountData.Columns.Add("ID");
+
+bidValueCountData.Columns.Add("ID");
+bidValueCountData.Columns.Add("BidCount");
+bidValueCountData.Columns.Add("BidMinValue");
+bidValueCountData.Columns.Add("BidMaxValue");
+bidValueCountData.Columns.Add("Lowest_Bid_Percent_Of_FairValue");
+bidValueCountData.Columns.Add("Largest_Bid_Percent_Of_FairValue");
+
+addV_InterfaceDetails = new AddV_InterfaceDetails();
+
+log.Debug("Read InterfaceDetails");
+
+addV_InterfaceDetails =
+    oAddV_InterfaceMaster.AddV_InterfaceDetails.FirstOrDefault();
+
+if (addV_InterfaceDetails == null)
+    throw new Exception("Interface Details not available for download location");
+
+log.Debug("Get config for upload/download configuration");
+
+lBidlistUploadMapping = oParser.GetConfigDetails(
+    oAddV_InterfaceMaster.InterfaceConfigPath,
+    "BidlistMap");
+
+lOpportunitylistUploadMapping = oParser.GetConfigDetails(
+    oAddV_InterfaceMaster.InterfaceConfigPath,
+    "OpportunitylistMap");
+
+string spQuery = oAddV_InterfaceMaster.SQLQueries
+    .FirstOrDefault(i => i.Name == "BidWorkFlow").Sql;
+
+CamlQuery camlQuery = new CamlQuery();
+camlQuery.ViewXml = spQuery;
+
+log.Debug("Getting data from SharePoint");
+
+status = oSharePointDal.GetSharePointListData(
+    oClientContext,
+    BidList,
+    lBidlistUploadMapping,
+    bidData,
+    camlQuery);
+
+var bidCount = bidData.AsEnumerable()
+    .Select(dr => Convert.ToString(dr["Opportunity_ID"]))
+    .GroupBy(dr => dr)
+    .Select(g => new
+    {
+        Opportunity_ID = g.Key,
+        BidCount = g.Count()
+    });
+
+var bidValues = bidData.AsEnumerable()
+    .GroupBy(dr => dr["Opportunity_ID"])
+    .Select(g => new
+    {
+        Opportunity_ID = g.Key,
+        BidAmountMinValue = g.Min(dr => Convert.ToString(dr["Commitment_Amount_To_Purchased"])),
+        BidAmountMaxValue = g.Max(dr => Convert.ToString(dr["Commitment_Amount_To_Purchased"])),
+        BidPercentFairMinValue = g.Min(dr => Convert.ToString(dr["Bid_Expressed_As_Fair_Value"])),
+        BidPercentFairMaxValue = g.Max(dr => Convert.ToString(dr["Bid_Expressed_As_Fair_Value"]))
+    });
+
+foreach (var a in bidCount)
+{
+    DataRow da = bidCountData.NewRow();
+    da["ID"] = a.Opportunity_ID;
+
+    da["ID"] = a.Opportunity_ID;
+    da["BidCount"] = a.BidCount;
+    bidCountData.Rows.Add(da);
+    da.AcceptChanges();
+}
+
+foreach (var b in bidValues)
+{
+    DataRow dd = bidValueData.NewRow();
+
+    dd["ID"] = b.Opportunity_ID;
+    dd["BidMinValue"] = b.BidAmountMinValue;
+    dd["BidMaxValue"] = b.BidAmountMaxValue;
+    dd["BidPercentOfFairMinValue"] = b.BidPercentFairMinValue;
+    dd["BidPercentOfFairMaxValue"] = b.BidPercentFairMaxValue;
+
+    bidValueData.Rows.Add(dd);
+    dd.AcceptChanges();
+}
+
+if (bidCountData != null)
+{
+    if (bidCountData.Rows.Count > 0)
+    {
+        bidValueCountData = (
+            from dt1 in bidCountData.AsEnumerable()
+            join dt2 in bidValueData.AsEnumerable()
+                on dt1.Field<string>("ID") equals dt2.Field<string>("ID")
+            select bidValueCountData.LoadDataRow(
+                new object[]
+                {
+                    dt1.Field<string>("ID"),
+                    dt1.Field<string>("BidCount"),
+                    dt2.Field<string>("BidMinValue"),
+                    dt2.Field<string>("BidMaxValue"),
+                    dt2.Field<string>("BidPercentOfFairMinValue"),
+                    dt2.Field<string>("BidPercentOfFairMaxValue")
+                },
+                false)
+        ).CopyToDataTable();
+
+        status = oSharePointDal.UpdateDataInSharePointList(
+            oClientContext,
+            OpportunitiesList,
+            "ID",
+            lOpportunitylistUploadMapping,
+            bidValueCountData);
+    }
+    else
+    {
+        log.Debug("There are no Bids to be processed at this time");
+    }
+}
+
+    else
+    {
+        log.Debug("DataTable BidCount is null, please check data for Bids Counts");
+        throw new Exception("DataTable BidCount is null, please check data for Bids Counts");
+    }
+}
+finally
+{
+}
+
+return true;
+}
+
+private bool UpdatePersonInfoInBids(
+    AddV_InterfaceMaster oAddV_InterfaceMaster,
+    SharePointDAL oSharePointDal,
+    ClientContext oClientContext,
+    List<Config> lCLConfig)
+{
+    DataTable opportunityInfo;
+    DataTable oBidsInfo;
+    CamlQuery camlOpportunity;
+    CamlQuery camlBids;
+    List<Config> lsOpportunityConfigInfo;
+    List<Config> lsBidsConfigInfo;
+    List<SharePointPerson> personFormSubmittedBy;
+    List<SharePointPerson> personsSellerRMTeams;
+    XMLParser oXmlParser;
+    string queryOpportunity;
+    string queryBids;
+    string personFormSubmittedByString;
+    string personsSellerRMTeamString;
+    bool status;
+
+    try
+    {
+        oXmlParser = new XMLParser();
+
+        camlOpportunity = new CamlQuery();
+
+        opportunityInfo = new DataTable();
+
+        lsOpportunityConfigInfo = oXmlParser.GetConfigDetails(
+            oAddV_InterfaceMaster.InterfaceConfigPath,
+            "OpportunityPersonInfo");
+
+lsOpportunityConfigInfo = oXmlParser.GetConfigDetails(
+    oAddV_InterfaceMaster.InterfaceConfigPath,
+    "OpportunityPersonInfo");
+
+queryOpportunity = oAddV_InterfaceMaster.SQLQueries
+    .FirstOrDefault(i => i.Name == "OpportunityPersonInfo").Sql;
+
+camlOpportunity.ViewXml = queryOpportunity;
+
+status = oSharePointDal.GetSharePointListData(
+    oClientContext,
+    lCLConfig.FirstOrDefault(i => i.Key == "OpportunitiesList").Value,
+    lsOpportunityConfigInfo,
+    opportunityInfo,
+    camlOpportunity);
+
+if (opportunityInfo != null && opportunityInfo.Rows.Count >= 1)
+{
+    foreach (DataRow opportunityDataRow in opportunityInfo.AsEnumerable())
+    {
+        oBidsInfo = new DataTable();
+
+        camlBids = new CamlQuery();
+
+        lsBidsConfigInfo = oXmlParser.GetConfigDetails(
+            oAddV_InterfaceMaster.InterfaceConfigPath,
+            "BidPersonInfo");
+
+        queryBids = oAddV_InterfaceMaster.SQLQueries
+            .FirstOrDefault(i => i.Name == "BidsPersonInfo").Sql;
+
+        camlBids.ViewXml =
+            queryBids.Replace("@OpportunityID", opportunityDataRow["SP_ID"].ToString());
+
+        status = oSharePointDal.GetSharePointListData(
+            oClientContext,
+            lCLConfig.FirstOrDefault(i => i.Key == "Bid List").Value,
+            lsBidsConfigInfo,
+            oBidsInfo,
+            camlBids);
+
+        personFormSubmittedBy =
+            JsonConvert.DeserializeObject<List<SharePointPerson>>(
+                opportunityDataRow["FormSubmittedByUser"].ToString());
+
+        personFormSubmittedByString = string.Join(";#",
+            (from SharePointPerson oSpPerson in personFormSubmittedBy
+             select oSpPerson.Id + ";#" + oSpPerson.LoginName).ToArray());
+
+        personsSellerRMTeams =
+            JsonConvert.DeserializeObject<List<SharePointPerson>>(
+                opportunityDataRow["Seller_RM_Team"].ToString());
+
+        personsSellerRMTeamString = string.Join(";#",
+            (from SharePointPerson oSpPerson in personsSellerRMTeams
+             select oSpPerson.Id + ";#" + oSpPerson.LoginName).ToArray());
+
+        foreach (DataRow bidsDataRow in oBidsInfo.AsEnumerable())
+        {
+            bidsDataRow.SetField<string>(
+                "Opportunity_Form_Submitted_By",
+                personFormSubmittedByString);
+
+            bidsDataRow.SetField<string>(
+                "Opportunity_RM_Seller_Team",
+                personsSellerRMTeamString);
+        }
+
+        status = oSharePointDal.UpdateDataInSharePointList(
+            oClientContext,
+            lCLConfig.FirstOrDefault(i => i.Key == "Bid List").Value,
+            "SP_ID",
+            lsBidsConfigInfo,
+            oBidsInfo);
+    }
+}
+else
+{
+    log.Debug("No Opportunities Available for updates");
+}
+
+status = true;
+return status;
+}
+finally
+{
+}
+}
+#endregion
+}
+}

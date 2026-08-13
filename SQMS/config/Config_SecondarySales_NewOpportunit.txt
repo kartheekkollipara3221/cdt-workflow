@@ -1,0 +1,30 @@
+Config_SecondarySales_NewOpportunitySetup.xml
+<?xml version="1.0" encoding="utf-8"?>
+
+<ConfigList>
+
+    <FeedConfig Name="SecondarySalesNewOpportunity">
+        <Config Key="SitePath" Value="https://pbsp.bbh.com/sites/secondarysales/" />
+        <Config Key="List_SecondarySalesBid" Value="Bids" />
+        <Config Key="View_NewSecondarySalesBid" Value="SecondarySalesBidView{0}" />
+        <Config Key="UpdateBatchSize" Value="500" />
+    </FeedConfig>
+
+    <FeedConfig Name="View_NewSecondarySalesBid">
+        <Config Key="1" Value="Edit" />
+        <Config Key="2" Value="Commitment_Amount_To_Be_Sold" />
+        <Config Key="3" Value="Commitment_Amount_To_Purchased" />
+        <Config Key="4" Value="Bid_Expressed_As_Fair_Value" />
+        <Config Key="5" Value="Bid_Status" />
+    </FeedConfig>
+
+    <FeedConfig Name="WebPartConfig">
+        <Config Key="DisableViewSelectorMenu" Value="true" />
+        <Config Key="DisableSaveAsNewViewButton" Value="true" />
+        <Config Key="Title" Value="Bids Information" />
+        <Config Key="ChromeType" Value="3" />
+        <Config Key="TitleUrl" Value="#" />
+        <Config Key="AuthorizationFilter" Value=";;;SecondarySales MFO" />
+    </FeedConfig>
+
+</ConfigList>

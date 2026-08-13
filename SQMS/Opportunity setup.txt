@@ -1,0 +1,206 @@
+Opportunity setup
+
+#endregion
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+using Microsoft.SharePoint.Client;
+
+using PB.CommonLib;
+using PB.DataAccess;
+using PB.Logger;
+
+namespace Secondarysales
+{
+    public class OpportunitySetup
+    {
+        #region Global Variables
+
+        private static readonly ILogger log =
+            LogManager.GetLogger(LogType.Log4Net, AppConfig.LogConfig);
+
+        private const string constSecondarySalesBidListKey = "List_SecondarySalesBid";
+        private const string constSecondarySalesBidNewViewKey = "View_NewSecondarySalesBid";
+        private const string constSecondarySalesBidFilterQuery = "SecondarySalesBidFilterQuery";
+        private const string constSecondarySalesBidViewQuery = "SecondarySalesBidViewQuery";
+        private const string constWebPartConfig = "WebPartConfig";
+        private const string constImportWebPart = "ImportWebPart";
+
+        #endregion
+
+        #region Public Methods
+
+        public bool NewOpportunitySetup(AddV_InterfaceMaster oAddV_InterfaceMaster)
+        {
+            ClientContext oClientContext;
+
+ClientContext oClientContext;
+SharePointDAL oSharePointDAL;
+List<Config> lSiteConfig;
+List<Config> lNewSecondarySalesBidCols;
+List<Config> lWebPartUpdates;
+CamlQuery oCamlSecondarySalesBidFilterQuery;
+CamlQuery oCamlSecondarySalesBidViewQuery;
+string listSecondarySalesBidName;
+string secondarySalesBidViewName;
+string newOpportunityID;
+string sitePath;
+string viewFilePath;
+string importWebPartXml;
+string templateViewFilePath = "{0}/Lists/{1}/{2}.aspx";
+bool status;
+
+try
+{
+    log.MethodStart();
+
+    oSharePointDAL = new SharePointDAL();
+
+    oCamlSecondarySalesBidFilterQuery = new CamlQuery();
+    oCamlSecondarySalesBidViewQuery = new CamlQuery();
+
+    newOpportunityID = oAddV_InterfaceMaster.RunParameters.FirstOrDefault();
+
+    lSiteConfig = GetConfigDetails(
+        oAddV_InterfaceMaster.InterfaceConfigPath,
+        oAddV_InterfaceMaster.FeedName);
+
+    lWebPartUpdates = GetConfigDetails(
+        oAddV_InterfaceMaster.InterfaceConfigPath,
+        constWebPartConfig);
+
+    sitePath = lSiteConfig.FirstOrDefault(i => i.Key == "SitePath").Value;
+
+    oClientContext = oSharePointDAL.CreateClientContext(
+        sitePath,
+        oAddV_InterfaceMaster.SPUserDomain,
+        oAddV_InterfaceMaster.SPUserID,
+        oAddV_InterfaceMaster.SPUserPWD);
+
+    oClientContext.Load(oClientContext.Site);
+    oClientContext.ExecuteQuery();
+
+    listSecondarySalesBidName =
+        lSiteConfig.FirstOrDefault(i => i.Key == constSecondarySalesBidListKey).Value;
+
+    secondarySalesBidViewName = string.Format(
+        lSiteConfig.FirstOrDefault(i => i.Key == constSecondarySalesBidNewViewKey).Value,
+        newOpportunityID);
+
+    lNewSecondarySalesBidCols = GetConfigDetails(
+        oAddV_InterfaceMaster.InterfaceConfigPath,
+        constSecondarySalesBidNewViewKey);
+
+    oCamlSecondarySalesBidFilterQuery.ViewXml =
+        oAddV_InterfaceMaster.SQLQueries
+            .FirstOrDefault(i => i.Name == constSecondarySalesBidFilterQuery)
+            .Sql
+            .Replace("@OpportunityIDNumText", newOpportunityID);
+
+    oCamlSecondarySalesBidViewQuery.ViewXml =
+        oAddV_InterfaceMaster.SQLQueries
+            .FirstOrDefault(i => i.Name == constSecondarySalesBidViewQuery)
+            .Sql
+            .Replace("@OpportunityIDNumText", newOpportunityID);
+
+    importWebPartXml = oAddV_InterfaceMaster.SQLQueries
+        .FirstOrDefault(i => i.Name == constImportWebPart)
+        .Sql;
+
+    viewFilePath = string.Format(
+        templateViewFilePath,
+        oClientContext.Site.ServerRelativeUrl,
+        listSecondarySalesBidName,
+        secondarySalesBidViewName);
+
+viewFilePath = string.Format(
+    templateViewFilePath,
+    oClientContext.Site.ServerRelativeUrl,
+    listSecondarySalesBidName,
+    secondarySalesBidViewName);
+
+status = oSharePointDAL.DeleteListView(
+    oClientContext,
+    listSecondarySalesBidName,
+    secondarySalesBidViewName);
+
+status = oSharePointDAL.CreateListView(
+    oClientContext,
+    listSecondarySalesBidName,
+    secondarySalesBidViewName,
+    lNewSecondarySalesBidCols,
+    oCamlSecondarySalesBidFilterQuery,
+    oCamlSecondarySalesBidViewQuery);
+
+if (!status)
+{
+    log.Debug("New view was not created " + secondarySalesBidViewName);
+}
+else
+{
+    status = oSharePointDAL.UpdateWebPart(
+        oClientContext,
+        viewFilePath,
+        listSecondarySalesBidName,
+        lWebPartUpdates);
+
+    status = oSharePointDAL.AddWebPartToPage(
+        oClientContext,
+        viewFilePath,
+        importWebPartXml,
+        "Main",
+        0);
+}
+
+log.MethodEnd();
+return status;
+}
+finally
+{
+}
+
+#endregion
+
+#region Private Methods
+
+private List<Config> GetConfigDetails(string xmlPath, string feedName)
+{
+    XMLParser configParser;
+    List<FeedConfig> feedConfig;
+    List<Config> configsArray;
+
+    try
+    {
+        log.MethodStart();
+        log.Debug("Get config details for account list :" + xmlPath);
+
+        configParser = new XMLParser();
+        feedConfig = configParser.GetConfigDetails(xmlPath);
+
+        configsArray = feedConfig
+            .FirstOrDefault(c => c.Name.Split('|').Contains(feedName))
+            .ConfigList;
+
+        if (configsArray == null || configsArray.Count == 0)
+            throw new Exception("Error reading config xml file");
+
+        log.MethodEnd();
+
+        log.MethodEnd();
+        return configsArray;
+    }
+    finally
+    {
+        configParser = null;
+        feedConfig = null;
+        configsArray = null;
+    }
+}
+
+#endregion
+}
+}
