@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
@@ -147,6 +148,12 @@ public sealed class SqmsWorkflowCoordinator(
                     $"Action '{request.ActionKey}' is not available for SQMS {entityKind} row '{entityId}'.");
             }
 
+            if (entityKind == SqmsEntityKind.Bid
+                && string.Equals(action.ActionKey, "SubmitBid", StringComparison.Ordinal))
+            {
+                ValidateBidSubmission(entityId);
+            }
+
             var operationId = Guid.NewGuid().ToString("N");
             var envelope = new WorkflowActionEnvelope
             {
@@ -289,6 +296,65 @@ public sealed class SqmsWorkflowCoordinator(
         if (actor.Roles is null || actor.Roles.Count == 0 || actor.Roles.All(string.IsNullOrWhiteSpace))
         {
             throw new ArgumentException("SQMS actor must have at least one role.", nameof(actor));
+        }
+    }
+
+    private void ValidateBidSubmission(int bidId)
+    {
+        var gate = repository.ReadBidSubmissionGate(bidId);
+        if (!string.Equals(gate.ParentWorkflowState, "OpenToBidding", StringComparison.Ordinal))
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Bid '{bidId}' cannot be submitted because parent Opportunity " +
+                $"'{gate.OpportunityId}' is not in OpenToBidding.");
+        }
+
+        if (gate.BiddingCloseAt is null || timeProvider.GetUtcNow() >= gate.BiddingCloseAt.Value)
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Bid '{bidId}' cannot be submitted because bidding is closed.");
+        }
+
+        if (gate.EffectiveDateForSale is null
+            || gate.NoticeAt is null
+            || gate.ReminderAt is null
+            || gate.ResponseDueDate is null)
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Bid '{bidId}' cannot be submitted because parent scheduling fields are incomplete.");
+        }
+
+        var cycleWorkflowInstanceId = SqmsWorkflowIdentity.SaleCycleWorkflowInstanceId(
+            gate.EffectiveDateForSale.Value,
+            gate.NoticeAt.Value,
+            gate.ReminderAt.Value,
+            gate.ResponseDueDate.Value);
+        var noticeSent = dbContext.NotificationOutbox.AsNoTracking().Any(row =>
+            row.WorkflowInstanceId == cycleWorkflowInstanceId
+            && row.NotificationType == "SqmsOpenBiddingNotice"
+            && row.Status == "Sent");
+        if (!noticeSent)
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Bid '{bidId}' cannot be submitted until the open-bidding notice is Sent.");
+        }
+
+        if (string.IsNullOrWhiteSpace(gate.CommitmentAmountRequested)
+            || !decimal.TryParse(
+                gate.CommitmentAmountRequested,
+                NumberStyles.Number | NumberStyles.AllowCurrencySymbol,
+                CultureInfo.GetCultureInfo("en-US"),
+                out var commitmentAmount)
+            || commitmentAmount <= 0)
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Bid '{bidId}' CommitmentAmountRequested must contain a positive en-US monetary value.");
+        }
+
+        if (gate.BidPricingCategory is not ("FairValue" or "Premium" or "Discount"))
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Bid '{bidId}' has invalid BidPricingCategory '{gate.BidPricingCategory}'.");
         }
     }
 }

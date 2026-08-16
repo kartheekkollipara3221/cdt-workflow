@@ -53,6 +53,186 @@ public sealed class SqmsApplicationRepository(
         return result;
     }
 
+    internal IReadOnlyList<int> ReadOpportunityIdsDueForClose(
+        DateTimeOffset now,
+        int maxOpportunities)
+    {
+        return ReadOpportunityIds("""
+            SELECT TOP (@maxOpportunities) [ID]
+            FROM [SSQMS].[Opportunity]
+            WHERE ISNULL([IsDeleted], 0) = 0
+              AND [WorkflowState] = N'OpenToBidding'
+              AND [BiddingCloseAt] IS NOT NULL
+              AND [BiddingCloseAt] <= @now
+            ORDER BY [BiddingCloseAt], [ID];
+            """, maxOpportunities, now);
+    }
+
+    internal IReadOnlyList<int> ReadClosedOpportunityIds(int maxOpportunities)
+    {
+        return ReadOpportunityIds("""
+            SELECT TOP (@maxOpportunities) opportunity.[ID]
+            FROM [SSQMS].[Opportunity] AS opportunity
+            WHERE ISNULL(opportunity.[IsDeleted], 0) = 0
+              AND opportunity.[WorkflowState] = N'ClosedToBidding'
+              AND
+              (
+                  EXISTS
+                  (
+                      SELECT 1 FROM [SSQMS].[Bid] AS submittedBid
+                      WHERE submittedBid.[OpportunityId] = opportunity.[ID]
+                        AND ISNULL(submittedBid.[IsDeleted], 0) = 0
+                        AND submittedBid.[WorkflowState] = N'Submitted'
+                  )
+                  OR NOT EXISTS
+                  (
+                      SELECT 1 FROM [SSQMS].[Bid] AS reviewedBid
+                      WHERE reviewedBid.[OpportunityId] = opportunity.[ID]
+                        AND ISNULL(reviewedBid.[IsDeleted], 0) = 0
+                        AND reviewedBid.[WorkflowState] = N'IpgReview'
+                  )
+              )
+            ORDER BY opportunity.[ID];
+            """, maxOpportunities, now: null);
+    }
+
+    internal SqmsOpportunityClassificationRow ReadOpportunityForClassification(int opportunityId)
+    {
+        using var command = CreateCommand("""
+            SELECT [ID], [WorkflowState], [CommitmentAmountSale]
+            FROM [SSQMS].[Opportunity] WITH (UPDLOCK, ROWLOCK)
+            WHERE [ID] = @opportunityId AND ISNULL([IsDeleted], 0) = 0;
+            """);
+        command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            throw new KeyNotFoundException($"SQMS Opportunity row '{opportunityId}' was not found or is deleted.");
+        }
+
+        return new SqmsOpportunityClassificationRow(
+            reader.GetInt32(0),
+            reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+            reader.IsDBNull(2) ? null : reader.GetString(2));
+    }
+
+    internal IReadOnlyList<SqmsBidClassificationRow> ReadBidsForClassification(int opportunityId)
+    {
+        using var command = CreateCommand("""
+            SELECT [ID], [WorkflowState], [CommitmentAmountRequested], [BidPricingCategory]
+            FROM [SSQMS].[Bid] WITH (UPDLOCK, ROWLOCK)
+            WHERE [OpportunityId] = @opportunityId AND ISNULL([IsDeleted], 0) = 0
+            ORDER BY [ID];
+            """);
+        command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
+        var result = new List<SqmsBidClassificationRow>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(new SqmsBidClassificationRow(
+                reader.GetInt32(0),
+                reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3)));
+        }
+
+        return result;
+    }
+
+    internal SqmsBidSubmissionGate ReadBidSubmissionGate(int bidId)
+    {
+        using var command = CreateCommand("""
+            SELECT bid.[OpportunityId], opportunity.[WorkflowState], opportunity.[BiddingCloseAt],
+                CONVERT(date, opportunity.[EffectiveDateForSale]),
+                opportunity.[OpenBiddingNoticeAt], opportunity.[OpenBiddingReminderAt],
+                opportunity.[BidResponseDueDate], bid.[CommitmentAmountRequested],
+                bid.[BidPricingCategory]
+            FROM [SSQMS].[Bid] AS bid WITH (UPDLOCK, ROWLOCK)
+            INNER JOIN [SSQMS].[Opportunity] AS opportunity WITH (UPDLOCK, ROWLOCK)
+                ON opportunity.[ID] = bid.[OpportunityId]
+            WHERE bid.[ID] = @bidId
+              AND ISNULL(bid.[IsDeleted], 0) = 0
+              AND ISNULL(opportunity.[IsDeleted], 0) = 0;
+            """);
+        command.Parameters.Add(new SqlParameter("@bidId", SqlDbType.Int) { Value = bidId });
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Bid '{bidId}' does not have an active parent Opportunity.");
+        }
+
+        return new SqmsBidSubmissionGate(
+            reader.GetInt32(0),
+            reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+            reader.IsDBNull(2) ? null : reader.GetFieldValue<DateTimeOffset>(2),
+            reader.IsDBNull(3) ? null : DateOnly.FromDateTime(reader.GetDateTime(3)),
+            reader.IsDBNull(4) ? null : reader.GetFieldValue<DateTimeOffset>(4),
+            reader.IsDBNull(5) ? null : reader.GetFieldValue<DateTimeOffset>(5),
+            reader.IsDBNull(6) ? null : DateOnly.FromDateTime(reader.GetDateTime(6)),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8));
+    }
+
+    internal void UpdateOpportunityBidSummary(
+        int opportunityId,
+        int totalBid,
+        string largestBid,
+        string lowestBid,
+        string modifiedBy,
+        DateTime modifiedDateUtc)
+    {
+        using var command = CreateCommand("""
+            UPDATE [SSQMS].[Opportunity]
+            SET [TotalBid] = @totalBid,
+                [LargestBid] = @largestBid,
+                [LowestBid] = @lowestBid,
+                [ModifiedBy] = @modifiedBy,
+                [ModifiedDate] = @modifiedDateUtc
+            WHERE [ID] = @opportunityId
+              AND ISNULL([IsDeleted], 0) = 0
+              AND [WorkflowState] = N'ClosedToBidding';
+            """);
+        command.Parameters.Add(new SqlParameter("@totalBid", SqlDbType.Int) { Value = totalBid });
+        command.Parameters.Add(new SqlParameter("@largestBid", SqlDbType.VarChar, 100) { Value = largestBid });
+        command.Parameters.Add(new SqlParameter("@lowestBid", SqlDbType.VarChar, 100) { Value = lowestBid });
+        command.Parameters.Add(new SqlParameter("@modifiedBy", SqlDbType.NVarChar, 50) { Value = modifiedBy });
+        command.Parameters.Add(new SqlParameter("@modifiedDateUtc", SqlDbType.DateTime) { Value = modifiedDateUtc });
+        command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS Opportunity row '{opportunityId}' changed before its Bid summary was projected.");
+        }
+    }
+
+    private IReadOnlyList<int> ReadOpportunityIds(
+        string sql,
+        int maxOpportunities,
+        DateTimeOffset? now)
+    {
+        if (maxOpportunities <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxOpportunities));
+        }
+
+        using var command = CreateCommand(sql);
+        command.Parameters.Add(new SqlParameter("@maxOpportunities", SqlDbType.Int) { Value = maxOpportunities });
+        if (now is not null)
+        {
+            command.Parameters.Add(new SqlParameter("@now", SqlDbType.DateTimeOffset) { Value = now.Value });
+        }
+
+        var result = new List<int>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(reader.GetInt32(0));
+        }
+
+        return result;
+    }
+
     internal SqmsApplicationState ReadForUpdate(SqmsEntityKind entityKind, int entityId)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(entityId);

@@ -41,6 +41,22 @@ public sealed class SqmsWorkflowCoordinatorTests
                 ["CancelOpportunity", "MarkOpportunityPending", "ReturnOpportunityToDraft"],
                 ActionKeys(opportunityContext));
 
+            coordinator.ExecuteOpportunityAction(
+                10000,
+                new SqmsActionRequest("MarkOpportunityPending"),
+                IpgActor);
+            coordinator.ExecuteOpportunityAction(
+                10000,
+                new SqmsActionRequest("OpenOpportunityForBidding"),
+                IpgActor);
+            Assert.Equal(1, host.GetRequiredService<SqmsScheduleRunner>()
+                .RunNoticesAndReminders().NoticesQueued);
+            ExecuteSql(host.ConnectionString, """
+                UPDATE dbo.NotificationOutbox
+                SET Status = 'Sent', SentAtUtc = SYSDATETIMEOFFSET()
+                WHERE NotificationType = 'SqmsOpenBiddingNotice';
+                """);
+
             var bidDraft = coordinator.StartBid(10000, MfoActor);
             Assert.Equal("Draft", bidDraft.WorkflowState);
             Assert.Equal("DRAFT", bidDraft.Status);
@@ -124,12 +140,78 @@ public sealed class SqmsWorkflowCoordinatorTests
         }
     }
 
+    [Fact]
+    public void SubmitBidRequiresParentOpenToBidding()
+    {
+        using var host = CreateInitializedHost();
+
+        try
+        {
+            var coordinator = host.GetRequiredService<SqmsWorkflowCoordinator>();
+            coordinator.StartBid(10000, MfoActor);
+
+            var exception = Assert.Throws<SqmsIntegrationException>(() =>
+                coordinator.ExecuteBidAction(
+                    10000,
+                    new SqmsActionRequest("SubmitBid"),
+                    MfoActor));
+
+            Assert.Contains("OpenToBidding", exception.Message, StringComparison.Ordinal);
+            AssertProjection(host.ConnectionString, "Bid", 10000, "Draft", "DRAFT", "sqms.mfo");
+        }
+        finally
+        {
+            host.ResetDatabase();
+        }
+    }
+
+    [Fact]
+    public void SubmitBidRequiresSentNoticeAndFutureCloseTime()
+    {
+        using var host = CreateInitializedHost();
+
+        try
+        {
+            var coordinator = host.GetRequiredService<SqmsWorkflowCoordinator>();
+            coordinator.StartOpportunity(10000, MfoActor);
+            coordinator.ExecuteOpportunityAction(10000, new SqmsActionRequest("SubmitOpportunity"), MfoActor);
+            coordinator.ExecuteOpportunityAction(10000, new SqmsActionRequest("MarkOpportunityPending"), IpgActor);
+            coordinator.ExecuteOpportunityAction(10000, new SqmsActionRequest("OpenOpportunityForBidding"), IpgActor);
+            coordinator.StartBid(10000, MfoActor);
+
+            var noticeException = Assert.Throws<SqmsIntegrationException>(() =>
+                coordinator.ExecuteBidAction(10000, new SqmsActionRequest("SubmitBid"), MfoActor));
+            Assert.Contains("notice is Sent", noticeException.Message, StringComparison.Ordinal);
+
+            Assert.Equal(1, host.GetRequiredService<SqmsScheduleRunner>()
+                .RunNoticesAndReminders().NoticesQueued);
+            ExecuteSql(host.ConnectionString, """
+                UPDATE dbo.NotificationOutbox
+                SET Status = 'Sent', SentAtUtc = SYSDATETIMEOFFSET()
+                WHERE NotificationType = 'SqmsOpenBiddingNotice';
+                UPDATE SSQMS.Opportunity
+                SET BiddingCloseAt = '2030-01-15T15:30:00+00:00'
+                WHERE ID = 10000;
+                """);
+
+            var closeException = Assert.Throws<SqmsIntegrationException>(() =>
+                coordinator.ExecuteBidAction(10000, new SqmsActionRequest("SubmitBid"), MfoActor));
+            Assert.Contains("bidding is closed", closeException.Message, StringComparison.Ordinal);
+            AssertProjection(host.ConnectionString, "Bid", 10000, "Draft", "DRAFT", "sqms.mfo");
+        }
+        finally
+        {
+            host.ResetDatabase();
+        }
+    }
+
     private static TestConsoleHost CreateInitializedHost()
     {
         var host = new TestConsoleHost(DatabaseName);
         host.ResetDatabase();
         Assert.Equal(0, host.Execute("init-db").ExitCode);
         ExecuteSqlScript(host.ConnectionString, "sql/sqms/001_seed_sqms_transition_metadata.sql");
+        ExecuteSqlScript(host.ConnectionString, "sql/sqms/004_seed_sqms_end_to_end_metadata.sql");
         ExecuteSqlScript(host.ConnectionString, "sql/sqms/testing/004_create_sqms_mock_application_tables.sql");
         return host;
     }

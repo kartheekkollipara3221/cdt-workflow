@@ -54,10 +54,41 @@ public sealed record SqmsScheduleRunResult(
     int CyclesCompleted,
     IReadOnlyList<string> Errors);
 
+public sealed record SqmsClosureRunResult(
+    int OpportunitiesScanned,
+    int ParentsClosed,
+    int ChildBatchesCompleted,
+    int OpportunitiesNotFulfilled,
+    IReadOnlyList<string> Errors);
+
+internal sealed record SqmsOpportunityClassificationRow(
+    int OpportunityId,
+    string WorkflowState,
+    string? CommitmentAmountSale);
+
+internal sealed record SqmsBidClassificationRow(
+    int BidId,
+    string WorkflowState,
+    string? CommitmentAmountRequested,
+    string? BidPricingCategory);
+
+internal sealed record SqmsBidSubmissionGate(
+    int OpportunityId,
+    string ParentWorkflowState,
+    DateTimeOffset? BiddingCloseAt,
+    DateOnly? EffectiveDateForSale,
+    DateTimeOffset? NoticeAt,
+    DateTimeOffset? ReminderAt,
+    DateOnly? ResponseDueDate,
+    string? CommitmentAmountRequested,
+    string? BidPricingCategory);
+
 public sealed class SqmsIntegrationOptions
 {
     public string OpenBiddingViewUrl { get; set; }
         = "https://example.test/sqms/opportunities/open-to-bidding";
 
     public int MaxCyclesPerRun { get; set; } = 100;
+
+    public int MaxOpportunitiesPerRun { get; set; } = 100;
 }
