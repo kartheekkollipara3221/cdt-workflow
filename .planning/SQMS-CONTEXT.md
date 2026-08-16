@@ -1,7 +1,7 @@
 # SQMS Integration Context
 
 **Updated:** 2026-08-16
-**Status:** Iterations 1 and 2 complete; console integration mock is next
+**Status:** Iterations 1 through 3 complete; select the next single SQMS capability
 **Source of truth:** Repository-root `PROJECT.md` remains authoritative for the generic engine.
 
 ## Agreed baseline
@@ -46,6 +46,24 @@ Relevant files:
 - Proved Bid `Draft -> Submitted -> IpgReview -> UnderReviewBySeller`, ending at version 4.
 - Verified role-filtered `availableActions`, three audit rows per instance, and zero tasks, SLA schedules, or notification-outbox rows.
 - Used namespaced identifiers such as `SQMS-OPP-*` and `SQMS-BID-*` to avoid ID collisions.
+
+### Iteration 3: exact-table console integration proof
+
+- Added rerunnable `SSQMS.Opportunity` and `SSQMS.Bid` mock-table SQL using the exact supplied column types, nullability, identity seeds, primary keys, and foreign key.
+- Inserted deterministic related application fixtures at ID `10000` without updating pre-existing rows.
+- Added Console envelopes for `SubmitOpportunity` and `SubmitBid` using namespaced business object and workflow instance IDs.
+- Proved Start, Get Context, and Execute for both workflows in an isolated SQL-backed automated test and against `DOLLY/workflowengine`.
+- Both workflows reached `Submitted`, version 2, with one audit each and no tasks, SLA schedules, or notification-outbox rows.
+- Proved the generic engine left the application-owned `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate` fields unchanged.
+- Made no generic engine, public HTTP contract, EF migration, or UI change.
+
+Relevant files:
+
+- `sql/sqms/testing/004_create_sqms_mock_application_tables.sql`
+- `sql/sqms/testing/005_verify_sqms_console_mock.sql`
+- `samples/sqms/01-submit-opportunity.json`
+- `samples/sqms/02-submit-bid.json`
+- `tests/WorkflowEngine.Tests/SqmsConsoleMockIntegrationTests.cs`
 
 ## SQMS application tables supplied by the user
 
@@ -109,35 +127,11 @@ These tables remain owned by the SQMS application database. They are not workflo
 
 The user supplied the production table-creation DDL on 2026-08-16. Exact column types, nullability, identity seeds, primary keys, and the `Bid.OpportunityId -> Opportunity.ID` foreign key are captured in `docs/superpowers/specs/2026-08-16-sqms-console-mock-integration-design.md`. Live production records remain outside this test.
 
-## Next iteration objective: console integration mock
+## Current boundary and next decision
 
-Mock the SQMS application boundary through console scenarios/tests; do not build UI.
-
-The intended proof covers:
-
-1. **Start**
-   - Select or mock an Opportunity or Bid record identity.
-   - Use workflow key `SqmsOpportunity` or `SqmsBid`.
-   - Derive a collision-safe business object identity such as `SQMS-OPP-{ID}` or `SQMS-BID-{ID}`.
-   - Start the workflow through the existing generic service/console boundary.
-
-2. **Get Context**
-   - Retrieve workflow context for the resulting workflow instance.
-   - Display current workflow state and role-filtered `availableActions`.
-   - Do not implement UI rendering.
-
-3. **Execute**
-   - Submit only the selected `actionKey` plus the existing trusted actor inputs required by the console/service boundary.
-   - Let generic transition metadata determine the next state.
-   - Return and display the action result and refreshed workflow context.
-
-## Decisions still required during design
-
-- Use persistent mock `SSQMS` tables in `workflowengine`; do not create or write to `cp_sharepoint`.
-- Define how the SQMS application will persist or derive `workflowInstanceId`; neither supplied table currently lists a workflow-instance ID column.
-- Define the exact ownership and synchronization semantics of application columns `Status` and `WorkflowState`.
-- Use the exact user-supplied SQL types, nullability, identity seeds, primary keys, and foreign key captured in the approved console-mock design.
-- Decide whether the first console proof covers Opportunity only, Bid only, or one representative path for each.
+- The test convention derives `SQMS-OPP-{ID}` / `WF-SQMS-OPP-{ID}` and `SQMS-BID-{ID}` / `WF-SQMS-BID-{ID}`; the production SQMS application still needs an approved persistence or deterministic-derivation convention for `workflowInstanceId`.
+- `SSQMS.Status` and `SSQMS.WorkflowState` remain application-owned and were deliberately not synchronized by the engine in this iteration.
+- Before more implementation, select one narrowly scoped capability. Candidates include the thin application persistence boundary or one approved task/notification capability; do not bundle them.
 
 ## Explicitly deferred
 

@@ -1,75 +1,63 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-13T02:44:31.619Z",
+  "timestamp": "2026-08-16T16:45:00Z",
   "phase": "SQMS",
   "phase_name": "SQMS iterative workflow integration",
   "phase_dir": ".planning",
-  "plan": 2,
-  "task": 2,
-  "total_tasks": 2,
-  "status": "paused",
+  "plan": 3,
+  "task": 3,
+  "total_tasks": 3,
+  "status": "complete",
   "completed_tasks": [
     {
       "id": 1,
       "name": "Seed and verify approved SQMS Opportunity and Bid transition metadata",
-      "status": "done",
-      "commit": null
+      "status": "done"
     },
     {
       "id": 2,
       "name": "Prove existing Workflow Start, Context, and Action APIs with live SQMS runtime scenarios",
-      "status": "done",
-      "commit": null
-    }
-  ],
-  "remaining_tasks": [
+      "status": "done"
+    },
     {
       "id": 3,
-      "name": "Design and mock console Start, Get Context, and Execute against the supplied SQMS Opportunity/Bid table identities",
-      "status": "not_started"
+      "name": "Mock exact SQMS application tables and prove Console Start, Get Context, and Execute",
+      "status": "done",
+      "commits": [
+        "ddc3497",
+        "0113bde"
+      ]
     }
   ],
+  "remaining_tasks": [],
   "blockers": [],
   "async_jobs": [],
-  "human_actions_pending": [],
+  "human_actions_pending": [
+    "Select exactly one next SQMS capability before Iteration 4 planning."
+  ],
   "decisions": [
     {
-      "decision": "Use the existing generic Workflow Start, Context, and Action surfaces for SQMS.",
-      "rationale": "The live API proved that seeded metadata supplies role-filtered available actions and validates transitions without duplicate SQMS transition code.",
+      "decision": "Keep the generic workflow engine as the transition authority.",
+      "rationale": "Both SQMS workflows execute from the existing metadata using actionKey without a duplicate application state machine.",
       "phase": "SQMS"
     },
     {
-      "decision": "Do not change workflow-engine code for SQMS transition integration.",
-      "rationale": "Opportunity and Bid representative paths ran successfully through the existing public APIs.",
+      "decision": "Create exact-shape SQMS application mocks through explicit test SQL, not EF migrations.",
+      "rationale": "The tables are application-owned and must not become part of the reusable engine persistence model.",
       "phase": "SQMS"
     },
     {
-      "decision": "Keep non-Completed terminal runtime-status handling deferred.",
-      "rationale": "The user explicitly deferred terminal synchronization to a broader later implementation.",
+      "decision": "Do not synchronize application Status or WorkflowState in Iteration 3.",
+      "rationale": "The console proof establishes workflow behavior while preserving the unresolved application ownership boundary.",
       "phase": "SQMS"
     },
     {
-      "decision": "Protect both Portfolio Trade and current SQMS behavior as regression baselines for any generic-engine change.",
-      "rationale": "The engine is shared by multiple applications and must remain generic and backward compatible.",
-      "phase": "SQMS"
-    },
-    {
-      "decision": "Use console scenarios/tests to mock the SQMS application boundary; UI is out of scope.",
-      "rationale": "The supplied SQMS Bid and Opportunity tables define the application records, while this repository owns workflow integration proof rather than UI work.",
+      "decision": "Protect Portfolio Trade plus both SQMS workflows with regression coverage.",
+      "rationale": "The engine is shared infrastructure and future changes must remain backward compatible.",
       "phase": "SQMS"
     }
   ],
-  "uncommitted_files": [
-    ".planning/STATE.md",
-    "CODEX_HANDOFF.md",
-    ".superpowers/",
-    ".tools/",
-    "SQMS/",
-    "docs/superpowers/plans/2026-08-12-sqms-transition-metadata.md",
-    "docs/superpowers/specs/2026-08-12-sqms-transition-metadata-design.md",
-    "sql/",
-    "tareget-api-integration/"
-  ],
-  "next_action": "Read .planning/SQMS-CONTEXT.md, inspect the actual cp_sharepoint SSQMS table schema details, and design a console-only Start, Get Context, and Execute proof without changing UI or adding deferred capabilities.",
-  "context_notes": "Iteration 1 seeded 31 Opportunity and 9 Bid transitions. Iteration 2 made no engine code changes and proved live Start, Context, and Action behavior. The selected next capability is a console mock of the SQMS application boundary using the supplied Bid and Opportunity table shapes. UI, tasks, SLA, notifications, scheduling, aggregation, and terminal synchronization remain out of this iteration."
+  "uncommitted_files": [],
+  "next_action": "Review the completed Iteration 3 proof and choose one narrowly scoped SQMS capability for Iteration 4.",
+  "context_notes": "DOLLY/workflowengine contains SSQMS.Opportunity and SSQMS.Bid fixture ID 10000. WF-SQMS-OPP-10000 and WF-SQMS-BID-10000 are Submitted version 2 with one audit each, no tasks/SLA/outbox, and unchanged application Status/WorkflowState fields."
 }

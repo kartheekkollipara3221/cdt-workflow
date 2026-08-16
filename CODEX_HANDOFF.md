@@ -2039,3 +2039,53 @@ Continue from the applied and verified SQMS Iteration 1 metadata in workflowengi
 ```text
 Continue after SQMS Iteration 2 no-code runtime validation. Existing Workflow Start, Context, and Action APIs successfully drove Opportunity to OpenToBidding and Bid to UnderReviewBySeller using the seeded metadata and namespaced IDs. No engine code is needed for UI action discovery or transition validation. Preserve the approved matrices and select only one next SQMS capability; terminal status handling remains deferred.
 ```
+
+# 2026-08-16 SQMS Iteration 3 Exact-Table Console Proof
+
+## Current goal
+
+- Completed the approved console-only mock of the SQMS application boundary using the user-supplied Opportunity and Bid DDL.
+- Preserved the reusable engine and existing Portfolio Trade/SQMS behavior.
+
+## Completed changes
+
+- Added `sql/sqms/testing/004_create_sqms_mock_application_tables.sql`, a transactional and rerunnable setup script for exact-shape `SSQMS.Opportunity` and `SSQMS.Bid` tables in the current database.
+- Added deterministic related fixtures at ID `10000` without updating existing rows.
+- Added `sql/sqms/testing/005_verify_sqms_console_mock.sql`, which independently checks columns, SQL types, nullability, identity settings, PK/FK trust, workflow results, audit counts, absence of task/SLA/outbox rows, and application-row immutability.
+- Added Console action envelopes for `SubmitOpportunity` and `SubmitBid`.
+- Added an isolated SQL-backed integration test covering Start, role-filtered Context, Execute, refreshed Context, runtime persistence, and untouched application rows.
+- No generic engine, public HTTP contract, EF migration, or UI code changed.
+
+## Live database evidence
+
+- Database: `DOLLY/workflowengine`; no `cp_sharepoint` database was created or written.
+- Setup SQL ran twice successfully.
+- Opportunity fixture `SSQMS.Opportunity.ID=10000` remained `Status=DRAFT`, `WorkflowState=Draft`, with null modification fields.
+- Bid fixture `SSQMS.Bid.ID=10000`, related to Opportunity 10000, remained `Status=DRAFT`, `WorkflowState=Draft`, with null modification fields.
+- `WF-SQMS-OPP-10000` started at Draft version 1, exposed only `SubmitOpportunity` to MFO, executed to Submitted version 2, then exposed `CancelOpportunity`, `MarkOpportunityPending`, and `ReturnOpportunityToDraft` to IPG.
+- `WF-SQMS-BID-10000` started at Draft version 1, exposed only `SubmitBid` to MFO, executed to Submitted version 2, then exposed `MarkBidNotAllocated` and `MoveBidToIpgReview` to IPG.
+- Each workflow has one matching audit and zero task, SLA schedule, and notification-outbox rows.
+- Final independent SQL verifier printed `SQMS console mock verification passed.`
+
+## Build and test status
+
+- Focused TDD test: expected RED on the missing setup script, then 1/1 GREEN after implementation.
+- Core warnings-as-errors build: 0 warnings, 0 errors.
+- Core non-SMTP SQL-backed suite: 337 passed, 0 failed, 0 skipped.
+- Workflow API warnings-as-errors build: 0 warnings, 0 errors.
+- Workflow API suite: 63 passed, 0 failed, 2 existing dispatcher tests skipped.
+- Console `verify-seed`: passed.
+- Exact SQMS metadata verifier: Opportunity 11 states / 11 actions / 3 roles / 31 transitions; Bid 8 / 7 / 3 / 9.
+
+## Remaining tasks and risks
+
+- Iteration 3 is complete. Select exactly one capability before Iteration 4 planning.
+- The production SQMS application still needs an approved convention to persist or deterministically derive `workflowInstanceId`.
+- Application ownership/synchronization of `Status` and `WorkflowState` remains intentionally unresolved; the generic engine does not update them.
+- UI, tasks, SLA, notifications, scheduling, aggregation, and generic non-`Completed` terminal-state synchronization remain deferred.
+
+## Next-session prompt
+
+```text
+Resume after completed SQMS Iteration 3. Read AGENTS.md, PROJECT.md, .planning/SQMS-CONTEXT.md, and the 2026-08-16 console-mock design. The exact-shape SSQMS mock tables and deterministic ID 10000 fixtures exist in DOLLY/workflowengine. Both WF-SQMS-OPP-10000 and WF-SQMS-BID-10000 are Submitted version 2 with one audit, no task/SLA/outbox rows, and unchanged application fields. No generic engine code changed. Choose one narrowly scoped next SQMS capability before planning or coding.
+```
