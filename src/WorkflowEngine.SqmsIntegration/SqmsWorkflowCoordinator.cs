@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Context;
 using WorkflowEngine.Application.Contracts;
@@ -17,8 +18,15 @@ public sealed class SqmsWorkflowCoordinator(
     IWorkflowExecutionService workflowExecutionService,
     WorkflowActionEnvelopeNormalizer normalizer,
     CanonicalRequestHasher hasher,
+    SqmsNotificationInputFactory notificationInputFactory,
+    SqmsIntegrationOptions options,
     TimeProvider timeProvider)
 {
+    private static readonly SqmsActor SystemActor = new(
+        "sqms.scheduler",
+        "SQMS Scheduler",
+        ["System"]);
+
     public SqmsWorkflowResult StartOpportunity(int opportunityId, SqmsActor actor)
     {
         return Start(
@@ -59,6 +67,19 @@ public sealed class SqmsWorkflowCoordinator(
         SqmsActor actor,
         WorkflowNotificationInput? notificationInput = null)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.Equals(request.ActionKey, "RequestSellerApproval", StringComparison.Ordinal))
+        {
+            if (notificationInput is not null)
+            {
+                throw new ArgumentException(
+                    "SQMS seller-approval notification input is server-owned.",
+                    nameof(notificationInput));
+            }
+
+            return RequestSellerApproval(opportunityId, request, actor);
+        }
+
         return ExecuteAction(
             SqmsEntityKind.Opportunity,
             opportunityId,
@@ -74,6 +95,19 @@ public sealed class SqmsWorkflowCoordinator(
         SqmsActor actor,
         WorkflowNotificationInput? notificationInput = null)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.ActionKey is "AcceptBid" or "PartiallyAcceptBid" or "RejectBid")
+        {
+            if (notificationInput is not null)
+            {
+                throw new ArgumentException(
+                    "SQMS Bid disposition notification input is server-owned.",
+                    nameof(notificationInput));
+            }
+
+            return ExecuteBidDisposition(bidId, request, actor);
+        }
+
         return ExecuteAction(
             SqmsEntityKind.Bid,
             bidId,
@@ -81,6 +115,121 @@ public sealed class SqmsWorkflowCoordinator(
             request,
             actor,
             notificationInput);
+    }
+
+    private SqmsWorkflowResult RequestSellerApproval(
+        int opportunityId,
+        SqmsActionRequest request,
+        SqmsActor actor)
+    {
+        ValidateActor(actor);
+        return InTransaction("request SQMS seller approval", () =>
+        {
+            var applicationState = repository.ReadForUpdate(SqmsEntityKind.Opportunity, opportunityId);
+            if (!string.Equals(applicationState.WorkflowState, "ClosedToBidding", StringComparison.Ordinal))
+            {
+                throw new SqmsIntegrationException(
+                    $"SQMS Opportunity '{opportunityId}' must be in ClosedToBidding before seller approval.");
+            }
+
+            var notificationRow = repository.ReadOpportunityNotificationRow(opportunityId);
+            var bidIds = repository.ReadIpgReviewBidIdsForUpdate(opportunityId);
+            if (bidIds.Count == 0)
+            {
+                throw new SqmsIntegrationException(
+                    $"SQMS Opportunity '{opportunityId}' has no IpgReview Bids for seller approval.");
+            }
+
+            var notificationInput = notificationInputFactory.CreateSellerApprovalInput(
+                new SqmsOpportunityNotificationData(
+                    RequiredDate(notificationRow.EffectiveDateForSale, "EffectiveDateForSale", opportunityId),
+                    RequiredDate(notificationRow.SellerResponseDueDate, "SellerResponseDueDate", opportunityId),
+                    Required(notificationRow.AccountNumber, "AccountNumber", opportunityId),
+                    Required(notificationRow.AccountName, "AccountName", opportunityId),
+                    Required(notificationRow.FundName, "FundConsideredSecondarySale", opportunityId),
+                    Required(notificationRow.Vehicle, "Vehicle", opportunityId),
+                    ParseMoney(notificationRow.CommitmentAmountSale, "CommitmentAmountSale", opportunityId),
+                    FormatViewUrl(options.SellerApprovalViewUrlFormat, opportunityId, "SellerApprovalViewUrlFormat"),
+                    Required(
+                        notificationRow.OpportunityRelationshipManagerEmail,
+                        "OpportunityRelationshipManagerEmail",
+                        opportunityId),
+                    ParseEmailList(notificationRow.SellerRmTeamEmailsJson, "SellerRmTeamEmailsJson", opportunityId)));
+
+            foreach (var bidId in bidIds)
+            {
+                ExecuteAction(
+                    SqmsEntityKind.Bid,
+                    bidId,
+                    SqmsWorkflowIdentity.BidWorkflowInstanceId(bidId),
+                    new SqmsActionRequest("SendBidToSellerReview"),
+                    actor,
+                    notificationInput: null);
+            }
+
+            return ExecuteAction(
+                SqmsEntityKind.Opportunity,
+                opportunityId,
+                SqmsWorkflowIdentity.OpportunityWorkflowInstanceId(opportunityId),
+                request,
+                actor,
+                notificationInput);
+        });
+    }
+
+    private SqmsWorkflowResult ExecuteBidDisposition(
+        int bidId,
+        SqmsActionRequest request,
+        SqmsActor actor)
+    {
+        ValidateActor(actor);
+        return InTransaction("execute SQMS Bid seller disposition", () =>
+        {
+            var row = repository.ReadBidNotificationRow(bidId);
+            var notificationInput = notificationInputFactory.CreateBidDispositionInput(
+                new SqmsBidNotificationData(
+                    RequiredDate(row.EffectiveDateForSale, "EffectiveDateForSale", row.OpportunityId),
+                    Required(row.BuyerAccountNumber, "AccountNumber", bidId),
+                    Required(row.BuyerAccountName, "AccountName", bidId),
+                    Required(row.FundName, "FundConsideredSecondarySale", row.OpportunityId),
+                    Required(row.Vehicle, "Vehicle", row.OpportunityId),
+                    ParseMoney(row.CommitmentAmountRequested, "CommitmentAmountRequested", bidId),
+                    FormatViewUrl(options.BidViewUrlFormat, bidId, "BidViewUrlFormat"),
+                    Required(row.BidRelationshipManagerEmail, "BidRelationshipManagerEmail", bidId),
+                    ParseEmailList(row.BuyerRmTeamEmailsJson, "BuyerRmTeamEmailsJson", bidId)));
+            var bidResult = ExecuteAction(
+                SqmsEntityKind.Bid,
+                bidId,
+                SqmsWorkflowIdentity.BidWorkflowInstanceId(bidId),
+                request,
+                actor,
+                notificationInput);
+
+            var counts = repository.ReadBidRollupCounts(row.OpportunityId);
+            if (counts.UnderReviewBySeller == 0)
+            {
+                if (counts.Decided == 0)
+                {
+                    throw new SqmsIntegrationException(
+                        $"SQMS Opportunity '{row.OpportunityId}' has no seller Bid decisions to roll up.");
+                }
+
+                var rollupAction = counts.Accepted == counts.Decided
+                    ? "MarkOpportunityAwaitingAllocation"
+                    : counts.NotAccepted == counts.Decided
+                        ? "MarkOpportunityNotFulfilled"
+                        : "MarkOpportunityPartiallyAllocated";
+                ExecuteAction(
+                    SqmsEntityKind.Opportunity,
+                    row.OpportunityId,
+                    SqmsWorkflowIdentity.OpportunityWorkflowInstanceId(row.OpportunityId),
+                    new SqmsActionRequest(rollupAction),
+                    SystemActor,
+                    notificationInput: null);
+            }
+
+            return bidResult;
+        });
     }
 
     private SqmsWorkflowResult Start(
@@ -356,5 +505,86 @@ public sealed class SqmsWorkflowCoordinator(
             throw new SqmsIntegrationException(
                 $"SQMS Bid '{bidId}' has invalid BidPricingCategory '{gate.BidPricingCategory}'.");
         }
+    }
+
+    private static DateOnly RequiredDate(DateOnly? value, string field, int entityId)
+    {
+        return value ?? throw new SqmsIntegrationException(
+            $"SQMS row '{entityId}' requires {field} for notification delivery.");
+    }
+
+    private static string Required(string? value, string field, int entityId)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? throw new SqmsIntegrationException(
+                $"SQMS row '{entityId}' requires {field} for notification delivery.")
+            : value.Trim();
+    }
+
+    private static decimal ParseMoney(string? value, string field, int entityId)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || !decimal.TryParse(
+                value,
+                NumberStyles.Number | NumberStyles.AllowCurrencySymbol,
+                CultureInfo.GetCultureInfo("en-US"),
+                out var parsed)
+            || parsed <= 0)
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS row '{entityId}' {field} must contain a positive en-US monetary value.");
+        }
+
+        return parsed;
+    }
+
+    private static IReadOnlyList<string> ParseEmailList(string? json, string field, int entityId)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS row '{entityId}' requires {field} for notification delivery.");
+        }
+
+        try
+        {
+            var values = JsonSerializer.Deserialize<string[]>(json) ?? [];
+            var result = values
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            return result.Length == 0
+                ? throw new SqmsIntegrationException(
+                    $"SQMS row '{entityId}' {field} must contain at least one email address.")
+                : result;
+        }
+        catch (JsonException exception)
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS row '{entityId}' {field} is not a valid JSON email array.",
+                exception);
+        }
+    }
+
+    private static string FormatViewUrl(
+        string format,
+        int entityId,
+        string optionName)
+    {
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            throw new SqmsIntegrationException($"SQMS {optionName} is required.");
+        }
+
+        var value = string.Format(CultureInfo.InvariantCulture, format, entityId);
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+        {
+            throw new SqmsIntegrationException(
+                $"SQMS {optionName} must produce an absolute HTTP or HTTPS URL.");
+        }
+
+        return value;
     }
 }

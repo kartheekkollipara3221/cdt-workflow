@@ -1,0 +1,4 @@
+{
+  "actionKey": "RequestSellerApproval",
+  "reason": "Send all IPG-reviewed bids to the seller for a decision."
+}

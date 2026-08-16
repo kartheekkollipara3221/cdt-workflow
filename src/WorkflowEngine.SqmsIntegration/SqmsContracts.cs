@@ -83,6 +83,39 @@ internal sealed record SqmsBidSubmissionGate(
     string? CommitmentAmountRequested,
     string? BidPricingCategory);
 
+internal sealed record SqmsOpportunityNotificationRow(
+    int OpportunityId,
+    DateOnly? EffectiveDateForSale,
+    DateOnly? SellerResponseDueDate,
+    string? AccountNumber,
+    string? AccountName,
+    string? FundName,
+    string? Vehicle,
+    string? CommitmentAmountSale,
+    string? OpportunityRelationshipManagerEmail,
+    string? SellerRmTeamEmailsJson);
+
+internal sealed record SqmsBidNotificationRow(
+    int BidId,
+    int OpportunityId,
+    DateOnly? EffectiveDateForSale,
+    string? BuyerAccountNumber,
+    string? BuyerAccountName,
+    string? FundName,
+    string? Vehicle,
+    string? CommitmentAmountRequested,
+    string? BidRelationshipManagerEmail,
+    string? BuyerRmTeamEmailsJson);
+
+internal sealed record SqmsBidRollupCounts(
+    int UnderReviewBySeller,
+    int Accepted,
+    int PartiallyAccepted,
+    int NotAccepted)
+{
+    public int Decided => Accepted + PartiallyAccepted + NotAccepted;
+}
+
 public sealed class SqmsIntegrationOptions
 {
     public string OpenBiddingViewUrl { get; set; }
@@ -91,4 +124,10 @@ public sealed class SqmsIntegrationOptions
     public int MaxCyclesPerRun { get; set; } = 100;
 
     public int MaxOpportunitiesPerRun { get; set; } = 100;
+
+    public string SellerApprovalViewUrlFormat { get; set; }
+        = "https://example.test/sqms/opportunities/{0}/seller-review";
+
+    public string BidViewUrlFormat { get; set; }
+        = "https://example.test/sqms/bids/{0}";
 }

@@ -174,6 +174,112 @@ public sealed class SqmsApplicationRepository(
             reader.IsDBNull(8) ? null : reader.GetString(8));
     }
 
+    internal IReadOnlyList<int> ReadIpgReviewBidIdsForUpdate(int opportunityId)
+    {
+        using var command = CreateCommand("""
+            SELECT [ID]
+            FROM [SSQMS].[Bid] WITH (UPDLOCK, ROWLOCK)
+            WHERE [OpportunityId] = @opportunityId
+              AND ISNULL([IsDeleted], 0) = 0
+              AND [WorkflowState] = N'IpgReview'
+            ORDER BY [ID];
+            """);
+        command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
+        var result = new List<int>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(reader.GetInt32(0));
+        }
+
+        return result;
+    }
+
+    internal SqmsOpportunityNotificationRow ReadOpportunityNotificationRow(int opportunityId)
+    {
+        using var command = CreateCommand("""
+            SELECT [ID], CONVERT(date, [EffectiveDateForSale]), [SellerResponseDueDate],
+                [AccountNumber], [AccountName], [FundConsideredSecondarySale], [Vehicle],
+                [CommitmentAmountSale], [OpportunityRelationshipManagerEmail],
+                [SellerRmTeamEmailsJson]
+            FROM [SSQMS].[Opportunity] WITH (UPDLOCK, ROWLOCK)
+            WHERE [ID] = @opportunityId AND ISNULL([IsDeleted], 0) = 0;
+            """);
+        command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            throw new KeyNotFoundException($"SQMS Opportunity row '{opportunityId}' was not found or is deleted.");
+        }
+
+        return new SqmsOpportunityNotificationRow(
+            reader.GetInt32(0),
+            reader.IsDBNull(1) ? null : DateOnly.FromDateTime(reader.GetDateTime(1)),
+            reader.IsDBNull(2) ? null : DateOnly.FromDateTime(reader.GetDateTime(2)),
+            reader.IsDBNull(3) ? null : reader.GetString(3),
+            reader.IsDBNull(4) ? null : reader.GetString(4),
+            reader.IsDBNull(5) ? null : reader.GetString(5),
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8),
+            reader.IsDBNull(9) ? null : reader.GetString(9));
+    }
+
+    internal SqmsBidNotificationRow ReadBidNotificationRow(int bidId)
+    {
+        using var command = CreateCommand("""
+            SELECT bid.[ID], bid.[OpportunityId], CONVERT(date, opportunity.[EffectiveDateForSale]),
+                bid.[AccountNumber], bid.[AccountName], opportunity.[FundConsideredSecondarySale],
+                opportunity.[Vehicle], bid.[CommitmentAmountRequested],
+                bid.[BidRelationshipManagerEmail], bid.[BuyerRmTeamEmailsJson]
+            FROM [SSQMS].[Bid] AS bid WITH (UPDLOCK, ROWLOCK)
+            INNER JOIN [SSQMS].[Opportunity] AS opportunity WITH (UPDLOCK, ROWLOCK)
+                ON opportunity.[ID] = bid.[OpportunityId]
+            WHERE bid.[ID] = @bidId
+              AND ISNULL(bid.[IsDeleted], 0) = 0
+              AND ISNULL(opportunity.[IsDeleted], 0) = 0;
+            """);
+        command.Parameters.Add(new SqlParameter("@bidId", SqlDbType.Int) { Value = bidId });
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            throw new KeyNotFoundException($"SQMS Bid row '{bidId}' was not found or is deleted.");
+        }
+
+        return new SqmsBidNotificationRow(
+            reader.GetInt32(0),
+            reader.GetInt32(1),
+            reader.IsDBNull(2) ? null : DateOnly.FromDateTime(reader.GetDateTime(2)),
+            reader.IsDBNull(3) ? null : reader.GetString(3),
+            reader.IsDBNull(4) ? null : reader.GetString(4),
+            reader.IsDBNull(5) ? null : reader.GetString(5),
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8),
+            reader.IsDBNull(9) ? null : reader.GetString(9));
+    }
+
+    internal SqmsBidRollupCounts ReadBidRollupCounts(int opportunityId)
+    {
+        using var command = CreateCommand("""
+            SELECT
+                SUM(CASE WHEN [WorkflowState] = N'UnderReviewBySeller' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN [WorkflowState] = N'Accepted' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN [WorkflowState] = N'PartiallyAccepted' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN [WorkflowState] = N'NotAccepted' THEN 1 ELSE 0 END)
+            FROM [SSQMS].[Bid] WITH (UPDLOCK, ROWLOCK)
+            WHERE [OpportunityId] = @opportunityId AND ISNULL([IsDeleted], 0) = 0;
+            """);
+        command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
+        using var reader = command.ExecuteReader();
+        reader.Read();
+        return new SqmsBidRollupCounts(
+            reader.IsDBNull(0) ? 0 : reader.GetInt32(0),
+            reader.IsDBNull(1) ? 0 : reader.GetInt32(1),
+            reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+            reader.IsDBNull(3) ? 0 : reader.GetInt32(3));
+    }
+
     internal void UpdateOpportunityBidSummary(
         int opportunityId,
         int totalBid,
