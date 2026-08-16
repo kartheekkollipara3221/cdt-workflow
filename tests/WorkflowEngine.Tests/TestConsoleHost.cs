@@ -8,6 +8,7 @@ using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Infrastructure.DependencyInjection;
 using WorkflowEngine.Infrastructure.Persistence;
+using WorkflowEngine.SqmsIntegration.DependencyInjection;
 
 namespace WorkflowEngine.Tests;
 
@@ -49,6 +50,7 @@ internal sealed class TestConsoleHost : IDisposable
             .AddScoped<IDemoCommandHandler, DemoCommandHandler>()
             .AddScoped<CommandRegistry>()
             .AddWorkflowInfrastructure(configuration)
+            .AddSqmsIntegration()
             .BuildServiceProvider();
 
         scope = serviceProvider.CreateScope();
@@ -57,6 +59,11 @@ internal sealed class TestConsoleHost : IDisposable
     public string ConnectionString { get; }
 
     public WorkflowDbContext DbContext => scope.ServiceProvider.GetRequiredService<WorkflowDbContext>();
+
+    public T GetRequiredService<T>() where T : notnull
+    {
+        return scope.ServiceProvider.GetRequiredService<T>();
+    }
 
     public void ResetDatabase()
     {
