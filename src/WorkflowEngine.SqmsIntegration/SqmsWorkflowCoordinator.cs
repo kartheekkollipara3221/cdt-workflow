@@ -183,6 +183,9 @@ public sealed class SqmsWorkflowCoordinator(
                     ExpectedInstanceVersion = action.RequestDefaults.ExpectedInstanceVersion,
                     ActionKey = action.ActionKey,
                     ActionReason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
+                    NotificationContext = notificationInput is null
+                        ? null
+                        : new Dictionary<string, string?>(notificationInput.TemplateData, StringComparer.Ordinal),
                     IdempotencyKey = operationId
                 }
             };

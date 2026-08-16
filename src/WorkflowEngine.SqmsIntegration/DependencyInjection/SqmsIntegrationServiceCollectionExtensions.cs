@@ -12,6 +12,7 @@ public static class SqmsIntegrationServiceCollectionExtensions
 
         services.TryAddScoped<WorkflowActionEnvelopeNormalizer>();
         services.TryAddScoped<CanonicalRequestHasher>();
+        services.TryAddSingleton<SqmsNotificationInputFactory>();
         services.AddScoped<SqmsApplicationRepository>();
         services.AddScoped<SqmsWorkflowCoordinator>();
         return services;

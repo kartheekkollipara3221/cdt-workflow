@@ -278,10 +278,9 @@ IF EXISTS
       AND version.VersionNumber = 1
       AND transitionDefinition.IsActive = 1
       AND (transitionDefinition.TaskToCloseKey IS NOT NULL
-           OR transitionDefinition.TaskToCreateKey IS NOT NULL
-           OR transitionDefinition.NotificationRouteKey IS NOT NULL)
+           OR transitionDefinition.TaskToCreateKey IS NOT NULL)
 )
-    THROW 51111, 'Iteration 1 SQMS transitions must not create tasks, SLA, or notifications.', 1;
+    THROW 51111, 'SQMS transitions must remain taskless and must not create SLA-backed tasks.', 1;
 
 SELECT definition.WorkflowKey,
     (SELECT COUNT(*) FROM #VerifyState AS expected WHERE expected.WorkflowKey = definition.WorkflowKey) AS VerifiedStateCount,
