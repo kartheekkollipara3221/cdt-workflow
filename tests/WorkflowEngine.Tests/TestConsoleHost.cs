@@ -18,15 +18,26 @@ internal sealed class TestConsoleHost : IDisposable
     private readonly ServiceProvider serviceProvider;
     private readonly IServiceScope scope;
 
-    public TestConsoleHost(string databaseName)
+    public TestConsoleHost(
+        string databaseName,
+        IReadOnlyDictionary<string, string?>? configurationOverrides = null)
     {
         ConnectionString = TestSqlConnectionFactory.ConnectionString(databaseName);
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
+        var configurationValues = new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:DefaultConnection"] = ConnectionString,
+            ["Notifications:Sender"] = "NoOp"
+        };
+        if (configurationOverrides is not null)
+        {
+            foreach (var pair in configurationOverrides)
             {
-                ["ConnectionStrings:DefaultConnection"] = ConnectionString,
-                ["Notifications:Sender"] = "NoOp"
-            })
+                configurationValues[pair.Key] = pair.Value;
+            }
+        }
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configurationValues)
             .Build();
 
         serviceProvider = new ServiceCollection()

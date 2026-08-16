@@ -24,7 +24,7 @@ public sealed class SqmsSellerDispositionTests
             var result = host.GetRequiredService<SqmsWorkflowCoordinator>()
                 .ExecuteOpportunityAction(
                     10000,
-                    new SqmsActionRequest("RequestSellerApproval"),
+                    ReadActionSample("samples/sqms/03-request-seller-approval.json"),
                     IpgActor);
 
             Assert.Equal("PendingSellerApproval", result.WorkflowState);
@@ -94,11 +94,11 @@ public sealed class SqmsSellerDispositionTests
     }
 
     [Theory]
-    [InlineData("AcceptBid", "Accepted", "SqmsBidAccepted", "AwaitingAllocation")]
-    [InlineData("PartiallyAcceptBid", "PartiallyAccepted", "SqmsBidPartiallyAccepted", "PartiallyAllocated")]
-    [InlineData("RejectBid", "NotAccepted", "SqmsBidNotAccepted", "NotFulfilled")]
+    [InlineData("samples/sqms/04-accept-bid.json", "Accepted", "SqmsBidAccepted", "AwaitingAllocation")]
+    [InlineData("samples/sqms/05-partially-accept-bid.json", "PartiallyAccepted", "SqmsBidPartiallyAccepted", "PartiallyAllocated")]
+    [InlineData("samples/sqms/06-reject-bid.json", "NotAccepted", "SqmsBidNotAccepted", "NotFulfilled")]
     public void FinalBidDispositionQueuesExactEmailAndRollsUpOpportunity(
-        string actionKey,
+        string samplePath,
         string bidState,
         string notificationType,
         string opportunityState)
@@ -115,7 +115,7 @@ public sealed class SqmsSellerDispositionTests
 
             var result = coordinator.ExecuteBidAction(
                 10000,
-                new SqmsActionRequest(actionKey),
+                ReadActionSample(samplePath),
                 MfoActor);
 
             Assert.Equal(bidState, result.WorkflowState);
@@ -230,6 +230,13 @@ public sealed class SqmsSellerDispositionTests
         var typed = Assert.IsType<NotificationRecipients>(recipients);
         Assert.Equal(expectedTo, typed.ToEmailAddresses);
         Assert.Equal(expectedCc, typed.CcEmailAddresses);
+    }
+
+    private static SqmsActionRequest ReadActionSample(string relativePath)
+    {
+        var json = File.ReadAllText(ResolveRepositoryFile(relativePath));
+        return JsonSerializer.Deserialize<SqmsActionRequest>(json, WorkflowJson.Options)
+            ?? throw new InvalidOperationException($"SQMS action sample '{relativePath}' is empty.");
     }
 
     private static int CountBidsInState(string connectionString, string state)
