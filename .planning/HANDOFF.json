@@ -25,19 +25,13 @@
   "remaining_tasks": [
     {
       "id": 3,
-      "name": "Select and approve one next incremental SQMS capability",
+      "name": "Design and mock console Start, Get Context, and Execute against the supplied SQMS Opportunity/Bid table identities",
       "status": "not_started"
     }
   ],
   "blockers": [],
   "async_jobs": [],
-  "human_actions_pending": [
-    {
-      "action": "Select the next SQMS capability before implementation",
-      "context": "Tasks, SLA, notifications, scheduled System actions, and terminal-status synchronization remain separate future iterations.",
-      "blocking": true
-    }
-  ],
+  "human_actions_pending": [],
   "decisions": [
     {
       "decision": "Use the existing generic Workflow Start, Context, and Action surfaces for SQMS.",
@@ -53,6 +47,16 @@
       "decision": "Keep non-Completed terminal runtime-status handling deferred.",
       "rationale": "The user explicitly deferred terminal synchronization to a broader later implementation.",
       "phase": "SQMS"
+    },
+    {
+      "decision": "Protect both Portfolio Trade and current SQMS behavior as regression baselines for any generic-engine change.",
+      "rationale": "The engine is shared by multiple applications and must remain generic and backward compatible.",
+      "phase": "SQMS"
+    },
+    {
+      "decision": "Use console scenarios/tests to mock the SQMS application boundary; UI is out of scope.",
+      "rationale": "The supplied SQMS Bid and Opportunity tables define the application records, while this repository owns workflow integration proof rather than UI work.",
+      "phase": "SQMS"
     }
   ],
   "uncommitted_files": [
@@ -66,6 +70,6 @@
     "sql/",
     "tareget-api-integration/"
   ],
-  "next_action": "Read the required SQMS artifacts, acknowledge that Iterations 1 and 2 are complete, and ask the user to select exactly one next incremental capability before planning or coding.",
-  "context_notes": "Iteration 1 seeded 31 Opportunity and 9 Bid transitions. Iteration 2 made no engine code changes and proved live Start, Context, and Action behavior. Opportunity test instance is OpenToBidding version 4; Bid test instance is UnderReviewBySeller version 4. API PID 24400 was stopped and port 5058 is free. Test records remain in DOLLY/workflowengine."
+  "next_action": "Read .planning/SQMS-CONTEXT.md, inspect the actual cp_sharepoint SSQMS table schema details, and design a console-only Start, Get Context, and Execute proof without changing UI or adding deferred capabilities.",
+  "context_notes": "Iteration 1 seeded 31 Opportunity and 9 Bid transitions. Iteration 2 made no engine code changes and proved live Start, Context, and Action behavior. The selected next capability is a console mock of the SQMS application boundary using the supplied Bid and Opportunity table shapes. UI, tasks, SLA, notifications, scheduling, aggregation, and terminal synchronization remain out of this iteration."
 }
