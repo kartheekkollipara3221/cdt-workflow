@@ -32,8 +32,9 @@ CREATE TABLE #ExpectedState
 INSERT #ExpectedState (StateKey, DisplayName, IsTerminal)
 VALUES
     (N'Draft', N'Draft', 0),
-    (N'InitialNoticeSent', N'Initial Notice Sent', 0),
-    (N'ReminderSent', N'Reminder Sent', 1);
+    (N'NoticeQueued', N'Notice Queued', 0),
+    (N'ReminderQueued', N'Reminder Queued', 0),
+    (N'Completed', N'Completed', 1);
 
 IF EXISTS
 (
@@ -67,7 +68,8 @@ INSERT #ExpectedAction
     (ActionKey, DisplayName, SectionKey, ButtonKey, ButtonLabel, Intent, SortOrder)
 VALUES
     (N'SendOpenBiddingNotice', N'Send Open Bidding Notice', N'SaleCycle', N'SendOpenBiddingNotice', N'Send notice', N'Notify', 10),
-    (N'SendOpenBiddingReminder', N'Send Open Bidding Reminder', N'SaleCycle', N'SendOpenBiddingReminder', N'Send reminder', N'Notify', 20);
+    (N'SendOpenBiddingReminder', N'Send Open Bidding Reminder', N'SaleCycle', N'SendOpenBiddingReminder', N'Send reminder', N'Notify', 20),
+    (N'CompleteSaleCycle', N'Complete Sale Cycle', N'SaleCycle', N'CompleteSaleCycle', N'Complete cycle', N'Notify', 30);
 
 IF EXISTS
 (
@@ -112,29 +114,29 @@ INSERT #ExpectedRoute
     (WorkflowKey, RouteKey, NotificationType, SubjectHash, BodyHash, HtmlBodyHash)
 VALUES
     (N'SqmsSaleCycle', N'RouteSqmsOpenBiddingNotice', N'SqmsOpenBiddingNotice',
-     'EC8D680F8E3CF5FB44C5F1EB7DCB599209313100091B17CEA2C38EF237BA1D27',
-     'A4E47050CCF6FA57F8BFD864435CFDBC1956A9C4CAB377451557EBABD23FC1F3',
-     'C3423F14AB83B28554C9B3E9B0063F631D9E0B1A8F09E5117CEFB260C67AE2D3'),
+     'E6E264972DA0C42332C5E40A338707876CB4BBE1E279277B070F030679C5EDAE',
+     'D803AE1B3B38D2E072C1690BAA118E2F0960018EC1D654DA62186E725B5AA1AF',
+     '1F036931C926EADCEB393C6405455BB99476E0BE65E14DF1D9299764DDF821DC'),
     (N'SqmsSaleCycle', N'RouteSqmsOpenBiddingReminder', N'SqmsOpenBiddingReminder',
-     'E4CEB544394FB8F756244D79E7098A5C551B4BB4F00102789ABFDFC3DC934D0B',
-     'A4E47050CCF6FA57F8BFD864435CFDBC1956A9C4CAB377451557EBABD23FC1F3',
-     'C3423F14AB83B28554C9B3E9B0063F631D9E0B1A8F09E5117CEFB260C67AE2D3'),
+     '0B063D405D8CBBBFEDF4EA7300CF74E466AC47DED2DBBDAA47BF1DE5EC2BD112',
+     'D803AE1B3B38D2E072C1690BAA118E2F0960018EC1D654DA62186E725B5AA1AF',
+     '1F036931C926EADCEB393C6405455BB99476E0BE65E14DF1D9299764DDF821DC'),
     (N'SqmsOpportunity', N'RouteSqmsSellerApprovalRequest', N'SqmsSellerApprovalRequested',
-     'A0226538D2772E042344516B99CE2D63BC490A4394D9CE8BA4BE4C1A3A32381A',
-     '6C9B177C7B7286EC9BCF914E68F5D3CDE57E99B5D374BA932AF352DAFEE7D402',
-     'D7D72CBDB3A679ACCCE104C26250EBD2A890E87CF44600AA7B15B22F3697EB02'),
+     '617BF3609E8689469FABC229CFF4156FA427F5A987CC1A5CD8E6781E61CD5BFC',
+     'AB7265278304060EE3915200A4E11850BFEF3BC1011877B0EA5E4A8E3BA205D5',
+     'AB3751CDEDEC42E008A52FE8892B14C9EA51BBC14FBB6BC2E24EC8C34468C516'),
     (N'SqmsBid', N'RouteSqmsBidAccepted', N'SqmsBidAccepted',
-     'E3B91C48B89C2821881DEB42ECC6579B77F416A10072D14DEAADEF0275ACC735',
-     '8DD4E1926C46AEF350D50863D8EBA4F9C1E159F2C8CCC48577CE2713411A95D2',
-     'B6CF7E55971DC672CD2A5381D09AAC48ABFF8A901C4055CAA2A30664348C6219'),
+     'AB71468CCB086ADCB0FAB8E4983A0D841D0BAF162F8FB403B265ABEDD9ADD4CC',
+     'D7318BE55B09A9C56FA05BE46C13E9214A95916F6CDBD46AC59999E086A95DCA',
+     '07A5E22CC98DB2DCEEBAC62ED45C766898511851B7F28CA45C849CE099689DA2'),
     (N'SqmsBid', N'RouteSqmsBidPartiallyAccepted', N'SqmsBidPartiallyAccepted',
-     'E3B91C48B89C2821881DEB42ECC6579B77F416A10072D14DEAADEF0275ACC735',
-     '408D8024481242CCA0796DABA6949821856C2D0365F0A4725D15BE96D0DAA069',
-     '375C18FACA762F8AB82FEE34A9C23616BEE4F51FC8765072A69C89F09714E0B9'),
+     'AB71468CCB086ADCB0FAB8E4983A0D841D0BAF162F8FB403B265ABEDD9ADD4CC',
+     'D9E639D0F3C527DE8A600F5A1B77AE32F0F9330F02C5617651A652980BDB95F4',
+     'B78BE83BFBF869C05974C5E3B8CB3B44D4683DC0F1D809EE73C34F8A558CD4DC'),
     (N'SqmsBid', N'RouteSqmsBidNotAccepted', N'SqmsBidNotAccepted',
-     'E3B91C48B89C2821881DEB42ECC6579B77F416A10072D14DEAADEF0275ACC735',
-     '392BA7EAACC811CA80F9CB60A20AA8284B09C3BD8D289D396C1A24A337157BAD',
-     '2ABDF039AD4FD290C7E3E364A757F7DD01EB5B179A5A163F16FCA39A971B7479');
+     'AB71468CCB086ADCB0FAB8E4983A0D841D0BAF162F8FB403B265ABEDD9ADD4CC',
+     '6824532429370C876685DE7864691563DEB62E68877561A0176CCED4DC780540',
+     '3918571D23528CF79306975133D03E7C76102FE199D5CFBDD1EAABB8077490D6');
 
 CREATE TABLE #ActualRoute
 (
@@ -239,8 +241,9 @@ CREATE TABLE #ExpectedTransitionRoute
 );
 INSERT #ExpectedTransitionRoute
 VALUES
-    (N'SqmsSaleCycle', N'Draft', N'SendOpenBiddingNotice', N'System', N'InitialNoticeSent', N'RouteSqmsOpenBiddingNotice'),
-    (N'SqmsSaleCycle', N'InitialNoticeSent', N'SendOpenBiddingReminder', N'System', N'ReminderSent', N'RouteSqmsOpenBiddingReminder'),
+    (N'SqmsSaleCycle', N'Draft', N'SendOpenBiddingNotice', N'System', N'NoticeQueued', N'RouteSqmsOpenBiddingNotice'),
+    (N'SqmsSaleCycle', N'NoticeQueued', N'SendOpenBiddingReminder', N'System', N'ReminderQueued', N'RouteSqmsOpenBiddingReminder'),
+    (N'SqmsSaleCycle', N'ReminderQueued', N'CompleteSaleCycle', N'System', N'Completed', N''),
     (N'SqmsOpportunity', N'ClosedToBidding', N'RequestSellerApproval', N'IPG', N'PendingSellerApproval', N'RouteSqmsSellerApprovalRequest'),
     (N'SqmsBid', N'UnderReviewBySeller', N'AcceptBid', N'MFO', N'Accepted', N'RouteSqmsBidAccepted'),
     (N'SqmsBid', N'UnderReviewBySeller', N'PartiallyAcceptBid', N'MFO', N'PartiallyAccepted', N'RouteSqmsBidPartiallyAccepted'),
@@ -252,12 +255,13 @@ IF EXISTS
     EXCEPT
     SELECT definition.WorkflowKey, transitionDefinition.FromStateKey,
         transitionDefinition.ActionKey, transitionDefinition.AllowedRoleKey,
-        transitionDefinition.ToStateKey, transitionDefinition.NotificationRouteKey
+        transitionDefinition.ToStateKey, COALESCE(transitionDefinition.NotificationRouteKey, N'')
     FROM dbo.WorkflowTransitionDefinition AS transitionDefinition
     INNER JOIN dbo.WorkflowDefinitionVersion AS version ON version.Id = transitionDefinition.WorkflowDefinitionVersionId
     INNER JOIN dbo.WorkflowDefinition AS definition ON definition.Id = version.WorkflowDefinitionId
     WHERE version.VersionNumber = 1 AND transitionDefinition.IsActive = 1
-      AND transitionDefinition.NotificationRouteKey LIKE N'RouteSqms%'
+      AND (definition.WorkflowKey = N'SqmsSaleCycle'
+           OR transitionDefinition.NotificationRouteKey LIKE N'RouteSqms%')
 )
     THROW 51206, 'Missing or incorrect SQMS notification transition binding.', 1;
 

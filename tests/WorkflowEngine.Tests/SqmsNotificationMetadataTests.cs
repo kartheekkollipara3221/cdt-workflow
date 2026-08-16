@@ -37,11 +37,12 @@ public sealed class SqmsNotificationMetadataTests
             new DateOnly(2026, 5, 15),
             "https://example.test/sqms/opportunities/open-to-bidding"));
 
-        Assert.Equal("Q3 2026", cycle.TemplateData["quarterLabel"]);
-        Assert.Equal("05/15/2026", cycle.TemplateData["bidResponseDueDate"]);
+        Assert.Equal("3", cycle.TemplateData["quarter"]);
+        Assert.Equal("2026", cycle.TemplateData["year"]);
+        Assert.Equal("05/15/2026", cycle.TemplateData["responseDueDate"]);
         Assert.Equal(
             "https://example.test/sqms/opportunities/open-to-bidding",
-            cycle.TemplateData["opportunitiesLink"]);
+            cycle.TemplateData["viewUrl"]);
         Assert.Empty(cycle.RecipientInputs);
 
         var seller = factory.CreateSellerApprovalInput(new SqmsOpportunityNotificationData(
@@ -56,8 +57,9 @@ public sealed class SqmsNotificationMetadataTests
             "seller.rm@example.test",
             ["seller.team1@example.test", "seller.team2@example.test"]));
 
-        Assert.Equal("Q3 2026", seller.TemplateData["quarterLabel"]);
-        Assert.Equal("05/24/2026", seller.TemplateData["sellerResponseDueDate"]);
+        Assert.Equal("3", seller.TemplateData["quarter"]);
+        Assert.Equal("2026", seller.TemplateData["year"]);
+        Assert.Equal("05/24/2026", seller.TemplateData["responseDueDate"]);
         Assert.Equal("$123,456,666.00", seller.TemplateData["saleAmount"]);
         Assert.Equal("Private Fund I", seller.TemplateData["fundName"]);
         Assert.Equal(

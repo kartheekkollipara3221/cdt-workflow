@@ -9,6 +9,50 @@ namespace WorkflowEngine.SqmsIntegration;
 public sealed class SqmsApplicationRepository(
     WorkflowDbContext dbContext)
 {
+    internal IReadOnlyList<SqmsSaleCycleCandidate> ReadDueSaleCycles(
+        DateTimeOffset now,
+        int maxCycles)
+    {
+        if (maxCycles <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxCycles));
+        }
+
+        using var command = CreateCommand("""
+            SELECT TOP (@maxCycles)
+                CONVERT(date, [EffectiveDateForSale]),
+                [OpenBiddingNoticeAt],
+                [OpenBiddingReminderAt],
+                [BidResponseDueDate]
+            FROM [SSQMS].[Opportunity]
+            WHERE ISNULL([IsDeleted], 0) = 0
+              AND [WorkflowState] = N'OpenToBidding'
+              AND [EffectiveDateForSale] IS NOT NULL
+              AND [OpenBiddingNoticeAt] IS NOT NULL
+              AND [OpenBiddingReminderAt] IS NOT NULL
+              AND [BidResponseDueDate] IS NOT NULL
+              AND [OpenBiddingNoticeAt] <= @now
+            GROUP BY CONVERT(date, [EffectiveDateForSale]),
+                [OpenBiddingNoticeAt], [OpenBiddingReminderAt], [BidResponseDueDate]
+            ORDER BY [OpenBiddingNoticeAt], CONVERT(date, [EffectiveDateForSale]), [BidResponseDueDate];
+            """);
+        command.Parameters.Add(new SqlParameter("@maxCycles", SqlDbType.Int) { Value = maxCycles });
+        command.Parameters.Add(new SqlParameter("@now", SqlDbType.DateTimeOffset) { Value = now });
+
+        var result = new List<SqmsSaleCycleCandidate>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(new SqmsSaleCycleCandidate(
+                DateOnly.FromDateTime(reader.GetDateTime(0)),
+                reader.GetFieldValue<DateTimeOffset>(1),
+                reader.GetFieldValue<DateTimeOffset>(2),
+                DateOnly.FromDateTime(reader.GetDateTime(3))));
+        }
+
+        return result;
+    }
+
     internal SqmsApplicationState ReadForUpdate(SqmsEntityKind entityKind, int entityId)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(entityId);

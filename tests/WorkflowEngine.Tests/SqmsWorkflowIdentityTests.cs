@@ -36,4 +36,27 @@ public sealed class SqmsWorkflowIdentityTests
         Assert.Throws<ArgumentOutOfRangeException>(() => SqmsWorkflowIdentity.OpportunityBusinessObjectId(id));
         Assert.Throws<ArgumentOutOfRangeException>(() => SqmsWorkflowIdentity.BidBusinessObjectId(id));
     }
+
+    [Fact]
+    public void SaleCycleIdentityIsStableAndIncludesBusinessDates()
+    {
+        var noticeAt = DateTimeOffset.Parse("2026-05-01T08:00:00-04:00");
+        var reminderAt = DateTimeOffset.Parse("2026-05-14T08:00:00-04:00");
+
+        var first = SqmsWorkflowIdentity.SaleCycleBusinessObjectId(
+            new DateOnly(2026, 7, 1),
+            noticeAt,
+            reminderAt,
+            new DateOnly(2026, 5, 15));
+        var second = SqmsWorkflowIdentity.SaleCycleBusinessObjectId(
+            new DateOnly(2026, 7, 1),
+            noticeAt,
+            reminderAt,
+            new DateOnly(2026, 5, 15));
+
+        Assert.Equal(first, second);
+        Assert.StartsWith("SQMS-CYCLE-20260701-20260515-", first, StringComparison.Ordinal);
+        Assert.Equal($"WF-{first}", SqmsWorkflowIdentity.SaleCycleWorkflowInstanceId(
+            new DateOnly(2026, 7, 1), noticeAt, reminderAt, new DateOnly(2026, 5, 15)));
+    }
 }

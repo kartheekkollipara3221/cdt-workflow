@@ -87,8 +87,9 @@ BEGIN TRY
     INSERT #StateSeed (StateKey, DisplayName, IsTerminal)
     VALUES
         (N'Draft', N'Draft', 0),
-        (N'InitialNoticeSent', N'Initial Notice Sent', 0),
-        (N'ReminderSent', N'Reminder Sent', 1);
+        (N'NoticeQueued', N'Notice Queued', 0),
+        (N'ReminderQueued', N'Reminder Queued', 0),
+        (N'Completed', N'Completed', 1);
 
     INSERT dbo.WorkflowStateDefinition
         (WorkflowDefinitionVersionId, StateKey, DisplayName, IsTerminal, IsActive)
@@ -135,7 +136,8 @@ BEGIN TRY
     INSERT #ActionSeed (ActionKey, DisplayName, ButtonKey, ButtonLabel, SortOrder)
     VALUES
         (N'SendOpenBiddingNotice', N'Send Open Bidding Notice', N'SendOpenBiddingNotice', N'Send notice', 10),
-        (N'SendOpenBiddingReminder', N'Send Open Bidding Reminder', N'SendOpenBiddingReminder', N'Send reminder', 20);
+        (N'SendOpenBiddingReminder', N'Send Open Bidding Reminder', N'SendOpenBiddingReminder', N'Send reminder', 20),
+        (N'CompleteSaleCycle', N'Complete Sale Cycle', N'CompleteSaleCycle', N'Complete cycle', 30);
 
     INSERT dbo.WorkflowActionDefinition
         (WorkflowDefinitionVersionId, ActionKey, DisplayName, SectionKey, ButtonKey,
@@ -179,25 +181,25 @@ BEGIN TRY
     VALUES
     (
         N'SqmsSaleCycle', N'RouteSqmsOpenBiddingNotice', N'SqmsOpenBiddingNotice',
-        N'{{quarterLabel}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{bidResponseDueDate}}',
+        N'Q{{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDueDate}}',
         CONCAT(
             N'Please click the following link(s) to review secondary sales opportunities for this quarter.',
             NCHAR(10), NCHAR(10),
-            N'View all Opportunities open for Bidding: {{opportunitiesLink}}'),
-        N'<p>Please click the following link(s) to review secondary sales opportunities for this quarter.</p><p><a href="{{opportunitiesLink}}">View all Opportunities open for Bidding</a></p>'
+            N'View all Opportunities open for Bidding: {{viewUrl}}'),
+        N'<p>Please click the following link(s) to review secondary sales opportunities for this quarter.</p><p><a href="{{viewUrl}}">View all Opportunities open for Bidding</a></p>'
     ),
     (
         N'SqmsSaleCycle', N'RouteSqmsOpenBiddingReminder', N'SqmsOpenBiddingReminder',
-        N'REMINDER {{quarterLabel}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{bidResponseDueDate}}',
+        N'REMINDER Q{{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDueDate}}',
         CONCAT(
             N'Please click the following link(s) to review secondary sales opportunities for this quarter.',
             NCHAR(10), NCHAR(10),
-            N'View all Opportunities open for Bidding: {{opportunitiesLink}}'),
-        N'<p>Please click the following link(s) to review secondary sales opportunities for this quarter.</p><p><a href="{{opportunitiesLink}}">View all Opportunities open for Bidding</a></p>'
+            N'View all Opportunities open for Bidding: {{viewUrl}}'),
+        N'<p>Please click the following link(s) to review secondary sales opportunities for this quarter.</p><p><a href="{{viewUrl}}">View all Opportunities open for Bidding</a></p>'
     ),
     (
         N'SqmsOpportunity', N'RouteSqmsSellerApprovalRequest', N'SqmsSellerApprovalRequested',
-        N'{{quarterLabel}} Secondary Sale Bids- "{{vehicle}}"/"{{accountNumber}}" - "{{accountName}}" : Response required by {{sellerResponseDueDate}}',
+        N'Q{{quarter}} {{year}} Secondary Sale Bids- "{{vehicle}}"/"{{accountNumber}}" - "{{accountName}}" : Response required by {{responseDueDate}}',
         CONCAT(
             N'Please click the following link to review secondary sales bids for the following opportunity', NCHAR(10),
             N'Account Number: {{accountNumber}}', NCHAR(10),
@@ -205,12 +207,12 @@ BEGIN TRY
             N'Name of Fund: {{fundName}}', NCHAR(10),
             N'Name of Vehicle: {{vehicle}}', NCHAR(10),
             N'Total amount requested to be sold: {{saleAmount}}', NCHAR(10),
-            N'Link to approve or reject bids received: {{sellerApprovalLink}}'),
-        N'<p>Please click the following link to review secondary sales bids for the following opportunity.</p><p>Account Number: <strong>{{accountNumber}}</strong><br>Account Name: <strong>{{accountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total amount requested to be sold: <strong>{{saleAmount}}</strong></p><p><a href="{{sellerApprovalLink}}">Click here to approve or reject bids received</a></p>'
+            N'Link to approve or reject bids received: {{viewUrl}}'),
+        N'<p>Please click the following link to review secondary sales bids for the following opportunity.</p><p>Account Number: <strong>{{accountNumber}}</strong><br>Account Name: <strong>{{accountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total amount requested to be sold: <strong>{{saleAmount}}</strong></p><p><a href="{{viewUrl}}">Click here to approve or reject bids received</a></p>'
     ),
     (
         N'SqmsBid', N'RouteSqmsBidAccepted', N'SqmsBidAccepted',
-        N'{{quarterLabel}} Secondary Sale Bids - "{{vehicle}}"/"{{buyerAccountNumber}}" - "{{buyerAccountName}}"',
+        N'Q{{quarter}} {{year}} Secondary Sale Bids - "{{vehicle}}"/"{{buyerAccountNumber}}" - "{{buyerAccountName}}"',
         CONCAT(
             N'The bid placed for the following opportunity has been accepted by the Seller for an effective date of {{effectiveDateForSale}}.', NCHAR(10),
             N'Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.', NCHAR(10),
@@ -220,12 +222,12 @@ BEGIN TRY
             N'Name of Fund: {{fundName}}', NCHAR(10),
             N'Name of Vehicle: {{vehicle}}', NCHAR(10),
             N'Total Amount Request to be Purchased: {{purchaseAmount}}', NCHAR(10),
-            N'Link To View: {{bidLink}}'),
-        N'<p>The bid placed for the following opportunity has been accepted by the Seller for an effective date of <strong>{{effectiveDateForSale}}</strong>.</p><p>Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.<br>Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to affect this sale.</p><p>Buyer Account Number: <strong>{{buyerAccountNumber}}</strong><br>Buyer Account Name: <strong>{{buyerAccountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total Amount Request to be Purchased: <strong>{{purchaseAmount}}</strong></p><p><a href="{{bidLink}}">Click Here</a></p>'
+            N'Link To View: {{viewUrl}}'),
+        N'<p>The bid placed for the following opportunity has been accepted by the Seller for an effective date of <strong>{{effectiveDateForSale}}</strong>.</p><p>Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.<br>Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to affect this sale.</p><p>Buyer Account Number: <strong>{{buyerAccountNumber}}</strong><br>Buyer Account Name: <strong>{{buyerAccountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total Amount Request to be Purchased: <strong>{{purchaseAmount}}</strong></p><p><a href="{{viewUrl}}">Click Here</a></p>'
     ),
     (
         N'SqmsBid', N'RouteSqmsBidPartiallyAccepted', N'SqmsBidPartiallyAccepted',
-        N'{{quarterLabel}} Secondary Sale Bids - "{{vehicle}}"/"{{buyerAccountNumber}}" - "{{buyerAccountName}}"',
+        N'Q{{quarter}} {{year}} Secondary Sale Bids - "{{vehicle}}"/"{{buyerAccountNumber}}" - "{{buyerAccountName}}"',
         CONCAT(
             N'The bid placed for the following opportunity has been partially accepted by the Seller for an effective date of {{effectiveDateForSale}}.', NCHAR(10),
             N'Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.', NCHAR(10),
@@ -235,12 +237,12 @@ BEGIN TRY
             N'Name of Fund: {{fundName}}', NCHAR(10),
             N'Name of Vehicle: {{vehicle}}', NCHAR(10),
             N'Total Amount Request to be Purchased: {{purchaseAmount}}', NCHAR(10),
-            N'Link To View: {{bidLink}}'),
-        N'<p>The bid placed for the following opportunity has been partially accepted by the Seller for an effective date of <strong>{{effectiveDateForSale}}</strong>.</p><p>Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.<br>Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to affect this sale.</p><p>Buyer Account Number: <strong>{{buyerAccountNumber}}</strong><br>Buyer Account Name: <strong>{{buyerAccountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total Amount Request to be Purchased: <strong>{{purchaseAmount}}</strong></p><p><a href="{{bidLink}}">Click Here</a></p>'
+            N'Link To View: {{viewUrl}}'),
+        N'<p>The bid placed for the following opportunity has been partially accepted by the Seller for an effective date of <strong>{{effectiveDateForSale}}</strong>.</p><p>Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.<br>Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to affect this sale.</p><p>Buyer Account Number: <strong>{{buyerAccountNumber}}</strong><br>Buyer Account Name: <strong>{{buyerAccountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total Amount Request to be Purchased: <strong>{{purchaseAmount}}</strong></p><p><a href="{{viewUrl}}">Click Here</a></p>'
     ),
     (
         N'SqmsBid', N'RouteSqmsBidNotAccepted', N'SqmsBidNotAccepted',
-        N'{{quarterLabel}} Secondary Sale Bids - "{{vehicle}}"/"{{buyerAccountNumber}}" - "{{buyerAccountName}}"',
+        N'Q{{quarter}} {{year}} Secondary Sale Bids - "{{vehicle}}"/"{{buyerAccountNumber}}" - "{{buyerAccountName}}"',
         CONCAT(
             N'The bid placed for the following opportunity has not been accepted by the Seller for an effective date of {{effectiveDateForSale}}.', NCHAR(10),
             N'Buyer Account Number: {{buyerAccountNumber}}', NCHAR(10),
@@ -248,8 +250,8 @@ BEGIN TRY
             N'Name of Fund: {{fundName}}', NCHAR(10),
             N'Name of Vehicle: {{vehicle}}', NCHAR(10),
             N'Total Amount Request to be Purchased: {{purchaseAmount}}', NCHAR(10),
-            N'Link To View: {{bidLink}}'),
-        N'<p>The bid placed for the following opportunity has not been accepted by the Seller for an effective date of <strong>{{effectiveDateForSale}}</strong>.</p><p>Buyer Account Number: <strong>{{buyerAccountNumber}}</strong><br>Buyer Account Name: <strong>{{buyerAccountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total Amount Request to be Purchased: <strong>{{purchaseAmount}}</strong></p><p><a href="{{bidLink}}">Click Here</a></p>'
+            N'Link To View: {{viewUrl}}'),
+        N'<p>The bid placed for the following opportunity has not been accepted by the Seller for an effective date of <strong>{{effectiveDateForSale}}</strong>.</p><p>Buyer Account Number: <strong>{{buyerAccountNumber}}</strong><br>Buyer Account Name: <strong>{{buyerAccountName}}</strong><br>Name of Fund: <strong>{{fundName}}</strong><br>Name of Vehicle: <strong>{{vehicle}}</strong><br>Total Amount Request to be Purchased: <strong>{{purchaseAmount}}</strong></p><p><a href="{{viewUrl}}">Click Here</a></p>'
     );
 
     INSERT dbo.NotificationRoute
@@ -370,8 +372,9 @@ BEGIN TRY
     INSERT #TransitionRouteSeed
         (WorkflowKey, FromStateKey, ActionKey, AllowedRoleKey, ToStateKey, RouteKey, AuditLabel)
     VALUES
-        (N'SqmsSaleCycle', N'Draft', N'SendOpenBiddingNotice', N'System', N'InitialNoticeSent', N'RouteSqmsOpenBiddingNotice', N'System sent open bidding notice'),
-        (N'SqmsSaleCycle', N'InitialNoticeSent', N'SendOpenBiddingReminder', N'System', N'ReminderSent', N'RouteSqmsOpenBiddingReminder', N'System sent open bidding reminder'),
+        (N'SqmsSaleCycle', N'Draft', N'SendOpenBiddingNotice', N'System', N'NoticeQueued', N'RouteSqmsOpenBiddingNotice', N'System sent open bidding notice'),
+        (N'SqmsSaleCycle', N'NoticeQueued', N'SendOpenBiddingReminder', N'System', N'ReminderQueued', N'RouteSqmsOpenBiddingReminder', N'System sent open bidding reminder'),
+        (N'SqmsSaleCycle', N'ReminderQueued', N'CompleteSaleCycle', N'System', N'Completed', N'', N'System completed sale cycle'),
         (N'SqmsOpportunity', N'ClosedToBidding', N'RequestSellerApproval', N'IPG', N'PendingSellerApproval', N'RouteSqmsSellerApprovalRequest', N'IPG requested seller approval'),
         (N'SqmsBid', N'UnderReviewBySeller', N'AcceptBid', N'MFO', N'Accepted', N'RouteSqmsBidAccepted', N'MFO accepted full bid'),
         (N'SqmsBid', N'UnderReviewBySeller', N'PartiallyAcceptBid', N'MFO', N'PartiallyAccepted', N'RouteSqmsBidPartiallyAccepted', N'MFO partially accepted bid'),
@@ -381,7 +384,7 @@ BEGIN TRY
         (WorkflowDefinitionVersionId, FromStateKey, ActionKey, AllowedRoleKey, ToStateKey,
          TaskToCloseKey, TaskToCreateKey, NotificationRouteKey, AuditLabel, IsActive)
     SELECT version.Id, expected.FromStateKey, expected.ActionKey, expected.AllowedRoleKey,
-        expected.ToStateKey, NULL, NULL, expected.RouteKey, expected.AuditLabel, 1
+        expected.ToStateKey, NULL, NULL, NULLIF(expected.RouteKey, N''), expected.AuditLabel, 1
     FROM #TransitionRouteSeed AS expected
     INNER JOIN dbo.WorkflowDefinition AS definition ON definition.WorkflowKey = expected.WorkflowKey
     INNER JOIN dbo.WorkflowDefinitionVersion AS version
@@ -399,7 +402,7 @@ BEGIN TRY
     SET ToStateKey = expected.ToStateKey,
         TaskToCloseKey = NULL,
         TaskToCreateKey = NULL,
-        NotificationRouteKey = expected.RouteKey,
+        NotificationRouteKey = NULLIF(expected.RouteKey, N''),
         AuditLabel = expected.AuditLabel,
         IsActive = 1
     FROM dbo.WorkflowTransitionDefinition AS actual

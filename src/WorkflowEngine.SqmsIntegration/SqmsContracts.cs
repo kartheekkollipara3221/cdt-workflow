@@ -39,3 +39,25 @@ internal enum SqmsEntityKind
 internal sealed record SqmsApplicationState(
     string? WorkflowState,
     string? Status);
+
+internal sealed record SqmsSaleCycleCandidate(
+    DateOnly EffectiveDateForSale,
+    DateTimeOffset NoticeAt,
+    DateTimeOffset ReminderAt,
+    DateOnly ResponseDueDate);
+
+public sealed record SqmsScheduleRunResult(
+    int CyclesScanned,
+    int NoticesQueued,
+    int RemindersQueued,
+    int RemindersBlocked,
+    int CyclesCompleted,
+    IReadOnlyList<string> Errors);
+
+public sealed class SqmsIntegrationOptions
+{
+    public string OpenBiddingViewUrl { get; set; }
+        = "https://example.test/sqms/opportunities/open-to-bidding";
+
+    public int MaxCyclesPerRun { get; set; } = 100;
+}

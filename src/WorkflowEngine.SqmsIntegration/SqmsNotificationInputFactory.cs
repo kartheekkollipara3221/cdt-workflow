@@ -42,9 +42,10 @@ public sealed class SqmsNotificationInputFactory
         {
             TemplateData = new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["quarterLabel"] = QuarterLabel(data.EffectiveDateForSale),
-                ["bidResponseDueDate"] = DisplayDate(data.BidResponseDueDate),
-                ["opportunitiesLink"] = Required(data.OpportunitiesLink, nameof(data.OpportunitiesLink))
+                ["quarter"] = Quarter(data.EffectiveDateForSale),
+                ["year"] = data.EffectiveDateForSale.Year.ToString(CultureInfo.InvariantCulture),
+                ["responseDueDate"] = DisplayDate(data.BidResponseDueDate),
+                ["viewUrl"] = Required(data.OpportunitiesLink, nameof(data.OpportunitiesLink))
             }
         };
     }
@@ -56,14 +57,15 @@ public sealed class SqmsNotificationInputFactory
         {
             TemplateData = new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["quarterLabel"] = QuarterLabel(data.EffectiveDateForSale),
-                ["sellerResponseDueDate"] = DisplayDate(data.SellerResponseDueDate),
+                ["quarter"] = Quarter(data.EffectiveDateForSale),
+                ["year"] = data.EffectiveDateForSale.Year.ToString(CultureInfo.InvariantCulture),
+                ["responseDueDate"] = DisplayDate(data.SellerResponseDueDate),
                 ["accountNumber"] = Required(data.AccountNumber, nameof(data.AccountNumber)),
                 ["accountName"] = Required(data.AccountName, nameof(data.AccountName)),
                 ["fundName"] = Required(data.FundName, nameof(data.FundName)),
                 ["vehicle"] = Required(data.Vehicle, nameof(data.Vehicle)),
                 ["saleAmount"] = DisplayCurrency(data.SaleAmount),
-                ["sellerApprovalLink"] = Required(data.SellerApprovalLink, nameof(data.SellerApprovalLink))
+                ["viewUrl"] = Required(data.SellerApprovalLink, nameof(data.SellerApprovalLink))
             },
             RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
             {
@@ -81,14 +83,15 @@ public sealed class SqmsNotificationInputFactory
         {
             TemplateData = new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["quarterLabel"] = QuarterLabel(data.EffectiveDateForSale),
+                ["quarter"] = Quarter(data.EffectiveDateForSale),
+                ["year"] = data.EffectiveDateForSale.Year.ToString(CultureInfo.InvariantCulture),
                 ["effectiveDateForSale"] = DisplayDate(data.EffectiveDateForSale),
                 ["buyerAccountNumber"] = Required(data.BuyerAccountNumber, nameof(data.BuyerAccountNumber)),
                 ["buyerAccountName"] = Required(data.BuyerAccountName, nameof(data.BuyerAccountName)),
                 ["fundName"] = Required(data.FundName, nameof(data.FundName)),
                 ["vehicle"] = Required(data.Vehicle, nameof(data.Vehicle)),
                 ["purchaseAmount"] = DisplayCurrency(data.PurchaseAmount),
-                ["bidLink"] = Required(data.BidLink, nameof(data.BidLink))
+                ["viewUrl"] = Required(data.BidLink, nameof(data.BidLink))
             },
             RecipientInputs = new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
             {
@@ -99,10 +102,10 @@ public sealed class SqmsNotificationInputFactory
         };
     }
 
-    private static string QuarterLabel(DateOnly effectiveDateForSale)
+    private static string Quarter(DateOnly effectiveDateForSale)
     {
         var quarter = ((effectiveDateForSale.Month - 1) / 3) + 1;
-        return FormattableString.Invariant($"Q{quarter} {effectiveDateForSale.Year}");
+        return quarter.ToString(CultureInfo.InvariantCulture);
     }
 
     private static string DisplayDate(DateOnly date)
