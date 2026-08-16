@@ -1,63 +1,99 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-16T16:45:00Z",
+  "timestamp": "2026-08-16T23:30:00Z",
   "phase": "SQMS",
-  "phase_name": "SQMS iterative workflow integration",
+  "phase_name": "SQMS end-to-end workflow integration",
   "phase_dir": ".planning",
-  "plan": 3,
-  "task": 3,
-  "total_tasks": 3,
+  "plan": 8,
+  "task": 8,
+  "total_tasks": 8,
   "status": "complete",
   "completed_tasks": [
     {
       "id": 1,
-      "name": "Seed and verify approved SQMS Opportunity and Bid transition metadata",
-      "status": "done"
+      "name": "Make generic Start transaction-aware and terminal completion metadata-driven",
+      "status": "done",
+      "commits": ["2009620"]
     },
     {
       "id": 2,
-      "name": "Prove existing Workflow Start, Context, and Action APIs with live SQMS runtime scenarios",
-      "status": "done"
+      "name": "Add and verify SQMS application business fields",
+      "status": "done",
+      "commits": ["a82874f"]
     },
     {
       "id": 3,
-      "name": "Mock exact SQMS application tables and prove Console Start, Get Context, and Execute",
+      "name": "Build the SQMS Start, Context, Action, and projection thin layer",
       "status": "done",
-      "commits": [
-        "ddc3497",
-        "0113bde"
-      ]
+      "commits": ["a0edbb0"]
+    },
+    {
+      "id": 4,
+      "name": "Seed taskless sale-cycle and six-route notification metadata",
+      "status": "done",
+      "commits": ["db96f1a"]
+    },
+    {
+      "id": 5,
+      "name": "Implement idempotent scheduled notices and reminders",
+      "status": "done",
+      "commits": ["e8faf33"]
+    },
+    {
+      "id": 6,
+      "name": "Implement automatic close and Bid classification",
+      "status": "done",
+      "commits": ["c240d82"]
+    },
+    {
+      "id": 7,
+      "name": "Implement seller approval, Bid disposition emails, and Opportunity roll-up",
+      "status": "done",
+      "commits": ["b69d69c"]
+    },
+    {
+      "id": 8,
+      "name": "Complete regression, SQL, sample, and live SMTP verification",
+      "status": "done",
+      "commits": ["e1d8067"]
     }
   ],
   "remaining_tasks": [],
   "blockers": [],
   "async_jobs": [],
   "human_actions_pending": [
-    "Select exactly one next SQMS capability before Iteration 4 planning."
+    "Replace example.test addresses and SharePoint URLs with approved production values.",
+    "Confirm which SQMS application field supplies the email fundName token.",
+    "Wire AddSqmsIntegration and SqmsScheduleRunner into the external SQMS API and its scheduler."
   ],
   "decisions": [
     {
-      "decision": "Keep the generic workflow engine as the transition authority.",
-      "rationale": "Both SQMS workflows execute from the existing metadata using actionKey without a duplicate application state machine.",
+      "decision": "Keep the generic workflow engine as transition, audit, idempotency, notification, and outbox authority.",
+      "rationale": "SQMS uses stable metadata and actionKey without a second state machine or public API break.",
       "phase": "SQMS"
     },
     {
-      "decision": "Create exact-shape SQMS application mocks through explicit test SQL, not EF migrations.",
-      "rationale": "The tables are application-owned and must not become part of the reusable engine persistence model.",
+      "decision": "Project Status and WorkflowState atomically through the SQMS thin layer.",
+      "rationale": "The application tables remain UI-owned while the workflow engine remains authoritative.",
       "phase": "SQMS"
     },
     {
-      "decision": "Do not synchronize application Status or WorkflowState in Iteration 3.",
-      "rationale": "The console proof establishes workflow behavior while preserving the unresolved application ownership boundary.",
+      "decision": "Keep SQMS taskless and without SLA.",
+      "rationale": "Scheduled business emails use a taskless metadata workflow and the existing durable outbox.",
       "phase": "SQMS"
     },
     {
-      "decision": "Protect Portfolio Trade plus both SQMS workflows with regression coverage.",
-      "rationale": "The engine is shared infrastructure and future changes must remain backward compatible.",
+      "decision": "Use application business columns for schedule and dynamic recipient inputs only.",
+      "rationale": "Workflow identities, routes, templates, delivery state, and retries stay in the engine database model.",
+      "phase": "SQMS"
+    },
+    {
+      "decision": "Protect Portfolio Trade, public HTTP contracts, console commands, and existing SQMS keys with full regression coverage.",
+      "rationale": "The workflow engine is shared infrastructure for multiple applications.",
       "phase": "SQMS"
     }
   ],
   "uncommitted_files": [],
-  "next_action": "Review the completed Iteration 3 proof and choose one narrowly scoped SQMS capability for Iteration 4.",
-  "context_notes": "DOLLY/workflowengine contains SSQMS.Opportunity and SSQMS.Bid fixture ID 10000. WF-SQMS-OPP-10000 and WF-SQMS-BID-10000 are Submitted version 2 with one audit each, no tasks/SLA/outbox, and unchanged application Status/WorkflowState fields."
+  "next_action": "Integrate the completed library into the external SQMS API host, replace placeholder configuration, and apply the additive SQL and metadata to the selected shared database.",
+  "context_notes": "Branch feature/sqms-console-mock is complete and local. Core 377/377, API 68/68, SMTP 5/5, samples 01-06, exact SQMS metadata, and seed-twice rollback all pass. Dedicated verification database workflowengine_sqms_final_verify_20260816 remains available; smtp4dev PID 30004 remains on ports 3025/5000."
 }

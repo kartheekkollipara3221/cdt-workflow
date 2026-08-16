@@ -2089,3 +2089,79 @@ Continue after SQMS Iteration 2 no-code runtime validation. Existing Workflow St
 ```text
 Resume after completed SQMS Iteration 3. Read AGENTS.md, PROJECT.md, .planning/SQMS-CONTEXT.md, and the 2026-08-16 console-mock design. The exact-shape SSQMS mock tables and deterministic ID 10000 fixtures exist in DOLLY/workflowengine. Both WF-SQMS-OPP-10000 and WF-SQMS-BID-10000 are Submitted version 2 with one audit, no task/SLA/outbox rows, and unchanged application fields. No generic engine code changed. Choose one narrowly scoped next SQMS capability before planning or coding.
 ```
+
+# 2026-08-16 SQMS End-to-End Integration Complete
+
+## Current goal
+
+- Completed the approved SQMS end-to-end workflow integration while preserving the generic workflow engine, existing public Workflow API, Portfolio Trade behavior, and UI ownership boundary.
+- The implementation is on local branch `feature/sqms-console-mock` in worktree `.worktrees/sqms-console-mock`; it has not been pushed.
+
+## Completed changes
+
+- Made generic Start participate in a caller-owned transaction and made terminal completion derive from destination-state metadata instead of the literal state key `Completed`.
+- Added only the approved nullable SQMS business inputs to the mock application tables, plus JSON/category constraints and due-query indexes.
+- Added the in-process `WorkflowEngine.SqmsIntegration` thin layer with deterministic identities, Start, Context, Action, atomic application projection, trusted notification input, classification, scheduled processing, and DI registration.
+- Added taskless `SqmsSaleCycle` metadata and six exact notification routes: initial notice, reminder, seller approval, accepted, partially accepted, and not accepted.
+- Added idempotent aggregate notice/reminder processing. A reminder waits for the initial outbox row to be `Sent`.
+- Added automatic parent close, transactional child classification, retry after child failure, no-Bid `NotFulfilled`, seller-review orchestration, all three Bid decisions, and final Opportunity roll-up.
+- Added action-only samples `03` through `06` and retained the existing console samples `01` and `02`.
+- SQMS remains taskless and has no SLA. SMTP delivery continues through the existing durable generic outbox and sender.
+
+## Commits
+
+- `a2e73bd` - design the complete SQMS integration.
+- `a75a40a` - write the executable implementation plan.
+- `2009620` - generic transaction and terminal compatibility.
+- `a82874f` - SQMS business fields and exact verification.
+- `a0edbb0` - SQMS thin layer.
+- `db96f1a` - taskless sale-cycle and notification metadata.
+- `e8faf33` - scheduled notices and reminders.
+- `c240d82` - automatic close and Bid classification.
+- `b69d69c` - seller approval, disposition emails, and roll-up.
+- `e1d8067` - sample and live SMTP acceptance coverage.
+
+## Build and test status
+
+- Core restore and warnings-as-errors build: passed, 0 warnings and 0 errors.
+- Workflow API restore and warnings-as-errors build: passed, 0 warnings and 0 errors.
+- Core serialized regression suite: 377 passed, 0 failed, 5 opt-in SMTP tests skipped.
+- Workflow API suite: 68 passed, 0 failed, 0 skipped.
+- Full opt-in SMTP suite: 5 passed, 0 failed, 0 skipped.
+- Explicit SQMS console/sample selection: 7 passed; samples `01` through `06` were loaded and executed.
+- Dedicated SQMS SMTP E2E: passed. Six SQMS outbox rows were `Sent` with retry count `0` and null `LastError`; all six subjects reached smtp4dev; every captured message had zero warnings and both plain and HTML bodies contained its configured SQMS link.
+
+## Database verification
+
+- Dedicated database: `DOLLY/workflowengine_sqms_final_verify_20260816`.
+- `init-db`: passed.
+- generic `verify-seed`: passed.
+- `001_seed_sqms_transition_metadata.sql`: passed.
+- `004_seed_sqms_end_to_end_metadata.sql`: passed.
+- exact transition verifier: Opportunity 11 states / 11 actions / 3 roles / 31 transitions; Bid 8 / 7 / 3 / 9.
+- exact end-to-end verifier: all six routes and taskless sale-cycle metadata passed.
+- end-to-end seed-twice rollback verifier: passed and rolled back.
+
+## Changed files
+
+- Design/plan: `docs/superpowers/specs/2026-08-16-sqms-end-to-end-integration-design.md`, `docs/superpowers/plans/2026-08-16-sqms-end-to-end-integration.md`.
+- Samples: `samples/sqms/03-request-seller-approval.json` through `06-reject-bid.json`.
+- SQL: SQMS exact verifier, end-to-end seed/verifier/rollback, and application-table mock/verifier.
+- Generic source: Start transaction ownership and metadata-terminal completion only.
+- SQMS source: all files under `src/WorkflowEngine.SqmsIntegration` plus solution registration.
+- Tests: SQMS identity, coordinator, metadata, schedule, classification, seller disposition, SMTP E2E, console mock, and generic regression coverage.
+
+## Production substitutions and known risks
+
+- Replace `.example.test` static recipients in workflow metadata with approved production distribution lists.
+- Configure `OpenBiddingViewUrl`, `SellerApprovalViewUrlFormat`, and `BidViewUrlFormat` with real SharePoint routes.
+- The SQMS UI/data layer must populate the approved scheduling and dynamic-recipient columns on each Opportunity/Bid row.
+- The target SQMS API host must call `AddSqmsIntegration`, expose its own authenticated endpoints around the coordinator, and invoke `RunNoticesAndReminders` / `RunClosures` from its existing scheduler. No new generic scheduler or HTTP contract was added to this repository.
+- The supplied schema has no explicit fund-name column. The current thin layer maps `FundConsideredSecondarySale` to the email `fundName` token. Confirm that field contains the display name; otherwise add a dedicated nullable application-owned Fund name and update only the SQMS repository mapping before production.
+- smtp4dev PID `30004` remains on SMTP `3025` and UI/API `5000` using `.tools/smtp4dev/data/sqms-final-20260816`. Repeated diagnostic acceptance runs mean the mailbox contains more than one run; the automated test isolates the current six rows by the SQL database and exact subjects.
+
+## Next-session prompt
+
+```text
+Continue from the completed SQMS end-to-end implementation on feature/sqms-console-mock. Read PROJECT.md, the 2026-08-16 SQMS end-to-end design, and this handoff. All generic/API regressions, exact SQL verifiers, samples 01-06, and live SMTP acceptance pass. Do not redesign the workflow. Production integration consists of wiring AddSqmsIntegration into the external SQMS API, scheduling SqmsScheduleRunner calls, applying the additive SQL/metadata, replacing example.test addresses and URLs, and confirming the source for the fundName email token. Push only when explicitly requested.
+```
