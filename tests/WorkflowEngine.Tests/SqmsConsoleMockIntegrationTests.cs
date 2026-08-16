@@ -50,7 +50,7 @@ public sealed class SqmsConsoleMockIntegrationTests
                 OpportunityWorkflowInstanceId, "sqms.ipg", "IPG");
             Assert.Equal("Submitted", opportunitySubmitted.WorkflowContext.Workflow.CurrentState);
             Assert.Equal(
-                ["MarkOpportunityPending", "ReturnOpportunityToDraft"],
+                ["CancelOpportunity", "MarkOpportunityPending", "ReturnOpportunityToDraft"],
                 opportunitySubmitted.WorkflowContext.AvailableActions
                     .Select(action => action.ActionKey)
                     .OrderBy(actionKey => actionKey)
@@ -125,7 +125,9 @@ public sealed class SqmsConsoleMockIntegrationTests
         Assert.Equal(expectedActionKey, envelope.Result.ActionKey);
         Assert.Equal(expectedActionKey, envelope.Result.Audit?.ActionKey);
         Assert.Null(envelope.Result.CreatedTask);
-        Assert.Null(envelope.Result.Notification);
+        Assert.NotNull(envelope.Result.Notification);
+        Assert.False(envelope.Result.Notification.Queued);
+        Assert.Null(envelope.Result.Notification.NotificationType);
     }
 
     private static void VerifyApplicationRowsRemainUnchanged(string connectionString)
