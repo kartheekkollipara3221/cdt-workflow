@@ -53,6 +53,13 @@ VALUES
     (N'Opportunity', N'ModifiedBy', N'nvarchar', 50, 'YES', 0),
     (N'Opportunity', N'ModifiedDate', N'datetime', NULL, 'YES', 0),
     (N'Opportunity', N'IsDeleted', N'bit', NULL, 'YES', 0),
+    (N'Opportunity', N'OpenBiddingNoticeAt', N'datetimeoffset', NULL, 'YES', 0),
+    (N'Opportunity', N'OpenBiddingReminderAt', N'datetimeoffset', NULL, 'YES', 0),
+    (N'Opportunity', N'BidResponseDueDate', N'date', NULL, 'YES', 0),
+    (N'Opportunity', N'BiddingCloseAt', N'datetimeoffset', NULL, 'YES', 0),
+    (N'Opportunity', N'SellerResponseDueDate', N'date', NULL, 'YES', 0),
+    (N'Opportunity', N'OpportunityRelationshipManagerEmail', N'varchar', 320, 'YES', 0),
+    (N'Opportunity', N'SellerRmTeamEmailsJson', N'nvarchar', -1, 'YES', 0),
     (N'Bid', N'ID', N'int', NULL, 'NO', 1),
     (N'Bid', N'OpportunityId', N'int', NULL, 'NO', 0),
     (N'Bid', N'BuyerRmteam', N'varchar', -1, 'NO', 0),
@@ -70,7 +77,10 @@ VALUES
     (N'Bid', N'CreatedDate', N'datetime', NULL, 'YES', 0),
     (N'Bid', N'ModifiedBy', N'nvarchar', 50, 'YES', 0),
     (N'Bid', N'ModifiedDate', N'datetime', NULL, 'YES', 0),
-    (N'Bid', N'IsDeleted', N'bit', NULL, 'YES', 0);
+    (N'Bid', N'IsDeleted', N'bit', NULL, 'YES', 0),
+    (N'Bid', N'BidPricingCategory', N'varchar', 20, 'YES', 0),
+    (N'Bid', N'BidRelationshipManagerEmail', N'varchar', 320, 'YES', 0),
+    (N'Bid', N'BuyerRmTeamEmailsJson', N'nvarchar', -1, 'YES', 0);
 
 CREATE TABLE #ActualColumn
 (
@@ -167,6 +177,49 @@ IF NOT EXISTS
 )
     THROW 51216, 'Missing, disabled, or untrusted Opportunity-to-Bid foreign key.', 1;
 
+IF
+(
+    SELECT COUNT(*)
+    FROM sys.check_constraints
+    WHERE is_disabled = 0
+      AND is_not_trusted = 0
+      AND
+      (
+          (parent_object_id = OBJECT_ID(N'SSQMS.Opportunity')
+              AND name = N'CK_SSQMS_Opportunity_SellerRmTeamEmailsJson')
+          OR
+          (parent_object_id = OBJECT_ID(N'SSQMS.Bid')
+              AND name IN
+              (
+                  N'CK_SSQMS_Bid_BidPricingCategory',
+                  N'CK_SSQMS_Bid_BuyerRmTeamEmailsJson'
+              ))
+      )
+) <> 3
+    THROW 51225, 'Missing, disabled, or untrusted SQMS business-field constraint.', 1;
+
+IF
+(
+    SELECT COUNT(*)
+    FROM sys.indexes
+    WHERE is_disabled = 0
+      AND is_hypothetical = 0
+      AND
+      (
+          (object_id = OBJECT_ID(N'SSQMS.Opportunity')
+              AND name IN
+              (
+                  N'IX_SSQMS_Opportunity_OpenBiddingNoticeDue',
+                  N'IX_SSQMS_Opportunity_OpenBiddingReminderDue',
+                  N'IX_SSQMS_Opportunity_BiddingCloseDue'
+              ))
+          OR
+          (object_id = OBJECT_ID(N'SSQMS.Bid')
+              AND name = N'IX_SSQMS_Bid_OpportunityWorkflowState')
+      )
+) <> 4
+    THROW 51226, 'Missing or disabled SQMS due-query index.', 1;
+
 IF NOT EXISTS
 (
     SELECT 1
@@ -178,6 +231,13 @@ IF NOT EXISTS
       AND [ModifiedBy] IS NULL
       AND [ModifiedDate] IS NULL
       AND [IsDeleted] = 0
+      AND [OpenBiddingNoticeAt] = '2030-01-01T08:00:00-05:00'
+      AND [OpenBiddingReminderAt] = '2030-01-14T08:00:00-05:00'
+      AND [BidResponseDueDate] = '2030-01-15'
+      AND [BiddingCloseAt] = '2030-01-16T00:00:00-05:00'
+      AND [SellerResponseDueDate] = '2030-01-24'
+      AND [OpportunityRelationshipManagerEmail] = 'seller.rm@example.test'
+      AND [SellerRmTeamEmailsJson] = N'["seller.team1@example.test","seller.team2@example.test"]'
 )
     THROW 51217, 'Opportunity fixture is missing or was modified.', 1;
 
@@ -193,6 +253,9 @@ IF NOT EXISTS
       AND [ModifiedBy] IS NULL
       AND [ModifiedDate] IS NULL
       AND [IsDeleted] = 0
+      AND [BidPricingCategory] = 'FairValue'
+      AND [BidRelationshipManagerEmail] = 'buyer.rm@example.test'
+      AND [BuyerRmTeamEmailsJson] = N'["buyer.team1@example.test","buyer.team2@example.test"]'
 )
     THROW 51218, 'Bid fixture is missing, unrelated, or was modified.', 1;
 

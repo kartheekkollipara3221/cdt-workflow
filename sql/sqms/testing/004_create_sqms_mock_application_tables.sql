@@ -43,6 +43,13 @@ BEGIN TRY
             [ModifiedBy] [nvarchar](50) NULL,
             [ModifiedDate] [datetime] NULL,
             [IsDeleted] [bit] NULL,
+            [OpenBiddingNoticeAt] [datetimeoffset](0) NULL,
+            [OpenBiddingReminderAt] [datetimeoffset](0) NULL,
+            [BidResponseDueDate] [date] NULL,
+            [BiddingCloseAt] [datetimeoffset](0) NULL,
+            [SellerResponseDueDate] [date] NULL,
+            [OpportunityRelationshipManagerEmail] [varchar](320) NULL,
+            [SellerRmTeamEmailsJson] [nvarchar](max) NULL,
             CONSTRAINT [PK_SSQMS_Opportunity] PRIMARY KEY CLUSTERED ([ID] ASC)
                 WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF,
                       IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON,
@@ -73,6 +80,9 @@ BEGIN TRY
             [ModifiedBy] [nvarchar](50) NULL,
             [ModifiedDate] [datetime] NULL,
             [IsDeleted] [bit] NULL,
+            [BidPricingCategory] [varchar](20) NULL,
+            [BidRelationshipManagerEmail] [varchar](320) NULL,
+            [BuyerRmTeamEmailsJson] [nvarchar](max) NULL,
             CONSTRAINT [PK_SSQMS_Bid] PRIMARY KEY CLUSTERED ([ID] ASC)
                 WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF,
                       IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON,
@@ -84,6 +94,28 @@ BEGIN TRY
     IF OBJECT_ID(N'SSQMS.Opportunity', N'U') IS NULL
        OR OBJECT_ID(N'SSQMS.Bid', N'U') IS NULL
         THROW 51200, 'SQMS mock tables could not be created.', 1;
+
+    IF COL_LENGTH(N'SSQMS.Opportunity', N'OpenBiddingNoticeAt') IS NULL
+        ALTER TABLE [SSQMS].[Opportunity] ADD [OpenBiddingNoticeAt] [datetimeoffset](0) NULL;
+    IF COL_LENGTH(N'SSQMS.Opportunity', N'OpenBiddingReminderAt') IS NULL
+        ALTER TABLE [SSQMS].[Opportunity] ADD [OpenBiddingReminderAt] [datetimeoffset](0) NULL;
+    IF COL_LENGTH(N'SSQMS.Opportunity', N'BidResponseDueDate') IS NULL
+        ALTER TABLE [SSQMS].[Opportunity] ADD [BidResponseDueDate] [date] NULL;
+    IF COL_LENGTH(N'SSQMS.Opportunity', N'BiddingCloseAt') IS NULL
+        ALTER TABLE [SSQMS].[Opportunity] ADD [BiddingCloseAt] [datetimeoffset](0) NULL;
+    IF COL_LENGTH(N'SSQMS.Opportunity', N'SellerResponseDueDate') IS NULL
+        ALTER TABLE [SSQMS].[Opportunity] ADD [SellerResponseDueDate] [date] NULL;
+    IF COL_LENGTH(N'SSQMS.Opportunity', N'OpportunityRelationshipManagerEmail') IS NULL
+        ALTER TABLE [SSQMS].[Opportunity] ADD [OpportunityRelationshipManagerEmail] [varchar](320) NULL;
+    IF COL_LENGTH(N'SSQMS.Opportunity', N'SellerRmTeamEmailsJson') IS NULL
+        ALTER TABLE [SSQMS].[Opportunity] ADD [SellerRmTeamEmailsJson] [nvarchar](max) NULL;
+
+    IF COL_LENGTH(N'SSQMS.Bid', N'BidPricingCategory') IS NULL
+        ALTER TABLE [SSQMS].[Bid] ADD [BidPricingCategory] [varchar](20) NULL;
+    IF COL_LENGTH(N'SSQMS.Bid', N'BidRelationshipManagerEmail') IS NULL
+        ALTER TABLE [SSQMS].[Bid] ADD [BidRelationshipManagerEmail] [varchar](320) NULL;
+    IF COL_LENGTH(N'SSQMS.Bid', N'BuyerRmTeamEmailsJson') IS NULL
+        ALTER TABLE [SSQMS].[Bid] ADD [BuyerRmTeamEmailsJson] [nvarchar](max) NULL;
 
     IF NOT EXISTS
     (
@@ -99,6 +131,79 @@ BEGIN TRY
         ALTER TABLE [SSQMS].[Bid]
             CHECK CONSTRAINT [FK_SSQMS_Opportunity_Bid];
     END;
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID(N'SSQMS.Opportunity')
+          AND name = N'CK_SSQMS_Opportunity_SellerRmTeamEmailsJson'
+    )
+        ALTER TABLE [SSQMS].[Opportunity] WITH CHECK
+            ADD CONSTRAINT [CK_SSQMS_Opportunity_SellerRmTeamEmailsJson]
+            CHECK ([SellerRmTeamEmailsJson] IS NULL OR ISJSON([SellerRmTeamEmailsJson]) = 1);
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID(N'SSQMS.Bid')
+          AND name = N'CK_SSQMS_Bid_BidPricingCategory'
+    )
+        ALTER TABLE [SSQMS].[Bid] WITH CHECK
+            ADD CONSTRAINT [CK_SSQMS_Bid_BidPricingCategory]
+            CHECK ([BidPricingCategory] IS NULL OR [BidPricingCategory] IN ('FairValue', 'Premium', 'Discount'));
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID(N'SSQMS.Bid')
+          AND name = N'CK_SSQMS_Bid_BuyerRmTeamEmailsJson'
+    )
+        ALTER TABLE [SSQMS].[Bid] WITH CHECK
+            ADD CONSTRAINT [CK_SSQMS_Bid_BuyerRmTeamEmailsJson]
+            CHECK ([BuyerRmTeamEmailsJson] IS NULL OR ISJSON([BuyerRmTeamEmailsJson]) = 1);
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.indexes
+        WHERE object_id = OBJECT_ID(N'SSQMS.Opportunity')
+          AND name = N'IX_SSQMS_Opportunity_OpenBiddingNoticeDue'
+    )
+        CREATE INDEX [IX_SSQMS_Opportunity_OpenBiddingNoticeDue]
+            ON [SSQMS].[Opportunity] ([OpenBiddingNoticeAt], [ID])
+            INCLUDE ([EffectiveDateForSale], [BidResponseDueDate], [OpenBiddingReminderAt])
+            WHERE [IsDeleted] = 0 AND [WorkflowState] = N'OpenToBidding';
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.indexes
+        WHERE object_id = OBJECT_ID(N'SSQMS.Opportunity')
+          AND name = N'IX_SSQMS_Opportunity_OpenBiddingReminderDue'
+    )
+        CREATE INDEX [IX_SSQMS_Opportunity_OpenBiddingReminderDue]
+            ON [SSQMS].[Opportunity] ([OpenBiddingReminderAt], [ID])
+            INCLUDE ([EffectiveDateForSale], [BidResponseDueDate], [OpenBiddingNoticeAt])
+            WHERE [IsDeleted] = 0 AND [WorkflowState] = N'OpenToBidding';
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.indexes
+        WHERE object_id = OBJECT_ID(N'SSQMS.Opportunity')
+          AND name = N'IX_SSQMS_Opportunity_BiddingCloseDue'
+    )
+        CREATE INDEX [IX_SSQMS_Opportunity_BiddingCloseDue]
+            ON [SSQMS].[Opportunity] ([BiddingCloseAt], [ID])
+            INCLUDE ([CommitmentAmountSale])
+            WHERE [IsDeleted] = 0 AND [WorkflowState] = N'OpenToBidding';
+
+    IF NOT EXISTS
+    (
+        SELECT 1 FROM sys.indexes
+        WHERE object_id = OBJECT_ID(N'SSQMS.Bid')
+          AND name = N'IX_SSQMS_Bid_OpportunityWorkflowState'
+    )
+        CREATE INDEX [IX_SSQMS_Bid_OpportunityWorkflowState]
+            ON [SSQMS].[Bid] ([OpportunityId], [WorkflowState], [IsDeleted])
+            INCLUDE ([CommitmentAmountRequested], [BidPricingCategory]);
 
     IF NOT EXISTS (SELECT 1 FROM [SSQMS].[Opportunity] WHERE [ID] = 10000)
     BEGIN
@@ -149,6 +254,26 @@ BEGIN TRY
         );
         SET IDENTITY_INSERT [SSQMS].[Bid] OFF;
     END;
+
+    UPDATE [SSQMS].[Opportunity]
+    SET [OpenBiddingNoticeAt] = COALESCE([OpenBiddingNoticeAt], '2030-01-01T08:00:00-05:00'),
+        [OpenBiddingReminderAt] = COALESCE([OpenBiddingReminderAt], '2030-01-14T08:00:00-05:00'),
+        [BidResponseDueDate] = COALESCE([BidResponseDueDate], '2030-01-15'),
+        [BiddingCloseAt] = COALESCE([BiddingCloseAt], '2030-01-16T00:00:00-05:00'),
+        [SellerResponseDueDate] = COALESCE([SellerResponseDueDate], '2030-01-24'),
+        [OpportunityRelationshipManagerEmail] = COALESCE(
+            [OpportunityRelationshipManagerEmail], 'seller.rm@example.test'),
+        [SellerRmTeamEmailsJson] = COALESCE(
+            [SellerRmTeamEmailsJson], N'["seller.team1@example.test","seller.team2@example.test"]')
+    WHERE [ID] = 10000;
+
+    UPDATE [SSQMS].[Bid]
+    SET [BidPricingCategory] = COALESCE([BidPricingCategory], 'FairValue'),
+        [BidRelationshipManagerEmail] = COALESCE(
+            [BidRelationshipManagerEmail], 'buyer.rm@example.test'),
+        [BuyerRmTeamEmailsJson] = COALESCE(
+            [BuyerRmTeamEmailsJson], N'["buyer.team1@example.test","buyer.team2@example.test"]')
+    WHERE [ID] = 10000;
 
     COMMIT TRANSACTION;
 END TRY

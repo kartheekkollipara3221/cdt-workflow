@@ -26,6 +26,7 @@ public sealed class SqmsConsoleMockIntegrationTests
             AssertCommandSuccess(host.Execute("init-db"));
             ExecuteSqlScript(host.ConnectionString, "sql/sqms/001_seed_sqms_transition_metadata.sql");
             ExecuteSqlScript(host.ConnectionString, "sql/sqms/testing/004_create_sqms_mock_application_tables.sql");
+            ExecuteSqlScript(host.ConnectionString, "sql/sqms/testing/004_create_sqms_mock_application_tables.sql");
 
             AssertCommandSuccess(host.Execute(
                 "start-workflow", "SqmsOpportunity", OpportunityBusinessObjectId,
