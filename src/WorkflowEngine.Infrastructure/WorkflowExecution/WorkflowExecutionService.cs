@@ -597,7 +597,14 @@ public sealed class WorkflowExecutionService(
             var isSaveDraft = string.Equals(workflow.ActionKey, "SaveDraft", StringComparison.Ordinal);
             if (!isSaveDraft)
             {
-                var completed = string.Equals(transition.ToStateKey, "Completed", StringComparison.Ordinal);
+                var completed = dbContext.WorkflowStateDefinitions
+                    .AsNoTracking()
+                    .Where(row =>
+                        row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                        && row.StateKey == transition.ToStateKey
+                        && row.IsActive)
+                    .Select(row => row.IsTerminal)
+                    .Single();
                 var updatedRows = dbContext.WorkflowInstances
                     .Where(row => row.Id == instance.Id && row.Version == instance.Version)
                     .ExecuteUpdate(setters => setters

@@ -315,6 +315,53 @@ public sealed class WorkflowTransitionTests
     }
 
     [Fact]
+    public void TerminalStateMetadataCompletesWorkflowWithoutCompletedStateKey()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(dbContext);
+        dbContext.WorkflowStateDefinitions.Add(new WorkflowStateDefinition
+        {
+            WorkflowDefinitionVersionId = versionId,
+            StateKey = "Rejected",
+            DisplayName = "Rejected",
+            IsTerminal = true,
+            IsActive = true
+        });
+        dbContext.WorkflowActionDefinitions.Add(new WorkflowActionDefinition
+        {
+            WorkflowDefinitionVersionId = versionId,
+            ActionKey = "RejectWithoutCompletedKey",
+            DisplayName = "Reject without Completed key",
+            SectionKey = "Maker",
+            ButtonKey = "MakerPrimary",
+            ButtonLabel = "Reject",
+            Intent = "Complete",
+            SortOrder = 999,
+            IsActive = true
+        });
+        dbContext.WorkflowTransitionDefinitions.Add(new WorkflowTransitionDefinition
+        {
+            WorkflowDefinitionVersionId = versionId,
+            FromStateKey = "Draft",
+            ActionKey = "RejectWithoutCompletedKey",
+            AllowedRoleKey = "Maker",
+            ToStateKey = "Rejected",
+            AuditLabel = "Maker rejected test workflow",
+            IsActive = true
+        });
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "Draft", "Active", 1);
+        dbContext.SaveChanges();
+
+        var result = CreateService(dbContext).Execute(Request(Envelope(actionKey: "RejectWithoutCompletedKey")));
+
+        Assert.True(result.Result.Success, result.Result.Message);
+        Assert.Equal("Rejected", result.Result.NewState);
+        Assert.Equal("Completed", result.WorkflowContext!.Workflow.Status);
+        Assert.NotNull(result.WorkflowContext.Workflow.CompletedAtUtc);
+        Assert.Empty(result.WorkflowContext.AvailableActions);
+    }
+
+    [Fact]
     public void IdempotentReplayDoesNotDuplicateSideEffects()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();

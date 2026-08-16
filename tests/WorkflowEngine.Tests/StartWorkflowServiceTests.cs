@@ -34,6 +34,24 @@ public sealed class StartWorkflowServiceTests
         Assert.Empty(dbContext.IdempotencyRecords);
     }
 
+    [Fact]
+    public void StartJoinsCallerOwnedTransaction()
+    {
+        using var dbContext = CreateSeededContext();
+        using var transaction = dbContext.Database.BeginTransaction();
+
+        var result = CreateService(dbContext).Start(Request("PT-TX-START-1"));
+
+        Assert.True(result.Envelope.Result.Success);
+        Assert.NotNull(dbContext.Database.CurrentTransaction);
+        Assert.Contains(dbContext.WorkflowInstances, row => row.BusinessObjectId == "PT-TX-START-1");
+
+        transaction.Rollback();
+        dbContext.ChangeTracker.Clear();
+
+        Assert.DoesNotContain(dbContext.WorkflowInstances, row => row.BusinessObjectId == "PT-TX-START-1");
+    }
+
     [Theory]
     [InlineData("Active", null)]
     [InlineData("Completed", "2030-01-15T15:45:00Z")]
