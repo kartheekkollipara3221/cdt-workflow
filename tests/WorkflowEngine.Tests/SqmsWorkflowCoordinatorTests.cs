@@ -14,6 +14,17 @@ public sealed class SqmsWorkflowCoordinatorTests
     private static readonly SqmsActor IpgActor = new("sqms.ipg", "SQMS IPG", ["IPG"]);
 
     [Fact]
+    public void RepositoryDoesNotDeclareExplicitApplicationRowLocks()
+    {
+        var source = File.ReadAllText(ResolveRepositoryFile(
+            "src/WorkflowEngine.SqmsIntegration/SqmsApplicationRepository.cs"));
+
+        Assert.DoesNotContain("UPDLOCK", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ROWLOCK", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ForUpdate", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void StartAndExecuteProjectOpportunityAndBidStateAndReturnMetadataActions()
     {
         using var host = CreateInitializedHost();

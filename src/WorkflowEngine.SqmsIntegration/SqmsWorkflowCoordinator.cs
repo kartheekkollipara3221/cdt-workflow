@@ -125,7 +125,7 @@ public sealed class SqmsWorkflowCoordinator(
         ValidateActor(actor);
         return InTransaction("request SQMS seller approval", () =>
         {
-            var applicationState = repository.ReadForUpdate(SqmsEntityKind.Opportunity, opportunityId);
+            var applicationState = repository.ReadState(SqmsEntityKind.Opportunity, opportunityId);
             if (!string.Equals(applicationState.WorkflowState, "ClosedToBidding", StringComparison.Ordinal))
             {
                 throw new SqmsIntegrationException(
@@ -133,7 +133,7 @@ public sealed class SqmsWorkflowCoordinator(
             }
 
             var notificationRow = repository.ReadOpportunityNotificationRow(opportunityId);
-            var bidIds = repository.ReadIpgReviewBidIdsForUpdate(opportunityId);
+            var bidIds = repository.ReadIpgReviewBidIds(opportunityId);
             if (bidIds.Count == 0)
             {
                 throw new SqmsIntegrationException(
@@ -243,7 +243,7 @@ public sealed class SqmsWorkflowCoordinator(
         ValidateActor(actor);
         return InTransaction($"start SQMS {entityKind}", () =>
         {
-            var applicationState = repository.ReadForUpdate(entityKind, entityId);
+            var applicationState = repository.ReadState(entityKind, entityId);
             var startResult = startWorkflowService.Start(new StartWorkflowRequest(
                 workflowKey,
                 workflowKey,
@@ -280,7 +280,7 @@ public sealed class SqmsWorkflowCoordinator(
 
         return InTransaction($"execute SQMS {entityKind} action", () =>
         {
-            var applicationState = repository.ReadForUpdate(entityKind, entityId);
+            var applicationState = repository.ReadState(entityKind, entityId);
             var before = ReadContext(workflowInstanceId, actor);
             if (!string.Equals(applicationState.WorkflowState, before.Workflow.CurrentState, StringComparison.Ordinal))
             {

@@ -118,7 +118,7 @@ The integration is hosted in-process by the SQMS application API through the exi
 - `SqmsNotificationInputFactory`: trusted recipient/template input construction.
 - `SqmsScheduleRunner`: due-cycle discovery, notice/reminder execution, and close processing.
 - `SqmsBidClassificationService`: pure decimal classification rules.
-- SQMS repositories: application-row locking, due-row queries, Bid loading, and conditional projection updates.
+- SQMS repositories: application-state reads, due-row queries, Bid loading, and conditional projection updates.
 
 The Workflow HTTP API remains unchanged and continues to support existing callers.
 
@@ -129,7 +129,7 @@ The SQMS and Workflow EF Core contexts use the same scoped SQL connection and en
 For create/start or an ordinary action:
 
 1. begin the SQMS transaction;
-2. insert or lock the SQMS row;
+2. read the SQMS row and expected workflow state;
 3. enlist `WorkflowDbContext` in the same SQL transaction;
 4. start or execute the generic workflow;
 5. update `WorkflowState` from `CurrentState`;
@@ -214,7 +214,7 @@ The reminder never overtakes an initial message still pending delivery.
 
 For each due `OpenToBidding` Opportunity:
 
-1. lock the Opportunity;
+1. read the Opportunity and expected workflow state;
 2. execute `CloseOpportunityBidding` as `System`;
 3. project `ClosedToBidding` to the application row;
 4. commit.
@@ -244,7 +244,7 @@ When no submitted Bids exist, execute `MarkOpportunityNotFulfilled`.
 
 `RequestSellerApproval` is an atomic parent/child coordination operation:
 
-1. lock the closed Opportunity;
+1. read the closed Opportunity;
 2. load its `IpgReview` Bids;
 3. execute `SendBidToSellerReview` for each Bid;
 4. project all Bids to `UnderReviewBySeller`;

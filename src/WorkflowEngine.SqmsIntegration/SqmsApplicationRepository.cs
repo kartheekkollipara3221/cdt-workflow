@@ -100,7 +100,7 @@ public sealed class SqmsApplicationRepository(
     {
         using var command = CreateCommand("""
             SELECT [ID], [WorkflowState], [CommitmentAmountSale]
-            FROM [SSQMS].[Opportunity] WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[Opportunity]
             WHERE [ID] = @opportunityId AND ISNULL([IsDeleted], 0) = 0;
             """);
         command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
@@ -120,7 +120,7 @@ public sealed class SqmsApplicationRepository(
     {
         using var command = CreateCommand("""
             SELECT [ID], [WorkflowState], [CommitmentAmountRequested], [BidPricingCategory]
-            FROM [SSQMS].[Bid] WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[Bid]
             WHERE [OpportunityId] = @opportunityId AND ISNULL([IsDeleted], 0) = 0
             ORDER BY [ID];
             """);
@@ -147,8 +147,8 @@ public sealed class SqmsApplicationRepository(
                 opportunity.[OpenBiddingNoticeAt], opportunity.[OpenBiddingReminderAt],
                 opportunity.[BidResponseDueDate], bid.[CommitmentAmountRequested],
                 bid.[BidPricingCategory]
-            FROM [SSQMS].[Bid] AS bid WITH (UPDLOCK, ROWLOCK)
-            INNER JOIN [SSQMS].[Opportunity] AS opportunity WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[Bid] AS bid
+            INNER JOIN [SSQMS].[Opportunity] AS opportunity
                 ON opportunity.[ID] = bid.[OpportunityId]
             WHERE bid.[ID] = @bidId
               AND ISNULL(bid.[IsDeleted], 0) = 0
@@ -174,11 +174,11 @@ public sealed class SqmsApplicationRepository(
             reader.IsDBNull(8) ? null : reader.GetString(8));
     }
 
-    internal IReadOnlyList<int> ReadIpgReviewBidIdsForUpdate(int opportunityId)
+    internal IReadOnlyList<int> ReadIpgReviewBidIds(int opportunityId)
     {
         using var command = CreateCommand("""
             SELECT [ID]
-            FROM [SSQMS].[Bid] WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[Bid]
             WHERE [OpportunityId] = @opportunityId
               AND ISNULL([IsDeleted], 0) = 0
               AND [WorkflowState] = N'IpgReview'
@@ -202,7 +202,7 @@ public sealed class SqmsApplicationRepository(
                 [AccountNumber], [AccountName], [FundConsideredSecondarySale], [Vehicle],
                 [CommitmentAmountSale], [OpportunityRelationshipManagerEmail],
                 [SellerRmTeamEmailsJson]
-            FROM [SSQMS].[Opportunity] WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[Opportunity]
             WHERE [ID] = @opportunityId AND ISNULL([IsDeleted], 0) = 0;
             """);
         command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
@@ -232,8 +232,8 @@ public sealed class SqmsApplicationRepository(
                 bid.[AccountNumber], bid.[AccountName], opportunity.[FundConsideredSecondarySale],
                 opportunity.[Vehicle], bid.[CommitmentAmountRequested],
                 bid.[BidRelationshipManagerEmail], bid.[BuyerRmTeamEmailsJson]
-            FROM [SSQMS].[Bid] AS bid WITH (UPDLOCK, ROWLOCK)
-            INNER JOIN [SSQMS].[Opportunity] AS opportunity WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[Bid] AS bid
+            INNER JOIN [SSQMS].[Opportunity] AS opportunity
                 ON opportunity.[ID] = bid.[OpportunityId]
             WHERE bid.[ID] = @bidId
               AND ISNULL(bid.[IsDeleted], 0) = 0
@@ -267,7 +267,7 @@ public sealed class SqmsApplicationRepository(
                 SUM(CASE WHEN [WorkflowState] = N'Accepted' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN [WorkflowState] = N'PartiallyAccepted' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN [WorkflowState] = N'NotAccepted' THEN 1 ELSE 0 END)
-            FROM [SSQMS].[Bid] WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[Bid]
             WHERE [OpportunityId] = @opportunityId AND ISNULL([IsDeleted], 0) = 0;
             """);
         command.Parameters.Add(new SqlParameter("@opportunityId", SqlDbType.Int) { Value = opportunityId });
@@ -339,14 +339,14 @@ public sealed class SqmsApplicationRepository(
         return result;
     }
 
-    internal SqmsApplicationState ReadForUpdate(SqmsEntityKind entityKind, int entityId)
+    internal SqmsApplicationState ReadState(SqmsEntityKind entityKind, int entityId)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(entityId);
         var tableName = TableName(entityKind);
 
         using var command = CreateCommand($"""
             SELECT [WorkflowState], [Status]
-            FROM [SSQMS].[{tableName}] WITH (UPDLOCK, ROWLOCK)
+            FROM [SSQMS].[{tableName}]
             WHERE [ID] = @entityId AND ISNULL([IsDeleted], 0) = 0;
             """);
         command.Parameters.Add(new SqlParameter("@entityId", SqlDbType.Int) { Value = entityId });

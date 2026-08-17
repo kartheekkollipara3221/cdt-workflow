@@ -2095,13 +2095,14 @@ Resume after completed SQMS Iteration 3. Read AGENTS.md, PROJECT.md, .planning/S
 ## Current goal
 
 - Completed the approved SQMS end-to-end workflow integration while preserving the generic workflow engine, existing public Workflow API, Portfolio Trade behavior, and UI ownership boundary.
-- The implementation is on local branch `feature/sqms-console-mock` in worktree `.worktrees/sqms-console-mock`; it has not been pushed.
+- The implementation is on publication branch `sqms_integration` in worktree `.worktrees/sqms-console-mock`.
 
 ## Completed changes
 
 - Made generic Start participate in a caller-owned transaction and made terminal completion derive from destination-state metadata instead of the literal state key `Completed`.
 - Added only the approved nullable SQMS business inputs to the mock application tables, plus JSON/category constraints and due-query indexes.
 - Added the in-process `WorkflowEngine.SqmsIntegration` thin layer with deterministic identities, Start, Context, Action, atomic application projection, trusted notification input, classification, scheduled processing, and DI registration.
+- Kept explicit Opportunity/Bid row locking out of the SQMS thin layer; application reads use normal SQL semantics and conditional expected-state updates detect stale projections.
 - Added taskless `SqmsSaleCycle` metadata and six exact notification routes: initial notice, reminder, seller approval, accepted, partially accepted, and not accepted.
 - Added idempotent aggregate notice/reminder processing. A reminder waits for the initial outbox row to be `Sent`.
 - Added automatic parent close, transactional child classification, retry after child failure, no-Bid `NotFulfilled`, seller-review orchestration, all three Bid decisions, and final Opportunity roll-up.
@@ -2125,7 +2126,7 @@ Resume after completed SQMS Iteration 3. Read AGENTS.md, PROJECT.md, .planning/S
 
 - Core restore and warnings-as-errors build: passed, 0 warnings and 0 errors.
 - Workflow API restore and warnings-as-errors build: passed, 0 warnings and 0 errors.
-- Core serialized regression suite: 377 passed, 0 failed, 5 opt-in SMTP tests skipped.
+- Core serialized regression suite: 378 passed, 0 failed, 5 opt-in SMTP tests skipped.
 - Workflow API suite: 68 passed, 0 failed, 0 skipped.
 - Full opt-in SMTP suite: 5 passed, 0 failed, 0 skipped.
 - Explicit SQMS console/sample selection: 7 passed; samples `01` through `06` were loaded and executed.
