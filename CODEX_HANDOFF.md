@@ -13,6 +13,9 @@
 - Reverted exactly those six commits in recoverable history while retaining `SQMS/` legacy evidence and `tareget-api-integration/` reference snapshots.
 - Removed active SQMS metadata SQL, mock-table SQL, samples, tests, and rejected design/plan artifacts.
 - Added `docs/sqms/CLEAN-SLATE-CONTEXT.md` and replaced stale SQMS planning pointers with the approved clean-slate boundary.
+- Restored the 417-file `restore-repo.ps1` bundle for commit `e2ccd86` into an isolated temporary directory and compared every bundled path by SHA-256.
+- Confirmed all 411 comparable bundle files are unchanged and there are zero differences under `src/`, `workflow-api/`, `tests/`, or `samples/`.
+- Removed the remaining stale `docs/sqms-approved-workflow-flowchart.html` because it documented the rejected custom coordinator and cross-row orchestration.
 - The local `workflowengine` database had already been transactionally cleaned of SQMS artifacts on 2026-08-17; generic seed verification passed afterward.
 
 ### Verification

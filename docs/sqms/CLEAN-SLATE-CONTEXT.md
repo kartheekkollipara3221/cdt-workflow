@@ -91,6 +91,14 @@ Do not reintroduce these assumptions without explicit user approval.
 
 On 2026-08-17, after separate user approval, the local `workflowengine` database was inventoried and cleaned in one rollback-on-error transaction. The cleanup removed the `SqmsOpportunity` and `SqmsBid` definitions and their versions, 19 state rows, 18 action rows, 40 transition rows, 6 role rows, 4 workflow instances, 8 audit rows, 8 idempotency rows, 2 mock-section rows, and the mock `SSQMS.Bid` and `SSQMS.Opportunity` tables and schema. Post-cleanup SQL inspection found zero SQMS definitions, runtime rows, mock-section rows, or `SSQMS` objects. Generic `verify-seed` passed; the Portfolio Trade definition remains. No `init-db` was run.
 
+## Target-API Bundle Baseline
+
+On 2026-08-18, `restore-repo.ps1` was restored into an isolated temporary directory and verified its embedded ZIP checksum. The bundle contains 417 files from clean commit `e2ccd86aaa4b8b0ab83e41598f265cad93cf78ad` on `console-code-first-0518`, generated on 2026-08-10 with no working-tree changes.
+
+The restored bundle was compared path-by-path and by SHA-256 with this clean branch. All 411 comparable bundled files are unchanged. There are zero differences under `src/`, `workflow-api/`, `tests/`, or `samples/`. The only six changed bundled paths are repository governance and handoff files: `.gitignore`, `AGENTS.MD`, `.planning/.continue-here.md`, `.planning/HANDOFF.json`, `.planning/STATE.md`, and `CODEX_HANDOFF.md`.
+
+The stale `docs/sqms-approved-workflow-flowchart.html` was removed because it described the rejected custom coordinator, notification-batch workflows, reconciliation commands, and cross-row orchestration. The retained post-bundle files are knowledge-only: the original `restore-repo.ps1`, raw `SQMS/` legacy evidence, `tareget-api-integration/` reference snapshots, and this corrected clean-slate context.
+
 ## Clean-Slate Next Step
 
 Before writing code or SQL:

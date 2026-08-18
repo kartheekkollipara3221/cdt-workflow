@@ -40,5 +40,5 @@
   ],
   "uncommitted_files": [],
   "next_action": "Read PROJECT.md, raw SQMS legacy sources, and docs/sqms/CLEAN-SLATE-CONTEXT.md; then map every legacy trigger and outcome before proposing implementation.",
-  "context_notes": "The clean branch is based directly on origin/console-code-first-0518 at 70aa4d9 and reverts its six SQMS commits without rewriting history. Raw legacy evidence is retained. After separate user approval on 2026-08-17, the local workflowengine database was transactionally cleaned of SQMS definitions, runtime records, mock-section rows, and the mock SSQMS schema; generic verify-seed passed."
+  "context_notes": "The clean branch is based directly on origin/console-code-first-0518 at 70aa4d9 and reverts its six SQMS commits without rewriting history. The restore-repo.ps1 bundle for clean target-integration commit e2ccd86 was checksum-verified and compared path-by-path: all 411 comparable files match, with zero src, workflow-api, tests, or samples differences. The stale SQMS coordinator flowchart was removed; raw legacy evidence and target-API snapshots remain. The local workflowengine database was also cleaned and generic verify-seed passed."
 }
