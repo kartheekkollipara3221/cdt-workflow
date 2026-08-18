@@ -1,5 +1,44 @@
 # Codex Handoff
 
+## 2026-08-18 SQMS Remote Cleanup Branch
+
+### Current goal
+
+- Remove the rejected SQMS implementation already present on remote `console-code-first-0518` without rewriting that branch's history.
+
+### Completed changes
+
+- Fetched and confirmed `origin/console-code-first-0518` at `70aa4d9` contains six SQMS commits from `4bd1ad9` through `70aa4d9`.
+- Created `sqms_clean_slate` directly from that remote head.
+- Reverted exactly those six commits in recoverable history while retaining `SQMS/` legacy evidence and `tareget-api-integration/` reference snapshots.
+- Removed active SQMS metadata SQL, mock-table SQL, samples, tests, and rejected design/plan artifacts.
+- Added `docs/sqms/CLEAN-SLATE-CONTEXT.md` and replaced stale SQMS planning pointers with the approved clean-slate boundary.
+- The local `workflowengine` database had already been transactionally cleaned of SQMS artifacts on 2026-08-17; generic seed verification passed afterward.
+
+### Verification
+
+- Active code, tests, API, samples, and SQL match pre-SQMS baseline `1362541`.
+- Core and API warnings-as-errors builds passed.
+- Core regression suite passed 336 tests with 4 opt-in SMTP tests skipped; Workflow API tests exited successfully.
+- Generic `verify-seed` passed against `DOLLY/workflowengine`.
+
+### Remaining tasks
+
+- Commit and push `sqms_clean_slate`.
+- Review and merge that branch into `console-code-first-0518` through the normal remote process.
+- Before future implementation, map every supplied legacy SQMS function and obtain user approval.
+
+### Known risks
+
+- Do not merge the old `sqms_integration` branch; its history includes the broader rejected thin-layer implementation.
+- The preserved target-API files are historical reference snapshots, not compilable project source.
+
+### Next-session prompt
+
+```text
+Continue from the clean SQMS branch. Read PROJECT.md, SQMS legacy sources, and docs/sqms/CLEAN-SLATE-CONTEXT.md. Do not restore the rejected SQMS implementation. Map every supplied legacy function to existing generic workflow-engine integration surfaces and obtain approval before code or SQL.
+```
+
 ## 2026-08-10 100-Workflow Live API and SLA Performance Acceptance
 
 ### Current goal

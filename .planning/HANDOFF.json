@@ -1,63 +1,44 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-16T16:45:00Z",
+  "timestamp": "2026-08-18T00:00:00Z",
   "phase": "SQMS",
-  "phase_name": "SQMS iterative workflow integration",
+  "phase_name": "SQMS clean-slate legacy mapping",
   "phase_dir": ".planning",
-  "plan": 3,
-  "task": 3,
-  "total_tasks": 3,
-  "status": "complete",
-  "completed_tasks": [
-    {
-      "id": 1,
-      "name": "Seed and verify approved SQMS Opportunity and Bid transition metadata",
-      "status": "done"
-    },
-    {
-      "id": 2,
-      "name": "Prove existing Workflow Start, Context, and Action APIs with live SQMS runtime scenarios",
-      "status": "done"
-    },
-    {
-      "id": 3,
-      "name": "Mock exact SQMS application tables and prove Console Start, Get Context, and Execute",
-      "status": "done",
-      "commits": [
-        "ddc3497",
-        "0113bde"
-      ]
-    }
+  "plan": 0,
+  "task": 0,
+  "total_tasks": 0,
+  "status": "paused",
+  "completed_tasks": [],
+  "remaining_tasks": [
+    "Build a source-backed mapping for every supplied SQMS legacy function before designing code or SQL.",
+    "Review the complete mapping with the user and obtain explicit approval.",
+    "After approval, produce an incremental target-API code package and additive idempotent SQL scripts."
   ],
-  "remaining_tasks": [],
-  "blockers": [],
+  "blockers": [
+    "No new SQMS implementation is authorized until the legacy-function mapping is complete and approved."
+  ],
   "async_jobs": [],
   "human_actions_pending": [
-    "Select exactly one next SQMS capability before Iteration 4 planning."
+    "Review and approve the future source-backed SQMS legacy-function mapping."
   ],
   "decisions": [
     {
-      "decision": "Keep the generic workflow engine as the transition authority.",
-      "rationale": "Both SQMS workflows execute from the existing metadata using actionKey without a duplicate application state machine.",
+      "decision": "Reject and revert the previous SQMS implementation.",
+      "rationale": "The thin layer invented orchestration instead of mapping legacy functions to the generic workflow engine.",
       "phase": "SQMS"
     },
     {
-      "decision": "Create exact-shape SQMS application mocks through explicit test SQL, not EF migrations.",
-      "rationale": "The tables are application-owned and must not become part of the reusable engine persistence model.",
+      "decision": "Preserve legacy evidence and confirmed corrections in docs/sqms/CLEAN-SLATE-CONTEXT.md.",
+      "rationale": "Future work must retain learned requirements without treating rejected code or designs as an active baseline.",
       "phase": "SQMS"
     },
     {
-      "decision": "Do not synchronize application Status or WorkflowState in Iteration 3.",
-      "rationale": "The console proof establishes workflow behavior while preserving the unresolved application ownership boundary.",
-      "phase": "SQMS"
-    },
-    {
-      "decision": "Protect Portfolio Trade plus both SQMS workflows with regression coverage.",
-      "rationale": "The engine is shared infrastructure and future changes must remain backward compatible.",
+      "decision": "Do not run init-db for SQMS target integration.",
+      "rationale": "The target API already embeds the engine and its existing database requires additive idempotent SQL upgrades.",
       "phase": "SQMS"
     }
   ],
   "uncommitted_files": [],
-  "next_action": "Review the completed Iteration 3 proof and choose one narrowly scoped SQMS capability for Iteration 4.",
-  "context_notes": "DOLLY/workflowengine contains SSQMS.Opportunity and SSQMS.Bid fixture ID 10000. WF-SQMS-OPP-10000 and WF-SQMS-BID-10000 are Submitted version 2 with one audit each, no tasks/SLA/outbox, and unchanged application Status/WorkflowState fields."
+  "next_action": "Read PROJECT.md, raw SQMS legacy sources, and docs/sqms/CLEAN-SLATE-CONTEXT.md; then map every legacy trigger and outcome before proposing implementation.",
+  "context_notes": "The clean branch is based directly on origin/console-code-first-0518 at 70aa4d9 and reverts its six SQMS commits without rewriting history. Raw legacy evidence is retained. After separate user approval on 2026-08-17, the local workflowengine database was transactionally cleaned of SQMS definitions, runtime records, mock-section rows, and the mock SSQMS schema; generic verify-seed passed."
 }
