@@ -1,5 +1,59 @@
 # Codex Handoff
 
+## 2026-08-20 SQMS Milestone 1 Gate
+
+### Current goal
+
+- Milestone 1 is implemented and verified. Stop before Milestone 2 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Added the isolated `WorkflowEngine.Sqms` .NET 10 project with references to the existing Application and Infrastructure layers and no new package references.
+- Added stable SQMS workflow, state, action, role, route, business-object, and workflow-instance identifiers.
+- Added guarded invariant-culture Opportunity/Bid identity builders that reject non-positive target IDs.
+- Added additive SQMS options and DI registration. Disabled SQMS requires no URLs; enabled SQMS validates positive scheduling day counts and a resolvable timezone.
+- Added the SQMS project to the solution, Console project, and test project without changing existing command behavior.
+- Followed TDD: the structure test first failed with `CS0234` because `WorkflowEngine.Sqms` did not exist, then all seven focused cases passed after implementation.
+
+### Changed files
+
+- `src/WorkflowEngine.Sqms/WorkflowEngine.Sqms.csproj`
+- `src/WorkflowEngine.Sqms/SqmsKeys.cs`
+- `src/WorkflowEngine.Sqms/Configuration/SqmsOptions.cs`
+- `src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Console/WorkflowEngine.Console.csproj`
+- `src/WorkflowEngine.sln`
+- `tests/WorkflowEngine.Tests/WorkflowEngine.Tests.csproj`
+- `tests/WorkflowEngine.Tests/SqmsProjectStructureTests.cs`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Baseline with the approved local SQL test connection: 336 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- TDD RED: focused test compilation failed as expected with `CS0234` before the SQMS project existed.
+- Milestone 1 warning-as-error build: passed with 0 warnings and 0 errors.
+- Focused SQMS structure/configuration tests: 7 passed, 0 failed.
+- Full post-change SQL-backed core suite: 343 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- The first baseline attempt without a test connection produced 204 environment-only failures; rerunning with the `PROJECT.md`-approved local SQL connection passed.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 1 stop gate.
+2. Execute plan Tasks 2-4 for Milestone 2 only: backward-compatible outbox DDL, exact SQMS metadata DML/verifier, and CDT upgrade compatibility.
+3. Stop again after the Milestone 2 quality gate and commit.
+
+### Known risks
+
+- No database/schema/seed change has been made yet. The shared outbox relaxation remains deferred to Milestone 2 and requires its dedicated CDT compatibility proof.
+- SQMS remains disabled and has no runtime orchestration in Milestone 1; only the isolated project boundary, stable keys, and validated configuration skeleton exist.
+- Production SQL, deployment, scheduling, push, and merge remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 1 commit on sqms_clean_slate after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Tasks 2-4 only, using TDD and DBA-owned SQL files, prove CDT in-place upgrade compatibility, and stop at the Milestone 2 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
 ## 2026-08-20 SQMS Thin-Layer Design Review Gate
 
 ### Current goal
