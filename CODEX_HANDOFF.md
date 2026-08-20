@@ -1,5 +1,49 @@
 # Codex Handoff
 
+## 2026-08-20 SQMS Thin-Layer Design Review Gate
+
+### Current goal
+
+- Await user review of the consolidated SQMS thin-layer integration design before producing an implementation plan.
+
+### Completed changes
+
+- Recovered and reconciled the clean-slate SQMS decisions with the user's final `SSQMS.Opportunity` and `SSQMS.Bid` schema.
+- Documented the approved in-process adapter, exact Opportunity/Bid matrices, taskless/no-SLA boundary, request and scheduled transactions, six email routes, and three hyperlink contracts.
+- Explicitly superseded the stale retained requirement to calculate `TotalBid`, `LargestBid`, and `LowestBid`; those columns are entirely out of scope.
+- Defined DBA-managed production DDL/DML/verification files and prohibited production startup migrations or EF seed execution.
+- Added a release-blocking CDT compatibility gate for the shared outbox relaxation and generic terminal-state correction.
+- Completed the required spec self-review with no unresolved `TBD`, `TODO`, `FIXME`, or ambiguous scope markers.
+
+### Changed files
+
+- `docs/superpowers/specs/2026-08-20-sqms-thin-layer-integration-design.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- No source code, SQL, runtime configuration, or database was changed.
+- Build, SQL, and runtime tests were not run for this documentation-only checkpoint.
+- Documentation scans confirmed the required compatibility, URL, `TimeProvider`, `toState`, outbox, and calculated-column decisions are present.
+
+### Remaining tasks
+
+1. User reviews the written spec and requests corrections or approves it.
+2. After explicit written-spec approval, invoke the writing-plans workflow.
+3. Do not implement code or SQL until the plan is reviewed and implementation is authorized.
+
+### Known risks
+
+- `dbo.NotificationOutbox.WorkflowInstanceId` is currently non-null. The approved grouped-notification design relaxes it to nullable and therefore requires a DBA change window plus the full CDT compatibility gate before SQMS scheduling can be enabled.
+- The current generic engine recognizes only literal `Completed` as runtime completion. The spec requires metadata-driven `IsTerminal` handling and proves existing CDT behavior through regression coverage.
+- Environment URLs, static email addresses, and complete template literals must be supplied in deployment configuration/DBA DML and verified before production enablement.
+
+### Next-session prompt
+
+```text
+Review docs/superpowers/specs/2026-08-20-sqms-thin-layer-integration-design.md on sqms_clean_slate. The document consolidates the approved SQMS design, final target schema mapping, email links, same-database transaction model, DBA-only production DDL/DML, nullable notification-only outbox design, and mandatory CDT compatibility gate. Do not write an implementation plan until the user approves the written spec; after approval, use the writing-plans skill. Do not implement code or SQL without later explicit authorization.
+```
+
 ## 2026-08-18 SQMS Remote Cleanup Branch
 
 ### Current goal
