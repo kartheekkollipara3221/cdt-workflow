@@ -1,5 +1,49 @@
 # Codex Handoff
 
+## 2026-08-20 SQMS Milestone 2 Action-Count Decision
+
+### Current goal
+
+- Continue Milestone 2 after the user resolves the Bid action-count contradiction in Task 3.
+
+### Completed changes
+
+- Completed and committed Task 2 as `5200ba2` (`feat(db): add notification occurrence ownership`).
+- Made `NotificationOutbox.WorkflowInstanceId` nullable, added `NotificationOccurrenceKey`, its filtered unique index, and the owner check constraint while retaining the existing workflow FK and SLA mappings.
+- Added the fixed EF migration `20260820200000_AddNotificationOccurrenceKey` for local/test parity.
+- Added authoritative, rerunnable DBA DDL in `sql/sqms/001_sqms_notification_outbox_ddl.sql` with catalog validation, dependency-safe alteration, transaction rollback, and no `SSQMS` DDL.
+- Added model, migration, and SQL contract tests. The focused Task 2 gate passed 42 tests.
+
+### Current blocker
+
+- The approved Bid matrix contains eight distinct action keys: `SubmitBid`, `ReturnBidToDraft`, `MarkBidNotAllocated`, `MoveBidToIpgReview`, `SendBidToSellerReview`, `AcceptBid`, `PartiallyAcceptBid`, and `RejectBid`.
+- Task 3's exact-count assertion says `SqmsBid: 8 states, 7 actions, 4 roles, 9 transitions` while also requiring the approved matrix verbatim.
+- Seven action definitions cannot satisfy referential verification for all nine transitions. Recommended resolution: correct the expected Bid action count to eight and preserve the approved matrix.
+
+### Build/test status
+
+- Task 2 warning-as-error build: passed with 0 warnings and 0 errors.
+- Task 2 focused model/migration/package tests: 42 passed, 0 failed.
+- Task 3 DML/verifier work has not started; no action-count assumption was implemented.
+
+### Remaining tasks
+
+1. Obtain the user's decision on eight versus seven Bid action definitions.
+2. Update the plan count if eight is confirmed.
+3. Complete Task 3 DBA DML/verifier/rollback tests.
+4. Complete Task 4 exact-DDL-twice CDT compatibility and stop at the Milestone 2 gate.
+
+### Known risks
+
+- Do not remove or merge an approved Bid action merely to satisfy the erroneous count.
+- No production SQL has been run. The local production-style database was not changed by this milestone work.
+
+### Next-session prompt
+
+```text
+Resume Milestone 2 from commit 5200ba2 after the user resolves the Bid action-count contradiction. If eight is approved, update Task 3's expected count from 7 to 8, preserve all nine approved Bid transitions, then continue TDD for sql/sqms/002, 003, testing/000, and testing/004. Stop after the Milestone 2 compatibility gate. Do not run production SQL.
+```
+
 ## 2026-08-20 SQMS Milestone 1 Gate
 
 ### Current goal
