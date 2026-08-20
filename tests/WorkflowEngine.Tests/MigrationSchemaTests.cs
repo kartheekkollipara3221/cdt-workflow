@@ -187,6 +187,30 @@ public sealed class MigrationSchemaTests
         Assert.DoesNotContain("UPDATE [dbo].[NotificationRecipientRule]", migrationSegment, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void NotificationOccurrenceOwnershipMigrationPreservesExistingRows()
+    {
+        using var dbContext = CreateDbContext();
+
+        var script = dbContext.GetService<IMigrator>().GenerateScript();
+        var migrationStart = script.IndexOf(
+            "ALTER TABLE [dbo].[NotificationOutbox] ALTER COLUMN [WorkflowInstanceId] nvarchar(150) NULL;",
+            StringComparison.Ordinal);
+
+        Assert.True(migrationStart >= 0, "Expected WorkflowInstanceId to become nullable.");
+        var migrationSegment = script[migrationStart..];
+        Assert.Contains(
+            "ALTER TABLE [dbo].[NotificationOutbox] ADD [NotificationOccurrenceKey] nvarchar(300) NULL;",
+            migrationSegment,
+            StringComparison.Ordinal);
+        Assert.Contains("CK_NotificationOutbox_Owner", migrationSegment, StringComparison.Ordinal);
+        Assert.Contains(
+            "WHERE [NotificationOccurrenceKey] IS NOT NULL",
+            migrationSegment,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("DELETE FROM", migrationSegment, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static WorkflowDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()

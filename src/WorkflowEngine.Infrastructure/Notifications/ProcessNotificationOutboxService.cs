@@ -135,7 +135,7 @@ public sealed class ProcessNotificationOutboxService(
                     delivery.ToEmailAddresses,
                     delivery.CcEmailAddresses,
                     row.Subject,
-                    row.WorkflowInstanceId));
+                    row.WorkflowInstanceId!));
             }
             catch (Exception exception)
             {
@@ -151,7 +151,7 @@ public sealed class ProcessNotificationOutboxService(
                         delivery?.ToEmailAddresses ?? [],
                         delivery?.CcEmailAddresses ?? [],
                         row.Subject,
-                        row.WorkflowInstanceId,
+                        row.WorkflowInstanceId!,
                         exception));
             }
         }
@@ -194,7 +194,7 @@ public sealed class ProcessNotificationOutboxService(
 
         return new NotificationDelivery(
             row.Id,
-            row.WorkflowInstanceId,
+            row.WorkflowInstanceId!,
             row.WorkflowTaskId,
             row.BusinessObjectType,
             row.BusinessObjectId,
