@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-20
 
-**Status:** Approved design, pending written-spec review
+**Status:** Written specification approved on 2026-08-20
 
 **Target branch:** `sqms_clean_slate`
 

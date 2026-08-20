@@ -4,7 +4,7 @@
 
 ### Current goal
 
-- Await user review of the consolidated SQMS thin-layer integration design before producing an implementation plan.
+- Await the user's implementation execution choice after approval of the written specification and creation of the file-by-file plan.
 
 ### Completed changes
 
@@ -14,23 +14,27 @@
 - Defined DBA-managed production DDL/DML/verification files and prohibited production startup migrations or EF seed execution.
 - Added a release-blocking CDT compatibility gate for the shared outbox relaxation and generic terminal-state correction.
 - Completed the required spec self-review with no unresolved `TBD`, `TODO`, `FIXME`, or ambiguous scope markers.
+- Recorded user approval of the written specification.
+- Created and self-reviewed `docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md`, mapped directly to `PROJECT.md` milestones 1-6 with stop gates, TDD steps, exact files, DBA scripts, and CDT compatibility checks.
 
 ### Changed files
 
 - `docs/superpowers/specs/2026-08-20-sqms-thin-layer-integration-design.md`
+- `docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md`
 - `CODEX_HANDOFF.md`
 
 ### Build/test status
 
 - No source code, SQL, runtime configuration, or database was changed.
-- Build, SQL, and runtime tests were not run for this documentation-only checkpoint.
-- Documentation scans confirmed the required compatibility, URL, `TimeProvider`, `toState`, outbox, and calculated-column decisions are present.
+- Build, SQL, and runtime tests were not run for this documentation-only planning checkpoint.
+- Spec and plan placeholder, consistency, scope, compatibility, and `git diff --check` scans passed.
 
 ### Remaining tasks
 
-1. User reviews the written spec and requests corrections or approves it.
-2. After explicit written-spec approval, invoke the writing-plans workflow.
-3. Do not implement code or SQL until the plan is reviewed and implementation is authorized.
+1. User chooses subagent-driven or inline plan execution.
+2. Use the required execution skill for the selected approach.
+3. Stop after every mapped `PROJECT.md` milestone quality gate.
+4. Do not push, deploy, run production SQL, or enable production scheduling without explicit authorization.
 
 ### Known risks
 
@@ -41,7 +45,7 @@
 ### Next-session prompt
 
 ```text
-Review docs/superpowers/specs/2026-08-20-sqms-thin-layer-integration-design.md on sqms_clean_slate. The document consolidates the approved SQMS design, final target schema mapping, email links, same-database transaction model, DBA-only production DDL/DML, nullable notification-only outbox design, and mandatory CDT compatibility gate. Do not write an implementation plan until the user approves the written spec; after approval, use the writing-plans skill. Do not implement code or SQL without later explicit authorization.
+Execute docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md on sqms_clean_slate only after the user selects an execution approach. The written spec is approved. Use subagent-driven-development for the recommended task-by-task approach or executing-plans for inline batches. Preserve every milestone stop gate, DBA-only production SQL boundary, calculated-column exclusion, and CDT compatibility release gate. Do not push, deploy, run production SQL, or enable production scheduling without explicit authorization.
 ```
 
 ## 2026-08-18 SQMS Remote Cleanup Branch
