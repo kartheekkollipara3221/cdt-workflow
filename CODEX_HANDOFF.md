@@ -1,5 +1,55 @@
 # Codex Handoff
 
+## 2026-08-20 SQMS Milestone 4 Gate
+
+### Current goal
+
+- Milestone 4 is implemented, committed, and verified. Stop before Milestone 5 Task 8 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Completed Task 7 in `a4eaaf3` (`fix(engine): honor terminal state metadata`).
+- Replaced the reusable engine's literal destination-key comparison with the active destination `WorkflowStateDefinition.IsTerminal` value.
+- The engine now rejects a transition before mutation when its destination state metadata is missing or inactive.
+- Preserved the runtime contract: entering any terminal state sets `WorkflowInstance.Status` to `Completed` and `CompletedAtUtc`, while `CurrentStateKey` retains the exact metadata key.
+- Added an isolated metadata-driven regression proving `NOT ACCEPTED` completes runtime, leaves no pending task, and exposes no available actions.
+- Added a Portfolio Trade regression proving the existing literal `Completed` state still sets the same runtime status/time values and closes its pending task.
+
+### Changed files
+
+- `src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs`
+- `tests/WorkflowEngine.Tests/WorkflowTerminalStateTests.cs`
+- `tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- TDD RED with the approved local SQL test connection: 13 existing tests passed and only the nonliteral terminal test failed because runtime status remained `Active`.
+- Milestone 4 focused gate: 46 passed, 0 failed.
+- Warning-as-error core build: passed with 0 warnings and 0 errors.
+- Full SQL-backed core regression: 387 passed, 0 failed, 4 opt-in smtp4dev tests skipped.
+- Full Workflow API regression: 68 passed, 0 failed.
+- Disposable `workflowengine_terminal_m4_gate_20260820`: `init-db`, `verify-seed`, `start-workflow`, and existing public `02-submit-for-checker.json` execution all passed; the database was deleted and `DB_ID` returned null.
+- The first RED attempt lacked `WORKFLOW_ENGINE_TEST_CONNECTION_STRING` and therefore did not exercise product behavior; it was rerun with the established local SQL connection. The first API regression command used an obsolete project path and was rerun successfully against the current project.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 4 stop gate.
+2. Execute Task 8 only for Milestone 5: add the generic notification-only queue.
+3. Continue Milestone 5 only according to its written task boundaries and stop at its quality gate.
+
+### Known risks
+
+- Request-driven SQMS notification actions do not yet enrich template values from target data; that remains intentionally deferred to Task 9 in Milestone 5.
+- Production still requires DBA execution of `001`, `002`, and `003`, plus deployment recipient values and final environment URLs.
+- No production/shared application database was changed. Production SQL, push, merge, deployment, and scheduling remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 4 commit a4eaaf3 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Milestone 5 beginning with Task 8 only, follow TDD and all stop-and-ask rules, preserve existing public contracts, and stop at the Milestone 5 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
 ## 2026-08-20 SQMS Milestone 3 Gate
 
 ### Current goal
