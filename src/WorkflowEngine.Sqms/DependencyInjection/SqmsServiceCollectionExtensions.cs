@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using WorkflowEngine.Sqms.Configuration;
 using WorkflowEngine.Sqms.Contracts;
 using WorkflowEngine.Sqms.Persistence;
+using WorkflowEngine.Sqms.Scheduling;
 
 namespace WorkflowEngine.Sqms.DependencyInjection;
 
@@ -26,6 +27,7 @@ public static class SqmsServiceCollectionExtensions
 
         services.AddScoped<ISqmsDataStore, SqlSqmsDataStore>();
         services.AddScoped<ISqmsWorkflowService, SqmsWorkflowService>();
+        services.AddScoped<ISqmsScheduledService, SqmsScheduledService>();
         services.AddScoped(provider =>
             new SqmsLinkBuilder(provider.GetRequiredService<IOptions<SqmsOptions>>().Value.Links));
 
