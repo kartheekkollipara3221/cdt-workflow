@@ -246,6 +246,39 @@ public sealed class SqmsLiveAcceptanceContractTests
     }
 
     [Fact]
+    public void SingleLifecycleRunnerPinsSeparateEvidenceAndNeverDropsIt()
+    {
+        var root = SqmsDatabasePackageTests.RepositoryRoot();
+        var scriptPath = Path.Combine(
+            root,
+            "scripts",
+            "run-sqms-single-lifecycle-live-acceptance.ps1");
+        var verifierPath = Path.Combine(
+            root,
+            "sql",
+            "sqms",
+            "testing",
+            "007_verify_sqms_single_lifecycle_live_acceptance.sql");
+
+        Assert.True(File.Exists(scriptPath));
+        Assert.True(File.Exists(verifierPath));
+        var script = File.ReadAllText(scriptPath);
+        var verifier = File.ReadAllText(verifierPath);
+
+        Assert.Contains("workflowengine_sqms_single_lifecycle_live_acceptance", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS-SINGLE-LIVE-20260821", script, StringComparison.Ordinal);
+        Assert.Contains("sqms-single-lifecycle-live-acceptance-20260821", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS_LIVE_ACCEPTANCE_SCENARIO = 'single-lifecycle'", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS_LIVE_ACCEPTANCE_SMTP4DEV_URL = 'http://localhost:5001'", script, StringComparison.Ordinal);
+        Assert.Contains("Smtp__Port = '3026'", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("DROP DATABASE", script, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            "DECLARE @RunMarker varchar(100) = 'SQMS-SINGLE-LIVE-20260821'",
+            verifier,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EvidenceVerifierJoinsSlaScheduleToTheActualTaskPrimaryKey()
     {
         Assert.Contains(
