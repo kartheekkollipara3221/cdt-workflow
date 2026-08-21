@@ -271,6 +271,8 @@ public sealed class SqmsLiveAcceptanceContractTests
         Assert.Contains("SQMS_LIVE_ACCEPTANCE_SCENARIO = 'single-lifecycle'", script, StringComparison.Ordinal);
         Assert.Contains("SQMS_LIVE_ACCEPTANCE_SMTP4DEV_URL = 'http://localhost:5001'", script, StringComparison.Ordinal);
         Assert.Contains("Smtp__Port = '3026'", script, StringComparison.Ordinal);
+        Assert.Contains("'--imapport='", script, StringComparison.Ordinal);
+        Assert.Contains("'--pop3port='", script, StringComparison.Ordinal);
         Assert.DoesNotContain("DROP DATABASE", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(
             "DECLARE @RunMarker varchar(100) = 'SQMS-SINGLE-LIVE-20260821'",
