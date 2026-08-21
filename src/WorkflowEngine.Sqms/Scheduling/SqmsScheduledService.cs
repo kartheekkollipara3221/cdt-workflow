@@ -22,6 +22,11 @@ public sealed class SqmsScheduledService(
     public async Task<SqmsScheduledRunResult> RunAsync(CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
+        if (!options.Enabled)
+        {
+            return new SqmsScheduledRunResult(now, 0, 0, 0, 0, 0, 0, []);
+        }
+
         var zone = TimeZoneInfo.FindSystemTimeZoneById(options.Scheduling.TimeZoneId);
         var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).DateTime);
         var failures = new List<SqmsScheduledFailure>();

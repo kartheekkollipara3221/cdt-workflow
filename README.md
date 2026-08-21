@@ -19,7 +19,6 @@ dotnet build workflow-api/WorkflowEngine.WorkflowApi.slnx
 dotnet run --project src/WorkflowEngine.Console -- init-db
 dotnet run --project src/WorkflowEngine.Console -- verify-seed
 dotnet run --project src/WorkflowEngine.Console -- demo
-dotnet run --project src/WorkflowEngine.Console -- run-sqms-scheduled
 ```
 
 The console commands are still the easiest end-to-end demo path. The active workflow API host is `workflow-api/WorkflowEngine.WorkflowApi.slnx`; read `workflow-api/WORKFLOW_API_BOUNDARIES.md` before changing endpoints.
@@ -276,6 +275,14 @@ The Trading Desk policy sends `SlaTaskDueToday` at configured 09:00 `America/New
 ### Notifications
 
 Notifications use an outbox table. Workflow transitions queue rows; `process-notification-outbox` sends pending rows through `INotificationSender`.
+
+### SQMS scheduled integration
+
+SQMS is disabled in checked-in configuration. After the DBA package has been applied and environment-specific SQMS settings are supplied, Task Scheduler invokes:
+
+```bash
+dotnet run --project src/WorkflowEngine.Console -- run-sqms-scheduled
+```
 
 Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. Public callers supply only named metadata-declared inputs:
 

@@ -13,6 +13,23 @@ public sealed class SqmsScheduledServiceTests
 {
     private static readonly DateTimeOffset OpenedAt = DateTimeOffset.Parse("2030-01-01T15:00:00Z");
 
+    [Fact]
+    public async Task DisabledIntegrationReturnsSuccessfulZeroWorkWithoutReadingTargetTables()
+    {
+        var store = new FakeStore();
+        store.AddOpen(Opportunity(10000, "$100.00", new DateTime(2030, 3, 31)), OpenedAt);
+        var workflow = new FakeWorkflowService(store);
+        var queue = new FakeQueueService();
+
+        var result = await CreateService(OpenedAt.AddDays(16), store, workflow, queue, enabled: false)
+            .RunAsync(CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(0, result.OpportunitiesClosed);
+        Assert.Empty(workflow.OpportunityActions);
+        Assert.Empty(queue.Requests);
+    }
+
     [Theory]
     [InlineData(1, 1, 0, 0)]
     [InlineData(14, 1, 1, 0)]
@@ -136,11 +153,12 @@ public sealed class SqmsScheduledServiceTests
         DateTimeOffset now,
         FakeStore store,
         FakeWorkflowService workflow,
-        FakeQueueService queue)
+        FakeQueueService queue,
+        bool enabled = true)
     {
         var options = new SqmsOptions
         {
-            Enabled = true,
+            Enabled = enabled,
             Links = new SqmsLinkOptions
             {
                 OpenBiddingDashboardUrl = "https://dashboard.example.test/open?static=true"
