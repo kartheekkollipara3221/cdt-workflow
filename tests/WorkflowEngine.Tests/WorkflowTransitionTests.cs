@@ -315,6 +315,42 @@ public sealed class WorkflowTransitionTests
     }
 
     [Fact]
+    public void PortfolioTradeLiteralCompletedStateStillCompletesRuntime()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(dbContext, "WF-PT-1001", "PT-1001", "BdrmClientServiceReview", "Active", 4);
+        dbContext.WorkflowTasks.Add(new WorkflowTask
+        {
+            WorkflowInstanceId = "WF-PT-1001",
+            TaskKey = "BdrmClientServiceReviewTask",
+            AssignedRoleKey = "BDRMClientService",
+            Status = "Pending",
+            CreatedAtUtc = Now,
+            DueAtUtc = Now.AddMinutes(2)
+        });
+        dbContext.SaveChanges();
+
+        var result = CreateService(dbContext).Execute(Request(Envelope(
+            actionKey: "BdrmTradeFulfilled",
+            sectionKey: "BDRMClientService",
+            buttonKey: "BdrmPrimary",
+            expectedState: "BdrmClientServiceReview",
+            expectedVersion: 4,
+            expectedTaskKey: "BdrmClientServiceReviewTask",
+            roles: ["BDRMClientService"],
+            userId: "bdrm1")));
+
+        Assert.True(result.Result.Success);
+        var instance = dbContext.WorkflowInstances.Single();
+        Assert.Equal("Completed", instance.CurrentStateKey);
+        Assert.Equal("Completed", instance.Status);
+        Assert.Equal(Now, instance.CompletedAtUtc);
+        Assert.Empty(dbContext.WorkflowTasks.Where(row => row.Status == "Pending"));
+        Assert.NotNull(result.WorkflowContext);
+        Assert.Empty(result.WorkflowContext.AvailableActions);
+    }
+
+    [Fact]
     public void IdempotentReplayDoesNotDuplicateSideEffects()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
