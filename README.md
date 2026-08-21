@@ -284,6 +284,8 @@ SQMS is disabled in checked-in configuration. After the DBA package has been app
 dotnet run --project src/WorkflowEngine.Console -- run-sqms-scheduled
 ```
 
+The SQMS integration is a thin in-process adapter around the existing metadata-driven engine; the target API continues to own its HTTP contract, target rows, trusted actors, and address resolution. Production uses the explicit DBA SQL package and never application-startup schema creation or seeding. See [target API integration](docs/sqms/TARGET-API-INTEGRATION.md), the [approved design](docs/superpowers/specs/2026-08-20-sqms-thin-layer-integration-design.md), and the [DBA deployment runbook](docs/sqms/DBA-DEPLOYMENT.md).
+
 Implementations are `ConsoleNotificationSender`, `NoOpNotificationSender`, and `SmtpNotificationSender`. Public callers supply only named metadata-declared inputs:
 
 ```json

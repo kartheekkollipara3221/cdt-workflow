@@ -4,6 +4,8 @@
 
 **Status:** Written specification approved on 2026-08-20
 
+**Implementation status:** Milestones 1-6 implemented and workspace-verified on 2026-08-20. Production DBA execution, application deployment, and scheduler enablement remain pending explicit authorization.
+
 **Target branch:** `sqms_clean_slate`
 
 ## 1. Purpose

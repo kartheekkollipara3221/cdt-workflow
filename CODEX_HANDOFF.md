@@ -1,10 +1,10 @@
 # Codex Handoff
 
-## 2026-08-20 SQMS Milestone 6 Compatibility Gate (Task 13)
+## 2026-08-20 SQMS Milestone 6 Final Gate
 
 ### Current goal
 
-- CDT compatibility and the complete SQMS behavior suite have passed. Finish Task 14 deployment documentation, run the final documentation/quality gate, and stop at Milestone 6.
+- Milestone 6 and the approved SQMS thin-layer implementation plan are complete and final-gate verified. Stop here; production SQL, deployment, scheduling, push, and merge require separate authorization.
 
 ### Completed changes
 
@@ -13,6 +13,9 @@
 - Executed the existing Section 21 checker branch, trading branch, complete demo, typed API tests, and sample/inspection tests against disposable database `workflowengine_sqms_acceptance_20260820`.
 - Applied the production SQMS SQL package in order to the disposable database. The verifier correctly rejected the database until the DBA-owned target `SSQMS.Opportunity` and `SSQMS.Bid` prerequisite was supplied; after the test-only target schema was installed, `002` and `003` passed.
 - Confirmed active runtime source contains no direct `DateTime.UtcNow`, public `toState`, legacy recipient-key behavior, or SQMS writes to `TotalBid`, `LargestBid`, or `LowestBid`. Preserved migrations and an explicit contract-prohibition test/document are the only relevant historical search hits.
+- Completed Task 14 documentation: the production DBA/app/scheduler runbook, additive README routing, and implementation-status annotation in the approved design.
+- Documented the exact SQL order and variables, target-table prerequisite, schema-lock assessment, disabled-first deployment/smoke sequence, three-trigger non-overlap scheduler setup, outbox delivery ownership, alerting, and DBA-reviewed rollback order.
+- Removed the run-owned disposable acceptance database after verification; `DB_ID(N'workflowengine_sqms_acceptance_20260820')` returned null.
 
 ### Build/test status
 
@@ -24,12 +27,14 @@
 - Typed API tests: 26 passed, 0 failed.
 - Sample/inspection tests: 24 passed, 0 failed.
 - SQMS deployment verifier and generic `verify-seed`: passed after installation of the test-only target schema prerequisite.
+- Final Task 14 focused gate: 16 passed, 0 failed; `git diff --check` passed.
+- The first final-gate invocation lacked the required SQL test connection environment variable and therefore did not exercise product behavior. The exact command was rerun with the established local SQL connection and passed.
 
 ### Remaining tasks
 
-1. Complete `docs/sqms/DBA-DEPLOYMENT.md`, additive README guidance, and implementation-status annotation in the approved design.
-2. Remove the disposable acceptance database and verify `DB_ID` is null.
-3. Run the Task 14 focused quality gate and `git diff --check`, commit the documentation handoff, and stop.
+1. Review the Milestone 6 gate and commits.
+2. If approved in a later request, choose the separate push/merge/release path.
+3. Production execution remains a separate change using `docs/sqms/DBA-DEPLOYMENT.md`.
 
 ### Known risks
 
@@ -40,7 +45,7 @@
 ### Next-session prompt
 
 ```text
-Finish SQMS Milestone 6 Task 14 from Task 12 commit 7dd71fe and the Task 13 compatibility evidence in CODEX_HANDOFF.md. Create the DBA deployment/runbook, add README links, mark only implementation status in the approved design, remove the disposable acceptance database, run the final focused gate, commit, and stop. Do not push, deploy, run production SQL, or enable scheduling.
+SQMS Milestone 6 is complete. Review the final gate and DBA runbook. Do not push, merge, deploy, execute production SQL, or enable Windows Task Scheduler unless the user explicitly authorizes that separate action.
 ```
 
 ## 2026-08-20 SQMS Milestone 5 Gate
