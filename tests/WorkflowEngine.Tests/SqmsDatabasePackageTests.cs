@@ -104,6 +104,50 @@ public sealed class SqmsDatabasePackageTests
             Assert.Equal(3, await CountAsync(connection, "NotificationRoute", "SqmsBid"));
             Assert.Equal(0, await CountAsync(connection, "WorkflowTaskDefinition", "SqmsOpportunity", "SqmsBid"));
             Assert.Equal(0, await CountAsync(connection, "SlaPolicy", "SqmsOpportunity", "SqmsBid"));
+
+            var routes = await ReadSqmsRoutesAsync(connection);
+            Assert.Equal(6, routes.Count);
+            Assert.Equal(
+                "{{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDate}}",
+                routes["SqmsOpportunityOpen"].Subject);
+            Assert.Equal(
+                "REMINDER {{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDate}}",
+                routes["SqmsOpportunityReminder"].Subject);
+            Assert.Equal(
+                "{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{accountNumber}} - {{accountName}}: Response Required by {{sellerResponseDate}}",
+                routes["SqmsOpportunityPendingSellerApproval"].Subject);
+            foreach (var routeKey in new[]
+                     {
+                         "SqmsBidAccepted",
+                         "SqmsBidPartiallyAccepted",
+                         "SqmsBidNotAccepted"
+                     })
+            {
+                Assert.Equal(
+                    "{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{buyerAccountNumber}} - {{buyerAccountName}}",
+                    routes[routeKey].Subject);
+            }
+
+            Assert.Contains(
+                "View all Opportunities open for Bidding",
+                routes["SqmsOpportunityOpen"].HtmlBody,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "Link to approve or reject bids received",
+                routes["SqmsOpportunityPendingSellerApproval"].Body,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "documentation required to effect this sale",
+                routes["SqmsBidAccepted"].Body,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "documentation required to effect this sale",
+                routes["SqmsBidPartiallyAccepted"].Body,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "Please confirm your buyer",
+                routes["SqmsBidNotAccepted"].Body,
+                StringComparison.Ordinal);
         }
         finally
         {
@@ -136,6 +180,32 @@ public sealed class SqmsDatabasePackageTests
         }
 
         return Convert.ToInt32(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private sealed record RouteText(string Subject, string Body, string HtmlBody);
+
+    private static async Task<IReadOnlyDictionary<string, RouteText>> ReadSqmsRoutesAsync(
+        SqlConnection connection)
+    {
+        const string sql = """
+            SELECT route.[RouteKey], route.[SubjectTemplate], route.[BodyTemplate], route.[HtmlBodyTemplate]
+            FROM [dbo].[NotificationRoute] AS route
+            INNER JOIN [dbo].[WorkflowDefinitionVersion] AS version
+                ON version.[Id] = route.[WorkflowDefinitionVersionId]
+            INNER JOIN [dbo].[WorkflowDefinition] AS definition
+                ON definition.[Id] = version.[WorkflowDefinitionId]
+            WHERE definition.[WorkflowKey] IN (N'SqmsOpportunity', N'SqmsBid')
+              AND version.[VersionNumber] = 1
+              AND route.[IsActive] = 1;
+            """;
+        await using var command = new SqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var result = new Dictionary<string, RouteText>(StringComparer.Ordinal);
+        while (await reader.ReadAsync())
+        {
+            result.Add(reader.GetString(0), new(reader.GetString(1), reader.GetString(2), reader.GetString(3)));
+        }
+        return result;
     }
 
     internal static async Task ExecuteScriptAsync(

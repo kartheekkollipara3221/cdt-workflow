@@ -263,6 +263,7 @@ BEGIN TRY
           WHERE expected.WorkflowKey = definition.WorkflowKey AND expected.RoleKey = roleDefinition.RoleKey
       );
 
+    DECLARE @CrLf nchar(2) = NCHAR(13) + NCHAR(10);
     DECLARE @Routes TABLE
     (
         WorkflowKey nvarchar(100) NOT NULL,
@@ -274,29 +275,65 @@ BEGIN TRY
     );
     INSERT @Routes VALUES
         (N'SqmsOpportunity', N'SqmsOpportunityOpen',
-         N'SQMS Opportunities Open to Bidding - {{quarter}} {{year}}',
-         N'Opportunities for {{quarter}} {{year}} are open to bidding. Responses are due by {{responseDate}}. View the Open to Bidding dashboard: {{dashboardUrl}}',
-         N'<p>Opportunities for {{quarter}} {{year}} are open to bidding.</p><p>Responses are due by {{responseDate}}.</p><p><a href="{{dashboardUrl}}">View the Open to Bidding dashboard</a></p>'),
+         N'{{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDate}}',
+         CONCAT(
+             N'Please click the following link(s) to review secondary sales opportunities for this quarter.', @CrLf, @CrLf,
+             N'View all Opportunities open for Bidding: {{dashboardUrl}}'),
+         N'<p>Please click the following link(s) to review secondary sales opportunities for this quarter.</p><p><a href="{{dashboardUrl}}">View all Opportunities open for Bidding</a></p>'),
         (N'SqmsOpportunity', N'SqmsOpportunityReminder',
-         N'SQMS Reminder: Opportunities Open to Bidding - {{quarter}} {{year}}',
-         N'This is a reminder that opportunities for {{quarter}} {{year}} remain open to bidding. Responses are due by {{responseDate}}. View the Open to Bidding dashboard: {{dashboardUrl}}',
-         N'<p>This is a reminder that opportunities for {{quarter}} {{year}} remain open to bidding.</p><p>Responses are due by {{responseDate}}.</p><p><a href="{{dashboardUrl}}">View the Open to Bidding dashboard</a></p>'),
+         N'REMINDER {{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDate}}',
+         CONCAT(
+             N'Please click the following link(s) to review secondary sales opportunities for this quarter.', @CrLf, @CrLf,
+             N'View all Opportunities open for Bidding: {{dashboardUrl}}'),
+         N'<p>Please click the following link(s) to review secondary sales opportunities for this quarter.</p><p><a href="{{dashboardUrl}}">View all Opportunities open for Bidding</a></p>'),
         (N'SqmsOpportunity', N'SqmsOpportunityPendingSellerApproval',
-         N'SQMS Opportunity Pending Seller Approval - {{accountName}}',
-         N'Seller approval is requested for {{accountName}} ({{accountNumber}}), {{fund}} / {{vehicle}}, sale amount {{saleAmount}}, effective-sale period {{quarter}} {{year}}. Please respond by {{sellerResponseDate}}. Review the related bids: {{opportunityUrl}}',
-         N'<p>Seller approval is requested for {{accountName}} ({{accountNumber}}), {{fund}} / {{vehicle}}, sale amount {{saleAmount}}, effective-sale period {{quarter}} {{year}}.</p><p>Please respond by {{sellerResponseDate}}.</p><p><a href="{{opportunityUrl}}">Review the related bids</a></p>'),
+         N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{accountNumber}} - {{accountName}}: Response Required by {{sellerResponseDate}}',
+         CONCAT(
+             N'Please click the following link to review secondary sale bids for the following opportunity.', @CrLf, @CrLf,
+             N'Account Number: {{accountNumber}}', @CrLf,
+             N'Account Name: {{accountName}}', @CrLf,
+             N'Name of Fund: {{fund}}', @CrLf,
+             N'Name of Vehicle: {{vehicle}}', @CrLf,
+             N'Total Amount Requested to Be Sold: {{saleAmount}}', @CrLf, @CrLf,
+             N'Link to approve or reject bids received: {{opportunityUrl}}'),
+         N'<p>Please click the following link to review secondary sale bids for the following opportunity.</p><p>Account Number: {{accountNumber}}<br>Account Name: {{accountName}}<br>Name of Fund: {{fund}}<br>Name of Vehicle: {{vehicle}}<br>Total Amount Requested to Be Sold: {{saleAmount}}</p><p>Link to approve or reject bids received: <a href="{{opportunityUrl}}">Click Here</a></p>'),
         (N'SqmsBid', N'SqmsBidAccepted',
-         N'SQMS Bid Accepted - {{buyerAccountName}}',
-         N'The bid placed for {{buyerAccountName}} ({{buyerAccountNumber}}) has been accepted by the seller for {{fund}} / {{vehicle}}, requested amount {{requestedAmount}}, effective date {{effectiveDate}} ({{quarter}} {{year}}). Please confirm the buyer will proceed on the effective date. Open the bid: {{bidUrl}}',
-         N'<p>The bid placed for {{buyerAccountName}} ({{buyerAccountNumber}}) has been accepted by the seller for {{fund}} / {{vehicle}}, requested amount {{requestedAmount}}, effective date {{effectiveDate}} ({{quarter}} {{year}}).</p><p>Please confirm the buyer will proceed on the effective date.</p><p><a href="{{bidUrl}}">Open the bid</a></p>'),
+         N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{buyerAccountNumber}} - {{buyerAccountName}}',
+         CONCAT(
+             N'The bid placed for the following opportunity has been accepted by the Seller for an effective date of {{effectiveDate}}.', @CrLf, @CrLf,
+             N'Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.', @CrLf, @CrLf,
+             N'Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to effect this sale.', @CrLf, @CrLf,
+             N'Buyer Account Number: {{buyerAccountNumber}}', @CrLf,
+             N'Buyer Account Name: {{buyerAccountName}}', @CrLf,
+             N'Name of Fund: {{fund}}', @CrLf,
+             N'Name of Vehicle: {{vehicle}}', @CrLf,
+             N'Total Amount Requested to Be Purchased: {{requestedAmount}}', @CrLf, @CrLf,
+             N'Link to View: {{bidUrl}}'),
+         N'<p>The bid placed for the following opportunity has been accepted by the Seller for an effective date of {{effectiveDate}}.</p><p>Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.</p><p>Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to effect this sale.</p><p>Buyer Account Number: {{buyerAccountNumber}}<br>Buyer Account Name: {{buyerAccountName}}<br>Name of Fund: {{fund}}<br>Name of Vehicle: {{vehicle}}<br>Total Amount Requested to Be Purchased: {{requestedAmount}}</p><p>Link to View: <a href="{{bidUrl}}">Click Here</a></p>'),
         (N'SqmsBid', N'SqmsBidPartiallyAccepted',
-         N'SQMS Bid Partially Accepted - {{buyerAccountName}}',
-         N'The bid placed for {{buyerAccountName}} ({{buyerAccountNumber}}) has been partially accepted by the seller for {{fund}} / {{vehicle}}, requested amount {{requestedAmount}}, effective date {{effectiveDate}} ({{quarter}} {{year}}). Please confirm the buyer will proceed with the accepted Private Fund interest. Open the bid: {{bidUrl}}',
-         N'<p>The bid placed for {{buyerAccountName}} ({{buyerAccountNumber}}) has been partially accepted by the seller for {{fund}} / {{vehicle}}, requested amount {{requestedAmount}}, effective date {{effectiveDate}} ({{quarter}} {{year}}).</p><p>Please confirm the buyer will proceed with the accepted Private Fund interest.</p><p><a href="{{bidUrl}}">Open the bid</a></p>'),
+         N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{buyerAccountNumber}} - {{buyerAccountName}}',
+         CONCAT(
+             N'The bid placed for the following opportunity has been partially accepted by the Seller for an effective date of {{effectiveDate}}.', @CrLf, @CrLf,
+             N'Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.', @CrLf, @CrLf,
+             N'Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to effect this sale.', @CrLf, @CrLf,
+             N'Buyer Account Number: {{buyerAccountNumber}}', @CrLf,
+             N'Buyer Account Name: {{buyerAccountName}}', @CrLf,
+             N'Name of Fund: {{fund}}', @CrLf,
+             N'Name of Vehicle: {{vehicle}}', @CrLf,
+             N'Total Amount Requested to Be Purchased: {{requestedAmount}}', @CrLf, @CrLf,
+             N'Link to View: {{bidUrl}}'),
+         N'<p>The bid placed for the following opportunity has been partially accepted by the Seller for an effective date of {{effectiveDate}}.</p><p>Please confirm your buyer will proceed with the purchase of the stated private fund interest below at your earliest convenience.</p><p>Once confirmed, you will receive further communication shortly from the Private Funds team regarding the documentation required to effect this sale.</p><p>Buyer Account Number: {{buyerAccountNumber}}<br>Buyer Account Name: {{buyerAccountName}}<br>Name of Fund: {{fund}}<br>Name of Vehicle: {{vehicle}}<br>Total Amount Requested to Be Purchased: {{requestedAmount}}</p><p>Link to View: <a href="{{bidUrl}}">Click Here</a></p>'),
         (N'SqmsBid', N'SqmsBidNotAccepted',
-         N'SQMS Bid Not Accepted - {{buyerAccountName}}',
-         N'The bid placed for {{buyerAccountName}} ({{buyerAccountNumber}}) has not been accepted by the seller for {{fund}} / {{vehicle}}, requested amount {{requestedAmount}}, effective date {{effectiveDate}} ({{quarter}} {{year}}). Open the bid: {{bidUrl}}',
-         N'<p>The bid placed for {{buyerAccountName}} ({{buyerAccountNumber}}) has not been accepted by the seller for {{fund}} / {{vehicle}}, requested amount {{requestedAmount}}, effective date {{effectiveDate}} ({{quarter}} {{year}}).</p><p><a href="{{bidUrl}}">Open the bid</a></p>');
+         N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{buyerAccountNumber}} - {{buyerAccountName}}',
+         CONCAT(
+             N'The bid placed for the following opportunity has not been accepted by the Seller for an effective date of {{effectiveDate}}.', @CrLf, @CrLf,
+             N'Buyer Account Number: {{buyerAccountNumber}}', @CrLf,
+             N'Buyer Account Name: {{buyerAccountName}}', @CrLf,
+             N'Name of Fund: {{fund}}', @CrLf,
+             N'Name of Vehicle: {{vehicle}}', @CrLf,
+             N'Total Amount Requested to Be Purchased: {{requestedAmount}}', @CrLf, @CrLf,
+             N'Link to View: {{bidUrl}}'),
+         N'<p>The bid placed for the following opportunity has not been accepted by the Seller for an effective date of {{effectiveDate}}.</p><p>Buyer Account Number: {{buyerAccountNumber}}<br>Buyer Account Name: {{buyerAccountName}}<br>Name of Fund: {{fund}}<br>Name of Vehicle: {{vehicle}}<br>Total Amount Requested to Be Purchased: {{requestedAmount}}</p><p>Link to View: <a href="{{bidUrl}}">Click Here</a></p>');
 
     UPDATE route
     SET NotificationType = expected.RouteKey,

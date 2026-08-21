@@ -191,6 +191,56 @@ IF EXISTS
 )
     THROW 51213, 'SQMS notification route templates or URL tokens are incorrect.', 1;
 
+DECLARE @ExpectedRoutes TABLE
+(
+    WorkflowKey nvarchar(100) NOT NULL,
+    RouteKey nvarchar(100) NOT NULL,
+    SubjectTemplate nvarchar(300) NOT NULL,
+    RequiredBodyFragment nvarchar(300) NOT NULL,
+    ForbiddenBodyFragment nvarchar(300) NULL,
+    PRIMARY KEY (WorkflowKey, RouteKey)
+);
+INSERT @ExpectedRoutes VALUES
+    (N'SqmsOpportunity', N'SqmsOpportunityOpen',
+     N'{{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDate}}',
+     N'View all Opportunities open for Bidding', NULL),
+    (N'SqmsOpportunity', N'SqmsOpportunityReminder',
+     N'REMINDER {{quarter}} {{year}} Secondary Sale Opportunities - Open to Bidding: Response Required by {{responseDate}}',
+     N'View all Opportunities open for Bidding', NULL),
+    (N'SqmsOpportunity', N'SqmsOpportunityPendingSellerApproval',
+     N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{accountNumber}} - {{accountName}}: Response Required by {{sellerResponseDate}}',
+     N'Link to approve or reject bids received', NULL),
+    (N'SqmsBid', N'SqmsBidAccepted',
+     N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{buyerAccountNumber}} - {{buyerAccountName}}',
+     N'documentation required to effect this sale', NULL),
+    (N'SqmsBid', N'SqmsBidPartiallyAccepted',
+     N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{buyerAccountNumber}} - {{buyerAccountName}}',
+     N'documentation required to effect this sale', NULL),
+    (N'SqmsBid', N'SqmsBidNotAccepted',
+     N'{{quarter}} {{year}} Secondary Sale Bids - {{vehicle}}/{{buyerAccountNumber}} - {{buyerAccountName}}',
+     N'has not been accepted by the Seller', N'Please confirm your buyer');
+
+IF EXISTS
+(
+    SELECT 1
+    FROM @ExpectedRoutes AS expected
+    LEFT JOIN [dbo].[WorkflowDefinition] AS definition
+      ON definition.[WorkflowKey] = expected.[WorkflowKey]
+    LEFT JOIN [dbo].[WorkflowDefinitionVersion] AS version
+      ON version.[WorkflowDefinitionId] = definition.[Id]
+     AND version.[VersionNumber] = 1
+    LEFT JOIN [dbo].[NotificationRoute] AS route
+      ON route.[WorkflowDefinitionVersionId] = version.[Id]
+     AND route.[RouteKey] = expected.[RouteKey]
+    WHERE route.[Id] IS NULL
+       OR route.[IsActive] <> 1
+       OR route.[SubjectTemplate] <> expected.[SubjectTemplate]
+       OR route.[BodyTemplate] NOT LIKE N'%' + expected.[RequiredBodyFragment] + N'%'
+       OR (expected.[ForbiddenBodyFragment] IS NOT NULL
+           AND route.[BodyTemplate] LIKE N'%' + expected.[ForbiddenBodyFragment] + N'%')
+)
+    THROW 51220, 'Missing or incorrect SQMS notification template contract.', 1;
+
 IF NOT EXISTS
 (
  SELECT 1 FROM [dbo].[NotificationRecipientRule] recipientRule JOIN [dbo].[NotificationRoute] route ON route.Id=recipientRule.NotificationRouteId
