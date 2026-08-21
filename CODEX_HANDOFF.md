@@ -1,5 +1,76 @@
 # Codex Handoff
 
+## 2026-08-21 SQMS Retained Live Acceptance
+
+### Current goal
+
+- The requested compiled-code live acceptance is complete: 3 new Opportunities, 15 related Bids, all approved terminal scenarios, SQL state verification, and smtp4dev email verification. Preserve the retained evidence and stop before push, merge, deployment, production SQL, or scheduling.
+
+### Completed changes
+
+- Added a one-shot, safety-pinned live acceptance runner for the dedicated `DOLLY/workflowengine_sqms_live_acceptance` database and isolated smtp4dev data directory.
+- Executed 64 compiled service operations across Opportunity, Bid, scheduled open/reminder/close, seller classification, and outbox delivery behavior.
+- Generated Opportunity IDs 10000-10002 and Bid IDs 10000-10014.
+- Proved final target/workflow parity: Opportunities are 2 `COMPLETED` and 1 `NOT FULFILLED`; Bids are 6 `ACCEPTED`, 4 `PARTIALLY ACCEPTED`, 4 `NOT ACCEPTED`, and 1 `NOT ALLOCATED`.
+- Proved calculated-column sentinels remained unchanged, and the SQMS run produced 82 audits, zero tasks, and zero SLA schedules.
+- Delivered and verified 19 smtp4dev messages: 1 open, 1 reminder, 3 seller approval, 6 accepted, 4 partially accepted, and 4 not accepted. Every outbox row is `Sent` with retry count zero.
+- Added a verification-only resume mode so retained evidence can be checked safely without reinserting fixtures or replaying actions.
+- Added DBA-style inspection instructions and a retained evidence report.
+
+### Changed files
+
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/*`
+- `scripts/run-sqms-live-acceptance.ps1`
+- `sql/sqms/testing/005_verify_sqms_live_acceptance.sql`
+- `tests/WorkflowEngine.Tests/SqmsLiveAcceptanceContractTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsDatabasePackageTests.cs`
+- `docs/sqms/SQMS-LIVE-ACCEPTANCE.md`
+- `docs/sqms/SQMS-LIVE-ACCEPTANCE-RESULTS-20260821.md`
+- `docs/superpowers/specs/2026-08-21-sqms-live-acceptance-design.md`
+- `docs/superpowers/plans/2026-08-21-sqms-live-acceptance.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Live compiled verifier: passed against retained SQL and smtp4dev evidence.
+- Production SQMS deployment verifier: passed.
+- Dedicated live acceptance SQL verifier: passed with exact counts 3/15/19/82/0/0.
+- Focused live acceptance contract suite: 14 passed, 0 failed.
+- Acceptance tool build: 0 warnings, 0 errors.
+- Final warning-as-error core, Workflow API, and acceptance-tool builds: 0 warnings, 0 errors.
+- Final full core regression: 438 passed, 0 failed, 4 expected opt-in SMTP skips.
+- Final full Workflow API regression: 68 passed, 0 failed.
+- Section 21 Checker-return branch, Trading-return branch, and 14-step aggregate demo: passed.
+- Typed public API gate: 26 passed, 0 failed.
+- Sample and inspection gate: 24 passed, 0 failed.
+- The disposable final-gate database was removed and `DB_ID` returned null.
+- An accidentally concurrent duplicate full-suite invocation caused SQL reset/login failures in fixed test databases; both runs were stopped and the suite passed when rerun once in isolation. The retained acceptance database was unaffected.
+
+### Retained evidence
+
+- SQL database: `DOLLY/workflowengine_sqms_live_acceptance`.
+- smtp4dev UI: `http://localhost:5000`; SMTP: `localhost:3025`.
+- smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-live-acceptance-20260821`.
+- At verification time, smtp4dev executable PID was 27468. Resolve the current PID before process management.
+
+### Remaining tasks
+
+1. Review the final branch status, commits, and retained evidence.
+2. Preserve the retained database and smtp4dev mailbox unless the user explicitly requests cleanup.
+3. Push, merge, deployment, production SQL, and scheduling remain separate authorization decisions.
+
+### Known risks
+
+- smtp4dev is currently running and the retained database/data consume local resources by design.
+- The acceptance runner is intentionally one-shot and refuses to overwrite retained evidence; use `--verify-only` or the SQL queries for reinspection.
+- No production/shared database, deployment, Windows Task Scheduler, push, or merge has been authorized.
+
+### Next-session prompt
+
+```text
+Review the completed SQMS live acceptance evidence in docs/sqms/SQMS-LIVE-ACCEPTANCE-RESULTS-20260821.md and retained database DOLLY/workflowengine_sqms_live_acceptance. Preserve smtp4dev data at C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-live-acceptance-20260821. Do not replay the one-shot runner. Do not push, merge, deploy, execute production SQL, enable scheduling, or remove retained evidence unless explicitly authorized.
+```
+
 ## 2026-08-20 SQMS Milestone 6 Final Gate
 
 ### Current goal
