@@ -79,6 +79,7 @@ public sealed class SqmsScheduledServiceTests
         Assert.Contains(queue.Requests, request => request.NotificationOccurrenceKey == "SQMS:OpportunityOpen:2030:Q1:2030-01-02");
         Assert.Contains(queue.Requests, request => request.NotificationOccurrenceKey == "SQMS:OpportunityReminder:2030:Q1:2030-01-15");
         Assert.All(queue.Requests, request => Assert.Equal("https://dashboard.example.test/open?static=true", request.NotificationInput.TemplateData["dashboardUrl"]));
+        Assert.All(queue.Requests, request => Assert.Equal("01/16/2030", request.NotificationInput.TemplateData["responseDate"]));
     }
 
     [Theory]

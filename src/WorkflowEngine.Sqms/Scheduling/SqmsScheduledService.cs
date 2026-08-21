@@ -247,7 +247,7 @@ public sealed class SqmsScheduledService(
                             {
                                 ["quarter"] = $"Q{group.Key.Quarter}",
                                 ["year"] = group.Key.Year.ToString(CultureInfo.InvariantCulture),
-                                ["responseDate"] = responseDate.ToString("M/d/yyyy", CultureInfo.InvariantCulture),
+                                ["responseDate"] = responseDate.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture),
                                 ["dashboardUrl"] = dashboardUrl
                             }
                         },

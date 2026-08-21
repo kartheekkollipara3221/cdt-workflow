@@ -432,7 +432,7 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
         $"Q{((date.Month - 1) / 3) + 1}";
 
     private static string FormatDate(DateOnly date) =>
-        date.ToString("M/d/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+        date.ToString("MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
     private static SqmsOperationResult ValidationFailure(IReadOnlyList<string> errors) =>
         new(false, "ValidationFailed", string.Join(" ", errors), null, null);

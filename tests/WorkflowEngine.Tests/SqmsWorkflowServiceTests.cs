@@ -173,8 +173,8 @@ public sealed class SqmsWorkflowServiceTests
         Assert.Contains("Fund One", row.Body, StringComparison.Ordinal);
         Assert.Contains("Vehicle One", row.Body, StringComparison.Ordinal);
         Assert.Contains("$1,250.00", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Q1 2030", row.Body, StringComparison.Ordinal);
-        Assert.Contains("1/21/2030", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Q1 2030", row.Subject, StringComparison.Ordinal);
+        Assert.Contains("01/21/2030", row.Subject, StringComparison.Ordinal);
         Assert.Contains("https://dashboard.example.test/bids?view=seller&opportunityId=10000", row.Body, StringComparison.Ordinal);
         Assert.Contains("relationship.manager@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
         Assert.Contains("seller.team@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
@@ -216,8 +216,8 @@ public sealed class SqmsWorkflowServiceTests
         Assert.Contains("Fund One", row.Body, StringComparison.Ordinal);
         Assert.Contains("Vehicle One", row.Body, StringComparison.Ordinal);
         Assert.Contains("$500.00", row.Body, StringComparison.Ordinal);
-        Assert.Contains("3/31/2030", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Q1 2030", row.Body, StringComparison.Ordinal);
+        Assert.Contains("03/31/2030", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Q1 2030", row.Subject, StringComparison.Ordinal);
         Assert.Contains("https://forms.example.test/bid?mode=edit&bidId=10000", row.Body, StringComparison.Ordinal);
         Assert.Contains("buyer.manager@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
         Assert.Contains("buyer.team@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
