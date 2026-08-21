@@ -40,4 +40,34 @@ public sealed class SqmsLiveAcceptanceContractTests
 
         Assert.Equal(AcceptanceConstants.OpeningUtc.AddDays(14), clock.GetUtcNow());
     }
+
+    [Fact]
+    public void FixturesHaveExactParentsAmountsAndSentinels()
+    {
+        var matrix = AcceptanceScenarioMatrix.Create();
+
+        Assert.All(matrix.Opportunities, row =>
+        {
+            Assert.Contains(AcceptanceConstants.RunMarker, row.Account, StringComparison.Ordinal);
+            Assert.Equal(777, row.TotalBidSentinel);
+            Assert.Equal("L-SENTINEL", row.LargestBidSentinel);
+            Assert.Equal("S-SENTINEL", row.LowestBidSentinel);
+            Assert.Equal(5, row.Bids.Count);
+        });
+        Assert.Equal(
+            110m,
+            matrix.Opportunities[0].Bids
+                .Where(row => row.Category is "FAIR VALUE" or "PREMIUM")
+                .Sum(row => row.RequestedAmount));
+        Assert.Equal(
+            80m,
+            matrix.Opportunities[1].Bids
+                .Where(row => row.Category is "FAIR VALUE" or "PREMIUM")
+                .Sum(row => row.RequestedAmount));
+        Assert.Equal(
+            80m,
+            matrix.Opportunities[2].Bids
+                .Where(row => row.Category is "FAIR VALUE" or "PREMIUM")
+                .Sum(row => row.RequestedAmount));
+    }
 }

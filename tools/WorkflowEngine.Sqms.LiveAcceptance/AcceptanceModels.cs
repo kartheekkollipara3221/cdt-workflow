@@ -12,7 +12,13 @@ public sealed record OpportunityScenario(
     string AllocationPath,
     string TerminalState,
     int ExpectedFinalVersion,
-    IReadOnlyList<BidScenario> Bids);
+    IReadOnlyList<BidScenario> Bids)
+{
+    public string Account => $"{AcceptanceConstants.RunMarker}-OPP-{Key}";
+    public int TotalBidSentinel => 777;
+    public string LargestBidSentinel => "L-SENTINEL";
+    public string LowestBidSentinel => "S-SENTINEL";
+}
 
 public sealed record AcceptanceScenarioMatrix(IReadOnlyList<OpportunityScenario> Opportunities)
 {
