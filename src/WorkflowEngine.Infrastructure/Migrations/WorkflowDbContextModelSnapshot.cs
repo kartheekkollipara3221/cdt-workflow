@@ -165,6 +165,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("NotificationOccurrenceKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<string>("NotificationRecipientsJson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -212,7 +216,6 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("WorkflowInstanceId")
-                        .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
@@ -224,6 +227,11 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("NotificationOccurrenceKey")
+                        .IsUnique()
+                        .HasDatabaseName("UX_NotificationOutbox_NotificationOccurrenceKey")
+                        .HasFilter("[NotificationOccurrenceKey] IS NOT NULL");
+
                     b.HasIndex("WorkflowInstanceId");
 
                     b.HasIndex("WorkflowTaskSlaScheduleId", "SlaOccurrenceAtUtc", "SlaReminderKind")
@@ -232,6 +240,8 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.ToTable("NotificationOutbox", "dbo", t =>
                         {
+                            t.HasCheckConstraint("CK_NotificationOutbox_Owner", "[WorkflowInstanceId] IS NOT NULL OR [NotificationOccurrenceKey] IS NOT NULL");
+
                             t.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent', 'Cancelled')");
                         });
                 });
@@ -1175,8 +1185,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("WorkflowInstanceId")
                         .HasPrincipalKey("WorkflowInstanceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("WorkflowEngine.Infrastructure.Persistence.Entities.WorkflowTaskSlaSchedule", null)
                         .WithMany()

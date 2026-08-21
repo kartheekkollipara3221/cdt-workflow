@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WorkflowEngine.Application\WorkflowEngine.Application.csproj" />
     <ProjectReference Include="..\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj" />
+    <ProjectReference Include="..\WorkflowEngine.Sqms\WorkflowEngine.Sqms.csproj" />
   </ItemGroup>
 
   <ItemGroup>

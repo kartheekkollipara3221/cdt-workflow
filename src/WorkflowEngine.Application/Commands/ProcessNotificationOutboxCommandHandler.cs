@@ -36,7 +36,7 @@ public sealed class ProcessNotificationOutboxCommandHandler(
             var failure = result.Failure;
             output.AppendLine(
                 CultureInfo.InvariantCulture,
-                $"[FAIL] {failure.NotificationType} | To: {string.Join(", ", failure.ToEmailAddresses)} | Cc: {string.Join(", ", failure.CcEmailAddresses)} | {failure.Subject} | {failure.WorkflowInstanceId}");
+                $"[FAIL] {failure.NotificationType} | To: {string.Join(", ", failure.ToEmailAddresses)} | Cc: {string.Join(", ", failure.CcEmailAddresses)} | {failure.Subject} | {failure.DisplayReference}");
             output.AppendLine(CultureInfo.InvariantCulture, $"       Exception: {failure.Exception}");
             output.AppendLine();
             output.AppendLine(

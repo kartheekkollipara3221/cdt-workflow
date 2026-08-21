@@ -197,6 +197,20 @@ public sealed class WorkflowExecutionService(
         var transition = request.AdminOverride
             ? transitions[0]
             : matchingTransitions[0];
+        var destinationState = dbContext.WorkflowStateDefinitions
+            .AsNoTracking()
+            .SingleOrDefault(row =>
+                row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                && row.StateKey == transition.ToStateKey
+                && row.IsActive);
+        if (destinationState is null)
+        {
+            return resultBuilder.BuildInvalidTransition(
+                normalized,
+                request.RequestHash,
+                $"Destination state '{transition.ToStateKey}' is not active for workflow definition version {versionNumber}.");
+        }
+
         var assignmentValidation = ValidateAssignedRoleKey(normalized, instance.WorkflowDefinitionVersionId, transition);
         if (assignmentValidation is not null)
         {
@@ -272,6 +286,7 @@ public sealed class WorkflowExecutionService(
             instance,
             pendingTask,
             transition,
+            destinationState,
             performedByRoleKey,
             notificationRecipients);
     }
@@ -545,6 +560,7 @@ public sealed class WorkflowExecutionService(
         WorkflowInstance loadedInstance,
         WorkflowTask? pendingTask,
         WorkflowTransitionDefinition transition,
+        WorkflowStateDefinition destinationState,
         string performedByRoleKey,
         NotificationRecipients notificationRecipients)
     {
@@ -597,7 +613,7 @@ public sealed class WorkflowExecutionService(
             var isSaveDraft = string.Equals(workflow.ActionKey, "SaveDraft", StringComparison.Ordinal);
             if (!isSaveDraft)
             {
-                var completed = string.Equals(transition.ToStateKey, "Completed", StringComparison.Ordinal);
+                var completed = destinationState.IsTerminal;
                 var updatedRows = dbContext.WorkflowInstances
                     .Where(row => row.Id == instance.Id && row.Version == instance.Version)
                     .ExecuteUpdate(setters => setters

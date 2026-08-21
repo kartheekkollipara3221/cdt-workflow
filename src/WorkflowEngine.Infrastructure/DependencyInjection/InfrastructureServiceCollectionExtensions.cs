@@ -48,6 +48,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<StartWorkflowService>();
         services.AddScoped<WorkflowParticipantCaptureService>();
         services.AddScoped<NotificationRecipientResolver>();
+        services.AddScoped<QueueWorkflowNotificationService>();
         services.AddScoped<RunSlaService>();
         services.AddSingleton<SlaScheduleCalculator>();
         services.AddScoped<WorkflowSlaSynchronizationService>();
@@ -70,6 +71,8 @@ public static class InfrastructureServiceCollectionExtensions
             provider.GetRequiredService<WorkflowSlaSynchronizationService>());
         services.AddScoped<global::WorkflowEngine.Application.Notifications.IProcessNotificationOutboxService>(provider =>
             provider.GetRequiredService<ProcessNotificationOutboxService>());
+        services.AddScoped<global::WorkflowEngine.Application.Notifications.IQueueWorkflowNotificationService>(provider =>
+            provider.GetRequiredService<QueueWorkflowNotificationService>());
         services.AddSingleton<INotificationSender>(provider =>
             CreateNotificationSender(configuration, provider));
 

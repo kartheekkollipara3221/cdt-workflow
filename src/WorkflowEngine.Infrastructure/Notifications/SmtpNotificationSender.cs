@@ -108,7 +108,7 @@ public sealed class SmtpNotificationSender : INotificationSender
         }
 
         var builder = new StringBuilder();
-        builder.AppendLine($"WorkflowInstanceId: {notification.WorkflowInstanceId}");
+        builder.AppendLine($"WorkflowInstanceId: {notification.DisplayReference}");
         builder.AppendLine($"NotificationType: {notification.NotificationType}");
         builder.AppendLine($"BusinessObjectType: {notification.BusinessObjectType}");
         builder.AppendLine($"BusinessObjectId: {notification.BusinessObjectId}");

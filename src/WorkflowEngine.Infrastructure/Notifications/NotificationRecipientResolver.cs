@@ -9,7 +9,7 @@ public sealed class NotificationRecipientResolver(WorkflowDbContext dbContext)
 {
     public NotificationRecipientResolution Resolve(
         long notificationRouteId,
-        string workflowInstanceId,
+        string? workflowInstanceId,
         WorkflowNotificationInput? notificationInput,
         string? assignedRoleKey = null)
     {
@@ -46,15 +46,17 @@ public sealed class NotificationRecipientResolver(WorkflowDbContext dbContext)
             .Select(row => row.SourceKey!)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var participants = dbContext.WorkflowParticipants
-            .AsNoTracking()
-            .Where(row =>
-                row.WorkflowInstanceId == workflowInstanceId
-                && participantKeys.Contains(row.ParticipantKey))
-            .OrderBy(row => row.SortOrder)
-            .ToList()
-            .GroupBy(row => row.ParticipantKey, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
+        var participants = string.IsNullOrWhiteSpace(workflowInstanceId)
+            ? new Dictionary<string, List<WorkflowParticipant>>(StringComparer.Ordinal)
+            : dbContext.WorkflowParticipants
+                .AsNoTracking()
+                .Where(row =>
+                    row.WorkflowInstanceId == workflowInstanceId
+                    && participantKeys.Contains(row.ParticipantKey))
+                .OrderBy(row => row.SortOrder)
+                .ToList()
+                .GroupBy(row => row.ParticipantKey, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
 
         var rawTo = new List<string>();
         var rawCc = new List<string>();

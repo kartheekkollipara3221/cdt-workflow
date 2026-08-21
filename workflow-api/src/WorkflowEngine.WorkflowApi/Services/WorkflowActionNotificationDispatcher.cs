@@ -120,7 +120,7 @@ public sealed class WorkflowActionNotificationDispatcher(
 
         return new NotificationDelivery(
             row.Id,
-            row.WorkflowInstanceId,
+            row.WorkflowInstanceId!,
             row.WorkflowTaskId,
             row.BusinessObjectType,
             row.BusinessObjectId,

@@ -1,5 +1,692 @@
 # Codex Handoff
 
+## 2026-08-21 SQMS Single-Lifecycle Retained Acceptance
+
+### Current goal
+
+- The requested one-Opportunity/three-Bid compiled lifecycle test is complete and retained for manual SQL and smtp4dev inspection. Preserve all successful evidence and stop before push, merge, deployment, production SQL, scheduling, or cleanup.
+
+### Completed changes
+
+- Added a backward-compatible `single-lifecycle` acceptance profile while preserving the existing comprehensive profile as the default.
+- Made acceptance fixture counts, workflow-instance counts, state counts, scheduled classification counts, email-route counts, SMTP URL, runner assertions, and database verification derive from the selected scenario.
+- Added a one-shot launcher pinned to `workflowengine_sqms_single_lifecycle_live_acceptance`, marker `SQMS-SINGLE-LIVE-20260821`, SMTP port 3026, UI port 5001, and a separate smtp4dev data directory.
+- Disabled IMAP/POP for the additional smtp4dev instance so it can coexist with the retained instance using default protocol ports.
+- Added an independent SQL verifier and user inspection runbook.
+- Executed the compiled lifecycle: Opportunity 10000 completed at version 10; Bids 10000/10001/10002 ended Accepted v7, Partially Accepted v5, and Not Accepted v5.
+- Delivered six messages: open, reminder, Seller approval, accepted, partially accepted, and not accepted. Every outbox row is `Sent` with retry count zero.
+- Proved 23 audits, zero tasks, zero SLA schedules, target/workflow parity, and preservation of UI-owned calculated-column sentinels.
+- Ran final warning-as-error builds and full core/API compatibility suites.
+
+### Changed files
+
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceConstants.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceModels.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceFixtureWriter.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceScenarioRunner.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceEvidenceVerifier.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceReporter.cs`
+- `tests/WorkflowEngine.Tests/SqmsLiveAcceptanceContractTests.cs`
+- `scripts/run-sqms-single-lifecycle-live-acceptance.ps1`
+- `sql/sqms/testing/007_verify_sqms_single_lifecycle_live_acceptance.sql`
+- `docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE.md`
+- `docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE-RESULTS-20260821.md`
+- `docs/superpowers/specs/2026-08-21-sqms-single-lifecycle-live-acceptance-design.md`
+- `docs/superpowers/plans/2026-08-21-sqms-single-lifecycle-live-acceptance.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Compiled single-lifecycle run: passed.
+- Compiled verification-only mode: passed.
+- Production SQMS deployment verifier: passed.
+- Independent single-lifecycle SQL verifier: passed.
+- Focused SQMS preflight regression: 49 passed, 0 failed.
+- Live-acceptance contract suite: 23 passed, 0 failed before final fixes; all included in the full regression afterward.
+- Core, Workflow API, and acceptance-tool warning-as-error builds: zero warnings and errors.
+- Full core regression: 448 passed, 0 failed, 4 expected opt-in SMTP skips.
+- Full Workflow API regression: 68 passed, 0 failed.
+
+### Retained successful evidence
+
+- SQL: `DOLLY/workflowengine_sqms_single_lifecycle_live_acceptance`.
+- Marker: `SQMS-SINGLE-LIVE-20260821`.
+- smtp4dev UI: `http://localhost:5001`; SMTP: `localhost:3026`.
+- smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-single-lifecycle-live-acceptance-20260821`.
+- At verification time, launcher PID was 2536 and smtp4dev executable PID was 16804. Resolve the current process and command line before process management.
+- Earlier retained databases and mailboxes remain unchanged.
+
+### Diagnostic artifacts
+
+- An empty first-start mailbox is retained at `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-single-lifecycle-live-acceptance-20260821-failed-pre-lifecycle`.
+- A zero-message failed-close mailbox is retained at `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-single-lifecycle-live-acceptance-20260821-failed-close`.
+- The partial failed-close SQL database was removed after inspection because its renamed logical database retained the intended MDF/LDF paths and prevented clean database creation.
+
+### Remaining tasks
+
+1. User inspects the six messages at `http://localhost:5001`.
+2. User runs the read-only SQL in `docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE.md`.
+3. Push, merge, deployment, production SQL, scheduling, process shutdown, and evidence cleanup remain separate authorization decisions.
+
+### Known risks
+
+- Multiple smtp4dev processes and retained databases/mailboxes consume local resources by design.
+- The successful one-shot runner must not be replayed; use compiled verification-only mode and read-only SQL.
+- No production/shared database, deployment, Windows Task Scheduler, push, or merge was changed.
+
+### Next-session prompt
+
+```text
+Inspect the retained one-Opportunity/three-Bid SQMS evidence at http://localhost:5001 and DOLLY/workflowengine_sqms_single_lifecycle_live_acceptance. Use docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE.md. Do not rerun the one-shot script. Preserve all retained SQMS databases and smtp4dev directories. Do not push, merge, deploy, execute production SQL, enable scheduling, stop smtp4dev, or remove evidence unless explicitly authorized.
+```
+
+## 2026-08-21 SQMS Corrected Email Templates
+
+### Current goal
+
+- The approved SQMS email template correction and separate live acceptance are complete. Preserve both retained acceptance datasets and stop before push, merge, deployment, production SQL, scheduler changes, or cleanup.
+
+### Completed changes
+
+- Corrected the six seeded SQMS notification subjects, plain-text bodies, and HTML bodies to the approved SharePoint-style wording while retaining metadata-driven rendering.
+- Standardized notification dates as `MM/dd/yyyy`.
+- Preserved scheduling semantics: opening and reminder occurrences remain relative to the manually opened date; no Effective Date scheduling rule was added.
+- Preserved recipients: opening/reminder use static metadata; Seller approval uses Opportunity RM and Seller RM Team with static Cc; Bid results use Bidder RM and Buyer RM Team with static Cc.
+- Preserved links: opening/reminder use the static dashboard URL, Seller approval adds `opportunityId`, and Bid result messages add `bidId`.
+- Added exact persisted/rendered contract tests and a separate one-shot corrected-email live profile without changing the original retained profile defaults.
+- Executed the corrected live workflow once against 3 Opportunities and 15 Bids, delivered 19 messages, and retained the SQL and smtp4dev evidence.
+- Corrected a verifier-only substring-matching defect so the reminder subject cannot count as a second opening-subject match; reran verification without replaying workflow actions or email delivery.
+- Proved full CDT compatibility through warning-as-error builds, complete core/API regressions, seed verification, both return branches, the aggregate demo, typed API tests, and sample tests.
+
+### Changed files
+
+- `sql/sqms/002_sqms_workflow_metadata_dml.sql`
+- `sql/sqms/003_verify_sqms_deployment.sql`
+- `sql/sqms/testing/006_verify_sqms_email_template_live_acceptance.sql`
+- `src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs`
+- `src/WorkflowEngine.Sqms/SqmsWorkflowService.cs`
+- `tests/WorkflowEngine.Tests/SqmsDatabasePackageTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsLiveAcceptanceContractTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsScheduledServiceTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsWorkflowServiceTests.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceConstants.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceEvidenceVerifier.cs`
+- `scripts/run-sqms-email-template-live-acceptance.ps1`
+- `docs/sqms/SQMS-EMAIL-TEMPLATE-LIVE-ACCEPTANCE.md`
+- `docs/sqms/SQMS-EMAIL-TEMPLATE-LIVE-ACCEPTANCE-RESULTS-20260821.md`
+- `docs/superpowers/specs/2026-08-21-sqms-email-template-correction-design.md`
+- `docs/superpowers/plans/2026-08-21-sqms-email-template-correction.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Compiled corrected-email verification-only run: passed.
+- Production SQMS deployment verifier and corrected-email SQL verifier: passed.
+- Live evidence: 3 Opportunities, 15 Bids, 18 workflow instances, 82 audits, 19 sent outbox rows, 19 smtp4dev messages, 0 retries, 0 tasks, and 0 SLA schedules.
+- Corrected-email contract suite: 18 passed, 0 failed.
+- Core, Workflow API, and acceptance-tool warning-as-error builds: 0 warnings, 0 errors.
+- Full core regression: 443 passed, 0 failed, 4 expected opt-in SMTP skips.
+- Full Workflow API regression: 68 passed, 0 failed.
+- PROJECT.md Checker-return branch, Trading-return branch, and 14-step aggregate demo: passed.
+- Typed public API gate: 26 passed, 0 failed.
+- Sample and inspection gate: 24 passed, 0 failed.
+- Disposable `workflowengine_sqms_email_final_gate_20260821` was removed; `DB_ID` returned null.
+
+### Retained evidence
+
+- Original SQL evidence: `DOLLY/workflowengine_sqms_live_acceptance`.
+- Original smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-live-acceptance-20260821`.
+- Corrected-email SQL evidence: `DOLLY/workflowengine_sqms_email_live_acceptance`.
+- Corrected-email smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-email-live-acceptance-20260821`.
+- Corrected smtp4dev UI: `http://localhost:5000`; at verification time launcher PID 5928 and executable PID 32624 used the corrected-email data path. Resolve the live process and command line again before process management.
+
+### Remaining tasks
+
+1. Review the final branch and retained corrected messages.
+2. Keep branch `sqms_clean_slate` as-is unless a separate push/merge action is authorized.
+3. Production SQL review/execution, deployment, scheduling, push, merge, and evidence cleanup remain separate authorization decisions.
+
+### Known risks
+
+- smtp4dev is running and both retained databases/mailboxes consume local resources by design.
+- Both acceptance runners are one-shot and refuse to overwrite evidence; use verification-only commands and read-only SQL for reinspection.
+- The corrected production SQL package still requires DBA review and environment-specific recipients and URLs before production use.
+- No production/shared database, deployment, Windows Task Scheduler, push, or merge was changed.
+
+### Next-session prompt
+
+```text
+Review the completed corrected SQMS email evidence in docs/sqms/SQMS-EMAIL-TEMPLATE-LIVE-ACCEPTANCE-RESULTS-20260821.md and DOLLY/workflowengine_sqms_email_live_acceptance. Preserve both SQMS acceptance databases and both smtp4dev data directories. Do not replay either one-shot runner. Do not push, merge, deploy, execute production SQL, enable scheduling, stop smtp4dev, or remove evidence unless explicitly authorized.
+```
+
+## 2026-08-21 SQMS Retained Live Acceptance
+
+### Current goal
+
+- The requested compiled-code live acceptance is complete: 3 new Opportunities, 15 related Bids, all approved terminal scenarios, SQL state verification, and smtp4dev email verification. Preserve the retained evidence and stop before push, merge, deployment, production SQL, or scheduling.
+
+### Completed changes
+
+- Added a one-shot, safety-pinned live acceptance runner for the dedicated `DOLLY/workflowengine_sqms_live_acceptance` database and isolated smtp4dev data directory.
+- Executed 64 compiled service operations across Opportunity, Bid, scheduled open/reminder/close, seller classification, and outbox delivery behavior.
+- Generated Opportunity IDs 10000-10002 and Bid IDs 10000-10014.
+- Proved final target/workflow parity: Opportunities are 2 `COMPLETED` and 1 `NOT FULFILLED`; Bids are 6 `ACCEPTED`, 4 `PARTIALLY ACCEPTED`, 4 `NOT ACCEPTED`, and 1 `NOT ALLOCATED`.
+- Proved calculated-column sentinels remained unchanged, and the SQMS run produced 82 audits, zero tasks, and zero SLA schedules.
+- Delivered and verified 19 smtp4dev messages: 1 open, 1 reminder, 3 seller approval, 6 accepted, 4 partially accepted, and 4 not accepted. Every outbox row is `Sent` with retry count zero.
+- Added a verification-only resume mode so retained evidence can be checked safely without reinserting fixtures or replaying actions.
+- Added DBA-style inspection instructions and a retained evidence report.
+
+### Changed files
+
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/*`
+- `scripts/run-sqms-live-acceptance.ps1`
+- `sql/sqms/testing/005_verify_sqms_live_acceptance.sql`
+- `tests/WorkflowEngine.Tests/SqmsLiveAcceptanceContractTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsDatabasePackageTests.cs`
+- `docs/sqms/SQMS-LIVE-ACCEPTANCE.md`
+- `docs/sqms/SQMS-LIVE-ACCEPTANCE-RESULTS-20260821.md`
+- `docs/superpowers/specs/2026-08-21-sqms-live-acceptance-design.md`
+- `docs/superpowers/plans/2026-08-21-sqms-live-acceptance.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Live compiled verifier: passed against retained SQL and smtp4dev evidence.
+- Production SQMS deployment verifier: passed.
+- Dedicated live acceptance SQL verifier: passed with exact counts 3/15/19/82/0/0.
+- Focused live acceptance contract suite: 14 passed, 0 failed.
+- Acceptance tool build: 0 warnings, 0 errors.
+- Final warning-as-error core, Workflow API, and acceptance-tool builds: 0 warnings, 0 errors.
+- Final full core regression: 438 passed, 0 failed, 4 expected opt-in SMTP skips.
+- Final full Workflow API regression: 68 passed, 0 failed.
+- Section 21 Checker-return branch, Trading-return branch, and 14-step aggregate demo: passed.
+- Typed public API gate: 26 passed, 0 failed.
+- Sample and inspection gate: 24 passed, 0 failed.
+- The disposable final-gate database was removed and `DB_ID` returned null.
+- An accidentally concurrent duplicate full-suite invocation caused SQL reset/login failures in fixed test databases; both runs were stopped and the suite passed when rerun once in isolation. The retained acceptance database was unaffected.
+
+### Retained evidence
+
+- SQL database: `DOLLY/workflowengine_sqms_live_acceptance`.
+- smtp4dev UI: `http://localhost:5000`; SMTP: `localhost:3025`.
+- smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-live-acceptance-20260821`.
+- At verification time, smtp4dev executable PID was 27468. Resolve the current PID before process management.
+
+### Remaining tasks
+
+1. Review the final branch status, commits, and retained evidence.
+2. Preserve the retained database and smtp4dev mailbox unless the user explicitly requests cleanup.
+3. Push, merge, deployment, production SQL, and scheduling remain separate authorization decisions.
+
+### Known risks
+
+- smtp4dev is currently running and the retained database/data consume local resources by design.
+- The acceptance runner is intentionally one-shot and refuses to overwrite retained evidence; use `--verify-only` or the SQL queries for reinspection.
+- No production/shared database, deployment, Windows Task Scheduler, push, or merge has been authorized.
+
+### Next-session prompt
+
+```text
+Review the completed SQMS live acceptance evidence in docs/sqms/SQMS-LIVE-ACCEPTANCE-RESULTS-20260821.md and retained database DOLLY/workflowengine_sqms_live_acceptance. Preserve smtp4dev data at C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-live-acceptance-20260821. Do not replay the one-shot runner. Do not push, merge, deploy, execute production SQL, enable scheduling, or remove retained evidence unless explicitly authorized.
+```
+
+## 2026-08-20 SQMS Milestone 6 Final Gate
+
+### Current goal
+
+- Milestone 6 and the approved SQMS thin-layer implementation plan are complete and final-gate verified. Stop here; production SQL, deployment, scheduling, push, and merge require separate authorization.
+
+### Completed changes
+
+- Completed Task 12 in `7dd71fe` (`test(sqms): cover complete workflow paths`) with isolated SQL-backed Opportunity, Bid, scheduler, outbox, rendering, replay, recipient, hyperlink, and calculated-column preservation coverage.
+- Ran the full existing CDT regression suite and Workflow API regression suite after the SQMS additions.
+- Executed the existing Section 21 checker branch, trading branch, complete demo, typed API tests, and sample/inspection tests against disposable database `workflowengine_sqms_acceptance_20260820`.
+- Applied the production SQMS SQL package in order to the disposable database. The verifier correctly rejected the database until the DBA-owned target `SSQMS.Opportunity` and `SSQMS.Bid` prerequisite was supplied; after the test-only target schema was installed, `002` and `003` passed.
+- Confirmed active runtime source contains no direct `DateTime.UtcNow`, public `toState`, legacy recipient-key behavior, or SQMS writes to `TotalBid`, `LargestBid`, or `LowestBid`. Preserved migrations and an explicit contract-prohibition test/document are the only relevant historical search hits.
+- Completed Task 14 documentation: the production DBA/app/scheduler runbook, additive README routing, and implementation-status annotation in the approved design.
+- Documented the exact SQL order and variables, target-table prerequisite, schema-lock assessment, disabled-first deployment/smoke sequence, three-trigger non-overlap scheduler setup, outbox delivery ownership, alerting, and DBA-reviewed rollback order.
+- Removed the run-owned disposable acceptance database after verification; `DB_ID(N'workflowengine_sqms_acceptance_20260820')` returned null.
+
+### Build/test status
+
+- Core warning-as-error build: passed with 0 warnings and 0 errors.
+- Workflow API warning-as-error build: passed with 0 warnings and 0 errors.
+- Full core SQL-backed regression: 423 passed, 0 failed, 4 opt-in smtp4dev tests skipped.
+- Full Workflow API regression: 68 passed, 0 failed.
+- Section 21 checker branch, trading branch, and 14-step demo: passed.
+- Typed API tests: 26 passed, 0 failed.
+- Sample/inspection tests: 24 passed, 0 failed.
+- SQMS deployment verifier and generic `verify-seed`: passed after installation of the test-only target schema prerequisite.
+- Final Task 14 focused gate: 16 passed, 0 failed; `git diff --check` passed.
+- The first final-gate invocation lacked the required SQL test connection environment variable and therefore did not exercise product behavior. The exact command was rerun with the established local SQL connection and passed.
+
+### Remaining tasks
+
+1. Review the Milestone 6 gate and commits.
+2. If approved in a later request, choose the separate push/merge/release path.
+3. Production execution remains a separate change using `docs/sqms/DBA-DEPLOYMENT.md`.
+
+### Known risks
+
+- Production deployment depends on the existing DBA-owned target tables matching the approved schema and on final recipient JSON and environment URL values.
+- Adding nullable outbox ownership columns/indexes can take schema-modification locks; the DBA must assess table size and workload and choose the deployment window.
+- Checked-in SQMS remains disabled. No production/shared database, scheduler, deployment, push, or merge has been changed.
+
+### Next-session prompt
+
+```text
+SQMS Milestone 6 is complete. Review the final gate and DBA runbook. Do not push, merge, deploy, execute production SQL, or enable Windows Task Scheduler unless the user explicitly authorizes that separate action.
+```
+
+## 2026-08-20 SQMS Milestone 5 Gate
+
+### Current goal
+
+- Milestone 5 is implemented, committed, and verified. Stop before Milestone 6 Task 12 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Completed Task 8 in `9f8253c` (`feat(notifications): queue notification-only occurrences`).
+- Added the generic `IQueueWorkflowNotificationService`, active versioned route lookup, nullable-instance recipient resolution, template rendering/HTML encoding, immutable recipient/payload snapshots, deterministic occurrence replay, and concurrent unique-race recovery.
+- Preserved existing notification constructor call sites with nullable ownership annotations plus non-positional `NotificationOccurrenceKey` and `DisplayReference` properties. Existing workflow-owned outbox processing remains unchanged; occurrence-owned rows now deliver through the same sender path.
+- Completed Task 9 in `a7cdd00` (`feat(sqms): queue request-driven emails`).
+- Added trusted target-row enrichment for Seller approval and all three Bid disposition routes. Recipient addresses are normalized from target-API-resolved inputs; template values and URLs come only from target rows, configuration, timezone, and `TimeProvider`.
+- Preserved the original public `SqmsWorkflowService` constructor as an overload while adding the configured DI constructor.
+- Proved atomic rollback for missing effective date/amount/parent, unresolved recipients, and invalid URL.
+- Completed Task 10 in `f44140e` (`feat(sqms): add scheduled close and notifications`).
+- Added close-first scheduling, fixed-calendar +1/+14/+15/+16 behavior, catch-up, no obsolete reminder after close, quarter/year/occurrence grouping, stable occurrence keys, strict greater-than Bid classification, per-candidate failures, and per-Bid continuation.
+- Completed Task 11 in `8f65d81` (`feat(console): add SQMS scheduled command`).
+- Added the no-argument `run-sqms-scheduled` command, trailing optional registry handler, aggregate/failure output, nonzero failure exit, Console DI, checked-in disabled configuration, and README capability documentation.
+- Added disabled-integration safety in `1b9a4b8` (`fix(sqms): honor disabled scheduled integration`): checked-in disabled SQMS returns a successful zero-work run without querying DBA-owned SSQMS tables.
+
+### Changed files
+
+- `src/WorkflowEngine.Application/Notifications/IQueueWorkflowNotificationService.cs`
+- `src/WorkflowEngine.Application/Notifications/INotificationSender.cs`
+- `src/WorkflowEngine.Application/Notifications/IProcessNotificationOutboxService.cs`
+- `src/WorkflowEngine.Application/Commands/IRunSqmsScheduledCommandHandler.cs`
+- `src/WorkflowEngine.Application/Commands/CommandArgumentParser.cs`
+- `src/WorkflowEngine.Application/Commands/CommandRegistry.cs`
+- `src/WorkflowEngine.Application/Commands/ProcessNotificationOutboxCommandHandler.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/QueueWorkflowNotificationService.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/NotificationRecipientResolver.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/ConsoleNotificationSender.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs`
+- `src/WorkflowEngine.Infrastructure/DependencyInjection/InfrastructureServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Sqms/SqmsWorkflowService.cs`
+- `src/WorkflowEngine.Sqms/Contracts/ISqmsScheduledService.cs`
+- `src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs`
+- `src/WorkflowEngine.Sqms/Commands/RunSqmsScheduledCommandHandler.cs`
+- `src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Console/Program.cs`
+- `src/WorkflowEngine.Console/appsettings.json`
+- `src/WorkflowEngine.Console/appsettings.Development.json`
+- `tests/WorkflowEngine.Tests/NotificationOnlyQueueTests.cs`
+- `tests/WorkflowEngine.Tests/Phase5OutboxTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsWorkflowServiceTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsScheduledServiceTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsCommandTests.cs`
+- `tests/WorkflowEngine.Tests/CommandRegistryTests.cs`
+- `README.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Task 8 focused notification/outbox/sender gate: 20 passed, 0 failed.
+- Task 9 request-driven SQMS workflow/email gate: 15 passed, 0 failed.
+- Task 10 scheduler gate: 10 passed before the disabled guard; 11 scheduler tests pass after the guard.
+- Task 11 parser/registry/README gate: 31 passed, 0 failed.
+- Exact Milestone 5 plan stop gate: 39 passed, 0 failed; warning-as-error build passed with 0 warnings and 0 errors.
+- Final warning-as-error core build: passed with 0 warnings and 0 errors.
+- Final full SQL-backed core regression after all changes: 420 passed, 0 failed, 4 opt-in smtp4dev tests skipped.
+- Final full Workflow API regression: 68 passed, 0 failed.
+- Disposable `workflowengine_sqms_m5_gate_20260820`: `init-db`, `verify-seed`, `start-workflow`, existing public `02-submit-for-checker.json`, and disabled `run-sqms-scheduled` all passed; the database was deleted and `DB_ID` returned null.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 5 stop gate.
+2. Execute Milestone 6 Tasks 12-14: SQL-backed end-to-end SQMS coverage, the final CDT compatibility gate, deployment documentation, and final verification.
+3. Stop after the Milestone 6 quality gate.
+
+### Known risks
+
+- The scheduler behavior is fully unit-covered, while live SQL-backed scheduler/outbox integration is intentionally Task 12 in Milestone 6.
+- Checked-in SQMS remains disabled. Production enablement requires the DBA package, real recipient JSON values, real URLs, environment overrides, and external Task Scheduler configuration.
+- No production/shared application database was changed. Production SQL, push, merge, deployment, and scheduling remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 5 commits 9f8253c, a7cdd00, f44140e, 8f65d81, and 1b9a4b8 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Milestone 6 Tasks 12-14 with SQL-backed end-to-end coverage, final CDT compatibility, deployment documentation, and full verification. Stop at the Milestone 6 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
+## 2026-08-20 SQMS Milestone 4 Gate
+
+### Current goal
+
+- Milestone 4 is implemented, committed, and verified. Stop before Milestone 5 Task 8 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Completed Task 7 in `a4eaaf3` (`fix(engine): honor terminal state metadata`).
+- Replaced the reusable engine's literal destination-key comparison with the active destination `WorkflowStateDefinition.IsTerminal` value.
+- The engine now rejects a transition before mutation when its destination state metadata is missing or inactive.
+- Preserved the runtime contract: entering any terminal state sets `WorkflowInstance.Status` to `Completed` and `CompletedAtUtc`, while `CurrentStateKey` retains the exact metadata key.
+- Added an isolated metadata-driven regression proving `NOT ACCEPTED` completes runtime, leaves no pending task, and exposes no available actions.
+- Added a Portfolio Trade regression proving the existing literal `Completed` state still sets the same runtime status/time values and closes its pending task.
+
+### Changed files
+
+- `src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs`
+- `tests/WorkflowEngine.Tests/WorkflowTerminalStateTests.cs`
+- `tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- TDD RED with the approved local SQL test connection: 13 existing tests passed and only the nonliteral terminal test failed because runtime status remained `Active`.
+- Milestone 4 focused gate: 46 passed, 0 failed.
+- Warning-as-error core build: passed with 0 warnings and 0 errors.
+- Full SQL-backed core regression: 387 passed, 0 failed, 4 opt-in smtp4dev tests skipped.
+- Full Workflow API regression: 68 passed, 0 failed.
+- Disposable `workflowengine_terminal_m4_gate_20260820`: `init-db`, `verify-seed`, `start-workflow`, and existing public `02-submit-for-checker.json` execution all passed; the database was deleted and `DB_ID` returned null.
+- The first RED attempt lacked `WORKFLOW_ENGINE_TEST_CONNECTION_STRING` and therefore did not exercise product behavior; it was rerun with the established local SQL connection. The first API regression command used an obsolete project path and was rerun successfully against the current project.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 4 stop gate.
+2. Execute Task 8 only for Milestone 5: add the generic notification-only queue.
+3. Continue Milestone 5 only according to its written task boundaries and stop at its quality gate.
+
+### Known risks
+
+- Request-driven SQMS notification actions do not yet enrich template values from target data; that remains intentionally deferred to Task 9 in Milestone 5.
+- Production still requires DBA execution of `001`, `002`, and `003`, plus deployment recipient values and final environment URLs.
+- No production/shared application database was changed. Production SQL, push, merge, deployment, and scheduling remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 4 commit a4eaaf3 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Milestone 5 beginning with Task 8 only, follow TDD and all stop-and-ask rules, preserve existing public contracts, and stop at the Milestone 5 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
+## 2026-08-20 SQMS Milestone 3 Gate
+
+### Current goal
+
+- Milestone 3 is implemented, committed, and verified. Stop before Milestone 4 Task 7 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Completed Task 5 in `3ce7a6a` (`feat(sqms): add trusted data mapping`).
+- Added invariant, structured amount/category parsing; `$` currency parsing uses invariant number formatting with an explicit dollar symbol and never current culture.
+- Added validated HTTP/HTTPS link construction for the unchanged open dashboard, seller dashboard `opportunityId`, and Bid form `bidId`, preserving existing queries and fragments.
+- Added the exact minimal Opportunity/Bid row projections and approved `ISqmsDataStore` surface with no calculated Bid-summary fields.
+- Added parameterized, explicit-column SQL access on the workflow connection/current transaction, soft-delete filtering, opening-audit lookup, submitted-Bid reads, and four-column-only state projection.
+- Completed Task 6 in `30fbeaf` (`feat(sqms): add in-process workflow adapter`).
+- Added the six approved start/context/action methods and additive contracts. The request contains target ID, `actionKey`, expected workflow version, trusted actor, and server-resolved recipient inputs; it contains no client next state.
+- Start uses existing `IStartWorkflowService` with `InitialActionKey`, action uses `IWorkflowExecutionService`, and context uses `IWorkflowContextReader`. Deterministic identity, idempotency keys, role enforcement, concurrency, state, audit, and runtime ownership remain generic-engine responsibilities.
+- Made `StartWorkflowService` join an existing workflow transaction additively, matching `WorkflowExecutionService`. SQMS projection commits only after a successful workflow result.
+- Added target API transaction/enlistment guidance in `docs/sqms/TARGET-API-INTEGRATION.md`.
+- A clean API rebuild exposed nullable annotations in the existing workflow-owned notification dispatcher after Milestone 2. Added null-forgiving annotations only where its query already guarantees `WorkflowInstanceId` equality; no notification-only queue behavior was pulled forward from Milestone 5.
+
+### Changed files
+
+- `src/WorkflowEngine.Sqms/SqmsValueParser.cs`
+- `src/WorkflowEngine.Sqms/SqmsLinkBuilder.cs`
+- `src/WorkflowEngine.Sqms/Persistence/SqmsRows.cs`
+- `src/WorkflowEngine.Sqms/Persistence/ISqmsDataStore.cs`
+- `src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs`
+- `src/WorkflowEngine.Sqms/Contracts/SqmsModels.cs`
+- `src/WorkflowEngine.Sqms/Contracts/ISqmsWorkflowService.cs`
+- `src/WorkflowEngine.Sqms/SqmsWorkflowService.cs`
+- `src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs`
+- `tests/WorkflowEngine.Tests/SqmsValueParserTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsLinkBuilderTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsDataStoreTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsWorkflowServiceTests.cs`
+- `docs/sqms/TARGET-API-INTEGRATION.md`
+- `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs`
+- `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionNotificationDispatcherTests.cs`
+
+### Build/test status
+
+- Milestone 3 warning-as-error core build: passed with 0 warnings and 0 errors.
+- Task 5 parser/link/store gate: 31 passed, 0 failed; calculated-column negative source search returned no matches.
+- Task 6 SQMS adapter tests: 6 passed, 0 failed.
+- Focused adapter plus existing start regressions: 28 passed, 0 failed.
+- Required API start/action gate: 26 passed, 0 failed; dispatcher compatibility tests: 5 passed, 0 failed.
+- Full SQL-backed core regression: 385 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- Full Workflow API regression: 68 passed, 0 failed.
+- Disposable `workflowengine_sqms_m3_gate_20260820`: `init-db`, `verify-seed`, Checker Return to Maker, and Trading Desk Return to Maker all passed; the database was deleted and `DB_ID` returned null.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 3 stop gate.
+2. Execute Task 7 only for Milestone 4: derive runtime completion from terminal-state metadata while preserving literal CDT `Completed` behavior.
+3. Stop again after the Milestone 4 quality gate.
+
+### Known risks
+
+- Runtime completion still recognizes literal `Completed`; Task 7 is the planned Milestone 4 correction for SQMS uppercase terminal states.
+- Request-driven SQMS notification actions do not yet enrich template values from target data; that is intentionally deferred to Task 9 in Milestone 5.
+- Production still requires DBA execution of `001`, `002`, and `003`, plus deployment recipient values and final environment URLs.
+- No production/shared application database was changed. Production SQL, push, merge, deployment, and scheduling remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 3 commit 30fbeaf only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Task 7 only with TDD: make runtime completion derive from terminal-state metadata, prove existing CDT literal Completed behavior remains compatible, and stop at the Milestone 4 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
+## 2026-08-20 SQMS Milestone 2 Gate
+
+### Current goal
+
+- Milestone 2 is implemented, committed, and verified. Stop before Milestone 3 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Completed Task 2 in `5200ba2`: made `NotificationOutbox.WorkflowInstanceId` nullable, added `NotificationOccurrenceKey`, its filtered unique index, the owner check constraint, the fixed local/test EF migration, and authoritative DBA DDL.
+- Completed Task 3 in `241de56`: added the rerunnable SQMS metadata DML, read-only deployment verifier, exact target-table test DDL, and outer-transaction rollback harness.
+- Applied the user-approved metadata counts: Opportunity `10 states / 10 actions / 3 roles / 12 transitions / 3 routes`; Bid `8 states / 8 actions / 4 roles / 8 transitions / 3 routes`; zero tasks and zero SLA policies.
+- Completed Task 4 in `5558403`: created real active/completed Portfolio Trade history through existing services, reconstructed the legacy outbox shape, applied the exact `001` DDL twice, and proved a SHA-256 hash over every legacy outbox column was unchanged.
+- Proved old-style workflow-owned inserts still work, ownerless rows fail, notification-occurrence-owned rows work, and duplicate occurrence keys fail.
+- The compatibility test exposed and fixed a SQL Server batch-compilation defect by deferring the new-column index/check DDL through `sp_executesql` inside the same transaction.
+- Reran the full DBA package in an outer rollback transaction on `workflowengine_sqms_gate_20260820`; verification and rollback passed, and the isolated database was deleted.
+
+### Changed files
+
+- `src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationOutbox.cs`
+- `src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs`
+- `src/WorkflowEngine.Infrastructure/Migrations/20260820200000_AddNotificationOccurrenceKey.cs`
+- `src/WorkflowEngine.Infrastructure/Migrations/20260820200000_AddNotificationOccurrenceKey.Designer.cs`
+- `src/WorkflowEngine.Infrastructure/Migrations/WorkflowDbContextModelSnapshot.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs`
+- `sql/sqms/001_sqms_notification_outbox_ddl.sql`
+- `sql/sqms/002_sqms_workflow_metadata_dml.sql`
+- `sql/sqms/003_verify_sqms_deployment.sql`
+- `sql/sqms/testing/000_create_sqms_test_tables.sql`
+- `sql/sqms/testing/004_validate_sqms_package_in_rollback.sql`
+- `tests/WorkflowEngine.Tests/SchemaConstraintTests.cs`
+- `tests/WorkflowEngine.Tests/MigrationSchemaTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsDatabasePackageTests.cs`
+- `tests/WorkflowEngine.Tests/CdtSqmsCompatibilityTests.cs`
+
+### Build/test status
+
+- Milestone 2 warning-as-error core build: passed with 0 warnings and 0 errors.
+- Milestone 2 focused schema/migration/package/compatibility gate: 44 passed, 0 failed.
+- Full SQL-backed core regression: 348 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- Existing built Workflow API regression assembly: 68 passed, 0 failed.
+- A clean Workflow API rebuild was not available because its restore state attempted blocked NuGet access; no API source or public contract changed in this milestone.
+- The first full-core rerun overlapped an orphaned prior test process and produced shared-test-database collisions; both owned test processes were stopped and the clean single-process rerun passed.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 2 stop gate.
+2. Execute plan Tasks 5-6 for Milestone 3 only: SQMS persistence/parsing/links and the in-process opportunity/bid workflow adapter.
+3. Stop again after the Milestone 3 quality gate.
+
+### Known risks
+
+- No production or shared application database was changed. All SQL execution used disposable, explicitly named local test databases that were deleted.
+- Production still requires the DBA to run `001`, `002`, and `003`; EF startup must not apply these changes in production.
+- Static deployment recipient arrays and final environment URLs remain deployment inputs, not hardcoded runtime values.
+- Production SQL, push, merge, deployment, and scheduling remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 2 commit 5558403 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Tasks 5-6 only with TDD, preserve the thin in-process boundary and existing public contracts, and stop at the Milestone 3 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
+## 2026-08-20 SQMS Milestone 1 Gate
+
+### Current goal
+
+- Milestone 1 is implemented and verified. Stop before Milestone 2 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Added the isolated `WorkflowEngine.Sqms` .NET 10 project with references to the existing Application and Infrastructure layers and no new package references.
+- Added stable SQMS workflow, state, action, role, route, business-object, and workflow-instance identifiers.
+- Added guarded invariant-culture Opportunity/Bid identity builders that reject non-positive target IDs.
+- Added additive SQMS options and DI registration. Disabled SQMS requires no URLs; enabled SQMS validates positive scheduling day counts and a resolvable timezone.
+- Added the SQMS project to the solution, Console project, and test project without changing existing command behavior.
+- Followed TDD: the structure test first failed with `CS0234` because `WorkflowEngine.Sqms` did not exist, then all seven focused cases passed after implementation.
+
+### Changed files
+
+- `src/WorkflowEngine.Sqms/WorkflowEngine.Sqms.csproj`
+- `src/WorkflowEngine.Sqms/SqmsKeys.cs`
+- `src/WorkflowEngine.Sqms/Configuration/SqmsOptions.cs`
+- `src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Console/WorkflowEngine.Console.csproj`
+- `src/WorkflowEngine.sln`
+- `tests/WorkflowEngine.Tests/WorkflowEngine.Tests.csproj`
+- `tests/WorkflowEngine.Tests/SqmsProjectStructureTests.cs`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Baseline with the approved local SQL test connection: 336 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- TDD RED: focused test compilation failed as expected with `CS0234` before the SQMS project existed.
+- Milestone 1 warning-as-error build: passed with 0 warnings and 0 errors.
+- Focused SQMS structure/configuration tests: 7 passed, 0 failed.
+- Full post-change SQL-backed core suite: 343 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- The first baseline attempt without a test connection produced 204 environment-only failures; rerunning with the `PROJECT.md`-approved local SQL connection passed.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 1 stop gate.
+2. Execute plan Tasks 2-4 for Milestone 2 only: backward-compatible outbox DDL, exact SQMS metadata DML/verifier, and CDT upgrade compatibility.
+3. Stop again after the Milestone 2 quality gate and commit.
+
+### Known risks
+
+- No database/schema/seed change has been made yet. The shared outbox relaxation remains deferred to Milestone 2 and requires its dedicated CDT compatibility proof.
+- SQMS remains disabled and has no runtime orchestration in Milestone 1; only the isolated project boundary, stable keys, and validated configuration skeleton exist.
+- Production SQL, deployment, scheduling, push, and merge remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 1 commit on sqms_clean_slate after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Tasks 2-4 only, using TDD and DBA-owned SQL files, prove CDT in-place upgrade compatibility, and stop at the Milestone 2 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
+## 2026-08-20 SQMS Thin-Layer Design Review Gate
+
+### Current goal
+
+- Await the user's implementation execution choice after approval of the written specification and creation of the file-by-file plan.
+
+### Completed changes
+
+- Recovered and reconciled the clean-slate SQMS decisions with the user's final `SSQMS.Opportunity` and `SSQMS.Bid` schema.
+- Documented the approved in-process adapter, exact Opportunity/Bid matrices, taskless/no-SLA boundary, request and scheduled transactions, six email routes, and three hyperlink contracts.
+- Explicitly superseded the stale retained requirement to calculate `TotalBid`, `LargestBid`, and `LowestBid`; those columns are entirely out of scope.
+- Defined DBA-managed production DDL/DML/verification files and prohibited production startup migrations or EF seed execution.
+- Added a release-blocking CDT compatibility gate for the shared outbox relaxation and generic terminal-state correction.
+- Completed the required spec self-review with no unresolved `TBD`, `TODO`, `FIXME`, or ambiguous scope markers.
+- Recorded user approval of the written specification.
+- Created and self-reviewed `docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md`, mapped directly to `PROJECT.md` milestones 1-6 with stop gates, TDD steps, exact files, DBA scripts, and CDT compatibility checks.
+
+### Changed files
+
+- `docs/superpowers/specs/2026-08-20-sqms-thin-layer-integration-design.md`
+- `docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- No source code, SQL, runtime configuration, or database was changed.
+- Build, SQL, and runtime tests were not run for this documentation-only planning checkpoint.
+- Spec and plan placeholder, consistency, scope, compatibility, and `git diff --check` scans passed.
+
+### Remaining tasks
+
+1. User chooses subagent-driven or inline plan execution.
+2. Use the required execution skill for the selected approach.
+3. Stop after every mapped `PROJECT.md` milestone quality gate.
+4. Do not push, deploy, run production SQL, or enable production scheduling without explicit authorization.
+
+### Known risks
+
+- `dbo.NotificationOutbox.WorkflowInstanceId` is currently non-null. The approved grouped-notification design relaxes it to nullable and therefore requires a DBA change window plus the full CDT compatibility gate before SQMS scheduling can be enabled.
+- The current generic engine recognizes only literal `Completed` as runtime completion. The spec requires metadata-driven `IsTerminal` handling and proves existing CDT behavior through regression coverage.
+- Environment URLs, static email addresses, and complete template literals must be supplied in deployment configuration/DBA DML and verified before production enablement.
+
+### Next-session prompt
+
+```text
+Execute docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md on sqms_clean_slate only after the user selects an execution approach. The written spec is approved. Use subagent-driven-development for the recommended task-by-task approach or executing-plans for inline batches. Preserve every milestone stop gate, DBA-only production SQL boundary, calculated-column exclusion, and CDT compatibility release gate. Do not push, deploy, run production SQL, or enable production scheduling without explicit authorization.
+```
+
+## 2026-08-18 SQMS Remote Cleanup Branch
+
+### Current goal
+
+- Remove the rejected SQMS implementation already present on remote `console-code-first-0518` without rewriting that branch's history.
+
+### Completed changes
+
+- Fetched and confirmed `origin/console-code-first-0518` at `70aa4d9` contains six SQMS commits from `4bd1ad9` through `70aa4d9`.
+- Created `sqms_clean_slate` directly from that remote head.
+- Reverted exactly those six commits in recoverable history while retaining `SQMS/` legacy evidence and `tareget-api-integration/` reference snapshots.
+- Removed active SQMS metadata SQL, mock-table SQL, samples, tests, and rejected design/plan artifacts.
+- Added `docs/sqms/CLEAN-SLATE-CONTEXT.md` and replaced stale SQMS planning pointers with the approved clean-slate boundary.
+- Restored the 417-file `restore-repo.ps1` bundle for commit `e2ccd86` into an isolated temporary directory and compared every bundled path by SHA-256.
+- Confirmed all 411 comparable bundle files are unchanged and there are zero differences under `src/`, `workflow-api/`, `tests/`, or `samples/`.
+- Removed the remaining stale `docs/sqms-approved-workflow-flowchart.html` because it documented the rejected custom coordinator and cross-row orchestration.
+- The local `workflowengine` database had already been transactionally cleaned of SQMS artifacts on 2026-08-17; generic seed verification passed afterward.
+
+### Verification
+
+- Active code, tests, API, samples, and SQL match pre-SQMS baseline `1362541`.
+- Core and API warnings-as-errors builds passed.
+- Core regression suite passed 336 tests with 4 opt-in SMTP tests skipped; Workflow API tests exited successfully.
+- Generic `verify-seed` passed against `DOLLY/workflowengine`.
+
+### Remaining tasks
+
+- Commit and push `sqms_clean_slate`.
+- Review and merge that branch into `console-code-first-0518` through the normal remote process.
+- Before future implementation, map every supplied legacy SQMS function and obtain user approval.
+
+### Known risks
+
+- Do not merge the old `sqms_integration` branch; its history includes the broader rejected thin-layer implementation.
+- The preserved target-API files are historical reference snapshots, not compilable project source.
+
+### Next-session prompt
+
+```text
+Continue from the clean SQMS branch. Read PROJECT.md, SQMS legacy sources, and docs/sqms/CLEAN-SLATE-CONTEXT.md. Do not restore the rejected SQMS implementation. Map every supplied legacy function to existing generic workflow-engine integration surfaces and obtain approval before code or SQL.
+```
+
 ## 2026-08-10 100-Workflow Live API and SLA Performance Acceptance
 
 ### Current goal

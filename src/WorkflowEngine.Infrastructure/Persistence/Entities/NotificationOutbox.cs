@@ -3,7 +3,8 @@ namespace WorkflowEngine.Infrastructure.Persistence.Entities;
 public sealed class NotificationOutbox
 {
     public long Id { get; set; }
-    public string WorkflowInstanceId { get; set; } = string.Empty;
+    public string? WorkflowInstanceId { get; set; }
+    public string? NotificationOccurrenceKey { get; set; }
     public long? WorkflowTaskId { get; set; }
     public long? WorkflowTaskSlaScheduleId { get; set; }
     public DateTimeOffset? SlaOccurrenceAtUtc { get; set; }

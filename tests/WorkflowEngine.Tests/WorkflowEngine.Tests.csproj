@@ -29,6 +29,8 @@
     <ProjectReference Include="..\..\src\WorkflowEngine.Application\WorkflowEngine.Application.csproj" />
     <ProjectReference Include="..\..\src\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\WorkflowEngine.Domain\WorkflowEngine.Domain.csproj" />
+    <ProjectReference Include="..\..\src\WorkflowEngine.Sqms\WorkflowEngine.Sqms.csproj" />
+    <ProjectReference Include="..\..\tools\WorkflowEngine.Sqms.LiveAcceptance\WorkflowEngine.Sqms.LiveAcceptance.csproj" />
   </ItemGroup>
 
 </Project>

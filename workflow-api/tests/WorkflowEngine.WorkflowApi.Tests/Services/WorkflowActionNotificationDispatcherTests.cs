@@ -23,7 +23,7 @@ public sealed class WorkflowActionNotificationDispatcherTests
         var sender = new RecordingNotificationSender();
 
         var result = new WorkflowActionNotificationDispatcher(dbContext, sender, new FixedTimeProvider(Now))
-            .DispatchCreatedNotifications(row.WorkflowInstanceId, row.CorrelationId);
+            .DispatchCreatedNotifications(row.WorkflowInstanceId!, row.CorrelationId);
 
         Assert.True(result.Success);
         var delivery = Assert.Single(sender.SentRows);
@@ -56,7 +56,7 @@ public sealed class WorkflowActionNotificationDispatcherTests
         var sender = new RecordingNotificationSender();
 
         var result = new WorkflowActionNotificationDispatcher(dbContext, sender, new FixedTimeProvider(Now))
-            .DispatchCreatedNotifications(row.WorkflowInstanceId, row.CorrelationId);
+            .DispatchCreatedNotifications(row.WorkflowInstanceId!, row.CorrelationId);
 
         Assert.False(result.Success);
         Assert.Empty(sender.SentRows);

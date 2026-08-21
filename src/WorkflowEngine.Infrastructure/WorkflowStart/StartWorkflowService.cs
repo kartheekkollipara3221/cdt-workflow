@@ -103,25 +103,27 @@ public sealed class StartWorkflowService(
                 activeDefinition.VersionId);
         }
 
-        using var transaction = dbContext.Database.BeginTransaction();
+        using var transaction = dbContext.Database.CurrentTransaction is null
+            ? dbContext.Database.BeginTransaction()
+            : null;
         try
         {
             var envelope = InsertFreshInstance(request, workflowInstanceId, activeDefinition.VersionId);
             var capture = CaptureParticipants(request, workflowInstanceId, activeDefinition.VersionId);
             if (capture.Errors.Count > 0)
             {
-                transaction.Rollback();
+                transaction?.Rollback();
                 dbContext.ChangeTracker.Clear();
                 return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
             }
 
             dbContext.SaveChanges();
-            transaction.Commit();
+            transaction?.Commit();
             return new StartWorkflowResult(envelope, ResetCounts: null);
         }
         catch (DbUpdateException exception) when (IsWorkflowInstanceUniqueViolation(exception))
         {
-            transaction.Rollback();
+            transaction?.Rollback();
             dbContext.ChangeTracker.Clear();
             var duplicate = FindExisting(request);
             if (duplicate is null)
@@ -144,7 +146,9 @@ public sealed class StartWorkflowService(
         string workflowInstanceId,
         long workflowDefinitionVersionId)
     {
-        using var transaction = dbContext.Database.BeginTransaction();
+        using var transaction = dbContext.Database.CurrentTransaction is null
+            ? dbContext.Database.BeginTransaction()
+            : null;
 
         var counts = DeleteRuntimeRows(request, workflowInstanceId);
 
@@ -153,13 +157,13 @@ public sealed class StartWorkflowService(
         var capture = CaptureParticipants(request, workflowInstanceId, workflowDefinitionVersionId);
         if (capture.Errors.Count > 0)
         {
-            transaction.Rollback();
+            transaction?.Rollback();
             dbContext.ChangeTracker.Clear();
             return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
         }
 
         dbContext.SaveChanges();
-        transaction.Commit();
+        transaction?.Commit();
         return new StartWorkflowResult(envelope, counts);
     }
 
@@ -168,7 +172,9 @@ public sealed class StartWorkflowService(
         string workflowInstanceId,
         long workflowDefinitionVersionId)
     {
-        using var transaction = dbContext.Database.BeginTransaction();
+        using var transaction = dbContext.Database.CurrentTransaction is null
+            ? dbContext.Database.BeginTransaction()
+            : null;
 
         var counts = DeleteRuntimeRows(request, workflowInstanceId);
 
@@ -177,7 +183,7 @@ public sealed class StartWorkflowService(
         var capture = CaptureParticipants(request, workflowInstanceId, workflowDefinitionVersionId);
         if (capture.Errors.Count > 0)
         {
-            transaction.Rollback();
+            transaction?.Rollback();
             dbContext.ChangeTracker.Clear();
             return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
         }
@@ -186,11 +192,11 @@ public sealed class StartWorkflowService(
         var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId, capture.ActionNotificationInput);
         if (!actionEnvelope.Result.Success)
         {
-            transaction.Rollback();
+            transaction?.Rollback();
             return new StartWorkflowResult(actionEnvelope, ResetCounts: null);
         }
 
-        transaction.Commit();
+        transaction?.Commit();
         return new StartWorkflowResult(actionEnvelope, counts);
     }
 
@@ -199,7 +205,9 @@ public sealed class StartWorkflowService(
         string workflowInstanceId,
         long workflowDefinitionVersionId)
     {
-        using var transaction = dbContext.Database.BeginTransaction();
+        using var transaction = dbContext.Database.CurrentTransaction is null
+            ? dbContext.Database.BeginTransaction()
+            : null;
 
         try
         {
@@ -207,7 +215,7 @@ public sealed class StartWorkflowService(
             var capture = CaptureParticipants(request, workflowInstanceId, workflowDefinitionVersionId);
             if (capture.Errors.Count > 0)
             {
-                transaction.Rollback();
+                transaction?.Rollback();
                 dbContext.ChangeTracker.Clear();
                 return BuildParticipantValidationFailed(request, workflowInstanceId, capture.Errors);
             }
@@ -216,16 +224,16 @@ public sealed class StartWorkflowService(
             var actionEnvelope = ExecuteInitialAction(request, workflowInstanceId, capture.ActionNotificationInput);
             if (!actionEnvelope.Result.Success)
             {
-                transaction.Rollback();
+                transaction?.Rollback();
                 return new StartWorkflowResult(actionEnvelope, ResetCounts: null);
             }
 
-            transaction.Commit();
+            transaction?.Commit();
             return new StartWorkflowResult(actionEnvelope, ResetCounts: null);
         }
         catch (DbUpdateException exception) when (IsWorkflowInstanceUniqueViolation(exception))
         {
-            transaction.Rollback();
+            transaction?.Rollback();
             dbContext.ChangeTracker.Clear();
             var duplicate = FindExisting(request);
             if (duplicate is null)
@@ -299,12 +307,12 @@ public sealed class StartWorkflowService(
                 normalized,
                 hasher.ComputeHash(normalized.Envelope, actionNotificationInput),
                 AdminOverride: false)
-            {
-                DeriveIdentityFromPersistence = true,
-                PersistSectionData = false,
-                ValidateActionEcho = false,
-                NotificationInput = actionNotificationInput
-            });
+        {
+            DeriveIdentityFromPersistence = true,
+            PersistSectionData = false,
+            ValidateActionEcho = false,
+            NotificationInput = actionNotificationInput
+        });
     }
 
     private StartParticipantCaptureOutcome CaptureParticipants(

@@ -6,6 +6,8 @@ using WorkflowEngine.Application.Normalization;
 using WorkflowEngine.Application.Results;
 using WorkflowEngine.Application.Validation;
 using WorkflowEngine.Infrastructure.DependencyInjection;
+using WorkflowEngine.Sqms.Commands;
+using WorkflowEngine.Sqms.DependencyInjection;
 
 var configuration = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
@@ -32,10 +34,12 @@ var services = new ServiceCollection()
     .AddScoped<IShowNotificationsCommandHandler, ShowNotificationsCommandHandler>()
     .AddScoped<IRunSlaCommandHandler, RunSlaCommandHandler>()
     .AddScoped<IProcessNotificationOutboxCommandHandler, ProcessNotificationOutboxCommandHandler>()
+    .AddScoped<IRunSqmsScheduledCommandHandler, RunSqmsScheduledCommandHandler>()
     .AddScoped<IDemoStepRunner, WorkflowEngineDemoStepRunner>()
     .AddScoped<IDemoCommandHandler, DemoCommandHandler>()
     .AddScoped<CommandRegistry>()
     .AddWorkflowInfrastructure(configuration)
+    .AddSqmsWorkflowIntegration(configuration)
     .BuildServiceProvider();
 
 using var scope = services.CreateScope();

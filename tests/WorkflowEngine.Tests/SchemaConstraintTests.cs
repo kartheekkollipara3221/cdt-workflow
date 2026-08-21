@@ -70,6 +70,27 @@ public sealed class SchemaConstraintTests
     }
 
     [Fact]
+    public void NotificationOutboxSupportsWorkflowOrOccurrenceOwnership()
+    {
+        var outbox = dbContext.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(NotificationOutbox));
+        Assert.NotNull(outbox);
+
+        Assert.True(outbox.FindProperty(nameof(NotificationOutbox.WorkflowInstanceId))!.IsNullable);
+        Assert.Equal(
+            300,
+            outbox.FindProperty(nameof(NotificationOutbox.NotificationOccurrenceKey))!.GetMaxLength());
+        Assert.Contains(outbox.GetIndexes(), index =>
+            index.IsUnique
+            && index.GetFilter() == "[NotificationOccurrenceKey] IS NOT NULL"
+            && index.Properties.Select(property => property.Name)
+                .SequenceEqual(["NotificationOccurrenceKey"]));
+        Assert.Contains(outbox.GetCheckConstraints(), constraint =>
+            constraint.Name == "CK_NotificationOutbox_Owner"
+            && constraint.Sql == "[WorkflowInstanceId] IS NOT NULL OR [NotificationOccurrenceKey] IS NOT NULL");
+    }
+
+    [Fact]
     public void SlaModelsConstrainMinuteRecurrence()
     {
         var designTimeModel = dbContext.GetService<IDesignTimeModel>().Model;

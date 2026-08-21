@@ -402,7 +402,8 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
         {
             entity.ToTable("NotificationOutbox");
             entity.HasKey(row => row.Id);
-            entity.Property(row => row.WorkflowInstanceId).HasMaxLength(150).IsRequired();
+            entity.Property(row => row.WorkflowInstanceId).HasMaxLength(150);
+            entity.Property(row => row.NotificationOccurrenceKey).HasMaxLength(300);
             entity.Property(row => row.BusinessObjectType).HasMaxLength(100).IsRequired();
             entity.Property(row => row.BusinessObjectId).HasMaxLength(150).IsRequired();
             entity.Property(row => row.NotificationType).HasMaxLength(100).IsRequired();
@@ -419,13 +420,17 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.SlaReminderKind).HasMaxLength(30);
             entity.Property(row => row.CancellationReason).HasMaxLength(500);
             entity.HasIndex(row => new
-                {
-                    row.WorkflowTaskSlaScheduleId,
-                    row.SlaOccurrenceAtUtc,
-                    row.SlaReminderKind
-                })
+            {
+                row.WorkflowTaskSlaScheduleId,
+                row.SlaOccurrenceAtUtc,
+                row.SlaReminderKind
+            })
                 .IsUnique()
                 .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL AND [SlaOccurrenceAtUtc] IS NOT NULL");
+            entity.HasIndex(row => row.NotificationOccurrenceKey)
+                .IsUnique()
+                .HasDatabaseName("UX_NotificationOutbox_NotificationOccurrenceKey")
+                .HasFilter("[NotificationOccurrenceKey] IS NOT NULL");
             entity.HasOne<WorkflowInstance>()
                 .WithMany()
                 .HasForeignKey(row => row.WorkflowInstanceId)
@@ -435,7 +440,15 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
                 .WithMany()
                 .HasForeignKey(row => row.WorkflowTaskSlaScheduleId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.ToTable(table => table.HasCheckConstraint("CK_NotificationOutbox_Status", "[Status] IN ('Pending', 'Processing', 'Sent', 'Cancelled')"));
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_NotificationOutbox_Owner",
+                    "[WorkflowInstanceId] IS NOT NULL OR [NotificationOccurrenceKey] IS NOT NULL");
+                table.HasCheckConstraint(
+                    "CK_NotificationOutbox_Status",
+                    "[Status] IN ('Pending', 'Processing', 'Sent', 'Cancelled')");
+            });
         });
 
         modelBuilder.Entity<IdempotencyRecord>(entity =>
