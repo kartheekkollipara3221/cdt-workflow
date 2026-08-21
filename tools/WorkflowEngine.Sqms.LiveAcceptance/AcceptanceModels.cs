@@ -81,9 +81,9 @@ public sealed record AcceptanceScenarioMatrix(IReadOnlyList<OpportunityScenario>
             SqmsKeys.OpportunityStates.Completed,
             10,
             [
-                new("01", 60m, "FAIR VALUE", SqmsKeys.BidStates.Accepted, true),
-                new("02", 50m, "PREMIUM", SqmsKeys.BidStates.PartiallyAccepted),
-                new("03", 40m, "DISCOUNT", SqmsKeys.BidStates.NotAccepted)
+                new("01", 40m, "FAIR VALUE", SqmsKeys.BidStates.Accepted, true),
+                new("02", 30m, "PREMIUM", SqmsKeys.BidStates.PartiallyAccepted),
+                new("03", 20m, "DISCOUNT", SqmsKeys.BidStates.NotAccepted)
             ])
     ]);
 }

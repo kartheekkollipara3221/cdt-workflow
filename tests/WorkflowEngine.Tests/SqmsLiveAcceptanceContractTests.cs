@@ -63,10 +63,27 @@ public sealed class SqmsLiveAcceptanceContractTests
         Assert.Equal(3, matrix.AllBids.Count);
         Assert.Collection(
             matrix.AllBids,
-            bid => Assert.Equal(SqmsKeys.BidStates.Accepted, bid.TerminalState),
-            bid => Assert.Equal(SqmsKeys.BidStates.PartiallyAccepted, bid.TerminalState),
-            bid => Assert.Equal(SqmsKeys.BidStates.NotAccepted, bid.TerminalState));
+            bid =>
+            {
+                Assert.Equal(40m, bid.RequestedAmount);
+                Assert.Equal(SqmsKeys.BidStates.Accepted, bid.TerminalState);
+            },
+            bid =>
+            {
+                Assert.Equal(30m, bid.RequestedAmount);
+                Assert.Equal(SqmsKeys.BidStates.PartiallyAccepted, bid.TerminalState);
+            },
+            bid =>
+            {
+                Assert.Equal(20m, bid.RequestedAmount);
+                Assert.Equal("DISCOUNT", bid.Category);
+                Assert.Equal(SqmsKeys.BidStates.NotAccepted, bid.TerminalState);
+            });
         Assert.All(matrix.AllBids, bid => Assert.True(bid.RequestedAmount > 0));
+        Assert.True(
+            matrix.AllBids
+                .Where(bid => bid.Category is "FAIR VALUE" or "PREMIUM")
+                .Sum(bid => bid.RequestedAmount) <= 100m);
     }
 
     [Fact]
