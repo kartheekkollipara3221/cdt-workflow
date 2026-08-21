@@ -120,4 +120,65 @@ public sealed class SqmsLiveAcceptanceContractTests
         Assert.DoesNotContain("DROP DATABASE", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("--reset", script, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void EvidenceVerifierJoinsSlaScheduleToTheActualTaskPrimaryKey()
+    {
+        Assert.Contains(
+            "task.[Id] = schedule.[WorkflowTaskId]",
+            AcceptanceEvidenceVerifier.SqmsSlaCountSql,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "task.[WorkflowTaskId]",
+            AcceptanceEvidenceVerifier.SqmsSlaCountSql,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(AcceptanceRunMode.Full)]
+    [InlineData(AcceptanceRunMode.VerifyOnly, "--verify-only")]
+    public void RunModeParserAllowsOnlyFullOrVerificationOnly(
+        AcceptanceRunMode expected,
+        params string[] args)
+    {
+        Assert.Equal(expected, AcceptanceRunModeParser.Parse(args));
+    }
+
+    [Fact]
+    public void RunModeParserRejectsUnknownArguments()
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            AcceptanceRunModeParser.Parse(["--unexpected"]));
+
+        Assert.Contains("--verify-only", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SmtpVerifierRequestsOnePageLargeEnoughForAllExpectedMessages()
+    {
+        Assert.Equal(
+            "/api/Messages?pageSize=100",
+            AcceptanceEvidenceVerifier.MessageListPath);
+    }
+
+    [Fact]
+    public void SmtpVerifierDownloadsTheCompleteRfc822MessageForEvidence()
+    {
+        Assert.Equal(
+            "/api/Messages/message-id/download",
+            AcceptanceEvidenceVerifier.MessageDownloadPath("message-id"));
+    }
+
+    [Fact]
+    public void SmtpVerifierCombinesDecodedMetadataWithTheDownloadedBody()
+    {
+        const string subject = "SQMS Opportunity Pending Seller Approval - SQMS Live Acceptance Opportunity A";
+        var evidence = AcceptanceEvidenceVerifier.CombineMessageEvidence(
+            $$"""{"subject":"{{subject}}","to":["seller@example.test"]}""",
+            "Subject: SQMS Opportunity Pending Seller Approval - SQMS Live Acceptance\r\n Opportunity A\r\n\r\nhttps://sqms.example.test/bids");
+
+        Assert.Contains(subject, evidence, StringComparison.Ordinal);
+        Assert.Contains("seller@example.test", evidence, StringComparison.Ordinal);
+        Assert.Contains("https://sqms.example.test/bids", evidence, StringComparison.Ordinal);
+    }
 }

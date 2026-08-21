@@ -9,9 +9,9 @@ using WorkflowEngine.Sqms.LiveAcceptance;
 
 try
 {
+    var runMode = AcceptanceRunModeParser.Parse(args);
     var configuration = new ConfigurationBuilder()
         .AddEnvironmentVariables()
-        .AddCommandLine(args)
         .Build();
     var connectionString = configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
@@ -43,8 +43,16 @@ try
         .BuildServiceProvider();
 
     await using var scope = services.CreateAsyncScope();
-    return await scope.ServiceProvider
-        .GetRequiredService<AcceptanceScenarioRunner>()
+    if (runMode == AcceptanceRunMode.VerifyOnly)
+    {
+        await scope.ServiceProvider
+            .GetRequiredService<AcceptanceEvidenceVerifier>()
+            .VerifyAsync(CancellationToken.None);
+        Console.Out.WriteLine("SQMS live acceptance verification-only PASS");
+        return 0;
+    }
+
+    return await scope.ServiceProvider.GetRequiredService<AcceptanceScenarioRunner>()
         .RunAsync(CancellationToken.None);
 }
 catch (Exception exception)

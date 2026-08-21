@@ -10,6 +10,25 @@ namespace WorkflowEngine.Sqms.LiveAcceptance;
 
 public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbContext)
 {
+    public const string MessageListPath = "/api/Messages?pageSize=100";
+
+    public static string MessageDownloadPath(string messageId) =>
+        $"/api/Messages/{Uri.EscapeDataString(messageId)}/download";
+
+    public static string CombineMessageEvidence(string metadataJson, string rawMessage)
+    {
+        using var metadata = JsonDocument.Parse(metadataJson);
+        return WebUtility.HtmlDecode(
+            string.Join('\n', AllStrings(metadata.RootElement)) + '\n' + rawMessage);
+    }
+
+    public const string SqmsSlaCountSql = """
+        SELECT COUNT(*)
+        FROM [dbo].[WorkflowTaskSlaSchedule] AS schedule
+        INNER JOIN [dbo].[WorkflowTask] AS task ON task.[Id] = schedule.[WorkflowTaskId]
+        WHERE task.[WorkflowInstanceId] LIKE N'WF-SQMS-%';
+        """;
+
     public async Task VerifyAsync(CancellationToken cancellationToken)
     {
         await VerifyDatabaseAsync(cancellationToken);
@@ -42,12 +61,7 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
             useMarker: false);
         await RequireCountAsync(
             "SQMS SLA schedules",
-            """
-            SELECT COUNT(*)
-            FROM [dbo].[WorkflowTaskSlaSchedule] AS schedule
-            INNER JOIN [dbo].[WorkflowTask] AS task ON task.[WorkflowTaskId] = schedule.[WorkflowTaskId]
-            WHERE task.[WorkflowInstanceId] LIKE N'WF-SQMS-%';
-            """,
+            SqmsSlaCountSql,
             0,
             cancellationToken,
             useMarker: false);
@@ -120,7 +134,7 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
     private async Task VerifySmtp4DevAsync(CancellationToken cancellationToken)
     {
         using var client = new HttpClient { BaseAddress = new Uri("http://localhost:5000") };
-        using var listResponse = await client.GetAsync("/api/Messages", cancellationToken);
+        using var listResponse = await client.GetAsync(MessageListPath, cancellationToken);
         listResponse.EnsureSuccessStatusCode();
         var listJson = await listResponse.Content.ReadAsStringAsync(cancellationToken);
         using var listDocument = JsonDocument.Parse(listJson);
@@ -131,15 +145,15 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
                 $"smtp4dev expected {AcceptanceConstants.ExpectedEmailCount} messages but returned {items.Length}.");
         }
 
-        var details = new List<string>(items.Length);
+        var messages = new List<string>(items.Length);
         foreach (var item in items)
         {
             var id = RequiredString(item, "id");
-            using var detailResponse = await client.GetAsync($"/api/Messages/{Uri.EscapeDataString(id)}", cancellationToken);
-            detailResponse.EnsureSuccessStatusCode();
-            using var detailDocument = JsonDocument.Parse(
-                await detailResponse.Content.ReadAsStringAsync(cancellationToken));
-            details.Add(WebUtility.HtmlDecode(string.Join('\n', AllStrings(detailDocument.RootElement))));
+            using var messageResponse = await client.GetAsync(MessageDownloadPath(id), cancellationToken);
+            messageResponse.EnsureSuccessStatusCode();
+            messages.Add(CombineMessageEvidence(
+                item.GetRawText(),
+                await messageResponse.Content.ReadAsStringAsync(cancellationToken)));
         }
 
         var outbox = await ReadOutboxAsync(cancellationToken);
@@ -154,9 +168,9 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
                 .Select(match => match.Value)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
-            var matching = details.Where(detail =>
-                    detail.Contains(row.Subject, StringComparison.Ordinal) &&
-                    expectedAddresses.All(address => detail.Contains(address, StringComparison.OrdinalIgnoreCase)))
+            var matching = messages.Where(message =>
+                    message.Contains(row.Subject, StringComparison.Ordinal) &&
+                    expectedAddresses.All(address => message.Contains(address, StringComparison.OrdinalIgnoreCase)))
                 .ToArray();
             if (matching.Length != 1)
             {
