@@ -1,5 +1,88 @@
 # Codex Handoff
 
+## 2026-08-20 SQMS Milestone 5 Gate
+
+### Current goal
+
+- Milestone 5 is implemented, committed, and verified. Stop before Milestone 6 Task 12 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Completed Task 8 in `9f8253c` (`feat(notifications): queue notification-only occurrences`).
+- Added the generic `IQueueWorkflowNotificationService`, active versioned route lookup, nullable-instance recipient resolution, template rendering/HTML encoding, immutable recipient/payload snapshots, deterministic occurrence replay, and concurrent unique-race recovery.
+- Preserved existing notification constructor call sites with nullable ownership annotations plus non-positional `NotificationOccurrenceKey` and `DisplayReference` properties. Existing workflow-owned outbox processing remains unchanged; occurrence-owned rows now deliver through the same sender path.
+- Completed Task 9 in `a7cdd00` (`feat(sqms): queue request-driven emails`).
+- Added trusted target-row enrichment for Seller approval and all three Bid disposition routes. Recipient addresses are normalized from target-API-resolved inputs; template values and URLs come only from target rows, configuration, timezone, and `TimeProvider`.
+- Preserved the original public `SqmsWorkflowService` constructor as an overload while adding the configured DI constructor.
+- Proved atomic rollback for missing effective date/amount/parent, unresolved recipients, and invalid URL.
+- Completed Task 10 in `f44140e` (`feat(sqms): add scheduled close and notifications`).
+- Added close-first scheduling, fixed-calendar +1/+14/+15/+16 behavior, catch-up, no obsolete reminder after close, quarter/year/occurrence grouping, stable occurrence keys, strict greater-than Bid classification, per-candidate failures, and per-Bid continuation.
+- Completed Task 11 in `8f65d81` (`feat(console): add SQMS scheduled command`).
+- Added the no-argument `run-sqms-scheduled` command, trailing optional registry handler, aggregate/failure output, nonzero failure exit, Console DI, checked-in disabled configuration, and README capability documentation.
+- Added disabled-integration safety in `1b9a4b8` (`fix(sqms): honor disabled scheduled integration`): checked-in disabled SQMS returns a successful zero-work run without querying DBA-owned SSQMS tables.
+
+### Changed files
+
+- `src/WorkflowEngine.Application/Notifications/IQueueWorkflowNotificationService.cs`
+- `src/WorkflowEngine.Application/Notifications/INotificationSender.cs`
+- `src/WorkflowEngine.Application/Notifications/IProcessNotificationOutboxService.cs`
+- `src/WorkflowEngine.Application/Commands/IRunSqmsScheduledCommandHandler.cs`
+- `src/WorkflowEngine.Application/Commands/CommandArgumentParser.cs`
+- `src/WorkflowEngine.Application/Commands/CommandRegistry.cs`
+- `src/WorkflowEngine.Application/Commands/ProcessNotificationOutboxCommandHandler.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/QueueWorkflowNotificationService.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/NotificationRecipientResolver.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/ConsoleNotificationSender.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs`
+- `src/WorkflowEngine.Infrastructure/DependencyInjection/InfrastructureServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Sqms/SqmsWorkflowService.cs`
+- `src/WorkflowEngine.Sqms/Contracts/ISqmsScheduledService.cs`
+- `src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs`
+- `src/WorkflowEngine.Sqms/Commands/RunSqmsScheduledCommandHandler.cs`
+- `src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Console/Program.cs`
+- `src/WorkflowEngine.Console/appsettings.json`
+- `src/WorkflowEngine.Console/appsettings.Development.json`
+- `tests/WorkflowEngine.Tests/NotificationOnlyQueueTests.cs`
+- `tests/WorkflowEngine.Tests/Phase5OutboxTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsWorkflowServiceTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsScheduledServiceTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsCommandTests.cs`
+- `tests/WorkflowEngine.Tests/CommandRegistryTests.cs`
+- `README.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Task 8 focused notification/outbox/sender gate: 20 passed, 0 failed.
+- Task 9 request-driven SQMS workflow/email gate: 15 passed, 0 failed.
+- Task 10 scheduler gate: 10 passed before the disabled guard; 11 scheduler tests pass after the guard.
+- Task 11 parser/registry/README gate: 31 passed, 0 failed.
+- Exact Milestone 5 plan stop gate: 39 passed, 0 failed; warning-as-error build passed with 0 warnings and 0 errors.
+- Final warning-as-error core build: passed with 0 warnings and 0 errors.
+- Final full SQL-backed core regression after all changes: 420 passed, 0 failed, 4 opt-in smtp4dev tests skipped.
+- Final full Workflow API regression: 68 passed, 0 failed.
+- Disposable `workflowengine_sqms_m5_gate_20260820`: `init-db`, `verify-seed`, `start-workflow`, existing public `02-submit-for-checker.json`, and disabled `run-sqms-scheduled` all passed; the database was deleted and `DB_ID` returned null.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 5 stop gate.
+2. Execute Milestone 6 Tasks 12-14: SQL-backed end-to-end SQMS coverage, the final CDT compatibility gate, deployment documentation, and final verification.
+3. Stop after the Milestone 6 quality gate.
+
+### Known risks
+
+- The scheduler behavior is fully unit-covered, while live SQL-backed scheduler/outbox integration is intentionally Task 12 in Milestone 6.
+- Checked-in SQMS remains disabled. Production enablement requires the DBA package, real recipient JSON values, real URLs, environment overrides, and external Task Scheduler configuration.
+- No production/shared application database was changed. Production SQL, push, merge, deployment, and scheduling remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 5 commits 9f8253c, a7cdd00, f44140e, 8f65d81, and 1b9a4b8 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Milestone 6 Tasks 12-14 with SQL-backed end-to-end coverage, final CDT compatibility, deployment documentation, and full verification. Stop at the Milestone 6 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
 ## 2026-08-20 SQMS Milestone 4 Gate
 
 ### Current goal
