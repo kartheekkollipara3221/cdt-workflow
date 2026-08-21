@@ -123,6 +123,37 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
                 route.RouteKey);
         }
 
+        if (string.Equals(
+                AcceptanceConstants.RunMarker,
+                "SQMS-EMAIL-LIVE-20260821",
+                StringComparison.Ordinal))
+        {
+            await RequireCountAsync(
+                "corrected email content mismatches",
+                """
+                SELECT COUNT(*)
+                FROM [dbo].[NotificationOutbox]
+                WHERE ([NotificationType] = N'SqmsOpportunityOpen'
+                       AND ([Subject] <> N'Q1 2030 Secondary Sale Opportunities - Open to Bidding: Response Required by 01/16/2030'
+                            OR [Body] NOT LIKE N'%View all Opportunities open for Bidding%'))
+                   OR ([NotificationType] = N'SqmsOpportunityReminder'
+                       AND [Subject] <> N'REMINDER Q1 2030 Secondary Sale Opportunities - Open to Bidding: Response Required by 01/16/2030')
+                   OR ([NotificationType] = N'SqmsOpportunityPendingSellerApproval'
+                       AND ([Subject] NOT LIKE N'Q1 2030 Secondary Sale Bids - %: Response Required by 01/22/2030'
+                            OR [Body] NOT LIKE N'%Link to approve or reject bids received:%'))
+                   OR ([NotificationType] = N'SqmsBidAccepted'
+                       AND [Body] NOT LIKE N'%has been accepted by the Seller for an effective date of 03/31/2030.%')
+                   OR ([NotificationType] = N'SqmsBidPartiallyAccepted'
+                       AND [Body] NOT LIKE N'%has been partially accepted by the Seller for an effective date of 03/31/2030.%')
+                   OR ([NotificationType] = N'SqmsBidNotAccepted'
+                       AND ([Body] NOT LIKE N'%has not been accepted by the Seller for an effective date of 03/31/2030.%'
+                            OR [Body] LIKE N'%Please confirm your buyer%'));
+                """,
+                0,
+                cancellationToken,
+                useMarker: false);
+        }
+
         await RequireTargetStateCountAsync("Opportunity", SqmsKeys.OpportunityStates.Completed, 2, cancellationToken);
         await RequireTargetStateCountAsync("Opportunity", SqmsKeys.OpportunityStates.NotFulfilled, 1, cancellationToken);
         await RequireTargetStateCountAsync("Bid", SqmsKeys.BidStates.Accepted, 6, cancellationToken);

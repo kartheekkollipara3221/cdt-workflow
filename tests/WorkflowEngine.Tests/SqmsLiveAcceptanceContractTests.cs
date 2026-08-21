@@ -19,6 +19,33 @@ public sealed class SqmsLiveAcceptanceContractTests
     }
 
     [Fact]
+    public void AcceptanceProfileDefaultsPreserveThePriorRetainedRun()
+    {
+        var profile = AcceptanceProfile.FromValues(null, null, null);
+
+        Assert.Equal("workflowengine_sqms_live_acceptance", profile.DatabaseName);
+        Assert.Equal("SQMS-LIVE-20260821", profile.RunMarker);
+        Assert.Equal(
+            new DateTimeOffset(2030, 1, 1, 15, 0, 0, TimeSpan.Zero),
+            profile.OpeningUtc);
+    }
+
+    [Fact]
+    public void AcceptanceProfileAcceptsAnExplicitIsolatedRun()
+    {
+        var profile = AcceptanceProfile.FromValues(
+            "workflowengine_sqms_email_live_acceptance",
+            "SQMS-EMAIL-LIVE-20260821",
+            "2030-01-01T15:00:00Z");
+
+        Assert.Equal("workflowengine_sqms_email_live_acceptance", profile.DatabaseName);
+        Assert.Equal("SQMS-EMAIL-LIVE-20260821", profile.RunMarker);
+        Assert.Equal(
+            new DateTimeOffset(2030, 1, 1, 15, 0, 0, TimeSpan.Zero),
+            profile.OpeningUtc);
+    }
+
+    [Fact]
     public void ScenarioMatrixContainsEveryTerminalOutcome()
     {
         var matrix = AcceptanceScenarioMatrix.Create();
@@ -117,6 +144,26 @@ public sealed class SqmsLiveAcceptanceContractTests
         Assert.Contains("003_verify_sqms_deployment.sql", script, StringComparison.Ordinal);
         Assert.Contains("-WindowStyle Hidden", script, StringComparison.Ordinal);
         Assert.Contains("sqms-live-acceptance-20260821", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("DROP DATABASE", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("--reset", script, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CorrectedEmailRunnerPinsNewEvidenceWithoutOverwritingThePriorRun()
+    {
+        var path = Path.Combine(
+            SqmsDatabasePackageTests.RepositoryRoot(),
+            "scripts",
+            "run-sqms-email-template-live-acceptance.ps1");
+
+        Assert.True(File.Exists(path), $"Missing corrected-email acceptance runner: {path}");
+        var script = File.ReadAllText(path);
+        Assert.Contains("workflowengine_sqms_email_live_acceptance", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS-EMAIL-LIVE-20260821", script, StringComparison.Ordinal);
+        Assert.Contains("sqms-email-live-acceptance-20260821", script, StringComparison.Ordinal);
+        Assert.Contains("006_verify_sqms_email_template_live_acceptance.sql", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS_LIVE_ACCEPTANCE_DATABASE", script, StringComparison.Ordinal);
+        Assert.Contains("-WindowStyle Hidden", script, StringComparison.Ordinal);
         Assert.DoesNotContain("DROP DATABASE", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("--reset", script, StringComparison.OrdinalIgnoreCase);
     }

@@ -8,6 +8,28 @@ namespace WorkflowEngine.Tests;
 public sealed class SqmsDatabasePackageTests
 {
     [Fact]
+    public void CorrectedEmailLiveVerifierIsReadOnlyAndChecksExactContent()
+    {
+        var path = Path.Combine(
+            RepositoryRoot(),
+            "sql",
+            "sqms",
+            "testing",
+            "006_verify_sqms_email_template_live_acceptance.sql");
+
+        Assert.True(File.Exists(path), $"Missing corrected-email live verifier: {path}");
+        var sql = File.ReadAllText(path);
+
+        Assert.Contains("SQMS-EMAIL-LIVE-20260821", sql, StringComparison.Ordinal);
+        Assert.Contains("REMINDER Q1 2030 Secondary Sale Opportunities", sql, StringComparison.Ordinal);
+        Assert.Contains("has been partially accepted by the Seller", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("UPDATE ", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DELETE ", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("INSERT ", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DROP ", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void LiveAcceptanceVerifierIsReadOnlyAndHasRequiredChecks()
     {
         var path = Path.Combine(
