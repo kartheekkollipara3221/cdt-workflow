@@ -47,8 +47,8 @@ public sealed class AcceptanceFixtureWriter(WorkflowDbContext dbContext)
                 }
             }
 
-            if (opportunityIds.Count != AcceptanceConstants.ExpectedOpportunityCount ||
-                bidIds.Count != AcceptanceConstants.ExpectedBidCount)
+            if (opportunityIds.Count != AcceptanceConstants.Definition.ExpectedOpportunityCount ||
+                bidIds.Count != AcceptanceConstants.Definition.ExpectedBidCount)
             {
                 throw new InvalidOperationException(
                     $"Fixture count mismatch: {opportunityIds.Count} Opportunities and {bidIds.Count} Bids.");

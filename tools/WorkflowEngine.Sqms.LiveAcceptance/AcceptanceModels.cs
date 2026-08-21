@@ -92,19 +92,68 @@ public sealed record AcceptanceManifest(
     IReadOnlyDictionary<string, int> OpportunityIds,
     IReadOnlyDictionary<string, int> BidIds);
 
+public sealed record AcceptanceScenarioDefinition(
+    AcceptanceScenarioMatrix Matrix,
+    IReadOnlyDictionary<string, int> ExpectedOpportunityStates,
+    IReadOnlyDictionary<string, int> ExpectedBidStates,
+    IReadOnlyDictionary<string, int> ExpectedEmailRoutes)
+{
+    public int ExpectedOpportunityCount => Matrix.Opportunities.Count;
+    public int ExpectedBidCount => Matrix.AllBids.Count;
+    public int ExpectedWorkflowInstanceCount => ExpectedOpportunityCount + ExpectedBidCount;
+    public int ExpectedEmailCount => ExpectedEmailRoutes.Values.Sum();
+    public int ExpectedBidsNotAllocated =>
+        Matrix.AllBids.Count(bid => bid.TerminalState == SqmsKeys.BidStates.NotAllocated);
+    public int ExpectedBidsMovedToIpgReview => ExpectedBidCount - ExpectedBidsNotAllocated;
+
+    public static AcceptanceScenarioDefinition Create(AcceptanceScenarioKind kind)
+    {
+        var matrix = AcceptanceScenarioMatrix.Create(kind);
+        return new(
+            matrix,
+            StateCounts(matrix.Opportunities.Select(row => row.TerminalState)),
+            StateCounts(matrix.AllBids.Select(row => row.TerminalState)),
+            BuildEmailRoutes(matrix));
+    }
+
+    private static IReadOnlyDictionary<string, int> StateCounts(IEnumerable<string> states) =>
+        states.GroupBy(state => state, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+
+    private static IReadOnlyDictionary<string, int> BuildEmailRoutes(AcceptanceScenarioMatrix matrix)
+    {
+        var routes = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [SqmsKeys.Routes.OpportunityOpen] = 1,
+            [SqmsKeys.Routes.OpportunityReminder] = 1,
+            [SqmsKeys.Routes.OpportunityPendingSellerApproval] = matrix.Opportunities.Count
+        };
+        foreach (var group in matrix.AllBids
+                     .Where(bid => bid.TerminalState != SqmsKeys.BidStates.NotAllocated)
+                     .GroupBy(bid => BidRoute(bid.TerminalState), StringComparer.Ordinal))
+        {
+            routes[group.Key] = group.Count();
+        }
+        return routes;
+    }
+
+    private static string BidRoute(string terminalState) => terminalState switch
+    {
+        SqmsKeys.BidStates.Accepted => SqmsKeys.Routes.BidAccepted,
+        SqmsKeys.BidStates.PartiallyAccepted => SqmsKeys.Routes.BidPartiallyAccepted,
+        SqmsKeys.BidStates.NotAccepted => SqmsKeys.Routes.BidNotAccepted,
+        _ => throw new ArgumentOutOfRangeException(nameof(terminalState), terminalState, null)
+    };
+}
+
 public sealed record ExpectedEmailRoute(string RouteKey, int Count);
 
 public static class AcceptanceEmailPlan
 {
     public static IReadOnlyList<ExpectedEmailRoute> Create() =>
-    [
-        new(SqmsKeys.Routes.OpportunityOpen, 1),
-        new(SqmsKeys.Routes.OpportunityReminder, 1),
-        new(SqmsKeys.Routes.OpportunityPendingSellerApproval, 3),
-        new(SqmsKeys.Routes.BidAccepted, 6),
-        new(SqmsKeys.Routes.BidPartiallyAccepted, 4),
-        new(SqmsKeys.Routes.BidNotAccepted, 4)
-    ];
+        AcceptanceConstants.Definition.ExpectedEmailRoutes
+            .Select(route => new ExpectedEmailRoute(route.Key, route.Value))
+            .ToArray();
 }
 
 public sealed record ExpectedOperation(

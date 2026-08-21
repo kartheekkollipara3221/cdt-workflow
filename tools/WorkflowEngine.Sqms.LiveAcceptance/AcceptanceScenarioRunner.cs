@@ -33,7 +33,8 @@ public sealed class AcceptanceScenarioRunner(
             !string.Equals(processed.SenderName, "Smtp", StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"Outbox expected 19 SMTP deliveries but processed {processed.Processed.Count}; " +
+                $"Outbox expected {AcceptanceConstants.ExpectedEmailCount} SMTP deliveries " +
+                $"but processed {processed.Processed.Count}; " +
                 $"failure={processed.Failure?.DisplayReference ?? "NONE"}.");
         }
 
@@ -151,11 +152,20 @@ public sealed class AcceptanceScenarioRunner(
 
     private async Task RunScheduledPhasesAsync(CancellationToken cancellationToken)
     {
+        var definition = AcceptanceConstants.Definition;
         await RunScheduledAsync("OPEN", AcceptanceConstants.OpenRunUtc, 0, 0, 0, 1, 0, cancellationToken);
         await RunScheduledReplayAsync("OPEN-REPLAY", AcceptanceConstants.OpenRunUtc, 1, cancellationToken);
         await RunScheduledAsync("REMINDER", AcceptanceConstants.ReminderRunUtc, 0, 0, 0, 0, 1, cancellationToken);
         await RunScheduledReplayAsync("REMINDER-REPLAY", AcceptanceConstants.ReminderRunUtc, 2, cancellationToken);
-        await RunScheduledAsync("CLOSE", AcceptanceConstants.CloseRunUtc, 3, 14, 1, 0, 0, cancellationToken);
+        await RunScheduledAsync(
+            "CLOSE",
+            AcceptanceConstants.CloseRunUtc,
+            definition.ExpectedOpportunityCount,
+            definition.ExpectedBidsMovedToIpgReview,
+            definition.ExpectedBidsNotAllocated,
+            0,
+            0,
+            cancellationToken);
         await RunScheduledReplayAsync("CLOSE-REPLAY", AcceptanceConstants.CloseRunUtc, 0, cancellationToken);
     }
 
@@ -252,35 +262,65 @@ public sealed class AcceptanceScenarioRunner(
             }
         }
 
-        await CompleteOpportunityAAsync(manifest.OpportunityIds["A"], cancellationToken);
-        await CompleteOpportunityBAsync(manifest.OpportunityIds["B"], cancellationToken);
-        await CompleteOpportunityCAsync(manifest.OpportunityIds["C"], cancellationToken);
+        foreach (var opportunity in matrix.Opportunities)
+        {
+            await CompleteOpportunityAsync(
+                opportunity,
+                manifest.OpportunityIds[opportunity.Key],
+                cancellationToken);
+        }
     }
 
-    private async Task CompleteOpportunityAAsync(int id, CancellationToken cancellationToken)
+    private Task CompleteOpportunityAsync(
+        OpportunityScenario opportunity,
+        int id,
+        CancellationToken cancellationToken) => opportunity.AllocationPath switch
+    {
+        "AWAITING ALLOCATION -> COMPLETED" =>
+            CompleteAwaitingAllocationAsync(opportunity.Key, id, cancellationToken),
+        "PARTIALLY ALLOCATED -> COMPLETED" =>
+            CompletePartiallyAllocatedAsync(opportunity.Key, id, cancellationToken),
+        "NOT FULFILLED" => CompleteNotFulfilledAsync(opportunity.Key, id, cancellationToken),
+        _ => throw new InvalidOperationException(
+            $"Unknown Opportunity allocation path '{opportunity.AllocationPath}'.")
+    };
+
+    private async Task CompleteAwaitingAllocationAsync(
+        string key,
+        int id,
+        CancellationToken cancellationToken)
     {
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.RequestSellerApproval, 7, 8,
-            SqmsKeys.OpportunityStates.PendingSellerApproval, AcceptanceConstants.Ipg, SellerRecipients("a"), cancellationToken);
+            SqmsKeys.OpportunityStates.PendingSellerApproval, AcceptanceConstants.Ipg,
+            SellerRecipients(key.ToLowerInvariant()), cancellationToken);
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.MarkAwaitingAllocation, 8, 9,
             SqmsKeys.OpportunityStates.AwaitingAllocation, AcceptanceConstants.Ipg, NoRecipients, cancellationToken);
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.Complete, 9, 10,
             SqmsKeys.OpportunityStates.Completed, AcceptanceConstants.Ipg, NoRecipients, cancellationToken);
     }
 
-    private async Task CompleteOpportunityBAsync(int id, CancellationToken cancellationToken)
+    private async Task CompletePartiallyAllocatedAsync(
+        string key,
+        int id,
+        CancellationToken cancellationToken)
     {
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.RequestSellerApproval, 5, 6,
-            SqmsKeys.OpportunityStates.PendingSellerApproval, AcceptanceConstants.Ipg, SellerRecipients("b"), cancellationToken);
+            SqmsKeys.OpportunityStates.PendingSellerApproval, AcceptanceConstants.Ipg,
+            SellerRecipients(key.ToLowerInvariant()), cancellationToken);
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.MarkPartiallyAllocated, 6, 7,
             SqmsKeys.OpportunityStates.PartiallyAllocated, AcceptanceConstants.Ipg, NoRecipients, cancellationToken);
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.Complete, 7, 8,
             SqmsKeys.OpportunityStates.Completed, AcceptanceConstants.Ipg, NoRecipients, cancellationToken);
     }
 
-    private async Task CompleteOpportunityCAsync(int id, CancellationToken cancellationToken)
+    private async Task CompleteNotFulfilledAsync(
+        string key,
+        int id,
+        CancellationToken cancellationToken)
     {
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.RequestSellerApproval, 5, 6,
-            SqmsKeys.OpportunityStates.PendingSellerApproval, AcceptanceConstants.Ipg, SellerRecipients("c"), cancellationToken);
+            SqmsKeys.OpportunityStates.PendingSellerApproval, AcceptanceConstants.Ipg,
+            SellerRecipients(key.ToLowerInvariant()), cancellationToken);
         await ExecuteOpportunityActionAsync(id, SqmsKeys.OpportunityActions.MarkNotFulfilled, 6, 7,
             SqmsKeys.OpportunityStates.NotFulfilled, AcceptanceConstants.Ipg, NoRecipients, cancellationToken);
     }

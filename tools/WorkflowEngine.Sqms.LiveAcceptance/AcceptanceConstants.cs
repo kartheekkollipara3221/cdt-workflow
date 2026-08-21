@@ -6,14 +6,17 @@ namespace WorkflowEngine.Sqms.LiveAcceptance;
 public static class AcceptanceConstants
 {
     private static readonly AcceptanceProfile Profile = AcceptanceProfile.FromEnvironment();
+    private static readonly AcceptanceScenarioDefinition ScenarioDefinition =
+        AcceptanceScenarioDefinition.Create(Profile.ScenarioKind);
 
     public static string DatabaseName => Profile.DatabaseName;
     public static string RunMarker => Profile.RunMarker;
     public static AcceptanceScenarioKind ScenarioKind => Profile.ScenarioKind;
     public static Uri Smtp4DevBaseAddress => Profile.Smtp4DevBaseAddress;
-    public const int ExpectedOpportunityCount = 3;
-    public const int ExpectedBidCount = 15;
-    public const int ExpectedEmailCount = 19;
+    public static AcceptanceScenarioDefinition Definition => ScenarioDefinition;
+    public static int ExpectedOpportunityCount => Definition.ExpectedOpportunityCount;
+    public static int ExpectedBidCount => Definition.ExpectedBidCount;
+    public static int ExpectedEmailCount => Definition.ExpectedEmailCount;
 
     public static DateTimeOffset OpeningUtc => Profile.OpeningUtc;
 

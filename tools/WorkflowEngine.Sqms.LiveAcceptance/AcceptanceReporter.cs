@@ -97,6 +97,6 @@ public sealed class AcceptanceReporter(TextWriter output)
         output.WriteLine($"opportunities={manifest.OpportunityIds.Count}");
         output.WriteLine($"bids={manifest.BidIds.Count}");
         output.WriteLine($"emails={AcceptanceConstants.ExpectedEmailCount}");
-        output.WriteLine("smtp4dev=http://localhost:5000");
+        output.WriteLine($"smtp4dev={AcceptanceConstants.Smtp4DevBaseAddress}");
     }
 }

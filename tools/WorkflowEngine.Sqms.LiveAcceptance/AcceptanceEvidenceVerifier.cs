@@ -40,20 +40,21 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
 
     private async Task VerifyDatabaseAsync(CancellationToken cancellationToken)
     {
+        var definition = AcceptanceConstants.Definition;
         await RequireCountAsync(
             "Opportunity fixtures",
             "SELECT COUNT(*) FROM [SSQMS].[Opportunity] WHERE [Account] LIKE @marker;",
-            3,
+            definition.ExpectedOpportunityCount,
             cancellationToken);
         await RequireCountAsync(
             "Bid fixtures",
             "SELECT COUNT(*) FROM [SSQMS].[Bid] WHERE [AccountNumber] LIKE @marker;",
-            15,
+            definition.ExpectedBidCount,
             cancellationToken);
         await RequireCountAsync(
             "workflow instances",
             "SELECT COUNT(*) FROM [dbo].[WorkflowInstance] WHERE [WorkflowKey] IN (N'SqmsOpportunity', N'SqmsBid');",
-            18,
+            definition.ExpectedWorkflowInstanceCount,
             cancellationToken,
             useMarker: false);
         await RequireCountAsync(
@@ -129,7 +130,8 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
         if (string.Equals(
                 AcceptanceConstants.RunMarker,
                 "SQMS-EMAIL-LIVE-20260821",
-                StringComparison.Ordinal))
+                StringComparison.Ordinal) ||
+            AcceptanceConstants.ScenarioKind == AcceptanceScenarioKind.SingleLifecycle)
         {
             await RequireCountAsync(
                 "corrected email content mismatches",
@@ -157,17 +159,20 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
                 useMarker: false);
         }
 
-        await RequireTargetStateCountAsync("Opportunity", SqmsKeys.OpportunityStates.Completed, 2, cancellationToken);
-        await RequireTargetStateCountAsync("Opportunity", SqmsKeys.OpportunityStates.NotFulfilled, 1, cancellationToken);
-        await RequireTargetStateCountAsync("Bid", SqmsKeys.BidStates.Accepted, 6, cancellationToken);
-        await RequireTargetStateCountAsync("Bid", SqmsKeys.BidStates.PartiallyAccepted, 4, cancellationToken);
-        await RequireTargetStateCountAsync("Bid", SqmsKeys.BidStates.NotAccepted, 4, cancellationToken);
-        await RequireTargetStateCountAsync("Bid", SqmsKeys.BidStates.NotAllocated, 1, cancellationToken);
+        foreach (var state in definition.ExpectedOpportunityStates)
+        {
+            await RequireTargetStateCountAsync(
+                "Opportunity", state.Key, state.Value, cancellationToken);
+        }
+        foreach (var state in definition.ExpectedBidStates)
+        {
+            await RequireTargetStateCountAsync("Bid", state.Key, state.Value, cancellationToken);
+        }
     }
 
     private async Task VerifySmtp4DevAsync(CancellationToken cancellationToken)
     {
-        using var client = new HttpClient { BaseAddress = new Uri("http://localhost:5000") };
+        using var client = new HttpClient { BaseAddress = AcceptanceConstants.Smtp4DevBaseAddress };
         using var listResponse = await client.GetAsync(MessageListPath, cancellationToken);
         listResponse.EnsureSuccessStatusCode();
         var listJson = await listResponse.Content.ReadAsStringAsync(cancellationToken);

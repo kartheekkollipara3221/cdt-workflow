@@ -162,6 +162,49 @@ public sealed class SqmsLiveAcceptanceContractTests
     }
 
     [Fact]
+    public void SingleLifecycleDefinitionDerivesExactRuntimeAndEmailExpectations()
+    {
+        var definition = AcceptanceScenarioDefinition.Create(AcceptanceScenarioKind.SingleLifecycle);
+
+        Assert.Equal(1, definition.ExpectedOpportunityCount);
+        Assert.Equal(3, definition.ExpectedBidCount);
+        Assert.Equal(4, definition.ExpectedWorkflowInstanceCount);
+        Assert.Equal(6, definition.ExpectedEmailCount);
+        Assert.Equal(1, definition.ExpectedOpportunityStates[SqmsKeys.OpportunityStates.Completed]);
+        Assert.Equal(1, definition.ExpectedBidStates[SqmsKeys.BidStates.Accepted]);
+        Assert.Equal(1, definition.ExpectedBidStates[SqmsKeys.BidStates.PartiallyAccepted]);
+        Assert.Equal(1, definition.ExpectedBidStates[SqmsKeys.BidStates.NotAccepted]);
+        Assert.Equal(1, definition.ExpectedEmailRoutes[SqmsKeys.Routes.OpportunityOpen]);
+        Assert.Equal(1, definition.ExpectedEmailRoutes[SqmsKeys.Routes.OpportunityReminder]);
+        Assert.Equal(1, definition.ExpectedEmailRoutes[SqmsKeys.Routes.OpportunityPendingSellerApproval]);
+        Assert.Equal(1, definition.ExpectedEmailRoutes[SqmsKeys.Routes.BidAccepted]);
+        Assert.Equal(1, definition.ExpectedEmailRoutes[SqmsKeys.Routes.BidPartiallyAccepted]);
+        Assert.Equal(1, definition.ExpectedEmailRoutes[SqmsKeys.Routes.BidNotAccepted]);
+        Assert.Equal(3, definition.ExpectedBidsMovedToIpgReview);
+        Assert.Equal(0, definition.ExpectedBidsNotAllocated);
+    }
+
+    [Fact]
+    public void ComprehensiveDefinitionPreservesPriorRetainedExpectations()
+    {
+        var definition = AcceptanceScenarioDefinition.Create(AcceptanceScenarioKind.Comprehensive);
+
+        Assert.Equal(3, definition.ExpectedOpportunityCount);
+        Assert.Equal(15, definition.ExpectedBidCount);
+        Assert.Equal(18, definition.ExpectedWorkflowInstanceCount);
+        Assert.Equal(19, definition.ExpectedEmailCount);
+        Assert.Equal(2, definition.ExpectedOpportunityStates[SqmsKeys.OpportunityStates.Completed]);
+        Assert.Equal(1, definition.ExpectedOpportunityStates[SqmsKeys.OpportunityStates.NotFulfilled]);
+        Assert.Equal(6, definition.ExpectedBidStates[SqmsKeys.BidStates.Accepted]);
+        Assert.Equal(4, definition.ExpectedBidStates[SqmsKeys.BidStates.PartiallyAccepted]);
+        Assert.Equal(4, definition.ExpectedBidStates[SqmsKeys.BidStates.NotAccepted]);
+        Assert.Equal(1, definition.ExpectedBidStates[SqmsKeys.BidStates.NotAllocated]);
+        Assert.Equal(19, definition.ExpectedEmailRoutes.Values.Sum());
+        Assert.Equal(14, definition.ExpectedBidsMovedToIpgReview);
+        Assert.Equal(1, definition.ExpectedBidsNotAllocated);
+    }
+
+    [Fact]
     public void PowerShellRunnerPinsSafeDatabasePackageAndHiddenSmtp4Dev()
     {
         var path = Path.Combine(
