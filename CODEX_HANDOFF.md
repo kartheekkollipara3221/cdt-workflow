@@ -1,44 +1,65 @@
 # Codex Handoff
 
-## 2026-08-20 SQMS Milestone 2 Action-Count Decision
+## 2026-08-20 SQMS Milestone 2 Gate
 
 ### Current goal
 
-- Continue Milestone 2 Task 3 using the user-approved corrected metadata counts.
+- Milestone 2 is implemented, committed, and verified. Stop before Milestone 3 and await the user's review/authorization to continue.
 
 ### Completed changes
 
-- Completed and committed Task 2 as `5200ba2` (`feat(db): add notification occurrence ownership`).
-- Made `NotificationOutbox.WorkflowInstanceId` nullable, added `NotificationOccurrenceKey`, its filtered unique index, and the owner check constraint while retaining the existing workflow FK and SLA mappings.
-- Added the fixed EF migration `20260820200000_AddNotificationOccurrenceKey` for local/test parity.
-- Added authoritative, rerunnable DBA DDL in `sql/sqms/001_sqms_notification_outbox_ddl.sql` with catalog validation, dependency-safe alteration, transaction rollback, and no `SSQMS` DDL.
-- Added model, migration, and SQL contract tests. The focused Task 2 gate passed 42 tests.
+- Completed Task 2 in `5200ba2`: made `NotificationOutbox.WorkflowInstanceId` nullable, added `NotificationOccurrenceKey`, its filtered unique index, the owner check constraint, the fixed local/test EF migration, and authoritative DBA DDL.
+- Completed Task 3 in `241de56`: added the rerunnable SQMS metadata DML, read-only deployment verifier, exact target-table test DDL, and outer-transaction rollback harness.
+- Applied the user-approved metadata counts: Opportunity `10 states / 10 actions / 3 roles / 12 transitions / 3 routes`; Bid `8 states / 8 actions / 4 roles / 8 transitions / 3 routes`; zero tasks and zero SLA policies.
+- Completed Task 4 in `5558403`: created real active/completed Portfolio Trade history through existing services, reconstructed the legacy outbox shape, applied the exact `001` DDL twice, and proved a SHA-256 hash over every legacy outbox column was unchanged.
+- Proved old-style workflow-owned inserts still work, ownerless rows fail, notification-occurrence-owned rows work, and duplicate occurrence keys fail.
+- The compatibility test exposed and fixed a SQL Server batch-compilation defect by deferring the new-column index/check DDL through `sp_executesql` inside the same transaction.
+- Reran the full DBA package in an outer rollback transaction on `workflowengine_sqms_gate_20260820`; verification and rollback passed, and the isolated database was deleted.
 
-### Current blocker
+### Changed files
 
-- Resolved by the user: preserve all eight Bid actions and treat `Internal start` as orchestration shorthand rather than a persisted transition.
-- Correct counts are Opportunity `10 states / 10 actions / 3 roles / 12 transitions / 3 routes` and Bid `8 states / 8 actions / 4 roles / 8 transitions / 3 routes`.
+- `src/WorkflowEngine.Infrastructure/Persistence/Entities/NotificationOutbox.cs`
+- `src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs`
+- `src/WorkflowEngine.Infrastructure/Migrations/20260820200000_AddNotificationOccurrenceKey.cs`
+- `src/WorkflowEngine.Infrastructure/Migrations/20260820200000_AddNotificationOccurrenceKey.Designer.cs`
+- `src/WorkflowEngine.Infrastructure/Migrations/WorkflowDbContextModelSnapshot.cs`
+- `src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs`
+- `sql/sqms/001_sqms_notification_outbox_ddl.sql`
+- `sql/sqms/002_sqms_workflow_metadata_dml.sql`
+- `sql/sqms/003_verify_sqms_deployment.sql`
+- `sql/sqms/testing/000_create_sqms_test_tables.sql`
+- `sql/sqms/testing/004_validate_sqms_package_in_rollback.sql`
+- `tests/WorkflowEngine.Tests/SchemaConstraintTests.cs`
+- `tests/WorkflowEngine.Tests/MigrationSchemaTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsDatabasePackageTests.cs`
+- `tests/WorkflowEngine.Tests/CdtSqmsCompatibilityTests.cs`
 
 ### Build/test status
 
-- Task 2 warning-as-error build: passed with 0 warnings and 0 errors.
-- Task 2 focused model/migration/package tests: 42 passed, 0 failed.
-- Task 3 DML/verifier work has not started; no action-count assumption was implemented.
+- Milestone 2 warning-as-error core build: passed with 0 warnings and 0 errors.
+- Milestone 2 focused schema/migration/package/compatibility gate: 44 passed, 0 failed.
+- Full SQL-backed core regression: 348 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- Existing built Workflow API regression assembly: 68 passed, 0 failed.
+- A clean Workflow API rebuild was not available because its restore state attempted blocked NuGet access; no API source or public contract changed in this milestone.
+- The first full-core rerun overlapped an orphaned prior test process and produced shared-test-database collisions; both owned test processes were stopped and the clean single-process rerun passed.
 
 ### Remaining tasks
 
-1. Complete Task 3 DBA DML/verifier/rollback tests with the corrected counts.
-2. Complete Task 4 exact-DDL-twice CDT compatibility and stop at the Milestone 2 gate.
+1. Obtain user approval to proceed beyond the Milestone 2 stop gate.
+2. Execute plan Tasks 5-8 for Milestone 3 only: SQMS persistence/parsing/links, opportunity start/action services, bid action service, and notification-only outbox delivery support.
+3. Stop again after the Milestone 3 quality gate.
 
 ### Known risks
 
-- Do not remove or merge an approved Bid action merely to satisfy the erroneous count.
-- No production SQL has been run. The local production-style database was not changed by this milestone work.
+- No production or shared application database was changed. All SQL execution used disposable, explicitly named local test databases that were deleted.
+- Production still requires the DBA to run `001`, `002`, and `003`; EF startup must not apply these changes in production.
+- Static deployment recipient arrays and final environment URLs remain deployment inputs, not hardcoded runtime values.
+- Production SQL, push, merge, deployment, and scheduling remain unauthorized.
 
 ### Next-session prompt
 
 ```text
-Resume Milestone 2 from commit 5200ba2 after the user resolves the Bid action-count contradiction. If eight is approved, update Task 3's expected count from 7 to 8, preserve all nine approved Bid transitions, then continue TDD for sql/sqms/002, 003, testing/000, and testing/004. Stop after the Milestone 2 compatibility gate. Do not run production SQL.
+Continue from SQMS Milestone 2 commit 5558403 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Tasks 5-8 only with TDD, preserve the thin in-process boundary and existing public contracts, and stop at the Milestone 3 gate. Do not push, deploy, run production SQL, or enable scheduling.
 ```
 
 ## 2026-08-20 SQMS Milestone 1 Gate
