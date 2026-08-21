@@ -8,6 +8,30 @@ namespace WorkflowEngine.Tests;
 public sealed class SqmsDatabasePackageTests
 {
     [Fact]
+    public void LiveAcceptanceVerifierIsReadOnlyAndHasRequiredChecks()
+    {
+        var path = Path.Combine(
+            RepositoryRoot(),
+            "sql",
+            "sqms",
+            "testing",
+            "005_verify_sqms_live_acceptance.sql");
+
+        Assert.True(File.Exists(path), $"Missing SQMS live acceptance verifier: {path}");
+        var sql = File.ReadAllText(path);
+
+        Assert.Contains("SET NOCOUNT ON", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SQMS-LIVE-20260821", sql, StringComparison.Ordinal);
+        Assert.Contains("ExpectedOpportunityCount", sql, StringComparison.Ordinal);
+        Assert.Contains("ExpectedBidCount", sql, StringComparison.Ordinal);
+        Assert.Contains("ExpectedEmailCount", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("UPDATE ", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DELETE ", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("INSERT ", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DROP ", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void NotificationOutboxDdlHasRequiredTransactionAndOwnershipGuards()
     {
         var path = Path.Combine(
