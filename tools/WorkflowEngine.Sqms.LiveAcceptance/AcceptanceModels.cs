@@ -70,6 +70,21 @@ public sealed record AcceptanceManifest(
     IReadOnlyDictionary<string, int> OpportunityIds,
     IReadOnlyDictionary<string, int> BidIds);
 
+public sealed record ExpectedEmailRoute(string RouteKey, int Count);
+
+public static class AcceptanceEmailPlan
+{
+    public static IReadOnlyList<ExpectedEmailRoute> Create() =>
+    [
+        new(SqmsKeys.Routes.OpportunityOpen, 1),
+        new(SqmsKeys.Routes.OpportunityReminder, 1),
+        new(SqmsKeys.Routes.OpportunityPendingSellerApproval, 3),
+        new(SqmsKeys.Routes.BidAccepted, 6),
+        new(SqmsKeys.Routes.BidPartiallyAccepted, 4),
+        new(SqmsKeys.Routes.BidNotAccepted, 4)
+    ];
+}
+
 public sealed record ExpectedOperation(
     string Method,
     string? ActionKey,

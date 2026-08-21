@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Contracts;
+using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Sqms.Contracts;
 
@@ -9,12 +10,37 @@ namespace WorkflowEngine.Sqms.LiveAcceptance;
 
 public sealed class AcceptanceScenarioRunner(
     ISqmsWorkflowService workflow,
+    ISqmsScheduledService scheduled,
+    IProcessNotificationOutboxService outbox,
     WorkflowDbContext dbContext,
     AcceptanceFixtureWriter fixtureWriter,
-    AcceptanceReporter reporter)
+    AcceptanceReporter reporter,
+    AcceptanceTimeProvider clock,
+    AcceptanceEvidenceVerifier evidenceVerifier)
 {
     private static readonly IReadOnlyDictionary<string, IReadOnlyList<WorkflowRecipientInput>> NoRecipients =
         new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal);
+
+    public async Task<int> RunAsync(CancellationToken cancellationToken)
+    {
+        var manifest = await CreateFixturesAndDrivePreScheduleAsync(cancellationToken);
+        await RunScheduledPhasesAsync(cancellationToken);
+        await DrivePostScheduleAsync(manifest, cancellationToken);
+        var processed = await outbox.ProcessAsync(cancellationToken);
+        reporter.WriteOutbox(processed);
+        if (processed.Failure is not null ||
+            processed.Processed.Count != AcceptanceConstants.ExpectedEmailCount ||
+            !string.Equals(processed.SenderName, "Smtp", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Outbox expected 19 SMTP deliveries but processed {processed.Processed.Count}; " +
+                $"failure={processed.Failure?.DisplayReference ?? "NONE"}.");
+        }
+
+        await evidenceVerifier.VerifyAsync(cancellationToken);
+        reporter.WriteSummary(manifest);
+        return 0;
+    }
 
     public async Task<AcceptanceManifest> CreateFixturesAndDrivePreScheduleAsync(
         CancellationToken cancellationToken)
@@ -121,6 +147,58 @@ public sealed class AcceptanceScenarioRunner(
         }
 
         return manifest;
+    }
+
+    private async Task RunScheduledPhasesAsync(CancellationToken cancellationToken)
+    {
+        await RunScheduledAsync("OPEN", AcceptanceConstants.OpenRunUtc, 0, 0, 0, 1, 0, cancellationToken);
+        await RunScheduledReplayAsync("OPEN-REPLAY", AcceptanceConstants.OpenRunUtc, 1, cancellationToken);
+        await RunScheduledAsync("REMINDER", AcceptanceConstants.ReminderRunUtc, 0, 0, 0, 0, 1, cancellationToken);
+        await RunScheduledReplayAsync("REMINDER-REPLAY", AcceptanceConstants.ReminderRunUtc, 2, cancellationToken);
+        await RunScheduledAsync("CLOSE", AcceptanceConstants.CloseRunUtc, 3, 14, 1, 0, 0, cancellationToken);
+        await RunScheduledReplayAsync("CLOSE-REPLAY", AcceptanceConstants.CloseRunUtc, 0, cancellationToken);
+    }
+
+    private async Task RunScheduledAsync(
+        string stage,
+        DateTimeOffset now,
+        int expectedClosed,
+        int expectedIpg,
+        int expectedNotAllocated,
+        int expectedOpen,
+        int expectedReminder,
+        CancellationToken cancellationToken)
+    {
+        clock.SetUtcNow(now);
+        var result = await scheduled.RunAsync(cancellationToken);
+        reporter.WriteScheduled(stage, result);
+        if (!result.Success ||
+            result.OpportunitiesClosed != expectedClosed ||
+            result.BidsMovedToIpgReview != expectedIpg ||
+            result.BidsNotAllocated != expectedNotAllocated ||
+            result.OpenNotificationsQueued != expectedOpen ||
+            result.ReminderNotificationsQueued != expectedReminder)
+        {
+            throw new InvalidOperationException($"Scheduled stage {stage} did not match the acceptance counts.");
+        }
+    }
+
+    private async Task RunScheduledReplayAsync(
+        string stage,
+        DateTimeOffset now,
+        int expectedAlreadyQueued,
+        CancellationToken cancellationToken)
+    {
+        clock.SetUtcNow(now);
+        var result = await scheduled.RunAsync(cancellationToken);
+        reporter.WriteScheduled(stage, result);
+        if (!result.Success || result.AlreadyQueued != expectedAlreadyQueued ||
+            result.OpportunitiesClosed != 0 || result.BidsMovedToIpgReview != 0 ||
+            result.BidsNotAllocated != 0 || result.OpenNotificationsQueued != 0 ||
+            result.ReminderNotificationsQueued != 0)
+        {
+            throw new InvalidOperationException($"Scheduled replay stage {stage} was not idempotent.");
+        }
     }
 
     public async Task DrivePostScheduleAsync(

@@ -13,6 +13,10 @@ public static class AcceptanceConstants
     public static readonly DateTimeOffset OpeningUtc =
         new(2030, 1, 1, 15, 0, 0, TimeSpan.Zero);
 
+    public static DateTimeOffset OpenRunUtc => OpeningUtc.AddDays(1);
+    public static DateTimeOffset ReminderRunUtc => OpeningUtc.AddDays(14);
+    public static DateTimeOffset CloseRunUtc => OpeningUtc.AddDays(16);
+
     public static readonly SqmsActor Mfo =
         new("sqms-live-mfo", "SQMS Live MFO", [SqmsKeys.Roles.Mfo]);
 

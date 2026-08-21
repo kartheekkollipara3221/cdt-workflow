@@ -1,3 +1,4 @@
+using WorkflowEngine.Sqms;
 using WorkflowEngine.Sqms.LiveAcceptance;
 
 namespace WorkflowEngine.Tests;
@@ -84,5 +85,18 @@ public sealed class SqmsLiveAcceptanceContractTests
         Assert.Equal(7, plan.OpportunityC.Final.ExpectedVersion);
         Assert.Equal(7, plan.Bid01.Final.ExpectedVersion);
         Assert.Equal(3, plan.Bid04.Final.ExpectedVersion);
+    }
+
+    [Fact]
+    public void CalendarAndEmailPlanAreExact()
+    {
+        Assert.Equal(AcceptanceConstants.OpeningUtc.AddDays(1), AcceptanceConstants.OpenRunUtc);
+        Assert.Equal(AcceptanceConstants.OpeningUtc.AddDays(14), AcceptanceConstants.ReminderRunUtc);
+        Assert.Equal(AcceptanceConstants.OpeningUtc.AddDays(16), AcceptanceConstants.CloseRunUtc);
+        var expected = AcceptanceEmailPlan.Create();
+        Assert.Equal(19, expected.Sum(row => row.Count));
+        Assert.Equal(6, expected.Single(row => row.RouteKey == SqmsKeys.Routes.BidAccepted).Count);
+        Assert.Equal(4, expected.Single(row => row.RouteKey == SqmsKeys.Routes.BidPartiallyAccepted).Count);
+        Assert.Equal(4, expected.Single(row => row.RouteKey == SqmsKeys.Routes.BidNotAccepted).Count);
     }
 }

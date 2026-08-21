@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Sqms.Contracts;
+using WorkflowEngine.Application.Notifications;
 
 namespace WorkflowEngine.Sqms.LiveAcceptance;
 
@@ -62,5 +63,40 @@ public sealed class AcceptanceReporter(TextWriter output)
         output.WriteLine($"targetStatus={targetStatus}");
         output.WriteLine($"targetWorkflowState={targetWorkflowState}");
         output.WriteLine($"parity={(parity ? "PASS" : "FAIL")}");
+    }
+
+    public void WriteScheduled(string stage, SqmsScheduledRunResult result)
+    {
+        output.WriteLine($"SCHEDULE stage={stage} now={result.Now:O}");
+        output.WriteLine(
+            $"closed={result.OpportunitiesClosed} ipg={result.BidsMovedToIpgReview} " +
+            $"notAllocated={result.BidsNotAllocated} open={result.OpenNotificationsQueued} " +
+            $"reminder={result.ReminderNotificationsQueued} alreadyQueued={result.AlreadyQueued} " +
+            $"failures={result.Failures.Count}");
+        foreach (var failure in result.Failures)
+        {
+            output.WriteLine(
+                $"SCHEDULE_FAILURE entity={failure.EntityType}:{failure.EntityId} " +
+                $"operation={failure.Operation} error={failure.Error}");
+        }
+    }
+
+    public void WriteOutbox(ProcessNotificationOutboxResult result)
+    {
+        output.WriteLine(
+            $"OUTBOX sender={result.SenderName} pending={result.PendingCount} " +
+            $"processed={result.Processed.Count} warnings={result.Warnings.Count} " +
+            $"failure={(result.Failure is null ? "NONE" : result.Failure.DisplayReference)}");
+    }
+
+    public void WriteSummary(AcceptanceManifest manifest)
+    {
+        output.WriteLine("SQMS LIVE ACCEPTANCE PASS");
+        output.WriteLine($"database={AcceptanceConstants.DatabaseName}");
+        output.WriteLine($"marker={AcceptanceConstants.RunMarker}");
+        output.WriteLine($"opportunities={manifest.OpportunityIds.Count}");
+        output.WriteLine($"bids={manifest.BidIds.Count}");
+        output.WriteLine($"emails={AcceptanceConstants.ExpectedEmailCount}");
+        output.WriteLine("smtp4dev=http://localhost:5000");
     }
 }

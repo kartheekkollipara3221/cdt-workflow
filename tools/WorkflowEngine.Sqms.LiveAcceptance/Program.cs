@@ -1,5 +1,10 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
+using WorkflowEngine.Infrastructure.DependencyInjection;
+using WorkflowEngine.Sqms.DependencyInjection;
 using WorkflowEngine.Sqms.LiveAcceptance;
 
 try
@@ -20,8 +25,27 @@ try
             $"Refusing database '{builder.InitialCatalog}'. Expected '{AcceptanceConstants.DatabaseName}'.");
     }
 
-    Console.Out.WriteLine($"SQMS live acceptance runner ready for {AcceptanceConstants.DatabaseName}.");
-    return 0;
+    var clock = new AcceptanceTimeProvider(AcceptanceConstants.OpeningUtc);
+    await using var services = new ServiceCollection()
+        .AddSingleton<IConfiguration>(configuration)
+        .AddSingleton(clock)
+        .AddSingleton<TimeProvider>(clock)
+        .AddSingleton(new AcceptanceReporter(Console.Out))
+        .AddScoped<WorkflowActionEnvelopeNormalizer>()
+        .AddScoped<CanonicalRequestHasher>()
+        .AddScoped<WorkflowActionResultBuilder>()
+        .AddScoped<CanonicalWorkflowResultSerializer>()
+        .AddScoped<AcceptanceFixtureWriter>()
+        .AddScoped<AcceptanceEvidenceVerifier>()
+        .AddScoped<AcceptanceScenarioRunner>()
+        .AddWorkflowInfrastructure(configuration)
+        .AddSqmsWorkflowIntegration(configuration)
+        .BuildServiceProvider();
+
+    await using var scope = services.CreateAsyncScope();
+    return await scope.ServiceProvider
+        .GetRequiredService<AcceptanceScenarioRunner>()
+        .RunAsync(CancellationToken.None);
 }
 catch (Exception exception)
 {
