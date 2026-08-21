@@ -1,5 +1,85 @@
 # Codex Handoff
 
+## 2026-08-21 SQMS Single-Lifecycle Retained Acceptance
+
+### Current goal
+
+- The requested one-Opportunity/three-Bid compiled lifecycle test is complete and retained for manual SQL and smtp4dev inspection. Preserve all successful evidence and stop before push, merge, deployment, production SQL, scheduling, or cleanup.
+
+### Completed changes
+
+- Added a backward-compatible `single-lifecycle` acceptance profile while preserving the existing comprehensive profile as the default.
+- Made acceptance fixture counts, workflow-instance counts, state counts, scheduled classification counts, email-route counts, SMTP URL, runner assertions, and database verification derive from the selected scenario.
+- Added a one-shot launcher pinned to `workflowengine_sqms_single_lifecycle_live_acceptance`, marker `SQMS-SINGLE-LIVE-20260821`, SMTP port 3026, UI port 5001, and a separate smtp4dev data directory.
+- Disabled IMAP/POP for the additional smtp4dev instance so it can coexist with the retained instance using default protocol ports.
+- Added an independent SQL verifier and user inspection runbook.
+- Executed the compiled lifecycle: Opportunity 10000 completed at version 10; Bids 10000/10001/10002 ended Accepted v7, Partially Accepted v5, and Not Accepted v5.
+- Delivered six messages: open, reminder, Seller approval, accepted, partially accepted, and not accepted. Every outbox row is `Sent` with retry count zero.
+- Proved 23 audits, zero tasks, zero SLA schedules, target/workflow parity, and preservation of UI-owned calculated-column sentinels.
+- Ran final warning-as-error builds and full core/API compatibility suites.
+
+### Changed files
+
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceConstants.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceModels.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceFixtureWriter.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceScenarioRunner.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceEvidenceVerifier.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceReporter.cs`
+- `tests/WorkflowEngine.Tests/SqmsLiveAcceptanceContractTests.cs`
+- `scripts/run-sqms-single-lifecycle-live-acceptance.ps1`
+- `sql/sqms/testing/007_verify_sqms_single_lifecycle_live_acceptance.sql`
+- `docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE.md`
+- `docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE-RESULTS-20260821.md`
+- `docs/superpowers/specs/2026-08-21-sqms-single-lifecycle-live-acceptance-design.md`
+- `docs/superpowers/plans/2026-08-21-sqms-single-lifecycle-live-acceptance.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Compiled single-lifecycle run: passed.
+- Compiled verification-only mode: passed.
+- Production SQMS deployment verifier: passed.
+- Independent single-lifecycle SQL verifier: passed.
+- Focused SQMS preflight regression: 49 passed, 0 failed.
+- Live-acceptance contract suite: 23 passed, 0 failed before final fixes; all included in the full regression afterward.
+- Core, Workflow API, and acceptance-tool warning-as-error builds: zero warnings and errors.
+- Full core regression: 448 passed, 0 failed, 4 expected opt-in SMTP skips.
+- Full Workflow API regression: 68 passed, 0 failed.
+
+### Retained successful evidence
+
+- SQL: `DOLLY/workflowengine_sqms_single_lifecycle_live_acceptance`.
+- Marker: `SQMS-SINGLE-LIVE-20260821`.
+- smtp4dev UI: `http://localhost:5001`; SMTP: `localhost:3026`.
+- smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-single-lifecycle-live-acceptance-20260821`.
+- At verification time, launcher PID was 2536 and smtp4dev executable PID was 16804. Resolve the current process and command line before process management.
+- Earlier retained databases and mailboxes remain unchanged.
+
+### Diagnostic artifacts
+
+- An empty first-start mailbox is retained at `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-single-lifecycle-live-acceptance-20260821-failed-pre-lifecycle`.
+- A zero-message failed-close mailbox is retained at `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-single-lifecycle-live-acceptance-20260821-failed-close`.
+- The partial failed-close SQL database was removed after inspection because its renamed logical database retained the intended MDF/LDF paths and prevented clean database creation.
+
+### Remaining tasks
+
+1. User inspects the six messages at `http://localhost:5001`.
+2. User runs the read-only SQL in `docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE.md`.
+3. Push, merge, deployment, production SQL, scheduling, process shutdown, and evidence cleanup remain separate authorization decisions.
+
+### Known risks
+
+- Multiple smtp4dev processes and retained databases/mailboxes consume local resources by design.
+- The successful one-shot runner must not be replayed; use compiled verification-only mode and read-only SQL.
+- No production/shared database, deployment, Windows Task Scheduler, push, or merge was changed.
+
+### Next-session prompt
+
+```text
+Inspect the retained one-Opportunity/three-Bid SQMS evidence at http://localhost:5001 and DOLLY/workflowengine_sqms_single_lifecycle_live_acceptance. Use docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE.md. Do not rerun the one-shot script. Preserve all retained SQMS databases and smtp4dev directories. Do not push, merge, deploy, execute production SQL, enable scheduling, stop smtp4dev, or remove evidence unless explicitly authorized.
+```
+
 ## 2026-08-21 SQMS Corrected Email Templates
 
 ### Current goal
