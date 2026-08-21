@@ -168,26 +168,52 @@ public sealed class SqmsWorkflowServiceTests
         Assert.True(result.Success, result.Message);
         var row = Assert.Single(fixture.DbContext.NotificationOutbox);
         Assert.Equal(SqmsKeys.Routes.OpportunityPendingSellerApproval, row.NotificationType);
-        Assert.Contains("Opportunity One", row.Body, StringComparison.Ordinal);
-        Assert.Contains("OA-1", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Fund One", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Vehicle One", row.Body, StringComparison.Ordinal);
-        Assert.Contains("$1,250.00", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Q1 2030", row.Subject, StringComparison.Ordinal);
-        Assert.Contains("01/21/2030", row.Subject, StringComparison.Ordinal);
-        Assert.Contains("https://dashboard.example.test/bids?view=seller&opportunityId=10000", row.Body, StringComparison.Ordinal);
+        Assert.Equal(
+            "Q1 2030 Secondary Sale Bids - Vehicle One/OA-1 - Opportunity One: Response Required by 01/21/2030",
+            row.Subject);
+        Assert.Equal(
+            string.Join(
+                "\r\n",
+                "Please click the following link to review secondary sale bids for the following opportunity.",
+                "",
+                "Account Number: OA-1",
+                "Account Name: Opportunity One",
+                "Name of Fund: Fund One",
+                "Name of Vehicle: Vehicle One",
+                "Total Amount Requested to Be Sold: $1,250.00",
+                "",
+                "Link to approve or reject bids received: https://dashboard.example.test/bids?view=seller&opportunityId=10000"),
+            row.Body);
+        Assert.Contains(">Click Here</a>", row.HtmlBody, StringComparison.Ordinal);
         Assert.Contains("relationship.manager@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
         Assert.Contains("seller.team@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData(SqmsKeys.BidActions.Accept, SqmsKeys.Routes.BidAccepted, SqmsKeys.BidStates.Accepted)]
-    [InlineData(SqmsKeys.BidActions.PartiallyAccept, SqmsKeys.Routes.BidPartiallyAccepted, SqmsKeys.BidStates.PartiallyAccepted)]
-    [InlineData(SqmsKeys.BidActions.Reject, SqmsKeys.Routes.BidNotAccepted, SqmsKeys.BidStates.NotAccepted)]
+    [InlineData(
+        SqmsKeys.BidActions.Accept,
+        SqmsKeys.Routes.BidAccepted,
+        SqmsKeys.BidStates.Accepted,
+        "The bid placed for the following opportunity has been accepted by the Seller for an effective date of 03/31/2030.",
+        true)]
+    [InlineData(
+        SqmsKeys.BidActions.PartiallyAccept,
+        SqmsKeys.Routes.BidPartiallyAccepted,
+        SqmsKeys.BidStates.PartiallyAccepted,
+        "The bid placed for the following opportunity has been partially accepted by the Seller for an effective date of 03/31/2030.",
+        true)]
+    [InlineData(
+        SqmsKeys.BidActions.Reject,
+        SqmsKeys.Routes.BidNotAccepted,
+        SqmsKeys.BidStates.NotAccepted,
+        "The bid placed for the following opportunity has not been accepted by the Seller for an effective date of 03/31/2030.",
+        false)]
     public async Task BidDispositionEmailsUseDistinctRoutesAndTrustedBidAndParentData(
         string actionKey,
         string routeKey,
-        string expectedState)
+        string expectedState,
+        string expectedOpening,
+        bool expectFollowUp)
     {
         await using var fixture = await SqmsServiceFixture.CreateAsync($"bid_email_{actionKey}");
         Assert.True((await fixture.Service.StartBidAsync(10000, MfoActor, CancellationToken.None)).Success);
@@ -211,14 +237,22 @@ public sealed class SqmsWorkflowServiceTests
         Assert.Equal(expectedState, result.Context?.WorkflowContext.Workflow.CurrentState);
         var row = Assert.Single(fixture.DbContext.NotificationOutbox);
         Assert.Equal(routeKey, row.NotificationType);
-        Assert.Contains("Bid One", row.Body, StringComparison.Ordinal);
-        Assert.Contains("BA-1", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Fund One", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Vehicle One", row.Body, StringComparison.Ordinal);
-        Assert.Contains("$500.00", row.Body, StringComparison.Ordinal);
-        Assert.Contains("03/31/2030", row.Body, StringComparison.Ordinal);
-        Assert.Contains("Q1 2030", row.Subject, StringComparison.Ordinal);
-        Assert.Contains("https://forms.example.test/bid?mode=edit&bidId=10000", row.Body, StringComparison.Ordinal);
+        Assert.Equal("Q1 2030 Secondary Sale Bids - Vehicle One/BA-1 - Bid One", row.Subject);
+        Assert.StartsWith(expectedOpening + "\r\n", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Buyer Account Number: BA-1", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Buyer Account Name: Bid One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Name of Fund: Fund One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Name of Vehicle: Vehicle One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Total Amount Requested to Be Purchased: $500.00", row.Body, StringComparison.Ordinal);
+        Assert.EndsWith(
+            "Link to View: https://forms.example.test/bid?mode=edit&bidId=10000",
+            row.Body,
+            StringComparison.Ordinal);
+        Assert.Equal(expectFollowUp, row.Body.Contains("Please confirm your buyer", StringComparison.Ordinal));
+        Assert.Equal(
+            expectFollowUp,
+            row.Body.Contains("documentation required to effect this sale", StringComparison.Ordinal));
+        Assert.Contains(">Click Here</a>", row.HtmlBody, StringComparison.Ordinal);
         Assert.Contains("buyer.manager@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
         Assert.Contains("buyer.team@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
     }
