@@ -25,7 +25,15 @@ public sealed record AcceptanceScenarioMatrix(IReadOnlyList<OpportunityScenario>
     public IReadOnlyList<BidScenario> AllBids =>
         Opportunities.SelectMany(row => row.Bids).ToArray();
 
-    public static AcceptanceScenarioMatrix Create() => new(
+    public static AcceptanceScenarioMatrix Create(
+        AcceptanceScenarioKind? kind = null) => (kind ?? AcceptanceConstants.ScenarioKind) switch
+    {
+        AcceptanceScenarioKind.Comprehensive => Comprehensive(),
+        AcceptanceScenarioKind.SingleLifecycle => SingleLifecycle(),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
+
+    private static AcceptanceScenarioMatrix Comprehensive() => new(
     [
         new(
             "A",
@@ -62,6 +70,20 @@ public sealed record AcceptanceScenarioMatrix(IReadOnlyList<OpportunityScenario>
                 new("13", 20m, "DISCOUNT", SqmsKeys.BidStates.NotAccepted),
                 new("14", 20m, "FAIR VALUE", SqmsKeys.BidStates.Accepted),
                 new("15", 20m, "PREMIUM", SqmsKeys.BidStates.NotAccepted)
+            ])
+    ]);
+
+    private static AcceptanceScenarioMatrix SingleLifecycle() => new(
+    [
+        new(
+            "A",
+            "AWAITING ALLOCATION -> COMPLETED",
+            SqmsKeys.OpportunityStates.Completed,
+            10,
+            [
+                new("01", 60m, "FAIR VALUE", SqmsKeys.BidStates.Accepted, true),
+                new("02", 50m, "PREMIUM", SqmsKeys.BidStates.PartiallyAccepted),
+                new("03", 40m, "DISCOUNT", SqmsKeys.BidStates.NotAccepted)
             ])
     ]);
 }

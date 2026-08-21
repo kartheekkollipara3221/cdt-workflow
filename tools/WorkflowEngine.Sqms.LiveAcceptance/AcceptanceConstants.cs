@@ -9,6 +9,8 @@ public static class AcceptanceConstants
 
     public static string DatabaseName => Profile.DatabaseName;
     public static string RunMarker => Profile.RunMarker;
+    public static AcceptanceScenarioKind ScenarioKind => Profile.ScenarioKind;
+    public static Uri Smtp4DevBaseAddress => Profile.Smtp4DevBaseAddress;
     public const int ExpectedOpportunityCount = 3;
     public const int ExpectedBidCount = 15;
     public const int ExpectedEmailCount = 19;
@@ -35,17 +37,46 @@ public static class AcceptanceConstants
 public sealed record AcceptanceProfile(
     string DatabaseName,
     string RunMarker,
-    DateTimeOffset OpeningUtc)
+    DateTimeOffset OpeningUtc,
+    AcceptanceScenarioKind ScenarioKind,
+    Uri Smtp4DevBaseAddress)
 {
     public static AcceptanceProfile FromEnvironment() => FromValues(
         Environment.GetEnvironmentVariable("SQMS_LIVE_ACCEPTANCE_DATABASE"),
         Environment.GetEnvironmentVariable("SQMS_LIVE_ACCEPTANCE_MARKER"),
-        Environment.GetEnvironmentVariable("SQMS_LIVE_ACCEPTANCE_OPENING_UTC"));
+        Environment.GetEnvironmentVariable("SQMS_LIVE_ACCEPTANCE_OPENING_UTC"),
+        Environment.GetEnvironmentVariable("SQMS_LIVE_ACCEPTANCE_SCENARIO"),
+        Environment.GetEnvironmentVariable("SQMS_LIVE_ACCEPTANCE_SMTP4DEV_URL"));
 
     public static AcceptanceProfile FromValues(
         string? database,
         string? marker,
-        string? openingUtc) => new(
+        string? openingUtc,
+        string? scenario = null,
+        string? smtp4DevUrl = null)
+    {
+        var scenarioKind = string.IsNullOrWhiteSpace(scenario)
+            ? AcceptanceScenarioKind.Comprehensive
+            : scenario.Trim() switch
+            {
+                "single-lifecycle" => AcceptanceScenarioKind.SingleLifecycle,
+                _ => throw new ArgumentException(
+                    $"Unknown SQMS live acceptance scenario '{scenario}'.",
+                    nameof(scenario))
+            };
+        var addressText = string.IsNullOrWhiteSpace(smtp4DevUrl)
+            ? "http://localhost:5000"
+            : smtp4DevUrl.Trim();
+        if (!Uri.TryCreate(addressText, UriKind.Absolute, out var address) ||
+            (!string.Equals(address.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(address.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ArgumentException(
+                "SQMS live acceptance smtp4dev URL must be an absolute HTTP or HTTPS URL.",
+                nameof(smtp4DevUrl));
+        }
+
+        return new(
             string.IsNullOrWhiteSpace(database)
                 ? "workflowengine_sqms_live_acceptance"
                 : database.Trim(),
@@ -57,5 +88,14 @@ public sealed record AcceptanceProfile(
                 : DateTimeOffset.Parse(
                     openingUtc,
                     CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal));
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+            scenarioKind,
+            address);
+    }
+}
+
+public enum AcceptanceScenarioKind
+{
+    Comprehensive,
+    SingleLifecycle
 }

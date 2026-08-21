@@ -46,6 +46,40 @@ public sealed class SqmsLiveAcceptanceContractTests
     }
 
     [Fact]
+    public void SingleLifecycleProfilePinsOneOpportunityThreeBidsAndSeparateSmtp4Dev()
+    {
+        var profile = AcceptanceProfile.FromValues(
+            "workflowengine_sqms_single_lifecycle_live_acceptance",
+            "SQMS-SINGLE-LIVE-20260821",
+            "2030-01-01T15:00:00Z",
+            "single-lifecycle",
+            "http://localhost:5001");
+
+        Assert.Equal(AcceptanceScenarioKind.SingleLifecycle, profile.ScenarioKind);
+        Assert.Equal(new Uri("http://localhost:5001"), profile.Smtp4DevBaseAddress);
+
+        var matrix = AcceptanceScenarioMatrix.Create(profile.ScenarioKind);
+        Assert.Single(matrix.Opportunities);
+        Assert.Equal(3, matrix.AllBids.Count);
+        Assert.Collection(
+            matrix.AllBids,
+            bid => Assert.Equal(SqmsKeys.BidStates.Accepted, bid.TerminalState),
+            bid => Assert.Equal(SqmsKeys.BidStates.PartiallyAccepted, bid.TerminalState),
+            bid => Assert.Equal(SqmsKeys.BidStates.NotAccepted, bid.TerminalState));
+        Assert.All(matrix.AllBids, bid => Assert.True(bid.RequestedAmount > 0));
+    }
+
+    [Fact]
+    public void DefaultProfileStillSelectsTheComprehensiveRetainedDataset()
+    {
+        var profile = AcceptanceProfile.FromValues(null, null, null, null, null);
+
+        Assert.Equal(AcceptanceScenarioKind.Comprehensive, profile.ScenarioKind);
+        Assert.Equal(new Uri("http://localhost:5000"), profile.Smtp4DevBaseAddress);
+        Assert.Equal(15, AcceptanceScenarioMatrix.Create(profile.ScenarioKind).AllBids.Count);
+    }
+
+    [Fact]
     public void ScenarioMatrixContainsEveryTerminalOutcome()
     {
         var matrix = AcceptanceScenarioMatrix.Create();
