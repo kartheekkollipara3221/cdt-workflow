@@ -28,7 +28,7 @@ public sealed class ConsoleNotificationSender : INotificationSender
             string.Join(", ", notification.ToEmailAddresses),
             string.Join(", ", notification.CcEmailAddresses),
             notification.Subject,
-            notification.WorkflowInstanceId));
+            notification.DisplayReference));
         return Task.CompletedTask;
     }
 }

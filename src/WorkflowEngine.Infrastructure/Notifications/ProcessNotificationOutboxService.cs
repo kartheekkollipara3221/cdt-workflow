@@ -135,7 +135,10 @@ public sealed class ProcessNotificationOutboxService(
                     delivery.ToEmailAddresses,
                     delivery.CcEmailAddresses,
                     row.Subject,
-                    row.WorkflowInstanceId!));
+                    row.WorkflowInstanceId)
+                {
+                    NotificationOccurrenceKey = row.NotificationOccurrenceKey
+                });
             }
             catch (Exception exception)
             {
@@ -151,8 +154,11 @@ public sealed class ProcessNotificationOutboxService(
                         delivery?.ToEmailAddresses ?? [],
                         delivery?.CcEmailAddresses ?? [],
                         row.Subject,
-                        row.WorkflowInstanceId!,
-                        exception));
+                        row.WorkflowInstanceId,
+                        exception)
+                    {
+                        NotificationOccurrenceKey = row.NotificationOccurrenceKey
+                    });
             }
         }
 
@@ -194,7 +200,7 @@ public sealed class ProcessNotificationOutboxService(
 
         return new NotificationDelivery(
             row.Id,
-            row.WorkflowInstanceId!,
+            row.WorkflowInstanceId,
             row.WorkflowTaskId,
             row.BusinessObjectType,
             row.BusinessObjectId,
@@ -207,7 +213,10 @@ public sealed class ProcessNotificationOutboxService(
             row.PayloadJson,
             row.Status,
             row.CorrelationId,
-            row.CreatedAtUtc);
+            row.CreatedAtUtc)
+        {
+            NotificationOccurrenceKey = row.NotificationOccurrenceKey
+        };
     }
 
     private async Task ReleaseClaimAfterFailureAsync(

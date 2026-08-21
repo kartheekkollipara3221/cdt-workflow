@@ -21,7 +21,13 @@ public sealed record ProcessedNotification(
     IReadOnlyList<string> ToEmailAddresses,
     IReadOnlyList<string> CcEmailAddresses,
     string Subject,
-    string WorkflowInstanceId);
+    string? WorkflowInstanceId)
+{
+    public string? NotificationOccurrenceKey { get; init; }
+
+    public string DisplayReference =>
+        WorkflowInstanceId ?? NotificationOccurrenceKey ?? "Unowned";
+}
 
 public sealed record NotificationOutboxFailure(
     long Id,
@@ -29,5 +35,11 @@ public sealed record NotificationOutboxFailure(
     IReadOnlyList<string> ToEmailAddresses,
     IReadOnlyList<string> CcEmailAddresses,
     string Subject,
-    string WorkflowInstanceId,
-    Exception Exception);
+    string? WorkflowInstanceId,
+    Exception Exception)
+{
+    public string? NotificationOccurrenceKey { get; init; }
+
+    public string DisplayReference =>
+        WorkflowInstanceId ?? NotificationOccurrenceKey ?? "Unowned";
+}

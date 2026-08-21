@@ -43,6 +43,45 @@ public sealed class Phase5OutboxTests
     }
 
     [Fact]
+    public async Task ProcessNotificationOnlyOccurrenceUsesOccurrenceDisplayReference()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        dbContext.NotificationOutbox.Add(new NotificationOutbox
+        {
+            WorkflowInstanceId = null,
+            NotificationOccurrenceKey = "SQMS:OpportunityOpen:2030:Q1:2030-01-15",
+            BusinessObjectType = "SqmsOpportunityGroup",
+            BusinessObjectId = "2030-Q1",
+            NotificationType = "OpportunityOpen",
+            NotificationRecipientsJson = RecipientSnapshot,
+            Subject = "Open opportunities",
+            Body = "body",
+            HtmlBody = "<p>body</p>",
+            PayloadJson = "{}",
+            Status = "Pending",
+            CorrelationId = "corr-notification-only",
+            CreatedAtUtc = Now
+        });
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+
+        var result = await new ProcessNotificationOutboxService(
+            dbContext,
+            sender,
+            new FixedTimeProvider(Now)).ProcessAsync(CancellationToken.None);
+
+        Assert.Null(result.Failure);
+        var delivery = Assert.Single(sender.SentRows);
+        Assert.Null(delivery.WorkflowInstanceId);
+        Assert.Equal("SQMS:OpportunityOpen:2030:Q1:2030-01-15", delivery.NotificationOccurrenceKey);
+        Assert.Equal(delivery.NotificationOccurrenceKey, delivery.DisplayReference);
+        var processed = Assert.Single(result.Processed);
+        Assert.Null(processed.WorkflowInstanceId);
+        Assert.Equal(delivery.NotificationOccurrenceKey, processed.NotificationOccurrenceKey);
+        Assert.Equal(delivery.NotificationOccurrenceKey, processed.DisplayReference);
+    }
+
+    [Fact]
     public async Task ProcessNotificationOutboxRollsBackCurrentRowAndAbortsWhenSenderThrows()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();

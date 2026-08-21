@@ -9,7 +9,7 @@ public interface INotificationSender
 
 public sealed record NotificationDelivery(
     long Id,
-    string WorkflowInstanceId,
+    string? WorkflowInstanceId,
     long? WorkflowTaskId,
     string BusinessObjectType,
     string BusinessObjectId,
@@ -22,4 +22,10 @@ public sealed record NotificationDelivery(
     string PayloadJson,
     string Status,
     string CorrelationId,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc)
+{
+    public string? NotificationOccurrenceKey { get; init; }
+
+    public string DisplayReference =>
+        WorkflowInstanceId ?? NotificationOccurrenceKey ?? "Unowned";
+}
