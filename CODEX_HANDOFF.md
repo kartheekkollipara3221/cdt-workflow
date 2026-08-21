@@ -4,7 +4,7 @@
 
 ### Current goal
 
-- Continue Milestone 2 after the user resolves the Bid action-count contradiction in Task 3.
+- Continue Milestone 2 Task 3 using the user-approved corrected metadata counts.
 
 ### Completed changes
 
@@ -16,9 +16,8 @@
 
 ### Current blocker
 
-- The approved Bid matrix contains eight distinct action keys: `SubmitBid`, `ReturnBidToDraft`, `MarkBidNotAllocated`, `MoveBidToIpgReview`, `SendBidToSellerReview`, `AcceptBid`, `PartiallyAcceptBid`, and `RejectBid`.
-- Task 3's exact-count assertion says `SqmsBid: 8 states, 7 actions, 4 roles, 9 transitions` while also requiring the approved matrix verbatim.
-- Seven action definitions cannot satisfy referential verification for all nine transitions. Recommended resolution: correct the expected Bid action count to eight and preserve the approved matrix.
+- Resolved by the user: preserve all eight Bid actions and treat `Internal start` as orchestration shorthand rather than a persisted transition.
+- Correct counts are Opportunity `10 states / 10 actions / 3 roles / 12 transitions / 3 routes` and Bid `8 states / 8 actions / 4 roles / 8 transitions / 3 routes`.
 
 ### Build/test status
 
@@ -28,10 +27,8 @@
 
 ### Remaining tasks
 
-1. Obtain the user's decision on eight versus seven Bid action definitions.
-2. Update the plan count if eight is confirmed.
-3. Complete Task 3 DBA DML/verifier/rollback tests.
-4. Complete Task 4 exact-DDL-twice CDT compatibility and stop at the Milestone 2 gate.
+1. Complete Task 3 DBA DML/verifier/rollback tests with the corrected counts.
+2. Complete Task 4 exact-DDL-twice CDT compatibility and stop at the Milestone 2 gate.
 
 ### Known risks
 

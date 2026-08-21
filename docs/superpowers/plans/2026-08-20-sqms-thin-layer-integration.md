@@ -309,10 +309,12 @@ git commit -m "feat(db): add notification occurrence ownership"
 Create an isolated SQL database, apply current migrations, apply testing table DDL, execute `002`, and execute `003`. Assert these exact active counts:
 
 ```text
-SqmsOpportunity: 10 states, 10 actions, 3 roles, 13 transitions, 3 routes
-SqmsBid:          8 states,  7 actions, 4 roles,  9 transitions, 3 routes
+SqmsOpportunity: 10 states, 10 actions, 3 roles, 12 transitions, 3 routes
+SqmsBid:          8 states,  8 actions, 4 roles,  8 transitions, 3 routes
 Combined:         0 task definitions, 0 SLA policies
 ```
+
+`Internal start` is orchestration shorthand, not a persisted state or transition row. A new record starts in internal `Draft` and executes the same metadata-backed `Draft` submit transition used by a manual resubmission.
 
 Run `002` twice in the same database and require identical counts.
 
