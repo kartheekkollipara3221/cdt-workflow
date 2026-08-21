@@ -23,7 +23,7 @@ public sealed class SqmsDatabasePackageTests
         Assert.Contains("BEGIN TRANSACTION", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("NotificationOccurrenceKey", sql, StringComparison.Ordinal);
         Assert.Contains("UX_NotificationOutbox_NotificationOccurrenceKey", sql, StringComparison.Ordinal);
-        Assert.Contains("WHERE NotificationOccurrenceKey IS NOT NULL", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("WHERE [NotificationOccurrenceKey] IS NOT NULL", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("CK_NotificationOutbox_Owner", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE TABLE [SSQMS]", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ALTER TABLE [SSQMS]", sql, StringComparison.OrdinalIgnoreCase);
@@ -114,7 +114,7 @@ public sealed class SqmsDatabasePackageTests
         return Convert.ToInt32(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    private static async Task ExecuteScriptAsync(
+    internal static async Task ExecuteScriptAsync(
         string connectionString,
         string path,
         IReadOnlyDictionary<string, string>? variables = null)
@@ -145,7 +145,7 @@ public sealed class SqmsDatabasePackageTests
         }
     }
 
-    private static string RepositoryRoot()
+    internal static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "PROJECT.md")))

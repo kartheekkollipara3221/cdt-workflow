@@ -112,9 +112,10 @@ BEGIN TRY
           AND name = N'UX_NotificationOutbox_NotificationOccurrenceKey'
     )
     BEGIN
-        CREATE UNIQUE INDEX [UX_NotificationOutbox_NotificationOccurrenceKey]
-            ON [dbo].[NotificationOutbox] ([NotificationOccurrenceKey])
-            WHERE NotificationOccurrenceKey IS NOT NULL;
+        EXEC sys.sp_executesql N'
+            CREATE UNIQUE INDEX [UX_NotificationOutbox_NotificationOccurrenceKey]
+                ON [dbo].[NotificationOutbox] ([NotificationOccurrenceKey])
+                WHERE [NotificationOccurrenceKey] IS NOT NULL;';
     END
     ELSE IF NOT EXISTS
     (
@@ -144,9 +145,10 @@ BEGIN TRY
           AND name = N'CK_NotificationOutbox_Owner'
     )
     BEGIN
-        ALTER TABLE [dbo].[NotificationOutbox] WITH CHECK
-            ADD CONSTRAINT [CK_NotificationOutbox_Owner]
-            CHECK ([WorkflowInstanceId] IS NOT NULL OR [NotificationOccurrenceKey] IS NOT NULL);
+        EXEC sys.sp_executesql N'
+            ALTER TABLE [dbo].[NotificationOutbox] WITH CHECK
+                ADD CONSTRAINT [CK_NotificationOutbox_Owner]
+                CHECK ([WorkflowInstanceId] IS NOT NULL OR [NotificationOccurrenceKey] IS NOT NULL);';
         ALTER TABLE [dbo].[NotificationOutbox]
             CHECK CONSTRAINT [CK_NotificationOutbox_Owner];
     END
