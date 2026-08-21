@@ -1,7 +1,10 @@
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using WorkflowEngine.Sqms.Configuration;
+using WorkflowEngine.Sqms.Contracts;
+using WorkflowEngine.Sqms.Persistence;
 
 namespace WorkflowEngine.Sqms.DependencyInjection;
 
@@ -20,6 +23,11 @@ public static class SqmsServiceCollectionExtensions
             .Configure(options => Bind(section, options))
             .Validate(Validate, "Enabled SQMS requires positive scheduling day counts and a resolvable time zone.")
             .ValidateOnStart();
+
+        services.AddScoped<ISqmsDataStore, SqlSqmsDataStore>();
+        services.AddScoped<ISqmsWorkflowService, SqmsWorkflowService>();
+        services.AddScoped(provider =>
+            new SqmsLinkBuilder(provider.GetRequiredService<IOptions<SqmsOptions>>().Value.Links));
 
         return services;
     }
