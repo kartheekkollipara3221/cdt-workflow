@@ -99,4 +99,25 @@ public sealed class SqmsLiveAcceptanceContractTests
         Assert.Equal(4, expected.Single(row => row.RouteKey == SqmsKeys.Routes.BidPartiallyAccepted).Count);
         Assert.Equal(4, expected.Single(row => row.RouteKey == SqmsKeys.Routes.BidNotAccepted).Count);
     }
+
+    [Fact]
+    public void PowerShellRunnerPinsSafeDatabasePackageAndHiddenSmtp4Dev()
+    {
+        var path = Path.Combine(
+            SqmsDatabasePackageTests.RepositoryRoot(),
+            "scripts",
+            "run-sqms-live-acceptance.ps1");
+
+        Assert.True(File.Exists(path), $"Missing live acceptance PowerShell runner: {path}");
+        var script = File.ReadAllText(path);
+        Assert.Contains("workflowengine_sqms_live_acceptance", script, StringComparison.Ordinal);
+        Assert.Contains("000_create_sqms_test_tables.sql", script, StringComparison.Ordinal);
+        Assert.Contains("001_sqms_notification_outbox_ddl.sql", script, StringComparison.Ordinal);
+        Assert.Contains("002_sqms_workflow_metadata_dml.sql", script, StringComparison.Ordinal);
+        Assert.Contains("003_verify_sqms_deployment.sql", script, StringComparison.Ordinal);
+        Assert.Contains("-WindowStyle Hidden", script, StringComparison.Ordinal);
+        Assert.Contains("sqms-live-acceptance-20260821", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("DROP DATABASE", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("--reset", script, StringComparison.OrdinalIgnoreCase);
+    }
 }
