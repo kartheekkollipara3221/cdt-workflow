@@ -18,6 +18,8 @@ public sealed class SqmsWorkflowServiceTests
 {
     private static readonly SqmsActor MfoActor = new("mfo-user", "MFO User", [SqmsKeys.Roles.Mfo]);
     private static readonly SqmsActor IpgActor = new("ipg-user", "IPG User", [SqmsKeys.Roles.Ipg]);
+    private static readonly SqmsActor SystemActor = new("system", "System", [SqmsKeys.Roles.System]);
+    private static readonly SqmsActor SellerActor = new("seller-user", "Seller User", [SqmsKeys.Roles.Seller]);
 
     [Fact]
     public async Task ContextDoesNotLazilyStartMissingOpportunityOrBidWorkflow()
@@ -140,17 +142,190 @@ public sealed class SqmsWorkflowServiceTests
         Assert.DoesNotContain(propertyNames, name => name.Contains("State", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task SellerApprovalEmailUsesTrustedOpportunityDataResolvedRecipientsAndConfiguredLink()
+    {
+        await using var fixture = await SqmsServiceFixture.CreateAsync("seller_email");
+        Assert.True((await fixture.Service.StartOpportunityAsync(10000, MfoActor, CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(10000, SqmsKeys.OpportunityActions.MarkPending, 2, IpgActor), CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(10000, SqmsKeys.OpportunityActions.OpenForBidding, 3, IpgActor), CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(10000, SqmsKeys.OpportunityActions.CloseBidding, 4, SystemActor), CancellationToken.None)).Success);
+
+        var result = await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(
+                10000,
+                SqmsKeys.OpportunityActions.RequestSellerApproval,
+                5,
+                IpgActor,
+                RecipientInputs(
+                    ("relationshipManager", "relationship.manager@example.test"),
+                    ("sellerRmTeam", "seller.team@example.test"))),
+            CancellationToken.None);
+
+        Assert.True(result.Success, result.Message);
+        var row = Assert.Single(fixture.DbContext.NotificationOutbox);
+        Assert.Equal(SqmsKeys.Routes.OpportunityPendingSellerApproval, row.NotificationType);
+        Assert.Contains("Opportunity One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("OA-1", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Fund One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Vehicle One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("$1,250.00", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Q1 2030", row.Body, StringComparison.Ordinal);
+        Assert.Contains("1/21/2030", row.Body, StringComparison.Ordinal);
+        Assert.Contains("https://dashboard.example.test/bids?view=seller&opportunityId=10000", row.Body, StringComparison.Ordinal);
+        Assert.Contains("relationship.manager@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
+        Assert.Contains("seller.team@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(SqmsKeys.BidActions.Accept, SqmsKeys.Routes.BidAccepted, SqmsKeys.BidStates.Accepted)]
+    [InlineData(SqmsKeys.BidActions.PartiallyAccept, SqmsKeys.Routes.BidPartiallyAccepted, SqmsKeys.BidStates.PartiallyAccepted)]
+    [InlineData(SqmsKeys.BidActions.Reject, SqmsKeys.Routes.BidNotAccepted, SqmsKeys.BidStates.NotAccepted)]
+    public async Task BidDispositionEmailsUseDistinctRoutesAndTrustedBidAndParentData(
+        string actionKey,
+        string routeKey,
+        string expectedState)
+    {
+        await using var fixture = await SqmsServiceFixture.CreateAsync($"bid_email_{actionKey}");
+        Assert.True((await fixture.Service.StartBidAsync(10000, MfoActor, CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteBidActionAsync(
+            Request(10000, SqmsKeys.BidActions.MoveToIpgReview, 2, SystemActor), CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteBidActionAsync(
+            Request(10000, SqmsKeys.BidActions.SendToSellerReview, 3, IpgActor), CancellationToken.None)).Success);
+
+        var result = await fixture.Service.ExecuteBidActionAsync(
+            Request(
+                10000,
+                actionKey,
+                4,
+                SellerActor,
+                RecipientInputs(
+                    ("relationshipManager", "buyer.manager@example.test"),
+                    ("buyerRmTeam", "buyer.team@example.test"))),
+            CancellationToken.None);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(expectedState, result.Context?.WorkflowContext.Workflow.CurrentState);
+        var row = Assert.Single(fixture.DbContext.NotificationOutbox);
+        Assert.Equal(routeKey, row.NotificationType);
+        Assert.Contains("Bid One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("BA-1", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Fund One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Vehicle One", row.Body, StringComparison.Ordinal);
+        Assert.Contains("$500.00", row.Body, StringComparison.Ordinal);
+        Assert.Contains("3/31/2030", row.Body, StringComparison.Ordinal);
+        Assert.Contains("Q1 2030", row.Body, StringComparison.Ordinal);
+        Assert.Contains("https://forms.example.test/bid?mode=edit&bidId=10000", row.Body, StringComparison.Ordinal);
+        Assert.Contains("buyer.manager@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
+        Assert.Contains("buyer.team@example.test", row.NotificationRecipientsJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MissingEffectiveDateFailsSellerApprovalWithoutAnyActionSideEffects()
+    {
+        await using var fixture = await SqmsServiceFixture.CreateAsync("seller_missing_date");
+        await fixture.DbContext.Database.ExecuteSqlRawAsync(
+            "UPDATE [SSQMS].[Opportunity] SET [EffectiveDateForSale] = NULL WHERE [ID] = 10000");
+        Assert.True((await fixture.Service.StartOpportunityAsync(10000, MfoActor, CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(10000, SqmsKeys.OpportunityActions.MarkPending, 2, IpgActor), CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(10000, SqmsKeys.OpportunityActions.OpenForBidding, 3, IpgActor), CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(10000, SqmsKeys.OpportunityActions.CloseBidding, 4, SystemActor), CancellationToken.None)).Success);
+        var auditCount = await fixture.DbContext.WorkflowAudits.CountAsync();
+
+        var result = await fixture.Service.ExecuteOpportunityActionAsync(
+            Request(
+                10000,
+                SqmsKeys.OpportunityActions.RequestSellerApproval,
+                5,
+                IpgActor,
+                RecipientInputs(
+                    ("relationshipManager", "relationship.manager@example.test"),
+                    ("sellerRmTeam", "seller.team@example.test"))),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("ValidationFailed", result.ResultCode);
+        Assert.Empty(fixture.DbContext.NotificationOutbox);
+        Assert.Equal(auditCount, await fixture.DbContext.WorkflowAudits.CountAsync());
+        Assert.Equal("CLOSED TO BIDDING|CLOSED TO BIDDING|system", await fixture.TargetStateAsync("Opportunity", 10000));
+    }
+
+    [Theory]
+    [InlineData("missingAmount")]
+    [InlineData("missingParent")]
+    [InlineData("unresolvedRecipients")]
+    [InlineData("invalidUrl")]
+    public async Task BidDispositionEnrichmentFailureRollsBackAllActionSideEffects(string scenario)
+    {
+        await using var fixture = await SqmsServiceFixture.CreateAsync(
+            $"bid_atomic_{scenario}",
+            invalidBidUrl: scenario == "invalidUrl");
+        if (scenario == "missingAmount")
+        {
+            await fixture.DbContext.Database.ExecuteSqlRawAsync(
+                "UPDATE [SSQMS].[Bid] SET [CommitmentAmountRequested] = NULL WHERE [ID] = 10000");
+        }
+        else if (scenario == "missingParent")
+        {
+            await fixture.DbContext.Database.ExecuteSqlRawAsync(
+                "UPDATE [SSQMS].[Opportunity] SET [IsDeleted] = 1 WHERE [ID] = 10000");
+        }
+
+        Assert.True((await fixture.Service.StartBidAsync(10000, MfoActor, CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteBidActionAsync(
+            Request(10000, SqmsKeys.BidActions.MoveToIpgReview, 2, SystemActor), CancellationToken.None)).Success);
+        Assert.True((await fixture.Service.ExecuteBidActionAsync(
+            Request(10000, SqmsKeys.BidActions.SendToSellerReview, 3, IpgActor), CancellationToken.None)).Success);
+        var auditCount = await fixture.DbContext.WorkflowAudits.CountAsync();
+        var idempotencyCount = await fixture.DbContext.IdempotencyRecords.CountAsync();
+        var recipients = scenario == "unresolvedRecipients"
+            ? new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal)
+            : RecipientInputs(
+                ("relationshipManager", "buyer.manager@example.test"),
+                ("buyerRmTeam", "buyer.team@example.test"));
+
+        var result = await fixture.Service.ExecuteBidActionAsync(
+            Request(10000, SqmsKeys.BidActions.Accept, 4, SellerActor, recipients),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("ValidationFailed", result.ResultCode);
+        fixture.DbContext.ChangeTracker.Clear();
+        var instance = await fixture.DbContext.WorkflowInstances.SingleAsync(row =>
+            row.WorkflowInstanceId == SqmsKeys.BidWorkflowInstanceId(10000));
+        Assert.Equal(SqmsKeys.BidStates.UnderReviewBySeller, instance.CurrentStateKey);
+        Assert.Equal(4, instance.Version);
+        Assert.Equal(auditCount, await fixture.DbContext.WorkflowAudits.CountAsync());
+        Assert.Equal(idempotencyCount, await fixture.DbContext.IdempotencyRecords.CountAsync());
+        Assert.Empty(fixture.DbContext.NotificationOutbox);
+        Assert.Equal("UNDER REVIEW BY SELLER|UNDER REVIEW BY SELLER|ipg-user", await fixture.TargetStateAsync("Bid", 10000));
+    }
+
     private static SqmsExecuteRequest Request(
         int entityId,
         string actionKey,
         int expectedVersion,
-        SqmsActor actor) =>
+        SqmsActor actor,
+        IReadOnlyDictionary<string, IReadOnlyList<WorkflowRecipientInput>>? recipientInputs = null) =>
         new(
             entityId,
             actionKey,
             expectedVersion,
             actor,
-            new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal));
+            recipientInputs ?? new Dictionary<string, IReadOnlyList<WorkflowRecipientInput>>(StringComparer.Ordinal));
+
+    private static Dictionary<string, IReadOnlyList<WorkflowRecipientInput>> RecipientInputs(
+        params (string Key, string Address)[] values) =>
+        values.ToDictionary(
+            value => value.Key,
+            value => (IReadOnlyList<WorkflowRecipientInput>)[new(value.Key, value.Address, value.Key)],
+            StringComparer.Ordinal);
 
     private sealed class SqmsServiceFixture : IAsyncDisposable
     {
@@ -167,7 +342,10 @@ public sealed class SqmsWorkflowServiceTests
 
         public ISqmsWorkflowService Service => scope.ServiceProvider.GetRequiredService<ISqmsWorkflowService>();
 
-        public static async Task<SqmsServiceFixture> CreateAsync(string suffix, bool failProjection = false)
+        public static async Task<SqmsServiceFixture> CreateAsync(
+            string suffix,
+            bool failProjection = false,
+            bool invalidBidUrl = false)
         {
             var databaseName = $"workflowengine_sqms_service_{suffix}_tests";
             var connectionString = TestSqlConnectionFactory.ConnectionString(databaseName);
@@ -176,6 +354,14 @@ public sealed class SqmsWorkflowServiceTests
                 {
                     ["ConnectionStrings:DefaultConnection"] = connectionString,
                     ["Notifications:Sender"] = "NoOp"
+                    , ["Sqms:Enabled"] = "true"
+                    , ["Sqms:Links:OpenBiddingDashboardUrl"] = "https://dashboard.example.test/open"
+                    , ["Sqms:Links:SellerApprovalBidsDashboardUrl"] = "https://dashboard.example.test/bids?view=seller"
+                    , ["Sqms:Links:BidFormUrl"] = invalidBidUrl
+                        ? "not-a-url"
+                        : "https://forms.example.test/bid?mode=edit"
+                    , ["Sqms:Scheduling:TimeZoneId"] = "Eastern Standard Time"
+                    , ["Sqms:Scheduling:SellerResponseDays"] = "5"
                 })
                 .Build();
             var services = new ServiceCollection()
@@ -242,15 +428,23 @@ public sealed class SqmsWorkflowServiceTests
             await DbContext.Database.ExecuteSqlRawAsync("""
                 SET IDENTITY_INSERT [SSQMS].[Opportunity] ON;
                 INSERT INTO [SSQMS].[Opportunity]
-                    ([ID], [SellerRMTeam], [Account], [AccountName], [AccountNumber], [Status], [WorkflowState], [CreatedBy], [CreatedDate], [IsDeleted])
+                    ([ID], [SellerRMTeam], [Account], [AccountName], [AccountNumber], [RelationshipManager],
+                     [FundConsideredSecondarySale], [Vehicle], [CommitmentAmountSale], [EffectiveDateForSale],
+                     [Status], [WorkflowState], [CreatedBy], [CreatedDate], [IsDeleted])
                 VALUES
-                    (10000, 'Seller Team', 'OPP-1', 'Opportunity One', 'OA-1', 'Draft', 'Draft', 'mfo-user', '2030-01-16', 0);
+                    (10000, 'Seller Team', 'OPP-1', 'Opportunity One', 'OA-1', 'Relationship Manager',
+                     'Fund One', 'Vehicle One', '$1,250.00', '2030-03-31',
+                     'Draft', 'Draft', 'mfo-user', '2030-01-16', 0);
                 SET IDENTITY_INSERT [SSQMS].[Opportunity] OFF;
                 SET IDENTITY_INSERT [SSQMS].[Bid] ON;
                 INSERT INTO [SSQMS].[Bid]
-                    ([ID], [OpportunityId], [BuyerRmteam], [BidForFullCommitment], [AccountName], [AccountNumber], [Status], [WorkflowState], [CreatedBy], [CreatedDate], [IsDeleted])
+                    ([ID], [OpportunityId], [BuyerRmteam], [BidForFullCommitment], [AccountName], [AccountNumber],
+                     [RelationshipManager], [CommitmentAmountRequested], [BidExpressedAsFairValue],
+                     [Status], [WorkflowState], [CreatedBy], [CreatedDate], [IsDeleted])
                 VALUES
-                    (10000, 10000, 'Buyer Team', 'Yes', 'Bid One', 'BA-1', 'Draft', 'Draft', 'mfo-user', '2030-01-16', 0);
+                    (10000, 10000, 'Buyer Team', 'Yes', 'Bid One', 'BA-1',
+                     'Buyer Relationship Manager', '$500.00', 'Fair Value',
+                     'Draft', 'Draft', 'mfo-user', '2030-01-16', 0);
                 SET IDENTITY_INSERT [SSQMS].[Bid] OFF;
                 """);
         }
