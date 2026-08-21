@@ -1,5 +1,84 @@
 # Codex Handoff
 
+## 2026-08-21 SQMS Corrected Email Templates
+
+### Current goal
+
+- The approved SQMS email template correction and separate live acceptance are complete. Preserve both retained acceptance datasets and stop before push, merge, deployment, production SQL, scheduler changes, or cleanup.
+
+### Completed changes
+
+- Corrected the six seeded SQMS notification subjects, plain-text bodies, and HTML bodies to the approved SharePoint-style wording while retaining metadata-driven rendering.
+- Standardized notification dates as `MM/dd/yyyy`.
+- Preserved scheduling semantics: opening and reminder occurrences remain relative to the manually opened date; no Effective Date scheduling rule was added.
+- Preserved recipients: opening/reminder use static metadata; Seller approval uses Opportunity RM and Seller RM Team with static Cc; Bid results use Bidder RM and Buyer RM Team with static Cc.
+- Preserved links: opening/reminder use the static dashboard URL, Seller approval adds `opportunityId`, and Bid result messages add `bidId`.
+- Added exact persisted/rendered contract tests and a separate one-shot corrected-email live profile without changing the original retained profile defaults.
+- Executed the corrected live workflow once against 3 Opportunities and 15 Bids, delivered 19 messages, and retained the SQL and smtp4dev evidence.
+- Corrected a verifier-only substring-matching defect so the reminder subject cannot count as a second opening-subject match; reran verification without replaying workflow actions or email delivery.
+- Proved full CDT compatibility through warning-as-error builds, complete core/API regressions, seed verification, both return branches, the aggregate demo, typed API tests, and sample tests.
+
+### Changed files
+
+- `sql/sqms/002_sqms_workflow_metadata_dml.sql`
+- `sql/sqms/003_verify_sqms_deployment.sql`
+- `sql/sqms/testing/006_verify_sqms_email_template_live_acceptance.sql`
+- `src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs`
+- `src/WorkflowEngine.Sqms/SqmsWorkflowService.cs`
+- `tests/WorkflowEngine.Tests/SqmsDatabasePackageTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsLiveAcceptanceContractTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsScheduledServiceTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsWorkflowServiceTests.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceConstants.cs`
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/AcceptanceEvidenceVerifier.cs`
+- `scripts/run-sqms-email-template-live-acceptance.ps1`
+- `docs/sqms/SQMS-EMAIL-TEMPLATE-LIVE-ACCEPTANCE.md`
+- `docs/sqms/SQMS-EMAIL-TEMPLATE-LIVE-ACCEPTANCE-RESULTS-20260821.md`
+- `docs/superpowers/specs/2026-08-21-sqms-email-template-correction-design.md`
+- `docs/superpowers/plans/2026-08-21-sqms-email-template-correction.md`
+- `CODEX_HANDOFF.md`
+
+### Build/test status
+
+- Compiled corrected-email verification-only run: passed.
+- Production SQMS deployment verifier and corrected-email SQL verifier: passed.
+- Live evidence: 3 Opportunities, 15 Bids, 18 workflow instances, 82 audits, 19 sent outbox rows, 19 smtp4dev messages, 0 retries, 0 tasks, and 0 SLA schedules.
+- Corrected-email contract suite: 18 passed, 0 failed.
+- Core, Workflow API, and acceptance-tool warning-as-error builds: 0 warnings, 0 errors.
+- Full core regression: 443 passed, 0 failed, 4 expected opt-in SMTP skips.
+- Full Workflow API regression: 68 passed, 0 failed.
+- PROJECT.md Checker-return branch, Trading-return branch, and 14-step aggregate demo: passed.
+- Typed public API gate: 26 passed, 0 failed.
+- Sample and inspection gate: 24 passed, 0 failed.
+- Disposable `workflowengine_sqms_email_final_gate_20260821` was removed; `DB_ID` returned null.
+
+### Retained evidence
+
+- Original SQL evidence: `DOLLY/workflowengine_sqms_live_acceptance`.
+- Original smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-live-acceptance-20260821`.
+- Corrected-email SQL evidence: `DOLLY/workflowengine_sqms_email_live_acceptance`.
+- Corrected-email smtp4dev data: `C:\projects\cdt-workflow\.tools\smtp4dev\data\sqms-email-live-acceptance-20260821`.
+- Corrected smtp4dev UI: `http://localhost:5000`; at verification time launcher PID 5928 and executable PID 32624 used the corrected-email data path. Resolve the live process and command line again before process management.
+
+### Remaining tasks
+
+1. Review the final branch and retained corrected messages.
+2. Keep branch `sqms_clean_slate` as-is unless a separate push/merge action is authorized.
+3. Production SQL review/execution, deployment, scheduling, push, merge, and evidence cleanup remain separate authorization decisions.
+
+### Known risks
+
+- smtp4dev is running and both retained databases/mailboxes consume local resources by design.
+- Both acceptance runners are one-shot and refuse to overwrite evidence; use verification-only commands and read-only SQL for reinspection.
+- The corrected production SQL package still requires DBA review and environment-specific recipients and URLs before production use.
+- No production/shared database, deployment, Windows Task Scheduler, push, or merge was changed.
+
+### Next-session prompt
+
+```text
+Review the completed corrected SQMS email evidence in docs/sqms/SQMS-EMAIL-TEMPLATE-LIVE-ACCEPTANCE-RESULTS-20260821.md and DOLLY/workflowengine_sqms_email_live_acceptance. Preserve both SQMS acceptance databases and both smtp4dev data directories. Do not replay either one-shot runner. Do not push, merge, deploy, execute production SQL, enable scheduling, stop smtp4dev, or remove evidence unless explicitly authorized.
+```
+
 ## 2026-08-21 SQMS Retained Live Acceptance
 
 ### Current goal

@@ -72,6 +72,17 @@ The accepted, partially accepted, and not accepted messages use the approved wor
 - Corrected-email acceptance contract suite after the verifier correction: 18 passed, 0 failed.
 - Acceptance tool build after the verifier correction: 0 warnings, 0 errors.
 
+Final backward-compatibility verification after all corrected-email changes:
+
+- Core, Workflow API, and acceptance-tool warning-as-error builds: 0 warnings, 0 errors.
+- Full core regression: 443 passed, 0 failed, 4 expected opt-in SMTP skips.
+- Full Workflow API regression: 68 passed, 0 failed.
+- PROJECT.md Checker-return and Trading-return sample branches: passed.
+- PROJECT.md aggregate demo: all 14 steps passed.
+- Typed public API gate: 26 passed, 0 failed.
+- Sample and inspection gate: 24 passed, 0 failed.
+- Disposable final-gate database `workflowengine_sqms_email_final_gate_20260821` was removed after verification; `DB_ID` returned null.
+
 The initial workflow execution completed once and produced all retained target, workflow, outbox, and SMTP evidence. Its first verification-only pass exposed a verifier defect: substring subject matching treated the reminder subject as a second match for the opening message. The verifier was changed to exact subject matching and covered by a regression test. Verification was then rerun without replaying or rewriting workflow operations, outbox rows, or email messages.
 
 ## Inspection
