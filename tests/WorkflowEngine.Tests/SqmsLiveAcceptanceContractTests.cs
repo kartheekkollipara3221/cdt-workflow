@@ -70,4 +70,19 @@ public sealed class SqmsLiveAcceptanceContractTests
                 .Where(row => row.Category is "FAIR VALUE" or "PREMIUM")
                 .Sum(row => row.RequestedAmount));
     }
+
+    [Fact]
+    public void OperationPlanHasExactReturnAndTerminalVersions()
+    {
+        var plan = AcceptanceOperationPlan.Create(AcceptanceScenarioMatrix.Create());
+
+        Assert.Equal(
+            ["SUBMITTED", "Draft", "SUBMITTED", "PENDING", "OPEN TO BIDDING"],
+            plan.OpportunityA.PreSchedule.Select(row => row.ExpectedState));
+        Assert.Equal(10, plan.OpportunityA.Final.ExpectedVersion);
+        Assert.Equal(8, plan.OpportunityB.Final.ExpectedVersion);
+        Assert.Equal(7, plan.OpportunityC.Final.ExpectedVersion);
+        Assert.Equal(7, plan.Bid01.Final.ExpectedVersion);
+        Assert.Equal(3, plan.Bid04.Final.ExpectedVersion);
+    }
 }
