@@ -1,5 +1,75 @@
 # Codex Handoff
 
+## 2026-08-20 SQMS Milestone 3 Gate
+
+### Current goal
+
+- Milestone 3 is implemented, committed, and verified. Stop before Milestone 4 Task 7 and await the user's review/authorization to continue.
+
+### Completed changes
+
+- Completed Task 5 in `3ce7a6a` (`feat(sqms): add trusted data mapping`).
+- Added invariant, structured amount/category parsing; `$` currency parsing uses invariant number formatting with an explicit dollar symbol and never current culture.
+- Added validated HTTP/HTTPS link construction for the unchanged open dashboard, seller dashboard `opportunityId`, and Bid form `bidId`, preserving existing queries and fragments.
+- Added the exact minimal Opportunity/Bid row projections and approved `ISqmsDataStore` surface with no calculated Bid-summary fields.
+- Added parameterized, explicit-column SQL access on the workflow connection/current transaction, soft-delete filtering, opening-audit lookup, submitted-Bid reads, and four-column-only state projection.
+- Completed Task 6 in `30fbeaf` (`feat(sqms): add in-process workflow adapter`).
+- Added the six approved start/context/action methods and additive contracts. The request contains target ID, `actionKey`, expected workflow version, trusted actor, and server-resolved recipient inputs; it contains no client next state.
+- Start uses existing `IStartWorkflowService` with `InitialActionKey`, action uses `IWorkflowExecutionService`, and context uses `IWorkflowContextReader`. Deterministic identity, idempotency keys, role enforcement, concurrency, state, audit, and runtime ownership remain generic-engine responsibilities.
+- Made `StartWorkflowService` join an existing workflow transaction additively, matching `WorkflowExecutionService`. SQMS projection commits only after a successful workflow result.
+- Added target API transaction/enlistment guidance in `docs/sqms/TARGET-API-INTEGRATION.md`.
+- A clean API rebuild exposed nullable annotations in the existing workflow-owned notification dispatcher after Milestone 2. Added null-forgiving annotations only where its query already guarantees `WorkflowInstanceId` equality; no notification-only queue behavior was pulled forward from Milestone 5.
+
+### Changed files
+
+- `src/WorkflowEngine.Sqms/SqmsValueParser.cs`
+- `src/WorkflowEngine.Sqms/SqmsLinkBuilder.cs`
+- `src/WorkflowEngine.Sqms/Persistence/SqmsRows.cs`
+- `src/WorkflowEngine.Sqms/Persistence/ISqmsDataStore.cs`
+- `src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs`
+- `src/WorkflowEngine.Sqms/Contracts/SqmsModels.cs`
+- `src/WorkflowEngine.Sqms/Contracts/ISqmsWorkflowService.cs`
+- `src/WorkflowEngine.Sqms/SqmsWorkflowService.cs`
+- `src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs`
+- `src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs`
+- `tests/WorkflowEngine.Tests/SqmsValueParserTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsLinkBuilderTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsDataStoreTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsWorkflowServiceTests.cs`
+- `docs/sqms/TARGET-API-INTEGRATION.md`
+- `workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs`
+- `workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionNotificationDispatcherTests.cs`
+
+### Build/test status
+
+- Milestone 3 warning-as-error core build: passed with 0 warnings and 0 errors.
+- Task 5 parser/link/store gate: 31 passed, 0 failed; calculated-column negative source search returned no matches.
+- Task 6 SQMS adapter tests: 6 passed, 0 failed.
+- Focused adapter plus existing start regressions: 28 passed, 0 failed.
+- Required API start/action gate: 26 passed, 0 failed; dispatcher compatibility tests: 5 passed, 0 failed.
+- Full SQL-backed core regression: 385 passed, 0 failed, 4 opt-in SMTP tests skipped.
+- Full Workflow API regression: 68 passed, 0 failed.
+- Disposable `workflowengine_sqms_m3_gate_20260820`: `init-db`, `verify-seed`, Checker Return to Maker, and Trading Desk Return to Maker all passed; the database was deleted and `DB_ID` returned null.
+
+### Remaining tasks
+
+1. Obtain user approval to proceed beyond the Milestone 3 stop gate.
+2. Execute Task 7 only for Milestone 4: derive runtime completion from terminal-state metadata while preserving literal CDT `Completed` behavior.
+3. Stop again after the Milestone 4 quality gate.
+
+### Known risks
+
+- Runtime completion still recognizes literal `Completed`; Task 7 is the planned Milestone 4 correction for SQMS uppercase terminal states.
+- Request-driven SQMS notification actions do not yet enrich template values from target data; that is intentionally deferred to Task 9 in Milestone 5.
+- Production still requires DBA execution of `001`, `002`, and `003`, plus deployment recipient values and final environment URLs.
+- No production/shared application database was changed. Production SQL, push, merge, deployment, and scheduling remain unauthorized.
+
+### Next-session prompt
+
+```text
+Continue from SQMS Milestone 3 commit 30fbeaf only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Task 7 only with TDD: make runtime completion derive from terminal-state metadata, prove existing CDT literal Completed behavior remains compatible, and stop at the Milestone 4 gate. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
 ## 2026-08-20 SQMS Milestone 2 Gate
 
 ### Current goal
@@ -46,7 +116,7 @@
 ### Remaining tasks
 
 1. Obtain user approval to proceed beyond the Milestone 2 stop gate.
-2. Execute plan Tasks 5-8 for Milestone 3 only: SQMS persistence/parsing/links, opportunity start/action services, bid action service, and notification-only outbox delivery support.
+2. Execute plan Tasks 5-6 for Milestone 3 only: SQMS persistence/parsing/links and the in-process opportunity/bid workflow adapter.
 3. Stop again after the Milestone 3 quality gate.
 
 ### Known risks
@@ -59,7 +129,7 @@
 ### Next-session prompt
 
 ```text
-Continue from SQMS Milestone 2 commit 5558403 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Tasks 5-8 only with TDD, preserve the thin in-process boundary and existing public contracts, and stop at the Milestone 3 gate. Do not push, deploy, run production SQL, or enable scheduling.
+Continue from SQMS Milestone 2 commit 5558403 only after explicit user approval. Read PROJECT.md and docs/superpowers/plans/2026-08-20-sqms-thin-layer-integration.md. Execute Tasks 5-6 only with TDD, preserve the thin in-process boundary and existing public contracts, and stop at the Milestone 3 gate. Do not push, deploy, run production SQL, or enable scheduling.
 ```
 
 ## 2026-08-20 SQMS Milestone 1 Gate
