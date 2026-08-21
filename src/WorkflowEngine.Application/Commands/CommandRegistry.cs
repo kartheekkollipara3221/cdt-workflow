@@ -17,6 +17,7 @@ public sealed class CommandRegistry
         "show-notifications",
         "run-sla",
         "process-notification-outbox",
+        "run-sqms-scheduled",
         "demo"
     ];
 
@@ -32,6 +33,7 @@ public sealed class CommandRegistry
     private readonly IRunSlaCommandHandler? runSlaCommandHandler;
     private readonly IProcessNotificationOutboxCommandHandler? processNotificationOutboxCommandHandler;
     private readonly IDemoCommandHandler? demoCommandHandler;
+    private readonly IRunSqmsScheduledCommandHandler? runSqmsScheduledCommandHandler;
     private readonly HashSet<string> knownCommands = new(RequiredCommandNames, StringComparer.OrdinalIgnoreCase);
 
     public CommandRegistry(
@@ -46,7 +48,8 @@ public sealed class CommandRegistry
         IShowNotificationsCommandHandler? showNotificationsCommandHandler = null,
         IRunSlaCommandHandler? runSlaCommandHandler = null,
         IProcessNotificationOutboxCommandHandler? processNotificationOutboxCommandHandler = null,
-        IDemoCommandHandler? demoCommandHandler = null)
+        IDemoCommandHandler? demoCommandHandler = null,
+        IRunSqmsScheduledCommandHandler? runSqmsScheduledCommandHandler = null)
     {
         this.databaseInitializer = databaseInitializer;
         this.seedVerificationService = seedVerificationService;
@@ -60,6 +63,7 @@ public sealed class CommandRegistry
         this.runSlaCommandHandler = runSlaCommandHandler;
         this.processNotificationOutboxCommandHandler = processNotificationOutboxCommandHandler;
         this.demoCommandHandler = demoCommandHandler;
+        this.runSqmsScheduledCommandHandler = runSqmsScheduledCommandHandler;
     }
 
     public IReadOnlyCollection<string> KnownCommands => RequiredCommandNames;
@@ -192,6 +196,16 @@ public sealed class CommandRegistry
             }
 
             return processNotificationOutboxCommandHandler.RunAsync(args.Skip(1).ToArray(), CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        if (string.Equals(commandName, "run-sqms-scheduled", StringComparison.OrdinalIgnoreCase))
+        {
+            if (runSqmsScheduledCommandHandler is null)
+            {
+                return CommandResult.Failure("Command 'run-sqms-scheduled' requires command services that are not registered.");
+            }
+
+            return runSqmsScheduledCommandHandler.RunAsync(args.Skip(1).ToArray(), CancellationToken.None).GetAwaiter().GetResult();
         }
 
         if (string.Equals(commandName, "demo", StringComparison.OrdinalIgnoreCase))

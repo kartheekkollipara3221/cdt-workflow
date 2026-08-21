@@ -17,6 +17,7 @@ public sealed class CommandRegistryTests
         "show-notifications",
         "run-sla",
         "process-notification-outbox",
+        "run-sqms-scheduled",
         "demo"
     ];
 

@@ -53,6 +53,7 @@ public static class CommandArgumentParser
             "show-notifications" => ParseWorkflowInstance(args, "Usage: show-notifications <workflowInstanceId>"),
             "run-sla" => ParseRunSla(args),
             "process-notification-outbox" => ParseNoArgs(args, "Usage: process-notification-outbox"),
+            "run-sqms-scheduled" => ParseNoArgs(args, "Usage: run-sqms-scheduled"),
             "demo" => ParseNoArgs(args, "Usage: demo"),
             _ => ParseResult.Fail($"Unknown command '{commandName}'.")
         };

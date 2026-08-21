@@ -19,6 +19,7 @@ dotnet build workflow-api/WorkflowEngine.WorkflowApi.slnx
 dotnet run --project src/WorkflowEngine.Console -- init-db
 dotnet run --project src/WorkflowEngine.Console -- verify-seed
 dotnet run --project src/WorkflowEngine.Console -- demo
+dotnet run --project src/WorkflowEngine.Console -- run-sqms-scheduled
 ```
 
 The console commands are still the easiest end-to-end demo path. The active workflow API host is `workflow-api/WorkflowEngine.WorkflowApi.slnx`; read `workflow-api/WORKFLOW_API_BOUNDARIES.md` before changing endpoints.
