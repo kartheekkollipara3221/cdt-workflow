@@ -252,12 +252,12 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
                     normalized,
                     hasher.ComputeHash(envelope, notificationInput),
                     AdminOverride: false)
-                {
-                    DeriveIdentityFromPersistence = true,
-                    PersistSectionData = false,
-                    ValidateActionEcho = false,
-                    NotificationInput = notificationInput
-                });
+            {
+                DeriveIdentityFromPersistence = true,
+                PersistSectionData = false,
+                ValidateActionEcho = false,
+                NotificationInput = notificationInput
+            });
             return await CompleteWorkflowOperationAsync(
                 workflowResult,
                 request.EntityId,

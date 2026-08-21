@@ -420,11 +420,11 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.SlaReminderKind).HasMaxLength(30);
             entity.Property(row => row.CancellationReason).HasMaxLength(500);
             entity.HasIndex(row => new
-                {
-                    row.WorkflowTaskSlaScheduleId,
-                    row.SlaOccurrenceAtUtc,
-                    row.SlaReminderKind
-                })
+            {
+                row.WorkflowTaskSlaScheduleId,
+                row.SlaOccurrenceAtUtc,
+                row.SlaReminderKind
+            })
                 .IsUnique()
                 .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL AND [SlaOccurrenceAtUtc] IS NOT NULL");
             entity.HasIndex(row => row.NotificationOccurrenceKey)

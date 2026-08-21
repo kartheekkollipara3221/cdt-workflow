@@ -387,15 +387,15 @@ public sealed class SqmsWorkflowServiceTests
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:DefaultConnection"] = connectionString,
-                    ["Notifications:Sender"] = "NoOp"
-                    , ["Sqms:Enabled"] = "true"
-                    , ["Sqms:Links:OpenBiddingDashboardUrl"] = "https://dashboard.example.test/open"
-                    , ["Sqms:Links:SellerApprovalBidsDashboardUrl"] = "https://dashboard.example.test/bids?view=seller"
-                    , ["Sqms:Links:BidFormUrl"] = invalidBidUrl
+                    ["Notifications:Sender"] = "NoOp",
+                    ["Sqms:Enabled"] = "true",
+                    ["Sqms:Links:OpenBiddingDashboardUrl"] = "https://dashboard.example.test/open",
+                    ["Sqms:Links:SellerApprovalBidsDashboardUrl"] = "https://dashboard.example.test/bids?view=seller",
+                    ["Sqms:Links:BidFormUrl"] = invalidBidUrl
                         ? "not-a-url"
-                        : "https://forms.example.test/bid?mode=edit"
-                    , ["Sqms:Scheduling:TimeZoneId"] = "Eastern Standard Time"
-                    , ["Sqms:Scheduling:SellerResponseDays"] = "5"
+                        : "https://forms.example.test/bid?mode=edit",
+                    ["Sqms:Scheduling:TimeZoneId"] = "Eastern Standard Time",
+                    ["Sqms:Scheduling:SellerResponseDays"] = "5"
                 })
                 .Build();
             var services = new ServiceCollection()

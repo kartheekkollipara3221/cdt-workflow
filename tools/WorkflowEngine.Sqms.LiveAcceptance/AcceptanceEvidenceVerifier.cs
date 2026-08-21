@@ -383,17 +383,17 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
                 break;
             case JsonValueKind.Array:
                 foreach (var item in element.EnumerateArray())
-                foreach (var value in AllStrings(item))
-                {
-                    yield return value;
-                }
+                    foreach (var value in AllStrings(item))
+                    {
+                        yield return value;
+                    }
                 break;
             case JsonValueKind.Object:
                 foreach (var property in element.EnumerateObject())
-                foreach (var value in AllStrings(property.Value))
-                {
-                    yield return value;
-                }
+                    foreach (var value in AllStrings(property.Value))
+                    {
+                        yield return value;
+                    }
                 break;
         }
     }

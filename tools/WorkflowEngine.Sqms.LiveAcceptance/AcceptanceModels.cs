@@ -27,11 +27,11 @@ public sealed record AcceptanceScenarioMatrix(IReadOnlyList<OpportunityScenario>
 
     public static AcceptanceScenarioMatrix Create(
         AcceptanceScenarioKind? kind = null) => (kind ?? AcceptanceConstants.ScenarioKind) switch
-    {
-        AcceptanceScenarioKind.Comprehensive => Comprehensive(),
-        AcceptanceScenarioKind.SingleLifecycle => SingleLifecycle(),
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
-    };
+        {
+            AcceptanceScenarioKind.Comprehensive => Comprehensive(),
+            AcceptanceScenarioKind.SingleLifecycle => SingleLifecycle(),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
 
     private static AcceptanceScenarioMatrix Comprehensive() => new(
     [

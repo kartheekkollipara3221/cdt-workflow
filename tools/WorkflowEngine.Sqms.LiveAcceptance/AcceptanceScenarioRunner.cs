@@ -275,15 +275,15 @@ public sealed class AcceptanceScenarioRunner(
         OpportunityScenario opportunity,
         int id,
         CancellationToken cancellationToken) => opportunity.AllocationPath switch
-    {
-        "AWAITING ALLOCATION -> COMPLETED" =>
-            CompleteAwaitingAllocationAsync(opportunity.Key, id, cancellationToken),
-        "PARTIALLY ALLOCATED -> COMPLETED" =>
-            CompletePartiallyAllocatedAsync(opportunity.Key, id, cancellationToken),
-        "NOT FULFILLED" => CompleteNotFulfilledAsync(opportunity.Key, id, cancellationToken),
-        _ => throw new InvalidOperationException(
-            $"Unknown Opportunity allocation path '{opportunity.AllocationPath}'.")
-    };
+        {
+            "AWAITING ALLOCATION -> COMPLETED" =>
+                CompleteAwaitingAllocationAsync(opportunity.Key, id, cancellationToken),
+            "PARTIALLY ALLOCATED -> COMPLETED" =>
+                CompletePartiallyAllocatedAsync(opportunity.Key, id, cancellationToken),
+            "NOT FULFILLED" => CompleteNotFulfilledAsync(opportunity.Key, id, cancellationToken),
+            _ => throw new InvalidOperationException(
+                $"Unknown Opportunity allocation path '{opportunity.AllocationPath}'.")
+        };
 
     private async Task CompleteAwaitingAllocationAsync(
         string key,

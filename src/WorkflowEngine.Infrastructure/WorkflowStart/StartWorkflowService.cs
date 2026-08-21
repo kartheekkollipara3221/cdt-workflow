@@ -307,12 +307,12 @@ public sealed class StartWorkflowService(
                 normalized,
                 hasher.ComputeHash(normalized.Envelope, actionNotificationInput),
                 AdminOverride: false)
-            {
-                DeriveIdentityFromPersistence = true,
-                PersistSectionData = false,
-                ValidateActionEcho = false,
-                NotificationInput = actionNotificationInput
-            });
+        {
+            DeriveIdentityFromPersistence = true,
+            PersistSectionData = false,
+            ValidateActionEcho = false,
+            NotificationInput = actionNotificationInput
+        });
     }
 
     private StartParticipantCaptureOutcome CaptureParticipants(
