@@ -22,6 +22,9 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
             string.Join('\n', AllStrings(metadata.RootElement)) + '\n' + rawMessage);
     }
 
+    public static bool SubjectMatches(string expected, string actual) =>
+        string.Equals(expected, actual, StringComparison.Ordinal);
+
     public const string SqmsSlaCountSql = """
         SELECT COUNT(*)
         FROM [dbo].[WorkflowTaskSlaSchedule] AS schedule
@@ -176,15 +179,18 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
                 $"smtp4dev expected {AcceptanceConstants.ExpectedEmailCount} messages but returned {items.Length}.");
         }
 
-        var messages = new List<string>(items.Length);
+        var messages = new List<SmtpMessageEvidence>(items.Length);
         foreach (var item in items)
         {
             var id = RequiredString(item, "id");
+            var subject = RequiredString(item, "subject");
             using var messageResponse = await client.GetAsync(MessageDownloadPath(id), cancellationToken);
             messageResponse.EnsureSuccessStatusCode();
-            messages.Add(CombineMessageEvidence(
-                item.GetRawText(),
-                await messageResponse.Content.ReadAsStringAsync(cancellationToken)));
+            messages.Add(new(
+                subject,
+                CombineMessageEvidence(
+                    item.GetRawText(),
+                    await messageResponse.Content.ReadAsStringAsync(cancellationToken))));
         }
 
         var outbox = await ReadOutboxAsync(cancellationToken);
@@ -200,8 +206,9 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
             var matching = messages.Where(message =>
-                    message.Contains(row.Subject, StringComparison.Ordinal) &&
-                    expectedAddresses.All(address => message.Contains(address, StringComparison.OrdinalIgnoreCase)))
+                    SubjectMatches(row.Subject, message.Subject) &&
+                    expectedAddresses.All(address =>
+                        message.Content.Contains(address, StringComparison.OrdinalIgnoreCase)))
                 .ToArray();
             if (matching.Length != 1)
             {
@@ -211,7 +218,7 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
 
             foreach (var requiredLink in HttpPattern().Matches(row.Body + " " + row.HtmlBody).Select(match => match.Value))
             {
-                if (!matching[0].Contains(WebUtility.HtmlDecode(requiredLink), StringComparison.Ordinal))
+                if (!matching[0].Content.Contains(WebUtility.HtmlDecode(requiredLink), StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException(
                         $"smtp4dev message for outbox {row.Id} is missing link '{requiredLink}'.");
@@ -407,4 +414,6 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
         string RecipientsJson,
         string Body,
         string HtmlBody);
+
+    private sealed record SmtpMessageEvidence(string Subject, string Content);
 }

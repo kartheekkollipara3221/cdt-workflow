@@ -228,4 +228,16 @@ public sealed class SqmsLiveAcceptanceContractTests
         Assert.Contains("seller@example.test", evidence, StringComparison.Ordinal);
         Assert.Contains("https://sqms.example.test/bids", evidence, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void SmtpVerifierDoesNotTreatTheReminderSubjectAsTheOpenSubject()
+    {
+        const string open =
+            "Q1 2030 Secondary Sale Opportunities - Open to Bidding: Response Required by 01/16/2030";
+        const string reminder =
+            "REMINDER Q1 2030 Secondary Sale Opportunities - Open to Bidding: Response Required by 01/16/2030";
+
+        Assert.True(AcceptanceEvidenceVerifier.SubjectMatches(open, open));
+        Assert.False(AcceptanceEvidenceVerifier.SubjectMatches(open, reminder));
+    }
 }
