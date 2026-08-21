@@ -1,5 +1,48 @@
 # Codex Handoff
 
+## 2026-08-20 SQMS Milestone 6 Compatibility Gate (Task 13)
+
+### Current goal
+
+- CDT compatibility and the complete SQMS behavior suite have passed. Finish Task 14 deployment documentation, run the final documentation/quality gate, and stop at Milestone 6.
+
+### Completed changes
+
+- Completed Task 12 in `7dd71fe` (`test(sqms): cover complete workflow paths`) with isolated SQL-backed Opportunity, Bid, scheduler, outbox, rendering, replay, recipient, hyperlink, and calculated-column preservation coverage.
+- Ran the full existing CDT regression suite and Workflow API regression suite after the SQMS additions.
+- Executed the existing Section 21 checker branch, trading branch, complete demo, typed API tests, and sample/inspection tests against disposable database `workflowengine_sqms_acceptance_20260820`.
+- Applied the production SQMS SQL package in order to the disposable database. The verifier correctly rejected the database until the DBA-owned target `SSQMS.Opportunity` and `SSQMS.Bid` prerequisite was supplied; after the test-only target schema was installed, `002` and `003` passed.
+- Confirmed active runtime source contains no direct `DateTime.UtcNow`, public `toState`, legacy recipient-key behavior, or SQMS writes to `TotalBid`, `LargestBid`, or `LowestBid`. Preserved migrations and an explicit contract-prohibition test/document are the only relevant historical search hits.
+
+### Build/test status
+
+- Core warning-as-error build: passed with 0 warnings and 0 errors.
+- Workflow API warning-as-error build: passed with 0 warnings and 0 errors.
+- Full core SQL-backed regression: 423 passed, 0 failed, 4 opt-in smtp4dev tests skipped.
+- Full Workflow API regression: 68 passed, 0 failed.
+- Section 21 checker branch, trading branch, and 14-step demo: passed.
+- Typed API tests: 26 passed, 0 failed.
+- Sample/inspection tests: 24 passed, 0 failed.
+- SQMS deployment verifier and generic `verify-seed`: passed after installation of the test-only target schema prerequisite.
+
+### Remaining tasks
+
+1. Complete `docs/sqms/DBA-DEPLOYMENT.md`, additive README guidance, and implementation-status annotation in the approved design.
+2. Remove the disposable acceptance database and verify `DB_ID` is null.
+3. Run the Task 14 focused quality gate and `git diff --check`, commit the documentation handoff, and stop.
+
+### Known risks
+
+- Production deployment depends on the existing DBA-owned target tables matching the approved schema and on final recipient JSON and environment URL values.
+- Adding nullable outbox ownership columns/indexes can take schema-modification locks; the DBA must assess table size and workload and choose the deployment window.
+- Checked-in SQMS remains disabled. No production/shared database, scheduler, deployment, push, or merge has been changed.
+
+### Next-session prompt
+
+```text
+Finish SQMS Milestone 6 Task 14 from Task 12 commit 7dd71fe and the Task 13 compatibility evidence in CODEX_HANDOFF.md. Create the DBA deployment/runbook, add README links, mark only implementation status in the approved design, remove the disposable acceptance database, run the final focused gate, commit, and stop. Do not push, deploy, run production SQL, or enable scheduling.
+```
+
 ## 2026-08-20 SQMS Milestone 5 Gate
 
 ### Current goal
