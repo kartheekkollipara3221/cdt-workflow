@@ -40,9 +40,11 @@ public sealed class SqmsWorkflowServiceTests
     }
 
     [Fact]
-    public async Task StartOpportunityAndBidCommitDirectlyToSubmittedWithoutTasksOrSla()
+    public async Task StartOpportunityAndBidReturnSubmittedWithoutUpdatingTargetRows()
     {
         await using var fixture = await SqmsServiceFixture.CreateAsync("start_submit");
+        var opportunityBefore = await fixture.TargetRowSnapshotAsync("Opportunity", 10000);
+        var bidBefore = await fixture.TargetRowSnapshotAsync("Bid", 10000);
 
         var opportunity = await fixture.Service.StartOpportunityAsync(10000, MfoActor, CancellationToken.None);
         var bid = await fixture.Service.StartBidAsync(10000, MfoActor, CancellationToken.None);
@@ -60,18 +62,14 @@ public sealed class SqmsWorkflowServiceTests
         Assert.Equal(2, await fixture.DbContext.IdempotencyRecords.CountAsync());
         Assert.Empty(fixture.DbContext.WorkflowTasks);
         Assert.Empty(fixture.DbContext.WorkflowTaskSlaSchedules);
-        Assert.Equal(
-            "SUBMITTED|SUBMITTED|mfo-user",
-            await fixture.TargetStateAsync("Opportunity", 10000));
-        Assert.Equal(
-            "SUBMITTED|SUBMITTED|mfo-user",
-            await fixture.TargetStateAsync("Bid", 10000));
+        Assert.Equal(opportunityBefore, await fixture.TargetRowSnapshotAsync("Opportunity", 10000));
+        Assert.Equal(bidBefore, await fixture.TargetRowSnapshotAsync("Bid", 10000));
     }
 
     [Theory]
     [InlineData("Opportunity")]
     [InlineData("Bid")]
-    public async Task ProjectionFailureRollsBackStartRuntimeRows(string entityType)
+    public async Task RequestDrivenStartDoesNotCallTargetProjection(string entityType)
     {
         await using var fixture = await SqmsServiceFixture.CreateAsync(
             $"projection_failure_{entityType.ToLowerInvariant()}",
@@ -81,12 +79,14 @@ public sealed class SqmsWorkflowServiceTests
             ? () => fixture.Service.StartOpportunityAsync(10000, MfoActor, CancellationToken.None)
             : () => fixture.Service.StartBidAsync(10000, MfoActor, CancellationToken.None);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(action);
-        Assert.Contains("forced projection failure", exception.Message, StringComparison.Ordinal);
+        var result = await action();
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(SqmsKeys.OpportunityStates.Submitted, result.Context?.WorkflowContext.Workflow.CurrentState);
         fixture.DbContext.ChangeTracker.Clear();
-        Assert.Empty(fixture.DbContext.WorkflowInstances);
-        Assert.Empty(fixture.DbContext.WorkflowAudits);
-        Assert.Empty(fixture.DbContext.IdempotencyRecords);
+        Assert.Single(fixture.DbContext.WorkflowInstances);
+        Assert.Single(fixture.DbContext.WorkflowAudits);
+        Assert.Single(fixture.DbContext.IdempotencyRecords);
     }
 
     [Fact]
@@ -102,6 +102,7 @@ public sealed class SqmsWorkflowServiceTests
         var staleOpportunity = await fixture.Service.ExecuteOpportunityActionAsync(
             Request(10000, SqmsKeys.OpportunityActions.MarkPending, 1, IpgActor),
             CancellationToken.None);
+        var opportunityBefore = await fixture.TargetRowSnapshotAsync("Opportunity", 10000);
         var returnedOpportunity = await fixture.Service.ExecuteOpportunityActionAsync(
             Request(10000, SqmsKeys.OpportunityActions.ReturnToDraft, 2, IpgActor),
             CancellationToken.None);
@@ -118,6 +119,7 @@ public sealed class SqmsWorkflowServiceTests
         var staleBid = await fixture.Service.ExecuteBidActionAsync(
             Request(10000, SqmsKeys.BidActions.ReturnToDraft, 1, IpgActor),
             CancellationToken.None);
+        var bidBefore = await fixture.TargetRowSnapshotAsync("Bid", 10000);
         var returnedBid = await fixture.Service.ExecuteBidActionAsync(
             Request(10000, SqmsKeys.BidActions.ReturnToDraft, 2, IpgActor),
             CancellationToken.None);
@@ -127,8 +129,30 @@ public sealed class SqmsWorkflowServiceTests
         Assert.True(returnedBid.Success, returnedBid.Message);
         Assert.Equal("Draft", returnedBid.Context?.WorkflowContext.Workflow.CurrentState);
         Assert.Equal(3, returnedBid.Context?.WorkflowContext.Workflow.WorkflowInstanceVersion);
-        Assert.Equal("Draft|Draft|ipg-user", await fixture.TargetStateAsync("Opportunity", 10000));
-        Assert.Equal("Draft|Draft|ipg-user", await fixture.TargetStateAsync("Bid", 10000));
+        Assert.Equal(opportunityBefore, await fixture.TargetRowSnapshotAsync("Opportunity", 10000));
+        Assert.Equal(bidBefore, await fixture.TargetRowSnapshotAsync("Bid", 10000));
+    }
+
+    [Fact]
+    public async Task RequestDrivenIdempotentReplayDoesNotUpdateTargetRowOrRepeatSideEffects()
+    {
+        await using var fixture = await SqmsServiceFixture.CreateAsync("manual_replay");
+        Assert.True((await fixture.Service.StartOpportunityAsync(10000, MfoActor, CancellationToken.None)).Success);
+        var request = Request(10000, SqmsKeys.OpportunityActions.ReturnToDraft, 2, IpgActor);
+        var targetBefore = await fixture.TargetRowSnapshotAsync("Opportunity", 10000);
+
+        var first = await fixture.Service.ExecuteOpportunityActionAsync(request, CancellationToken.None);
+        var auditCount = await fixture.DbContext.WorkflowAudits.CountAsync();
+        var idempotencyCount = await fixture.DbContext.IdempotencyRecords.CountAsync();
+        var replay = await fixture.Service.ExecuteOpportunityActionAsync(request, CancellationToken.None);
+
+        Assert.True(first.Success, first.Message);
+        Assert.True(replay.Success, replay.Message);
+        Assert.Equal(first.WorkflowResult?.Result.NewState, replay.WorkflowResult?.Result.NewState);
+        Assert.Equal(targetBefore, await fixture.TargetRowSnapshotAsync("Opportunity", 10000));
+        Assert.Equal(auditCount, await fixture.DbContext.WorkflowAudits.CountAsync());
+        Assert.Equal(idempotencyCount, await fixture.DbContext.IdempotencyRecords.CountAsync());
+        Assert.Empty(fixture.DbContext.NotificationOutbox);
     }
 
     [Fact]
@@ -271,6 +295,7 @@ public sealed class SqmsWorkflowServiceTests
         Assert.True((await fixture.Service.ExecuteOpportunityActionAsync(
             Request(10000, SqmsKeys.OpportunityActions.CloseBidding, 4, SystemActor), CancellationToken.None)).Success);
         var auditCount = await fixture.DbContext.WorkflowAudits.CountAsync();
+        var targetBefore = await fixture.TargetRowSnapshotAsync("Opportunity", 10000);
 
         var result = await fixture.Service.ExecuteOpportunityActionAsync(
             Request(
@@ -287,7 +312,7 @@ public sealed class SqmsWorkflowServiceTests
         Assert.Equal("ValidationFailed", result.ResultCode);
         Assert.Empty(fixture.DbContext.NotificationOutbox);
         Assert.Equal(auditCount, await fixture.DbContext.WorkflowAudits.CountAsync());
-        Assert.Equal("CLOSED TO BIDDING|CLOSED TO BIDDING|system", await fixture.TargetStateAsync("Opportunity", 10000));
+        Assert.Equal(targetBefore, await fixture.TargetRowSnapshotAsync("Opportunity", 10000));
     }
 
     [Theory]
@@ -324,6 +349,7 @@ public sealed class SqmsWorkflowServiceTests
                 ("relationshipManager", "buyer.manager@example.test"),
                 ("buyerRmTeam", "buyer.team@example.test"));
 
+        var targetBefore = await fixture.TargetRowSnapshotAsync("Bid", 10000);
         var result = await fixture.Service.ExecuteBidActionAsync(
             Request(10000, SqmsKeys.BidActions.Accept, 4, SellerActor, recipients),
             CancellationToken.None);
@@ -338,7 +364,7 @@ public sealed class SqmsWorkflowServiceTests
         Assert.Equal(auditCount, await fixture.DbContext.WorkflowAudits.CountAsync());
         Assert.Equal(idempotencyCount, await fixture.DbContext.IdempotencyRecords.CountAsync());
         Assert.Empty(fixture.DbContext.NotificationOutbox);
-        Assert.Equal("UNDER REVIEW BY SELLER|UNDER REVIEW BY SELLER|ipg-user", await fixture.TargetStateAsync("Bid", 10000));
+        Assert.Equal(targetBefore, await fixture.TargetRowSnapshotAsync("Bid", 10000));
     }
 
     private static SqmsExecuteRequest Request(
@@ -435,15 +461,15 @@ public sealed class SqmsWorkflowServiceTests
             return fixture;
         }
 
-        public async Task<string?> TargetStateAsync(string tableName, int id)
+        public async Task<string> TargetRowSnapshotAsync(string tableName, int id)
         {
             var query = tableName switch
             {
                 "Opportunity" => DbContext.Database.SqlQueryRaw<string>(
-                    "SELECT CONCAT([Status], '|', [WorkflowState], '|', [ModifiedBy]) AS [Value] FROM [SSQMS].[Opportunity] WHERE [ID] = {0}",
+                    "SELECT (SELECT * FROM [SSQMS].[Opportunity] WHERE [ID] = {0} FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES) AS [Value]",
                     id),
                 "Bid" => DbContext.Database.SqlQueryRaw<string>(
-                    "SELECT CONCAT([Status], '|', [WorkflowState], '|', [ModifiedBy]) AS [Value] FROM [SSQMS].[Bid] WHERE [ID] = {0}",
+                    "SELECT (SELECT * FROM [SSQMS].[Bid] WHERE [ID] = {0} FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES) AS [Value]",
                     id),
                 _ => throw new ArgumentOutOfRangeException(nameof(tableName))
             };
