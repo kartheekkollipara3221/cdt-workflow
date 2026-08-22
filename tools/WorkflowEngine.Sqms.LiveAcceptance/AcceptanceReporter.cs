@@ -81,6 +81,14 @@ public sealed class AcceptanceReporter(TextWriter output)
         }
     }
 
+    public void WriteProjectionOwnership(ProjectionOwnershipEvidence evidence)
+    {
+        output.WriteLine(
+            $"OWNERSHIP kind={evidence.EvidenceKind} entity={evidence.EntityType}:{evidence.TargetId} " +
+            $"operation={evidence.Operation} state={evidence.ReturnedState} " +
+            $"version={evidence.ReturnedVersion} unchanged={evidence.Unchanged}");
+    }
+
     public void WriteOutbox(ProcessNotificationOutboxResult result)
     {
         output.WriteLine(

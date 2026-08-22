@@ -24,7 +24,7 @@ public sealed class AcceptanceScenarioRunner(
     public async Task<int> RunAsync(CancellationToken cancellationToken)
     {
         var manifest = await CreateFixturesAndDrivePreScheduleAsync(cancellationToken);
-        await RunScheduledPhasesAsync(cancellationToken);
+        await RunScheduledPhasesAsync(manifest, cancellationToken);
         await DrivePostScheduleAsync(manifest, cancellationToken);
         var processed = await outbox.ProcessAsync(cancellationToken);
         reporter.WriteOutbox(processed);
@@ -150,13 +150,16 @@ public sealed class AcceptanceScenarioRunner(
         return manifest;
     }
 
-    private async Task RunScheduledPhasesAsync(CancellationToken cancellationToken)
+    private async Task RunScheduledPhasesAsync(
+        AcceptanceManifest manifest,
+        CancellationToken cancellationToken)
     {
         var definition = AcceptanceConstants.Definition;
         await RunScheduledAsync("OPEN", AcceptanceConstants.OpenRunUtc, 0, 0, 0, 1, 0, cancellationToken);
         await RunScheduledReplayAsync("OPEN-REPLAY", AcceptanceConstants.OpenRunUtc, 1, cancellationToken);
         await RunScheduledAsync("REMINDER", AcceptanceConstants.ReminderRunUtc, 0, 0, 0, 0, 1, cancellationToken);
         await RunScheduledReplayAsync("REMINDER-REPLAY", AcceptanceConstants.ReminderRunUtc, 2, cancellationToken);
+        var scheduledBefore = await CaptureScheduledTargetsAsync(manifest, cancellationToken);
         await RunScheduledAsync(
             "CLOSE",
             AcceptanceConstants.CloseRunUtc,
@@ -166,7 +169,77 @@ public sealed class AcceptanceScenarioRunner(
             0,
             0,
             cancellationToken);
+        await RecordScheduledProjectionAsync(scheduledBefore, cancellationToken);
         await RunScheduledReplayAsync("CLOSE-REPLAY", AcceptanceConstants.CloseRunUtc, 0, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<ScheduledTargetBefore>> CaptureScheduledTargetsAsync(
+        AcceptanceManifest manifest,
+        CancellationToken cancellationToken)
+    {
+        var rows = new List<ScheduledTargetBefore>();
+        foreach (var opportunity in AcceptanceScenarioMatrix.Create().Opportunities)
+        {
+            var id = manifest.OpportunityIds[opportunity.Key];
+            rows.Add(new(
+                "Opportunity",
+                id,
+                SqmsKeys.OpportunityActions.CloseBidding,
+                SqmsKeys.OpportunityStates.ClosedToBidding,
+                await fixtureWriter.ReadTargetRowSnapshotAsync("Opportunity", id, cancellationToken)));
+            foreach (var bid in opportunity.Bids)
+            {
+                var bidId = manifest.BidIds[bid.Key];
+                var notAllocated = bid.TerminalState == SqmsKeys.BidStates.NotAllocated;
+                rows.Add(new(
+                    "Bid",
+                    bidId,
+                    notAllocated ? SqmsKeys.BidActions.MarkNotAllocated : SqmsKeys.BidActions.MoveToIpgReview,
+                    notAllocated ? SqmsKeys.BidStates.NotAllocated : SqmsKeys.BidStates.IpgReview,
+                    await fixtureWriter.ReadTargetRowSnapshotAsync("Bid", bidId, cancellationToken)));
+            }
+        }
+
+        return rows;
+    }
+
+    private async Task RecordScheduledProjectionAsync(
+        IReadOnlyList<ScheduledTargetBefore> targets,
+        CancellationToken cancellationToken)
+    {
+        foreach (var target in targets)
+        {
+            var afterJson = await fixtureWriter.ReadTargetRowSnapshotAsync(
+                target.EntityType,
+                target.TargetId,
+                cancellationToken);
+            var state = await ReadTargetStateAsync(target.EntityType, target.TargetId, cancellationToken);
+            var context = target.EntityType == "Opportunity"
+                ? await workflow.GetOpportunityContextAsync(target.TargetId, AcceptanceConstants.System, cancellationToken)
+                : await workflow.GetBidContextAsync(target.TargetId, AcceptanceConstants.System, cancellationToken);
+            var runtime = context.Context?.WorkflowContext.Workflow;
+            var changed = !string.Equals(target.BeforeJson, afterJson, StringComparison.Ordinal);
+            if (!context.Success || runtime?.CurrentState != target.ExpectedState ||
+                state.Status != target.ExpectedState || state.WorkflowState != target.ExpectedState || !changed)
+            {
+                throw new InvalidOperationException(
+                    $"Scheduled projection did not directly persist {target.EntityType} {target.TargetId} " +
+                    $"as '{target.ExpectedState}'.");
+            }
+
+            var evidence = new ProjectionOwnershipEvidence(
+                "ScheduledProjected",
+                target.EntityType,
+                target.TargetId,
+                target.Operation,
+                target.ExpectedState,
+                runtime.WorkflowInstanceVersion,
+                target.BeforeJson,
+                afterJson,
+                Unchanged: false);
+            await fixtureWriter.RecordProjectionOwnershipEvidenceAsync(evidence, cancellationToken);
+            reporter.WriteProjectionOwnership(evidence);
+        }
     }
 
     private async Task RunScheduledAsync(
@@ -395,21 +468,66 @@ public sealed class AcceptanceScenarioRunner(
             actor,
             recipients,
             expectedState);
+        var beforeJson = await fixtureWriter.ReadTargetRowSnapshotAsync(entityType, id, cancellationToken);
         var result = await operation();
+        var afterRequestJson = await fixtureWriter.ReadTargetRowSnapshotAsync(entityType, id, cancellationToken);
+        var unchanged = string.Equals(beforeJson, afterRequestJson, StringComparison.Ordinal);
         var (status, workflowState) = await ReadTargetStateAsync(entityType, id, cancellationToken);
         var actualWorkflow = result.Context?.WorkflowContext.Workflow;
-        var parity = result.Success &&
+        var requestAccepted = result.Success &&
             actualWorkflow?.CurrentState == expectedState &&
             actualWorkflow.WorkflowInstanceVersion == resultVersion &&
-            status == expectedState &&
-            workflowState == expectedState;
-        reporter.WriteResult(sequence, result, status, workflowState, parity);
-        if (!parity)
+            unchanged;
+        reporter.WriteResult(sequence, result, status, workflowState, requestAccepted);
+        var operationName = action ?? "START";
+        var requestEvidence = new ProjectionOwnershipEvidence(
+            "RequestUnchanged",
+            entityType,
+            id,
+            operationName,
+            expectedState,
+            resultVersion,
+            beforeJson,
+            afterRequestJson,
+            unchanged);
+        await fixtureWriter.RecordProjectionOwnershipEvidenceAsync(requestEvidence, cancellationToken);
+        reporter.WriteProjectionOwnership(requestEvidence);
+        if (!requestAccepted)
         {
             throw new InvalidOperationException(
                 $"{entityType} {id} operation '{action ?? "START"}' failed acceptance. " +
                 $"Expected {expectedState} v{resultVersion}; result was {actualWorkflow?.CurrentState} " +
                 $"v{actualWorkflow?.WorkflowInstanceVersion}, code {result.ResultCode}.");
+        }
+
+        await fixtureWriter.PersistReturnedStateAsTargetOwnerAsync(
+            entityType,
+            id,
+            expectedState,
+            actor.UserId,
+            clock.GetUtcNow().UtcDateTime,
+            cancellationToken);
+        var afterPersistJson = await fixtureWriter.ReadTargetRowSnapshotAsync(entityType, id, cancellationToken);
+        var persistedState = await ReadTargetStateAsync(entityType, id, cancellationToken);
+        var persisted = persistedState.Status == expectedState &&
+            persistedState.WorkflowState == expectedState &&
+            !string.Equals(afterRequestJson, afterPersistJson, StringComparison.Ordinal);
+        var persistenceEvidence = new ProjectionOwnershipEvidence(
+            "TargetOwnerPersisted",
+            entityType,
+            id,
+            operationName,
+            expectedState,
+            resultVersion,
+            afterRequestJson,
+            afterPersistJson,
+            Unchanged: false);
+        await fixtureWriter.RecordProjectionOwnershipEvidenceAsync(persistenceEvidence, cancellationToken);
+        reporter.WriteProjectionOwnership(persistenceEvidence);
+        if (!persisted)
+        {
+            throw new InvalidOperationException(
+                $"Target owner did not persist {entityType} {id} state '{expectedState}'.");
         }
     }
 
@@ -509,4 +627,11 @@ public sealed class AcceptanceScenarioRunner(
         parameter.Value = value;
         command.Parameters.Add(parameter);
     }
+
+    private sealed record ScheduledTargetBefore(
+        string EntityType,
+        int TargetId,
+        string Operation,
+        string ExpectedState,
+        string BeforeJson);
 }

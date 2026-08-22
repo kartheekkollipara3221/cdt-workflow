@@ -87,6 +87,54 @@ public sealed class SqmsLiveAcceptanceContractTests
     }
 
     [Fact]
+    public void ProjectionOwnershipProfilePinsOneOpportunityFourBidsAndSixEmails()
+    {
+        var profile = AcceptanceProfile.FromValues(
+            "workflowengine_sqms_projection_ownership_live_acceptance",
+            "SQMS-PROJECTION-OWNERSHIP-LIVE-20260822",
+            "2030-01-01T15:00:00Z",
+            "projection-ownership",
+            "http://localhost:5002");
+
+        Assert.Equal(AcceptanceScenarioKind.ProjectionOwnership, profile.ScenarioKind);
+        Assert.Equal(new Uri("http://localhost:5002"), profile.Smtp4DevBaseAddress);
+
+        var definition = AcceptanceScenarioDefinition.Create(profile.ScenarioKind);
+        Assert.Single(definition.Matrix.Opportunities);
+        Assert.Equal(4, definition.ExpectedBidCount);
+        Assert.Equal(5, definition.ExpectedWorkflowInstanceCount);
+        Assert.Equal(6, definition.ExpectedEmailCount);
+        Assert.Equal(3, definition.ExpectedBidsMovedToIpgReview);
+        Assert.Equal(1, definition.ExpectedBidsNotAllocated);
+        Assert.Equal(
+            [
+                SqmsKeys.BidStates.Accepted,
+                SqmsKeys.BidStates.PartiallyAccepted,
+                SqmsKeys.BidStates.NotAccepted,
+                SqmsKeys.BidStates.NotAllocated
+            ],
+            definition.Matrix.AllBids.Select(bid => bid.TerminalState));
+    }
+
+    [Fact]
+    public void ScenarioRunnerRecordsRequestAndScheduledProjectionOwnership()
+    {
+        var root = SqmsDatabasePackageTests.RepositoryRoot();
+        var runner = File.ReadAllText(Path.Combine(
+            root,
+            "tools",
+            "WorkflowEngine.Sqms.LiveAcceptance",
+            "AcceptanceScenarioRunner.cs"));
+
+        Assert.Contains("RequestUnchanged", runner, StringComparison.Ordinal);
+        Assert.Contains("PersistReturnedStateAsTargetOwnerAsync", runner, StringComparison.Ordinal);
+        Assert.Contains("TargetOwnerPersisted", runner, StringComparison.Ordinal);
+        Assert.Contains("ScheduledProjected", runner, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProjectOpportunityStateAsync", runner, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProjectBidStateAsync", runner, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DefaultProfileStillSelectsTheComprehensiveRetainedDataset()
     {
         var profile = AcceptanceProfile.FromValues(null, null, null, null, null);

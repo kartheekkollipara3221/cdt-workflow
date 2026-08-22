@@ -30,6 +30,7 @@ public sealed record AcceptanceScenarioMatrix(IReadOnlyList<OpportunityScenario>
         {
             AcceptanceScenarioKind.Comprehensive => Comprehensive(),
             AcceptanceScenarioKind.SingleLifecycle => SingleLifecycle(),
+            AcceptanceScenarioKind.ProjectionOwnership => ProjectionOwnership(),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
@@ -86,11 +87,37 @@ public sealed record AcceptanceScenarioMatrix(IReadOnlyList<OpportunityScenario>
                 new("03", 20m, "DISCOUNT", SqmsKeys.BidStates.NotAccepted)
             ])
     ]);
+
+    private static AcceptanceScenarioMatrix ProjectionOwnership() => new(
+    [
+        new(
+            "A",
+            "AWAITING ALLOCATION -> COMPLETED",
+            SqmsKeys.OpportunityStates.Completed,
+            10,
+            [
+                new("01", 60m, "FAIR VALUE", SqmsKeys.BidStates.Accepted, true),
+                new("02", 50m, "PREMIUM", SqmsKeys.BidStates.PartiallyAccepted),
+                new("03", 0m, "FAIR VALUE", SqmsKeys.BidStates.NotAccepted),
+                new("04", 25m, "DISCOUNT", SqmsKeys.BidStates.NotAllocated)
+            ])
+    ]);
 }
 
 public sealed record AcceptanceManifest(
     IReadOnlyDictionary<string, int> OpportunityIds,
     IReadOnlyDictionary<string, int> BidIds);
+
+public sealed record ProjectionOwnershipEvidence(
+    string EvidenceKind,
+    string EntityType,
+    int TargetId,
+    string Operation,
+    string ReturnedState,
+    int ReturnedVersion,
+    string BeforeJson,
+    string AfterJson,
+    bool Unchanged);
 
 public sealed record AcceptanceScenarioDefinition(
     AcceptanceScenarioMatrix Matrix,

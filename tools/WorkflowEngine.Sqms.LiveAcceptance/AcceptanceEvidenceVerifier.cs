@@ -128,10 +128,11 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
         }
 
         if (string.Equals(
-                AcceptanceConstants.RunMarker,
+            AcceptanceConstants.RunMarker,
                 "SQMS-EMAIL-LIVE-20260821",
                 StringComparison.Ordinal) ||
-            AcceptanceConstants.ScenarioKind == AcceptanceScenarioKind.SingleLifecycle)
+            AcceptanceConstants.ScenarioKind is AcceptanceScenarioKind.SingleLifecycle or
+                AcceptanceScenarioKind.ProjectionOwnership)
         {
             await RequireCountAsync(
                 "corrected email content mismatches",
@@ -168,6 +169,72 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
         {
             await RequireTargetStateCountAsync("Bid", state.Key, state.Value, cancellationToken);
         }
+
+
+        if (AcceptanceConstants.ScenarioKind == AcceptanceScenarioKind.ProjectionOwnership)
+        {
+            await VerifyProjectionOwnershipAsync(cancellationToken);
+        }
+    }
+
+    private async Task VerifyProjectionOwnershipAsync(CancellationToken cancellationToken)
+    {
+        const int expectedManualOperations = 20;
+        await RequireCountAsync(
+            "manual unchanged-row ownership proofs",
+            """
+            SELECT COUNT(*) FROM [dbo].[SqmsProjectionOwnershipEvidence]
+            WHERE [EvidenceKind] = N'RequestUnchanged'
+              AND [Unchanged] = 1
+              AND [BeforeJson] = [AfterJson];
+            """,
+            expectedManualOperations,
+            cancellationToken,
+            useMarker: false);
+        await RequireCountAsync(
+            "target-owner persistence proofs",
+            """
+            SELECT COUNT(*) FROM [dbo].[SqmsProjectionOwnershipEvidence]
+            WHERE [EvidenceKind] = N'TargetOwnerPersisted'
+              AND [Unchanged] = 0
+              AND [BeforeJson] <> [AfterJson];
+            """,
+            expectedManualOperations,
+            cancellationToken,
+            useMarker: false);
+        await RequireCountAsync(
+            "scheduled direct projection proofs",
+            """
+            SELECT COUNT(*) FROM [dbo].[SqmsProjectionOwnershipEvidence]
+            WHERE [EvidenceKind] = N'ScheduledProjected'
+              AND [Unchanged] = 0
+              AND [BeforeJson] <> [AfterJson];
+            """,
+            AcceptanceConstants.Definition.ExpectedWorkflowInstanceCount,
+            cancellationToken,
+            useMarker: false);
+        await RequireCountAsync(
+            "unpaired manual ownership proofs",
+            """
+            SELECT COUNT(*)
+            FROM [dbo].[SqmsProjectionOwnershipEvidence] AS requestProof
+            WHERE requestProof.[EvidenceKind] = N'RequestUnchanged'
+              AND NOT EXISTS
+              (
+                  SELECT 1
+                  FROM [dbo].[SqmsProjectionOwnershipEvidence] AS targetProof
+                  WHERE targetProof.[EvidenceKind] = N'TargetOwnerPersisted'
+                    AND targetProof.[EntityType] = requestProof.[EntityType]
+                    AND targetProof.[TargetId] = requestProof.[TargetId]
+                    AND targetProof.[Operation] = requestProof.[Operation]
+                    AND targetProof.[ReturnedState] = requestProof.[ReturnedState]
+                    AND targetProof.[ReturnedVersion] = requestProof.[ReturnedVersion]
+                    AND targetProof.[BeforeJson] = requestProof.[AfterJson]
+              );
+            """,
+            0,
+            cancellationToken,
+            useMarker: false);
     }
 
     private async Task VerifySmtp4DevAsync(CancellationToken cancellationToken)
@@ -201,7 +268,8 @@ public sealed partial class AcceptanceEvidenceVerifier(WorkflowDbContext dbConte
         var outbox = await ReadOutboxAsync(cancellationToken);
         if (outbox.Count != AcceptanceConstants.ExpectedEmailCount)
         {
-            throw new InvalidOperationException($"Expected 19 outbox evidence rows but found {outbox.Count}.");
+            throw new InvalidOperationException(
+                $"Expected {AcceptanceConstants.ExpectedEmailCount} outbox evidence rows but found {outbox.Count}.");
         }
 
         foreach (var row in outbox)

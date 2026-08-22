@@ -22,6 +22,7 @@ public sealed class AcceptanceFixtureWriter(WorkflowDbContext dbContext)
         {
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
             await EnsureMarkerIsUnusedAsync(connection, transaction, cancellationToken);
+            await EnsureProjectionEvidenceTableAsync(connection, transaction, cancellationToken);
 
             var opportunityIds = new Dictionary<string, int>(StringComparer.Ordinal);
             var bidIds = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -64,6 +65,115 @@ public sealed class AcceptanceFixtureWriter(WorkflowDbContext dbContext)
                 await connection.CloseAsync();
             }
         }
+    }
+
+    public async Task<string> ReadTargetRowSnapshotAsync(
+        string entityType,
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var table = TargetTable(entityType);
+        var connection = dbContext.Database.GetDbConnection();
+        var openedHere = connection.State != ConnectionState.Open;
+        if (openedHere)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"SELECT (SELECT * FROM [SSQMS].[{table}] WHERE [ID] = @id FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);";
+            AddParameter(command, "@id", DbType.Int32, id);
+            return Convert.ToString(
+                    await command.ExecuteScalarAsync(cancellationToken),
+                    System.Globalization.CultureInfo.InvariantCulture)
+                ?? throw new InvalidOperationException($"Target {entityType} {id} was not found.");
+        }
+        finally
+        {
+            if (openedHere)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    public async Task PersistReturnedStateAsTargetOwnerAsync(
+        string entityType,
+        int id,
+        string state,
+        string modifiedBy,
+        DateTime modifiedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var sql = entityType switch
+        {
+            "Opportunity" =>
+                "UPDATE [SSQMS].[Opportunity] SET [Status] = {0}, [WorkflowState] = {0}, [ModifiedBy] = {1}, [ModifiedDate] = {2} WHERE [ID] = {3}",
+            "Bid" =>
+                "UPDATE [SSQMS].[Bid] SET [Status] = {0}, [WorkflowState] = {0}, [ModifiedBy] = {1}, [ModifiedDate] = {2} WHERE [ID] = {3}",
+            _ => throw new ArgumentOutOfRangeException(nameof(entityType))
+        };
+        _ = await dbContext.Database.ExecuteSqlRawAsync(
+            sql,
+            [state, modifiedBy, modifiedAtUtc, id],
+            cancellationToken);
+    }
+
+    public async Task RecordProjectionOwnershipEvidenceAsync(
+        ProjectionOwnershipEvidence evidence,
+        CancellationToken cancellationToken)
+    {
+        _ = await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            INSERT INTO [dbo].[SqmsProjectionOwnershipEvidence]
+                ([EvidenceKind], [EntityType], [TargetId], [Operation], [ReturnedState],
+                 [ReturnedVersion], [BeforeJson], [AfterJson], [Unchanged], [RecordedAtUtc])
+            VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, SYSUTCDATETIME())
+            """,
+            [
+                evidence.EvidenceKind,
+                evidence.EntityType,
+                evidence.TargetId,
+                evidence.Operation,
+                evidence.ReturnedState,
+                evidence.ReturnedVersion,
+                evidence.BeforeJson,
+                evidence.AfterJson,
+                evidence.Unchanged
+            ],
+            cancellationToken);
+    }
+
+    private static async Task EnsureProjectionEvidenceTableAsync(
+        DbConnection connection,
+        DbTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            IF OBJECT_ID(N'[dbo].[SqmsProjectionOwnershipEvidence]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[SqmsProjectionOwnershipEvidence]
+                (
+                    [Id] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [EvidenceKind] nvarchar(40) NOT NULL,
+                    [EntityType] nvarchar(20) NOT NULL,
+                    [TargetId] int NOT NULL,
+                    [Operation] nvarchar(100) NOT NULL,
+                    [ReturnedState] nvarchar(100) NOT NULL,
+                    [ReturnedVersion] int NOT NULL,
+                    [BeforeJson] nvarchar(max) NOT NULL,
+                    [AfterJson] nvarchar(max) NOT NULL,
+                    [Unchanged] bit NOT NULL,
+                    [RecordedAtUtc] datetime2 NOT NULL
+                );
+            END;
+            """;
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task EnsureMarkerIsUnusedAsync(
@@ -183,4 +293,11 @@ public sealed class AcceptanceFixtureWriter(WorkflowDbContext dbContext)
         parameter.Value = value;
         command.Parameters.Add(parameter);
     }
+
+    private static string TargetTable(string entityType) => entityType switch
+    {
+        "Opportunity" => "Opportunity",
+        "Bid" => "Bid",
+        _ => throw new ArgumentOutOfRangeException(nameof(entityType))
+    };
 }

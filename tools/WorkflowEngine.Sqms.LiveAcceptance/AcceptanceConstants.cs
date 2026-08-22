@@ -63,6 +63,7 @@ public sealed record AcceptanceProfile(
             : scenario.Trim() switch
             {
                 "single-lifecycle" => AcceptanceScenarioKind.SingleLifecycle,
+                "projection-ownership" => AcceptanceScenarioKind.ProjectionOwnership,
                 _ => throw new ArgumentException(
                     $"Unknown SQMS live acceptance scenario '{scenario}'.",
                     nameof(scenario))
@@ -100,5 +101,6 @@ public sealed record AcceptanceProfile(
 public enum AcceptanceScenarioKind
 {
     Comprehensive,
-    SingleLifecycle
+    SingleLifecycle,
+    ProjectionOwnership
 }
