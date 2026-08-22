@@ -1,44 +1,65 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-18T00:00:00Z",
+  "timestamp": "2026-08-22T02:53:41.832Z",
   "phase": "SQMS",
-  "phase_name": "SQMS clean-slate legacy mapping",
+  "phase_name": "SQMS target API and UI integration handoff",
   "phase_dir": ".planning",
   "plan": 0,
-  "task": 0,
-  "total_tasks": 0,
+  "task": 1,
+  "total_tasks": 2,
   "status": "paused",
-  "completed_tasks": [],
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Verify restore-bundle-to-current engine delta and thin-layer target-table behavior",
+      "status": "done",
+      "commit": "f7c19aa"
+    }
+  ],
   "remaining_tasks": [
-    "Build a source-backed mapping for every supplied SQMS legacy function before designing code or SQL.",
-    "Review the complete mapping with the user and obtain explicit approval.",
-    "After approval, produce an incremental target-API code package and additive idempotent SQL scripts."
+    {
+      "id": 2,
+      "name": "Create the SQMS target API and UI integration handoff document",
+      "status": "not_started"
+    }
   ],
   "blockers": [
-    "No new SQMS implementation is authorized until the legacy-function mapping is complete and approved."
+    {
+      "description": "This repository contains the in-process SQMS contracts but not the target API's final HTTP routes and DTOs.",
+      "type": "human_action",
+      "workaround": "Write the handoff with exact implemented in-process contracts and clearly labeled recommended target-owned HTTP facade shapes, or obtain the target API repository/path for exact endpoint documentation."
+    }
   ],
   "async_jobs": [],
   "human_actions_pending": [
-    "Review and approve the future source-backed SQMS legacy-function mapping."
+    {
+      "action": "Confirm whether the handoff should document recommended target-owned endpoint shapes or exact endpoints from the target API source.",
+      "context": "SQMS is an in-process thin layer and intentionally does not define standalone HTTP endpoints.",
+      "blocking": true
+    }
   ],
   "decisions": [
     {
-      "decision": "Reject and revert the previous SQMS implementation.",
-      "rationale": "The thin layer invented orchestration instead of mapping legacy functions to the generic workflow engine.",
+      "decision": "Recommend a combined SQMS target API and UI handoff rather than copying the CDT standalone Workflow API document.",
+      "rationale": "The target API owns HTTP DTOs, authentication, recipient resolution, target-row persistence, and transaction orchestration; the SQMS layer is called in-process.",
       "phase": "SQMS"
     },
     {
-      "decision": "Preserve legacy evidence and confirmed corrections in docs/sqms/CLEAN-SLATE-CONTEXT.md.",
-      "rationale": "Future work must retain learned requirements without treating rejected code or designs as an active baseline.",
+      "decision": "The target API saves Opportunity/Bid business fields, while the thin layer projects workflow state after successful starts/actions.",
+      "rationale": "The only SQMS mutation updates Status, WorkflowState, ModifiedBy, and ModifiedDate from the authoritative workflow result.",
       "phase": "SQMS"
     },
     {
-      "decision": "Do not run init-db for SQMS target integration.",
-      "rationale": "The target API already embeds the engine and its existing database requires additive idempotent SQL upgrades.",
+      "decision": "UI carries workflowState and workflow version as read-only response data and renders metadata-derived availableActions.",
+      "rationale": "The UI must never calculate or submit toState, actor identity, roles, recipients, templates, hyperlinks, workflow instance IDs, or idempotency keys.",
       "phase": "SQMS"
     }
   ],
-  "uncommitted_files": [],
-  "next_action": "Read PROJECT.md, raw SQMS legacy sources, and docs/sqms/CLEAN-SLATE-CONTEXT.md; then map every legacy trigger and outcome before proposing implementation.",
-  "context_notes": "The clean branch is based directly on origin/console-code-first-0518 at 70aa4d9 and reverts its six SQMS commits without rewriting history. The restore-repo.ps1 bundle for clean target-integration commit e2ccd86 was checksum-verified and compared path-by-path: all 411 comparable files match, with zero src, workflow-api, tests, or samples differences. The stale SQMS coordinator flowchart was removed; raw legacy evidence and target-API snapshots remain. The local workflowengine database was also cleaned and generic verify-seed passed."
+  "uncommitted_files": [
+    ".planning/HANDOFF.json",
+    ".planning/.continue-here.md",
+    "CODEX_HANDOFF.md"
+  ],
+  "next_action": "Read PROJECT.md, docs/sqms/TARGET-API-INTEGRATION.md, src/WorkflowEngine.Sqms/Contracts, SqmsWorkflowService.cs, and SqlSqmsDataStore.cs; confirm the HTTP-contract source boundary with the user; then design the combined target API/UI handoff before writing it.",
+  "context_notes": "Current merged branch console-code-first-0518 is synchronized with origin at f7c19aa. Exact restore bundle baseline is e2ccd86 with 417 files. Current solution verification passed 448 tests with 0 failures and 4 opt-in SMTP skips when WORKFLOW_ENGINE_TEST_CONNECTION_STRING was loaded from development configuration. The thin layer starts and actions Opportunity/Bid workflows in-process, joins an ambient transaction, and projects only Status, WorkflowState, ModifiedBy, and ModifiedDate. Context reads do not write. Failed operations do not project. An idempotent success replay can reapply the same projection and refresh ModifiedBy/ModifiedDate. smtp4dev PID 32624 remains on ports 5000/3025 with data under .tools/smtp4dev/data/sqms-email-live-acceptance-20260821; port 5058 is free."
 }

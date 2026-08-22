@@ -2776,3 +2776,59 @@ Continue after SQMS Iteration 2 no-code runtime validation. Existing Workflow St
 ```text
 Resume after completed SQMS Iteration 3. Read AGENTS.md, PROJECT.md, .planning/SQMS-CONTEXT.md, and the 2026-08-16 console-mock design. The exact-shape SSQMS mock tables and deterministic ID 10000 fixtures exist in DOLLY/workflowengine. Both WF-SQMS-OPP-10000 and WF-SQMS-BID-10000 are Submitted version 2 with one audit, no task/SLA/outbox rows, and unchanged application fields. No generic engine code changed. Choose one narrowly scoped next SQMS capability before planning or coding.
 ```
+
+# 2026-08-21 SQMS Target API and UI Handoff Analysis
+
+## Current goal
+
+- Prepare a source-verified handoff that helps the target API team integrate the completed SQMS in-process thin layer and gives the UI team a safe target-owned facade contract.
+- Do not represent SQMS as a standalone copy of the CDT public Workflow API.
+
+## Completed work
+
+- Verified the target API restore bundle baseline is commit `e2ccd86aaa4b8b0ab83e41598f265cad93cf78ad`, with the expected SHA-256 and 417 files.
+- Compared the bundle baseline with merged current commit `f7c19aa` and explained the small generic-engine delta separately from the isolated SQMS project.
+- Verified that public CDT Workflow API controllers/contracts, Application workflow contracts, Domain, and SLA execution remain unchanged.
+- Reran the current solution using the configured development SQL connection: 448 passed, 0 failed, and 4 opt-in SMTP tests skipped.
+- Rechecked the entire SQMS write path. Successful Opportunity/Bid starts and actions project only `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate`. Context reads and failed actions do not write target rows. Projection failures roll back workflow runtime. Scheduled actions use the same projection path.
+- Identified one subtle behavior: an idempotent successful replay can reapply the same state projection and refresh `ModifiedBy`/`ModifiedDate` without repeating workflow side effects.
+- Recommended a combined target API/UI handoff with explicit sections for implemented thin-layer behavior, target API responsibilities, UI sends, and UI never sends.
+
+## Changed files
+
+- `.planning/HANDOFF.json`
+- `.planning/.continue-here.md`
+- `CODEX_HANDOFF.md`
+
+## Build and test status
+
+- `dotnet test src/WorkflowEngine.sln --no-restore --verbosity minimal` initially required `WORKFLOW_ENGINE_TEST_CONNECTION_STRING`.
+- After loading `ConnectionStrings.DefaultConnection` from `src/WorkflowEngine.Console/appsettings.Development.json` into that environment variable: 448 passed, 0 failed, 4 skipped, total 452.
+- No sample JSON or live lifecycle was executed in this documentation-analysis session.
+
+## Remaining tasks
+
+- Confirm whether the target API repository/path or exact SQMS controller/DTO files are available.
+- Design and obtain approval for `docs/sqms/sqms-target-api-ui-handoff.html` or the user-approved equivalent.
+- If target HTTP source is unavailable, clearly label endpoint paths and public DTOs as recommended target-owned facade contracts.
+- Cover shared-connection/transaction enlistment, service-call mapping, actor/recipient resolution, state/action matrices, response/error mapping, scheduler ownership, UI refresh, and acceptance checks.
+
+## Known risks
+
+- A transaction begun on a separate target EF context does not automatically enlist `WorkflowDbContext`; the target integration must share the open connection and transaction explicitly.
+- The target API must not duplicate the thin layer's `Status`/`WorkflowState` projection.
+- The UI must not send workflow authority fields or decide actions from hardcoded status rules; it renders returned `availableActions`.
+- Exact HTTP endpoint claims are unverified until the external target API source is provided.
+
+## Infrastructure state
+
+- Branch `console-code-first-0518` was synchronized with `origin/console-code-first-0518` at `f7c19aa` before this handoff-only commit.
+- Workflow API is stopped; port 5058 is free.
+- smtp4dev PID 32624 remains active on UI port 5000 and SMTP port 3025.
+- smtp4dev data directory: `.tools/smtp4dev/data/sqms-email-live-acceptance-20260821`.
+
+## Next-session prompt
+
+```text
+Resume the SQMS target API/UI handoff. Read PROJECT.md, .planning/.continue-here.md, docs/sqms/TARGET-API-INTEGRATION.md, the exact contracts under src/WorkflowEngine.Sqms/Contracts, SqmsWorkflowService.cs, and SqlSqmsDataStore.cs. The completed thin layer is in-process: target API owns HTTP DTOs, actor/recipient resolution, business persistence, and the outer transaction; the thin layer projects only Status, WorkflowState, ModifiedBy, and ModifiedDate after successful Start/Action. Ask whether the external target API source is available before claiming exact HTTP routes. Then present and approve the combined handoff design before creating the HTML document.
+```
