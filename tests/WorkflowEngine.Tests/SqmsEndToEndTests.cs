@@ -27,7 +27,7 @@ public sealed class SqmsEndToEndTests
         await using var fixture = await Fixture.CreateAsync("opportunity_paths");
         fixture.Clock.SetUtcNow(DateTimeOffset.Parse("2030-01-01T15:00:00Z"));
 
-        var first = await fixture.Workflow.StartOpportunityAsync(10000, Mfo, CancellationToken.None);
+        var first = await fixture.StartOpportunity(10000, Mfo);
         AssertState(first, SqmsKeys.OpportunityStates.Submitted, 2);
         AssertState(await fixture.OpportunityAction(10000, SqmsKeys.OpportunityActions.ReturnToDraft, 2, Ipg), SqmsKeys.OpportunityStates.Draft, 3);
         AssertState(await fixture.OpportunityAction(10000, SqmsKeys.OpportunityActions.Submit, 3, Mfo), SqmsKeys.OpportunityStates.Submitted, 4);
@@ -36,7 +36,7 @@ public sealed class SqmsEndToEndTests
 
         foreach (var id in new[] { 10001, 10002 })
         {
-            AssertState(await fixture.Workflow.StartOpportunityAsync(id, Mfo, CancellationToken.None), SqmsKeys.OpportunityStates.Submitted, 2);
+            AssertState(await fixture.StartOpportunity(id, Mfo), SqmsKeys.OpportunityStates.Submitted, 2);
             AssertState(await fixture.OpportunityAction(id, SqmsKeys.OpportunityActions.MarkPending, 2, Ipg), SqmsKeys.OpportunityStates.Pending, 3);
             AssertState(await fixture.OpportunityAction(id, SqmsKeys.OpportunityActions.OpenForBidding, 3, Ipg), SqmsKeys.OpportunityStates.OpenToBidding, 4);
         }
@@ -94,12 +94,12 @@ public sealed class SqmsEndToEndTests
         await fixture.SetBidDataAsync(20002, "$25.00", "Discount");
         await fixture.SetBidDataAsync(20003, "$0.00", "Fair Value");
 
-        AssertState(await fixture.Workflow.StartBidAsync(20000, Mfo, CancellationToken.None), SqmsKeys.BidStates.Submitted, 2);
+        AssertState(await fixture.StartBid(20000, Mfo), SqmsKeys.BidStates.Submitted, 2);
         AssertState(await fixture.BidAction(20000, SqmsKeys.BidActions.ReturnToDraft, 2, Ipg), SqmsKeys.BidStates.Draft, 3);
         AssertState(await fixture.BidAction(20000, SqmsKeys.BidActions.Submit, 3, Mfo), SqmsKeys.BidStates.Submitted, 4);
         foreach (var id in new[] { 20001, 20002, 20003 })
         {
-            AssertState(await fixture.Workflow.StartBidAsync(id, Mfo, CancellationToken.None), SqmsKeys.BidStates.Submitted, 2);
+            AssertState(await fixture.StartBid(id, Mfo), SqmsKeys.BidStates.Submitted, 2);
         }
 
         var scheduled = await fixture.Scheduled.RunAsync(CancellationToken.None);
@@ -272,15 +272,33 @@ public sealed class SqmsEndToEndTests
             return fixture;
         }
 
+        public Task<SqmsOperationResult> StartOpportunity(int id, SqmsActor actor) =>
+            ExecuteRequestDrivenOperationAsync(
+                "Opportunity",
+                id,
+                actor,
+                () => Workflow.StartOpportunityAsync(id, actor, CancellationToken.None));
+
+        public Task<SqmsOperationResult> StartBid(int id, SqmsActor actor) =>
+            ExecuteRequestDrivenOperationAsync(
+                "Bid",
+                id,
+                actor,
+                () => Workflow.StartBidAsync(id, actor, CancellationToken.None));
+
         public Task<SqmsOperationResult> OpportunityAction(
             int id,
             string action,
             int version,
             SqmsActor actor,
             IReadOnlyDictionary<string, IReadOnlyList<WorkflowRecipientInput>>? recipients = null) =>
-            Workflow.ExecuteOpportunityActionAsync(
-                new SqmsExecuteRequest(id, action, version, actor, recipients ?? EmptyRecipients()),
-                CancellationToken.None);
+            ExecuteRequestDrivenOperationAsync(
+                "Opportunity",
+                id,
+                actor,
+                () => Workflow.ExecuteOpportunityActionAsync(
+                    new SqmsExecuteRequest(id, action, version, actor, recipients ?? EmptyRecipients()),
+                    CancellationToken.None));
 
         public Task<SqmsOperationResult> BidAction(
             int id,
@@ -288,13 +306,17 @@ public sealed class SqmsEndToEndTests
             int version,
             SqmsActor actor,
             IReadOnlyDictionary<string, IReadOnlyList<WorkflowRecipientInput>>? recipients = null) =>
-            Workflow.ExecuteBidActionAsync(
-                new SqmsExecuteRequest(id, action, version, actor, recipients ?? EmptyRecipients()),
-                CancellationToken.None);
+            ExecuteRequestDrivenOperationAsync(
+                "Bid",
+                id,
+                actor,
+                () => Workflow.ExecuteBidActionAsync(
+                    new SqmsExecuteRequest(id, action, version, actor, recipients ?? EmptyRecipients()),
+                    CancellationToken.None));
 
         public async Task DriveOpportunityToOpenAsync(int id)
         {
-            AssertState(await Workflow.StartOpportunityAsync(id, Mfo, CancellationToken.None), SqmsKeys.OpportunityStates.Submitted, 2);
+            AssertState(await StartOpportunity(id, Mfo), SqmsKeys.OpportunityStates.Submitted, 2);
             AssertState(await OpportunityAction(id, SqmsKeys.OpportunityActions.MarkPending, 2, Ipg), SqmsKeys.OpportunityStates.Pending, 3);
             AssertState(await OpportunityAction(id, SqmsKeys.OpportunityActions.OpenForBidding, 3, Ipg), SqmsKeys.OpportunityStates.OpenToBidding, 4);
         }
@@ -324,6 +346,44 @@ public sealed class SqmsEndToEndTests
                 "Bid" => await DbContext.Database.SqlQueryRaw<string>(
                     "SELECT [WorkflowState] AS [Value] FROM [SSQMS].[Bid] WHERE [ID] = {0}", id).SingleAsync(),
                 _ => throw new ArgumentOutOfRangeException(nameof(table))
+            };
+        }
+
+        public Task<string> TargetRowSnapshotAsync(string table, int id) => table switch
+        {
+            "Opportunity" => DbContext.Database.SqlQueryRaw<string>(
+                "SELECT (SELECT * FROM [SSQMS].[Opportunity] WHERE [ID] = {0} FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES) AS [Value]",
+                id).SingleAsync(),
+            "Bid" => DbContext.Database.SqlQueryRaw<string>(
+                "SELECT (SELECT * FROM [SSQMS].[Bid] WHERE [ID] = {0} FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES) AS [Value]",
+                id).SingleAsync(),
+            _ => throw new ArgumentOutOfRangeException(nameof(table))
+        };
+
+        public async Task PersistReturnedStateAsTargetOwnerAsync(
+            string entityType,
+            int id,
+            SqmsOperationResult result,
+            string modifiedBy)
+        {
+            var state = result.Context?.WorkflowContext.Workflow.CurrentState
+                ?? throw new InvalidOperationException("A successful request operation must return authoritative workflow state.");
+            var modifiedAtUtc = Clock.GetUtcNow().UtcDateTime;
+            _ = entityType switch
+            {
+                "Opportunity" => await DbContext.Database.ExecuteSqlRawAsync(
+                    "UPDATE [SSQMS].[Opportunity] SET [Status] = {0}, [WorkflowState] = {0}, [ModifiedBy] = {1}, [ModifiedDate] = {2} WHERE [ID] = {3}",
+                    state,
+                    modifiedBy,
+                    modifiedAtUtc,
+                    id),
+                "Bid" => await DbContext.Database.ExecuteSqlRawAsync(
+                    "UPDATE [SSQMS].[Bid] SET [Status] = {0}, [WorkflowState] = {0}, [ModifiedBy] = {1}, [ModifiedDate] = {2} WHERE [ID] = {3}",
+                    state,
+                    modifiedBy,
+                    modifiedAtUtc,
+                    id),
+                _ => throw new ArgumentOutOfRangeException(nameof(entityType))
             };
         }
 
@@ -372,6 +432,26 @@ public sealed class SqmsEndToEndTests
                     (20003, 10000, 'Buyer Team', 'Yes', 'Bid Four', 'BA-4', 'Buyer RM', '$10.00', 'Fair Value', 'Draft', 'Draft', 'mfo-user', '2030-01-01', 0);
                 SET IDENTITY_INSERT [SSQMS].[Bid] OFF;
                 """);
+        }
+
+        private async Task<SqmsOperationResult> ExecuteRequestDrivenOperationAsync(
+            string entityType,
+            int id,
+            SqmsActor actor,
+            Func<Task<SqmsOperationResult>> operation)
+        {
+            var before = await TargetRowSnapshotAsync(entityType, id);
+            var result = await operation();
+            Assert.Equal(before, await TargetRowSnapshotAsync(entityType, id));
+            if (result.Success)
+            {
+                await PersistReturnedStateAsTargetOwnerAsync(entityType, id, result, actor.UserId);
+                Assert.Equal(
+                    result.Context?.WorkflowContext.Workflow.CurrentState,
+                    await TargetWorkflowStateAsync(entityType, id));
+            }
+
+            return result;
         }
 
         private static Dictionary<string, IReadOnlyList<WorkflowRecipientInput>> EmptyRecipients() =>

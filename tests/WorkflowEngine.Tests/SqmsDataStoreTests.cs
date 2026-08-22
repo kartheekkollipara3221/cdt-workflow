@@ -22,7 +22,7 @@ public sealed class SqmsDataStoreTests
     }
 
     [Fact]
-    public async Task SqlStoreReadsApprovedRowsFiltersDeletedRecordsAndProjectsOnlyWorkflowState()
+    public async Task SqlStoreSupportsScheduledFourColumnProjectionOnly()
     {
         const string databaseName = "workflowengine_sqms_data_store_tests";
         var connectionString = TestSqlConnectionFactory.ConnectionString(databaseName);
