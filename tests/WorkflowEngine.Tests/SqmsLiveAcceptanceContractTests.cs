@@ -346,6 +346,39 @@ public sealed class SqmsLiveAcceptanceContractTests
     }
 
     [Fact]
+    public void ProjectionOwnershipRunnerPinsFreshEvidenceAndIndependentProof()
+    {
+        var root = SqmsDatabasePackageTests.RepositoryRoot();
+        var scriptPath = Path.Combine(root, "scripts", "run-sqms-projection-ownership-live-acceptance.ps1");
+        var verifierPath = Path.Combine(root, "sql", "sqms", "testing", "008_verify_sqms_projection_ownership_live_acceptance.sql");
+        var guidePath = Path.Combine(root, "docs", "sqms", "SQMS-PROJECTION-OWNERSHIP-LIVE-ACCEPTANCE.md");
+
+        Assert.True(File.Exists(scriptPath));
+        Assert.True(File.Exists(verifierPath));
+        Assert.True(File.Exists(guidePath));
+        var script = File.ReadAllText(scriptPath);
+        var verifier = File.ReadAllText(verifierPath);
+
+        Assert.Contains("workflowengine_sqms_projection_ownership_live_acceptance", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS-PROJECTION-OWNERSHIP-LIVE-20260822", script, StringComparison.Ordinal);
+        Assert.Contains("sqms-projection-ownership-live-acceptance-20260822", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS_LIVE_ACCEPTANCE_SCENARIO = 'projection-ownership'", script, StringComparison.Ordinal);
+        Assert.Contains("SQMS_LIVE_ACCEPTANCE_SMTP4DEV_URL = 'http://localhost:5002'", script, StringComparison.Ordinal);
+        Assert.Contains("Smtp__Port = '3027'", script, StringComparison.Ordinal);
+        Assert.Contains("008_verify_sqms_projection_ownership_live_acceptance.sql", script, StringComparison.Ordinal);
+        Assert.Contains("-WindowStyle Hidden", script, StringComparison.Ordinal);
+        Assert.Contains("'--imapport='", script, StringComparison.Ordinal);
+        Assert.Contains("'--pop3port='", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("DROP DATABASE", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("--reset", script, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("SqmsProjectionOwnershipEvidence", verifier, StringComparison.Ordinal);
+        Assert.Contains("RequestUnchanged", verifier, StringComparison.Ordinal);
+        Assert.Contains("TargetOwnerPersisted", verifier, StringComparison.Ordinal);
+        Assert.Contains("ScheduledProjected", verifier, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EvidenceVerifierJoinsSlaScheduleToTheActualTaskPrimaryKey()
     {
         Assert.Contains(

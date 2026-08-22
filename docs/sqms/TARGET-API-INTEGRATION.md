@@ -8,15 +8,18 @@ For a create-and-submit request, the target API must:
 
 1. Open one SQL transaction on its scoped connection.
 2. Save the `SSQMS.Opportunity` or `SSQMS.Bid` row and obtain its identity `ID`.
-3. Enlist the scoped workflow context and `ISqmsDataStore` on that same connection and transaction.
+3. Enlist the scoped workflow context on that same connection and transaction.
 4. Call `StartOpportunityAsync` or `StartBidAsync` with the persisted ID and trusted normalized actor.
 5. Treat an unsuccessful `SqmsOperationResult` or an exception as a reason to roll back the outer transaction.
-6. Commit the transaction once, after the target row, workflow runtime, audit, idempotency, outbox, and state projection have all succeeded.
-7. Map `SqmsOperationResult` into target-owned response DTOs.
+6. Read the authoritative state from `SqmsOperationResult` and persist that state to the target row through the target API's own data-access layer.
+7. Commit the transaction once, after the target row, workflow runtime, audit, idempotency, outbox, and target-owned state persistence have all succeeded.
+8. Map `SqmsOperationResult` into target-owned response DTOs.
 
-For later actions, the target API uses the same sequence and calls `ExecuteOpportunityActionAsync` or `ExecuteBidActionAsync`. It passes only the target ID, `actionKey`, expected workflow version, trusted actor, and server-resolved recipient inputs. It never supplies a next state.
+For later actions, the target API uses the same sequence and calls `ExecuteOpportunityActionAsync` or `ExecuteBidActionAsync`. It passes only the target ID, `actionKey`, expected workflow version, trusted actor, and server-resolved recipient inputs. It never supplies a next state. Request-driven Start and Action calls return authoritative state/context but do not update `SSQMS.Opportunity` or `SSQMS.Bid`; the target API must persist the returned state.
 
-When no outer transaction exists, the SQMS service creates and owns a workflow-database transaction. When the target API already owns the transaction, the start service, workflow execution service, and SQL SQMS store join it and do not commit it independently.
+When no outer transaction exists, the SQMS service creates and owns a workflow-database transaction for workflow runtime changes. When the target API already owns the transaction, the start and workflow execution services join it and do not commit it independently. Scheduled close/classification is the only thin-layer path that directly projects `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate` to the target row; that scheduled projection remains atomic with the workflow transition.
+
+Existing target API integrations that relied on request-driven adapter projection must be changed before adopting this build: after every successful Start or Action, persist the returned authoritative state through the target API's own repository inside its application transaction.
 
 ## Trusted inputs
 
