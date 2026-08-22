@@ -2832,3 +2832,66 @@ Resume after completed SQMS Iteration 3. Read AGENTS.md, PROJECT.md, .planning/S
 ```text
 Resume the SQMS target API/UI handoff. Read PROJECT.md, .planning/.continue-here.md, docs/sqms/TARGET-API-INTEGRATION.md, the exact contracts under src/WorkflowEngine.Sqms/Contracts, SqmsWorkflowService.cs, and SqlSqmsDataStore.cs. The completed thin layer is in-process: target API owns HTTP DTOs, actor/recipient resolution, business persistence, and the outer transaction; the thin layer projects only Status, WorkflowState, ModifiedBy, and ModifiedDate after successful Start/Action. Ask whether the external target API source is available before claiming exact HTTP routes. Then present and approve the combined handoff design before creating the HTML document.
 ```
+
+# 2026-08-22 SQMS Projection Ownership Correction
+
+## Current goal
+
+- Completed the approved correction: request-driven SQMS Start/Action calls do not update target Opportunity/Bid rows; scheduled close/classification may update the four workflow projection columns.
+
+## Completed changes
+
+- Added `ISqmsScheduledTransitionService` and routed scheduled transitions through it.
+- Kept existing `ISqmsWorkflowService` request signatures stable and registered both interfaces to the same scoped `SqmsWorkflowService`.
+- Removed target projection from request Start/Action completion while retaining refreshed authoritative context.
+- Added full-row unchanged, failure, replay, scheduled-routing, DI, and SQL end-to-end tests.
+- Added an isolated one-Opportunity/four-Bid projection-ownership live profile, testing-only evidence table, one-shot launcher, SQL verifier, operator guide, and retained results.
+- Corrected the target API integration guide: the target API persists returned state for request operations; only scheduled close/classification projects from the thin layer.
+
+## Changed files
+
+- `src/WorkflowEngine.Sqms/Contracts/ISqmsScheduledTransitionService.cs`
+- `src/WorkflowEngine.Sqms/SqmsWorkflowService.cs`
+- `src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs`
+- `src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs`
+- SQMS workflow, scheduled, end-to-end, datastore, structure, and live-acceptance tests.
+- `tools/WorkflowEngine.Sqms.LiveAcceptance/*`
+- `scripts/run-sqms-projection-ownership-live-acceptance.ps1`
+- `sql/sqms/testing/008_verify_sqms_projection_ownership_live_acceptance.sql`
+- Projection-ownership guides/results and `docs/sqms/TARGET-API-INTEGRATION.md`.
+
+## Build and test status
+
+- Main solution warning-as-error build: zero warnings/errors.
+- Workflow API warning-as-error build: zero warnings/errors.
+- Live tool warning-as-error build: zero warnings/errors.
+- Main suite: 453 passed, 0 failed, 4 opt-in SMTP skips.
+- Workflow API: 68 passed, 0 failed.
+- Generic seed, SQMS deployment, rollback, compiled verification-only, and independent SQL verifiers passed.
+- Live acceptance: Opportunity 10000 completed v10; four Bids ended Accepted v7, Partially Accepted v5, Not Accepted v5, and Not Allocated v3.
+- Evidence: 20 request unchanged proofs, 20 target-owner persistence proofs, 5 scheduled projection proofs, 25 audits, 25 idempotency rows, zero tasks/SLA schedules, and six Sent smtp4dev messages.
+
+## Remaining tasks
+
+- No code work remains for this correction.
+- Review/integrate branch `sqms_projection_ownership`; no merge or push has occurred.
+- Update the external target API to persist returned state after each successful request Start/Action.
+- Do not replay or delete the retained acceptance database/mailbox.
+
+## Known risks
+
+- An external target API still relying on the removed request projection must migrate before adopting this build.
+- The scheduler must be hosted through `ISqmsScheduledService`; no production scheduler registration/deployment was performed here.
+
+## Infrastructure state
+
+- Verified results head before continuity commit: `cbaf972`.
+- Database: `DOLLY/workflowengine_sqms_projection_ownership_live_acceptance`.
+- smtp4dev launcher PID 9224; child PID 18996; SMTP 3027; UI `http://localhost:5002`.
+- Data: `.tools/smtp4dev/data/sqms-projection-ownership-live-acceptance-20260822`.
+
+## Next-session prompt
+
+```text
+Review completed SQMS projection ownership correction on branch sqms_projection_ownership. Read PROJECT.md, .planning/.continue-here.md, the projection ownership design/plan, TARGET-API-INTEGRATION.md, and the retained results. Request Start/Action no longer changes target rows; the target API must persist returned state. Scheduled close/classification retains atomic four-column projection. Do not rerun the retained live acceptance. Decide whether to integrate the branch; do not push or deploy without authorization.
+```
