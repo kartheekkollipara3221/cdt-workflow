@@ -174,6 +174,7 @@ public sealed class SqmsScheduledServiceTests
         return new SqmsScheduledService(
             store,
             workflow,
+            workflow,
             queue,
             new SqmsLinkBuilder(options.Links),
             Options.Create(options),
@@ -230,7 +231,7 @@ public sealed class SqmsScheduledServiceTests
         }
     }
 
-    private sealed class FakeWorkflowService(FakeStore store) : ISqmsWorkflowService
+    private sealed class FakeWorkflowService(FakeStore store) : ISqmsWorkflowService, ISqmsScheduledTransitionService
     {
         public int? FailingBidId { get; init; }
         public List<SqmsExecuteRequest> OpportunityActions { get; } = [];
@@ -242,11 +243,19 @@ public sealed class SqmsScheduledServiceTests
             Task.FromResult(Context(2, SqmsKeys.BidStates.Submitted));
         public Task<SqmsOperationResult> ExecuteOpportunityActionAsync(SqmsExecuteRequest request, CancellationToken cancellationToken)
         {
+            throw new InvalidOperationException("The scheduler must not use the request-driven Opportunity action path.");
+        }
+        public Task<SqmsOperationResult> ExecuteBidActionAsync(SqmsExecuteRequest request, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("The scheduler must not use the request-driven Bid action path.");
+        }
+        public Task<SqmsOperationResult> ExecuteScheduledOpportunityActionAsync(SqmsExecuteRequest request, CancellationToken cancellationToken)
+        {
             OpportunityActions.Add(request);
             store.SetOpportunityState(request.EntityId, SqmsKeys.OpportunityStates.ClosedToBidding);
             return Task.FromResult(Context(request.ExpectedWorkflowVersion + 1, SqmsKeys.OpportunityStates.ClosedToBidding));
         }
-        public Task<SqmsOperationResult> ExecuteBidActionAsync(SqmsExecuteRequest request, CancellationToken cancellationToken)
+        public Task<SqmsOperationResult> ExecuteScheduledBidActionAsync(SqmsExecuteRequest request, CancellationToken cancellationToken)
         {
             BidActions.Add(request);
             if (request.EntityId == FailingBidId)

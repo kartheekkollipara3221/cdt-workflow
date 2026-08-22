@@ -13,7 +13,7 @@ using WorkflowEngine.Sqms.Persistence;
 
 namespace WorkflowEngine.Sqms;
 
-public sealed class SqmsWorkflowService : ISqmsWorkflowService
+public sealed class SqmsWorkflowService : ISqmsWorkflowService, ISqmsScheduledTransitionService
 {
     private readonly WorkflowDbContext dbContext;
     private readonly ISqmsDataStore dataStore;
@@ -102,6 +102,7 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
                 opportunityId,
                 actor,
                 isOpportunity: true,
+                TargetProjectionMode.None,
                 cancellationToken);
         }, cancellationToken);
     }
@@ -135,6 +136,7 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
                 bidId,
                 actor,
                 isOpportunity: false,
+                TargetProjectionMode.None,
                 cancellationToken);
         }, cancellationToken);
     }
@@ -177,7 +179,11 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
             return TargetNotFound("Opportunity", request.EntityId);
         }
 
-        return await ExecuteActionAsync(request, isOpportunity: true, cancellationToken);
+        return await ExecuteActionAsync(
+            request,
+            isOpportunity: true,
+            TargetProjectionMode.None,
+            cancellationToken);
     }
 
     public async Task<SqmsOperationResult> ExecuteBidActionAsync(
@@ -190,12 +196,51 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
             return TargetNotFound("Bid", request.EntityId);
         }
 
-        return await ExecuteActionAsync(request, isOpportunity: false, cancellationToken);
+        return await ExecuteActionAsync(
+            request,
+            isOpportunity: false,
+            TargetProjectionMode.None,
+            cancellationToken);
+    }
+
+    public async Task<SqmsOperationResult> ExecuteScheduledOpportunityActionAsync(
+        SqmsExecuteRequest request,
+        CancellationToken cancellationToken)
+    {
+        ValidateRequest(request);
+        if (await dataStore.GetOpportunityAsync(request.EntityId, cancellationToken) is null)
+        {
+            return TargetNotFound("Opportunity", request.EntityId);
+        }
+
+        return await ExecuteActionAsync(
+            request,
+            isOpportunity: true,
+            TargetProjectionMode.Scheduled,
+            cancellationToken);
+    }
+
+    public async Task<SqmsOperationResult> ExecuteScheduledBidActionAsync(
+        SqmsExecuteRequest request,
+        CancellationToken cancellationToken)
+    {
+        ValidateRequest(request);
+        if (await dataStore.GetBidAsync(request.EntityId, cancellationToken) is null)
+        {
+            return TargetNotFound("Bid", request.EntityId);
+        }
+
+        return await ExecuteActionAsync(
+            request,
+            isOpportunity: false,
+            TargetProjectionMode.Scheduled,
+            cancellationToken);
     }
 
     private async Task<SqmsOperationResult> ExecuteActionAsync(
         SqmsExecuteRequest request,
         bool isOpportunity,
+        TargetProjectionMode projectionMode,
         CancellationToken cancellationToken)
     {
         var workflowInstanceId = isOpportunity
@@ -263,6 +308,7 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
                 request.EntityId,
                 request.Actor,
                 isOpportunity,
+                projectionMode,
                 cancellationToken);
         }, cancellationToken);
     }
@@ -451,6 +497,7 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
         int entityId,
         SqmsActor actor,
         bool isOpportunity,
+        TargetProjectionMode projectionMode,
         CancellationToken cancellationToken)
     {
         if (!workflowResult.Result.Success)
@@ -464,24 +511,27 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
             throw new InvalidOperationException("Successful workflow result did not return an authoritative state.");
         }
 
-        var modifiedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
-        if (isOpportunity)
+        if (projectionMode == TargetProjectionMode.Scheduled)
         {
-            await dataStore.ProjectOpportunityStateAsync(
-                entityId,
-                state,
-                actor.UserId,
-                modifiedAtUtc,
-                cancellationToken);
-        }
-        else
-        {
-            await dataStore.ProjectBidStateAsync(
-                entityId,
-                state,
-                actor.UserId,
-                modifiedAtUtc,
-                cancellationToken);
+            var modifiedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+            if (isOpportunity)
+            {
+                await dataStore.ProjectOpportunityStateAsync(
+                    entityId,
+                    state,
+                    actor.UserId,
+                    modifiedAtUtc,
+                    cancellationToken);
+            }
+            else
+            {
+                await dataStore.ProjectBidStateAsync(
+                    entityId,
+                    state,
+                    actor.UserId,
+                    modifiedAtUtc,
+                    cancellationToken);
+            }
         }
 
         var context = contextReader.Read(new WorkflowContextReadRequest(
@@ -503,6 +553,12 @@ public sealed class SqmsWorkflowService : ISqmsWorkflowService
             actor.UserId,
             actor.Roles));
         return new SqmsOperationResult(true, "Success", null, null, context);
+    }
+
+    private enum TargetProjectionMode
+    {
+        None,
+        Scheduled
     }
 
     private async Task<SqmsOperationResult> ExecuteTransactionAsync(

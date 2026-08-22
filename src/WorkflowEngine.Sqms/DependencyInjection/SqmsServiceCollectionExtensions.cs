@@ -26,7 +26,11 @@ public static class SqmsServiceCollectionExtensions
             .ValidateOnStart();
 
         services.AddScoped<ISqmsDataStore, SqlSqmsDataStore>();
-        services.AddScoped<ISqmsWorkflowService, SqmsWorkflowService>();
+        services.AddScoped<SqmsWorkflowService>();
+        services.AddScoped<ISqmsWorkflowService>(provider =>
+            provider.GetRequiredService<SqmsWorkflowService>());
+        services.AddScoped<ISqmsScheduledTransitionService>(provider =>
+            provider.GetRequiredService<SqmsWorkflowService>());
         services.AddScoped<ISqmsScheduledService, SqmsScheduledService>();
         services.AddScoped(provider =>
             new SqmsLinkBuilder(provider.GetRequiredService<IOptions<SqmsOptions>>().Value.Links));

@@ -11,6 +11,7 @@ namespace WorkflowEngine.Sqms.Scheduling;
 public sealed class SqmsScheduledService(
     ISqmsDataStore dataStore,
     ISqmsWorkflowService workflowService,
+    ISqmsScheduledTransitionService scheduledTransitionService,
     IQueueWorkflowNotificationService notificationQueue,
     SqmsLinkBuilder linkBuilder,
     IOptions<SqmsOptions> options,
@@ -56,7 +57,7 @@ public sealed class SqmsScheduledService(
                 continue;
             }
 
-            var result = await workflowService.ExecuteOpportunityActionAsync(
+            var result = await scheduledTransitionService.ExecuteScheduledOpportunityActionAsync(
                 new SqmsExecuteRequest(
                     candidate.Opportunity.Id,
                     SqmsKeys.OpportunityActions.CloseBidding,
@@ -119,7 +120,7 @@ public sealed class SqmsScheduledService(
                     continue;
                 }
 
-                var result = await workflowService.ExecuteBidActionAsync(
+                var result = await scheduledTransitionService.ExecuteScheduledBidActionAsync(
                     new SqmsExecuteRequest(
                         candidate.Bid.Id,
                         actionKey,

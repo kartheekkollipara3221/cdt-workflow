@@ -1,9 +1,14 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.WorkflowExecution;
 using WorkflowEngine.Sqms;
 using WorkflowEngine.Sqms.Configuration;
+using WorkflowEngine.Sqms.Contracts;
 using WorkflowEngine.Sqms.DependencyInjection;
+using WorkflowEngine.Infrastructure.DependencyInjection;
 
 namespace WorkflowEngine.Tests;
 
@@ -43,6 +48,36 @@ public sealed class SqmsProjectStructureTests
 
         Assert.False(options.Enabled);
         Assert.Null(options.Links.OpenBiddingDashboardUrl);
+    }
+
+    [Fact]
+    public void WorkflowAndScheduledTransitionContractsResolveToSameScopedService()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] =
+                    "Server=(localdb)\\MSSQLLocalDB;Database=SqmsRegistrationTest;Integrated Security=true;TrustServerCertificate=true",
+                ["Notifications:Sender"] = "NoOp",
+                ["Sqms:Enabled"] = "false"
+            })
+            .Build();
+        using var provider = new ServiceCollection()
+            .AddSingleton<IConfiguration>(configuration)
+            .AddSingleton(TimeProvider.System)
+            .AddScoped<WorkflowActionEnvelopeNormalizer>()
+            .AddScoped<CanonicalRequestHasher>()
+            .AddScoped<WorkflowActionResultBuilder>()
+            .AddScoped<CanonicalWorkflowResultSerializer>()
+            .AddWorkflowInfrastructure(configuration)
+            .AddSqmsWorkflowIntegration(configuration)
+            .BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var workflow = scope.ServiceProvider.GetRequiredService<ISqmsWorkflowService>();
+        var scheduled = scope.ServiceProvider.GetRequiredService<ISqmsScheduledTransitionService>();
+
+        Assert.Same(workflow, scheduled);
     }
 
     [Theory]
