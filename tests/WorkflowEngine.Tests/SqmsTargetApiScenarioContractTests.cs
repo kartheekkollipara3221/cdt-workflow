@@ -56,6 +56,16 @@ public sealed class SqmsTargetApiScenarioContractTests
         "36-failure-bid-disposition-enrichment"
     ];
 
+    private static readonly string[] OwnershipPacks =
+    [
+        "37-replay-request-action",
+        "38-replay-notification-occurrence",
+        "39-rollback-target-persistence-after-workflow",
+        "40-rollback-scheduled-target-projection",
+        "41-scheduled-per-record-continuation",
+        "42-request-versus-scheduled-projection-ownership"
+    ];
+
     private static readonly string[] ExpectedCatalogSlugs =
     [
         "opportunity-start-submit",
@@ -307,6 +317,47 @@ public sealed class SqmsTargetApiScenarioContractTests
         var bid = Read(FailurePacks[5], "README.md");
         Assert.Contains("**Testing only:**", bid, StringComparison.Ordinal);
         Assert.Contains("Missing required Bid or parent data rolls back transition, audit, idempotency, target projection, and outbox side effects", bid, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OwnershipCatalogContainsEveryApprovedPathAndPinsAtomicBoundaries()
+    {
+        Assert.All(OwnershipPacks, pack =>
+        {
+            Assert.True(Directory.Exists(Path.Combine(Root, pack)), $"Missing {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "README.md")), $"Missing README for {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "in-process.cs")), $"Missing in-process example for {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "verify.sql")), $"Missing verifier for {pack}");
+        });
+
+        var requestReplay = Read(OwnershipPacks[0], "README.md");
+        Assert.Contains("the second result has `replay = true`", requestReplay, StringComparison.Ordinal);
+        Assert.Contains("one transition audit, one idempotency record, and one notification outbox row", requestReplay, StringComparison.Ordinal);
+        Assert.Contains("rolls back prerequisite writes, reloads the committed target row, and issues no second target update", requestReplay, StringComparison.Ordinal);
+
+        var occurrenceReplay = Read(OwnershipPacks[1], "README.md");
+        Assert.Contains("same `NotificationOutboxId`", occurrenceReplay, StringComparison.Ordinal);
+        Assert.Contains("exactly one outbox row", occurrenceReplay, StringComparison.Ordinal);
+
+        var requestRollback = Read(OwnershipPacks[2], "README.md");
+        Assert.Contains("after the workflow call succeeds but before commit", requestRollback, StringComparison.Ordinal);
+        Assert.Contains("target row, workflow state, audit, idempotency, and outbox all remain at their pre-request values", requestRollback, StringComparison.Ordinal);
+
+        var scheduledRollback = Read(OwnershipPacks[3], "README.md");
+        Assert.Contains("**Testing only:**", scheduledRollback, StringComparison.Ordinal);
+        Assert.Contains("scheduled target projection throws", scheduledRollback, StringComparison.Ordinal);
+        Assert.Contains("workflow transition, audit, idempotency, outbox, and target projection roll back together", scheduledRollback, StringComparison.Ordinal);
+
+        var continuation = Read(OwnershipPacks[4], "README.md");
+        Assert.Contains("first and third candidates succeed", continuation, StringComparison.Ordinal);
+        Assert.Contains("middle candidate fails", continuation, StringComparison.Ordinal);
+        Assert.Contains("nonzero exit", continuation, StringComparison.Ordinal);
+
+        var ownership = Read(OwnershipPacks[5], "README.md");
+        Assert.Contains("complete target row remains byte-for-byte unchanged after the request adapter call", ownership, StringComparison.Ordinal);
+        Assert.Contains("target API then persists the authoritative returned `Status` and `WorkflowState`", ownership, StringComparison.Ordinal);
+        Assert.Contains("exactly `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate`", ownership, StringComparison.Ordinal);
+        Assert.Contains("every other target column remains unchanged", ownership, StringComparison.Ordinal);
     }
 
     private static string Read(params string[] segments) =>

@@ -1,0 +1,22 @@
+{
+  "entityId": 10000,
+  "status": "PENDING SELLER APPROVAL",
+  "workflowState": "PENDING SELLER APPROVAL",
+  "workflowVersion": 6,
+  "terminal": false,
+  "replay": true,
+  "availableActions": [
+    {
+      "actionKey": "MarkOpportunityAwaitingAllocation",
+      "label": "Mark Opportunity Awaiting Allocation"
+    },
+    {
+      "actionKey": "MarkOpportunityPartiallyAllocated",
+      "label": "Mark Opportunity Partially Allocated"
+    },
+    {
+      "actionKey": "MarkOpportunityNotFulfilled",
+      "label": "Mark Opportunity Not Fulfilled"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+@baseUrl = https://target-api.example.test
+@accessToken = replace-with-test-token
+
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "actionKey": "RequestSellerApproval",
+  "expectedWorkflowVersion": 5
+}
+
+### Exact replay: send the same public request again
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "actionKey": "RequestSellerApproval",
+  "expectedWorkflowVersion": 5
+}
