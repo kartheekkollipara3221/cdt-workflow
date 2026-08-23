@@ -1,0 +1,8 @@
+@baseUrl = https://target-api.example.test
+@bidId = 20000
+@accessToken = replace-with-target-issued-token
+
+### Recommended target facade; not implemented in this repository
+GET {{baseUrl}}/v1/sqms/bids/{{bidId}}/workflow
+Authorization: Bearer {{accessToken}}
+Accept: application/json

@@ -22,6 +22,20 @@ public sealed class SqmsTargetApiScenarioContractTests
         "14-opportunity-complete-partially-allocated"
     ];
 
+    private static readonly string[] BidPacks =
+    [
+        "15-bid-start-submit",
+        "16-bid-get-context",
+        "17-bid-submit-existing-draft",
+        "18-bid-submitted-return-to-draft",
+        "19-bid-scheduled-mark-not-allocated",
+        "20-bid-scheduled-move-to-ipg-review",
+        "21-bid-send-to-seller-review",
+        "22-bid-seller-accept",
+        "23-bid-seller-partially-accept",
+        "24-bid-seller-reject"
+    ];
+
     private static readonly string[] ExpectedCatalogSlugs =
     [
         "opportunity-start-submit",
@@ -152,6 +166,16 @@ public sealed class SqmsTargetApiScenarioContractTests
     public void OpportunityCatalogContainsEveryApprovedPath()
     {
         Assert.All(OpportunityPacks, pack =>
+        {
+            Assert.True(Directory.Exists(Path.Combine(Root, pack)), $"Missing {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "README.md")), $"Missing README for {pack}");
+        });
+    }
+
+    [Fact]
+    public void BidCatalogContainsEveryApprovedPath()
+    {
+        Assert.All(BidPacks, pack =>
         {
             Assert.True(Directory.Exists(Path.Combine(Root, pack)), $"Missing {pack}");
             Assert.True(File.Exists(Path.Combine(Root, pack, "README.md")), $"Missing README for {pack}");
