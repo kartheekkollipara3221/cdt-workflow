@@ -46,6 +46,16 @@ public sealed class SqmsTargetApiScenarioContractTests
         "30-notification-outbox-smtp-delivery"
     ];
 
+    private static readonly string[] FailurePacks =
+    [
+        "31-failure-target-row-not-found",
+        "32-failure-workflow-not-started",
+        "33-failure-invalid-action-or-role",
+        "34-failure-stale-workflow-version",
+        "35-failure-seller-approval-enrichment",
+        "36-failure-bid-disposition-enrichment"
+    ];
+
     private static readonly string[] ExpectedCatalogSlugs =
     [
         "opportunity-start-submit",
@@ -255,6 +265,48 @@ public sealed class SqmsTargetApiScenarioContractTests
         {
             Assert.Contains(route, smtp, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void FailureCatalogContainsEveryApprovedPath()
+    {
+        Assert.All(FailurePacks, pack =>
+        {
+            Assert.True(Directory.Exists(Path.Combine(Root, pack)), $"Missing {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "README.md")), $"Missing README for {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "in-process.cs")), $"Missing in-process example for {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "verify.sql")), $"Missing verifier for {pack}");
+        });
+    }
+
+    [Fact]
+    public void FailurePacksPinMappingsNoLazyStartAndAtomicEnrichmentFailures()
+    {
+        var notFound = Read(FailurePacks[0], "README.md");
+        Assert.Contains("`TargetNotFound` to HTTP 404", notFound, StringComparison.Ordinal);
+        Assert.Contains("No workflow instance is created", notFound, StringComparison.Ordinal);
+
+        var notStarted = Read(FailurePacks[1], "README.md");
+        Assert.Contains("`NotWorkflowManaged` to HTTP 409", notStarted, StringComparison.Ordinal);
+        Assert.Contains("Context and Action do not lazily start a workflow", notStarted, StringComparison.Ordinal);
+
+        var invalid = Read(FailurePacks[2], "README.md");
+        Assert.Contains("Map `Forbidden` to HTTP 403", invalid, StringComparison.Ordinal);
+        Assert.Contains("`InvalidTransition` to HTTP 422", invalid, StringComparison.Ordinal);
+        Assert.Contains("No target-owned state save", invalid, StringComparison.Ordinal);
+
+        var stale = Read(FailurePacks[3], "README.md");
+        Assert.Contains("`ConcurrencyConflict` to HTTP 409", stale, StringComparison.Ordinal);
+        Assert.Contains("must not automatically retry", stale, StringComparison.Ordinal);
+
+        var seller = Read(FailurePacks[4], "README.md");
+        Assert.Contains("**Testing only:**", seller, StringComparison.Ordinal);
+        Assert.Contains("Seller approval does not transition", seller, StringComparison.Ordinal);
+        Assert.Contains("No `SqmsOpportunityPendingSellerApproval` email/outbox row", seller, StringComparison.Ordinal);
+
+        var bid = Read(FailurePacks[5], "README.md");
+        Assert.Contains("**Testing only:**", bid, StringComparison.Ordinal);
+        Assert.Contains("Missing required Bid or parent data rolls back transition, audit, idempotency, target projection, and outbox side effects", bid, StringComparison.Ordinal);
     }
 
     private static string Read(params string[] segments) =>
