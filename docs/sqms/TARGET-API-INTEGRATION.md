@@ -2,6 +2,10 @@
 
 The SQMS adapter is an in-process application service. The target API continues to own its HTTP DTOs, authentication, authorization, target-row persistence, address resolution, and response mapping. The generic workflow engine remains the only transition authority.
 
+## Executable target-team scenarios
+
+The complete Opportunity, Bid, scheduling, notification, failure, replay, rollback, and persistence-ownership handoff is in [SQMS Target API scenario catalog](./target-api-scenarios/README.md). The catalog pairs the implemented in-process contracts with clearly labeled recommended target-owned HTTP routes and DTOs.
+
 ## Transaction sequence
 
 For a create-and-submit request, the target API must:
