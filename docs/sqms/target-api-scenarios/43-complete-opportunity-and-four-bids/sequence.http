@@ -1,0 +1,155 @@
+@baseUrl = https://localhost:7001
+@accessToken = REPLACE_WITH_ACCESS_TOKEN
+
+# Recommended target facade only. Use newly saved isolated target rows.
+# Opportunity 10000: Start -> Draft -> SUBMITTED -> PENDING -> OPEN TO BIDDING.
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+###
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"ReturnOpportunityToDraft","expectedWorkflowVersion":2}
+
+###
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"SubmitOpportunity","expectedWorkflowVersion":3}
+
+###
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"MarkOpportunityPending","expectedWorkflowVersion":4}
+
+###
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"OpenOpportunityForBidding","expectedWorkflowVersion":5}
+
+###
+# Start four saved Bids.
+POST {{baseUrl}}/v1/sqms/bids/10000/workflow/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10001/workflow/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10002/workflow/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10003/workflow/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+###
+# Cover existing-Draft submit on Bid 10000.
+POST {{baseUrl}}/v1/sqms/bids/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"ReturnBidToDraft","expectedWorkflowVersion":2}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"SubmitBid","expectedWorkflowVersion":3}
+
+###
+# Operator checkpoint: invoke ISqmsScheduledService through the approved host at the
+# configured open, reminder, and close times. This is not a public HTTP operation.
+# Expected after close: Opportunity v7 CLOSED TO BIDDING; Bid 10000 v5 IPG REVIEW;
+# Bids 10001 and 10002 v3 IPG REVIEW; Bid 10003 v3 NOT ALLOCATED.
+
+# Bid outcomes.
+POST {{baseUrl}}/v1/sqms/bids/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"SendBidToSellerReview","expectedWorkflowVersion":5}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"AcceptBid","expectedWorkflowVersion":6}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10001/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"SendBidToSellerReview","expectedWorkflowVersion":3}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10001/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"PartiallyAcceptBid","expectedWorkflowVersion":4}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10002/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"SendBidToSellerReview","expectedWorkflowVersion":3}
+
+###
+POST {{baseUrl}}/v1/sqms/bids/10002/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"RejectBid","expectedWorkflowVersion":4}
+
+###
+# Complete the Opportunity.
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"RequestSellerApproval","expectedWorkflowVersion":7}
+
+###
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"MarkOpportunityAwaitingAllocation","expectedWorkflowVersion":8}
+
+###
+POST {{baseUrl}}/v1/sqms/opportunities/10000/workflow/actions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"actionKey":"CompleteOpportunity","expectedWorkflowVersion":9}
+
+###
+# Operator checkpoint: process-notification-outbox against fake/local SMTP, then run expected-results.sql.

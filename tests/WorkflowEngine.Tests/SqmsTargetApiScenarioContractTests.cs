@@ -360,6 +360,59 @@ public sealed class SqmsTargetApiScenarioContractTests
         Assert.Contains("every other target column remains unchanged", ownership, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CompositePackCoversFourBidOutcomesAndSixRoutes()
+    {
+        const string pack = "43-complete-opportunity-and-four-bids";
+        var expectedFiles = new[]
+        {
+            "README.md",
+            "sequence.http",
+            "in-process.cs",
+            "expected-results.sql",
+            "expected-emails.md"
+        };
+        Assert.Equal(
+            expectedFiles.Order(StringComparer.Ordinal),
+            Directory.GetFiles(Path.Combine(Root, pack)).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+
+        var readme = Read(pack, "README.md");
+        foreach (var state in new[] { "ACCEPTED", "PARTIALLY ACCEPTED", "NOT ACCEPTED", "NOT ALLOCATED" })
+        {
+            Assert.Contains(state, readme, StringComparison.Ordinal);
+        }
+
+        foreach (var route in new[]
+                 {
+                     SqmsKeys.Routes.OpportunityOpen,
+                     SqmsKeys.Routes.OpportunityReminder,
+                     SqmsKeys.Routes.OpportunityPendingSellerApproval,
+                     SqmsKeys.Routes.BidAccepted,
+                     SqmsKeys.Routes.BidPartiallyAccepted,
+                     SqmsKeys.Routes.BidNotAccepted
+                 })
+        {
+            Assert.Contains(route, readme, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("Opportunity | 10000 | `COMPLETED` | 10", readme, StringComparison.Ordinal);
+        Assert.Contains("Bid | 10000 | `ACCEPTED` | 7", readme, StringComparison.Ordinal);
+        Assert.Contains("Bid | 10001 | `PARTIALLY ACCEPTED` | 5", readme, StringComparison.Ordinal);
+        Assert.Contains("Bid | 10002 | `NOT ACCEPTED` | 5", readme, StringComparison.Ordinal);
+        Assert.Contains("Bid | 10003 | `NOT ALLOCATED` | 3", readme, StringComparison.Ordinal);
+        Assert.Contains("20 | Request-driven target rows remained unchanged", readme, StringComparison.Ordinal);
+        Assert.Contains("20 | Target owner persisted the returned state", readme, StringComparison.Ordinal);
+        Assert.Contains("5 | Scheduled adapter projected the four owned columns", readme, StringComparison.Ordinal);
+        Assert.Contains("25 | Workflow audit rows", readme, StringComparison.Ordinal);
+        Assert.Contains("25 | Idempotency rows", readme, StringComparison.Ordinal);
+        Assert.Contains("6 | Sent outbox/SMTP messages with retry count zero", readme, StringComparison.Ordinal);
+        Assert.Contains("zero SQMS tasks and zero SLA schedules", readme, StringComparison.Ordinal);
+
+        var sequence = Read(pack, "sequence.http");
+        Assert.Equal(20, sequence.Split('\n').Count(line => line.StartsWith("POST ", StringComparison.Ordinal)));
+        Assert.DoesNotContain("/workflow/scheduled", sequence, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string Read(params string[] segments) =>
         File.ReadAllText(Path.Combine([Root, .. segments]));
 }
