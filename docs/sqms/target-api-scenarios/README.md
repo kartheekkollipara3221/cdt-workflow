@@ -42,17 +42,18 @@ Scheduled examples call the implemented scheduled service directly or use the op
 For every request-driven Start or Action, the target API owns one outer SQL transaction:
 
 1. Begin the target-owned transaction.
-2. Persist target business changes that must precede the workflow call.
+2. Load the target row and validate or stage any target business changes without writing them yet.
 3. Enlist `WorkflowDbContext` in the same open SQL connection and transaction.
 4. Construct the trusted normalized `SqmsActor` from authenticated server-owned information.
 5. Resolve only metadata-approved recipient source inputs on the server.
 6. Call the implemented `ISqmsWorkflowService` Start or Action method.
-7. Roll back on an unsuccessful result or exception.
-8. Read the authoritative returned `NewState` or `CurrentState` and workflow version.
-9. Persist the returned target `Status` and `WorkflowState` through the target repository.
-10. Commit once after both target and workflow work succeeds.
+7. Roll back on an unsuccessful result or exception. A duplicate Start returns `AlreadyExists`; it is not a replay.
+8. Read the authoritative returned `NewState` or `CurrentState`, workflow version, and replay indicator.
+9. For `replay = true`, perform no target write. Read and verify that the already committed target projection matches the authoritative replay result, then return the successful replay.
+10. For `replay = false`, persist staged target business changes and the returned target `Status` and `WorkflowState` through the target repository.
+11. Commit once after the applicable target and workflow work succeeds.
 
-The target API persists its business row and returned workflow projection; request-driven SQMS adapter calls do not update `SSQMS.Opportunity` or `SSQMS.Bid` directly. A persistence failure after workflow execution must roll the workflow transaction back with the target save.
+Request-driven SQMS adapter calls do not update `SSQMS.Opportunity` or `SSQMS.Bid` directly. The target API save is conditional on a successful non-replay result. A persistence failure after a non-replay workflow execution must roll the workflow transaction back with the target save. A replay verifies prior committed target state instead of issuing another update.
 
 ## Trusted actor and recipient boundary
 
@@ -64,12 +65,14 @@ Relationship and team address resolution is also target-owned. The target may su
 
 | Operation | Implemented behavior | Persistence owner |
 |---|---|---|
-| Request-driven Start | Starts workflow and returns authoritative state/version; does not update the SQMS target row | Target API persists returned target status/workflow state inside the outer transaction |
-| Request-driven Action | Executes metadata transition and returns authoritative state/version; does not update the SQMS target row | Target API persists returned target status/workflow state inside the outer transaction |
+| Request-driven Start | Starts workflow and returns authoritative state/version; does not update the SQMS target row | On non-replay success, target API persists returned target status/workflow state inside the outer transaction; duplicate Start returns `AlreadyExists` with no target write |
+| Request-driven Action | Executes metadata transition and returns authoritative state/version; does not update the SQMS target row | On non-replay success, target API persists returned target status/workflow state; replay performs no target write and verifies the existing projection |
 | Context | Reads persisted workflow and target information without side effects | Read-only; no target or workflow persistence |
 | Scheduled Opportunity close or Bid classification | Executes scheduled transition and projects the result to the target row | SQMS scheduled adapter owns the four columns `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate` |
 
-Scheduled transitions are the only adapter-owned target write path. The scheduled four-column projection changes exactly those four columns and preserves every other target column. Scheduling uses its configured time zone and calendar-day `AddDays` behavior. The current implementation has no scheduler-wide mutual-exclusion lock, so operators must avoid overlapping scheduler invocations.
+Request-driven Start does not update the SQMS target row. Request-driven Action does not update the SQMS target row. After a non-replay success (`replay = false`), the target API persists the returned `Status` and `WorkflowState`. After a replay success (`replay = true`), the target API performs no target write; it reads and verifies the already committed projection.
+
+Scheduled transitions are the only adapter-owned target write path. Scheduled projection updates exactly `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate`, and no other target columns. Scheduling uses its configured time zone and calendar-day `AddDays` behavior. The current implementation has no scheduler-wide mutual-exclusion lock, so operators must avoid overlapping scheduler invocations.
 
 Once occurrence-owned notification outbox rows exist, a downgrade to a schema that cannot represent those occurrences is not data-preserving. Archive or otherwise resolve those rows before an intentional rollback; never silently delete and recreate the database.
 
@@ -143,6 +146,7 @@ The target should use its existing Problem Details convention. These mappings re
 |---|---:|---|
 | `TargetNotFound` | 404 | Target Opportunity or Bid does not exist |
 | `NotWorkflowManaged` | 409 | Target row exists but its workflow has not started |
+| `AlreadyExists` | 409 | Duplicate Start; GET the workflow context and use the current existing state |
 | `Forbidden` | 403 | Authenticated actor lacks the required metadata role |
 | `ConcurrencyConflict` | 409 | Caller used a stale workflow version and must refresh |
 | `IdempotencyConflict` | 409 | Reused identity conflicts with a different effective request |
@@ -150,7 +154,7 @@ The target should use its existing Problem Details convention. These mappings re
 | `ValidationFailed` | 422 | Trusted target, recipient, link, or template data is incomplete |
 | Unexpected persistence/transaction failure | 500 | The outer transaction must roll back |
 
-A matching idempotent replay is a successful response with `replay = true`, not an error. Failed operations must not partially persist target data, workflow runtime, audit, idempotency, or outbox effects.
+`AlreadyExists` is a duplicate Start error, not an Action replay. The caller should follow the matching GET workflow route, refresh context, and use the current existing state. A matching Action replay is a successful response with `replay = true`, not an error. Failed operations must not partially persist target data, workflow runtime, audit, idempotency, or outbox effects.
 
 ## Scenario catalog
 
@@ -160,69 +164,69 @@ Every numbered row below is approved. A row can be referenced before its directo
 
 | # | Directory | Source | Result |
 |---:|---|---|---|
-| 01 | `opportunity-start-submit` | New saved Opportunity | `SUBMITTED` |
-| 02 | `opportunity-get-context` | Existing workflow | State/version unchanged |
-| 03 | `opportunity-submit-existing-draft` | `Draft` | `SUBMITTED` |
-| 04 | `opportunity-submitted-return-to-draft` | `SUBMITTED` | `Draft` |
-| 05 | `opportunity-submitted-mark-pending` | `SUBMITTED` | `PENDING` |
-| 06 | `opportunity-pending-return-to-draft` | `PENDING` | `Draft` |
-| 07 | `opportunity-pending-open-for-bidding` | `PENDING` | `OPEN TO BIDDING` |
-| 08 | `opportunity-scheduled-close-bidding` | Due `OPEN TO BIDDING` | `CLOSED TO BIDDING` |
-| 09 | `opportunity-request-seller-approval` | `CLOSED TO BIDDING` | `PENDING SELLER APPROVAL` |
-| 10 | `opportunity-mark-awaiting-allocation` | `PENDING SELLER APPROVAL` | `AWAITING ALLOCATION` |
-| 11 | `opportunity-mark-partially-allocated` | `PENDING SELLER APPROVAL` | `PARTIALLY ALLOCATED` |
-| 12 | `opportunity-mark-not-fulfilled` | `PENDING SELLER APPROVAL` | `NOT FULFILLED` |
-| 13 | `opportunity-complete-awaiting-allocation` | `AWAITING ALLOCATION` | `COMPLETED` |
-| 14 | `opportunity-complete-partially-allocated` | `PARTIALLY ALLOCATED` | `COMPLETED` |
+| 01 | `01-opportunity-start-submit` | New saved Opportunity | `SUBMITTED` |
+| 02 | `02-opportunity-get-context` | Existing workflow | State/version unchanged |
+| 03 | `03-opportunity-submit-existing-draft` | `Draft` | `SUBMITTED` |
+| 04 | `04-opportunity-submitted-return-to-draft` | `SUBMITTED` | `Draft` |
+| 05 | `05-opportunity-submitted-mark-pending` | `SUBMITTED` | `PENDING` |
+| 06 | `06-opportunity-pending-return-to-draft` | `PENDING` | `Draft` |
+| 07 | `07-opportunity-pending-open-for-bidding` | `PENDING` | `OPEN TO BIDDING` |
+| 08 | `08-opportunity-scheduled-close-bidding` | Due `OPEN TO BIDDING` | `CLOSED TO BIDDING` |
+| 09 | `09-opportunity-request-seller-approval` | `CLOSED TO BIDDING` | `PENDING SELLER APPROVAL` |
+| 10 | `10-opportunity-mark-awaiting-allocation` | `PENDING SELLER APPROVAL` | `AWAITING ALLOCATION` |
+| 11 | `11-opportunity-mark-partially-allocated` | `PENDING SELLER APPROVAL` | `PARTIALLY ALLOCATED` |
+| 12 | `12-opportunity-mark-not-fulfilled` | `PENDING SELLER APPROVAL` | `NOT FULFILLED` |
+| 13 | `13-opportunity-complete-awaiting-allocation` | `AWAITING ALLOCATION` | `COMPLETED` |
+| 14 | `14-opportunity-complete-partially-allocated` | `PARTIALLY ALLOCATED` | `COMPLETED` |
 
 **Bid paths**
 
 | # | Directory | Source | Result |
 |---:|---|---|---|
-| 15 | `bid-start-submit` | New saved Bid | `SUBMITTED` |
-| 16 | `bid-get-context` | Existing workflow | State/version unchanged |
-| 17 | `bid-submit-existing-draft` | `Draft` | `SUBMITTED` |
-| 18 | `bid-submitted-return-to-draft` | `SUBMITTED` | `Draft` |
-| 19 | `bid-scheduled-mark-not-allocated` | Submitted Discount Bid | `NOT ALLOCATED` |
-| 20 | `bid-scheduled-move-to-ipg-review` | Qualifying submitted Bid | `IPG REVIEW` |
-| 21 | `bid-send-to-seller-review` | `IPG REVIEW` | `UNDER REVIEW BY SELLER` |
-| 22 | `bid-seller-accept` | `UNDER REVIEW BY SELLER` | `ACCEPTED` |
-| 23 | `bid-seller-partially-accept` | `UNDER REVIEW BY SELLER` | `PARTIALLY ACCEPTED` |
-| 24 | `bid-seller-reject` | `UNDER REVIEW BY SELLER` | `NOT ACCEPTED` |
+| 15 | `15-bid-start-submit` | New saved Bid | `SUBMITTED` |
+| 16 | `16-bid-get-context` | Existing workflow | State/version unchanged |
+| 17 | `17-bid-submit-existing-draft` | `Draft` | `SUBMITTED` |
+| 18 | `18-bid-submitted-return-to-draft` | `SUBMITTED` | `Draft` |
+| 19 | `19-bid-scheduled-mark-not-allocated` | Submitted Discount Bid | `NOT ALLOCATED` |
+| 20 | `20-bid-scheduled-move-to-ipg-review` | Qualifying submitted Bid | `IPG REVIEW` |
+| 21 | `21-bid-send-to-seller-review` | `IPG REVIEW` | `UNDER REVIEW BY SELLER` |
+| 22 | `22-bid-seller-accept` | `UNDER REVIEW BY SELLER` | `ACCEPTED` |
+| 23 | `23-bid-seller-partially-accept` | `UNDER REVIEW BY SELLER` | `PARTIALLY ACCEPTED` |
+| 24 | `24-bid-seller-reject` | `UNDER REVIEW BY SELLER` | `NOT ACCEPTED` |
 
 **Notification and scheduler paths**
 
 | # | Directory | Expected behavior |
 |---:|---|---|
-| 25 | `scheduled-opportunity-open-notification` | Queues one grouped open occurrence |
-| 26 | `scheduled-opportunity-reminder` | Queues one grouped reminder occurrence |
-| 27 | `scheduled-catch-up-close-first` | Closes due Opportunities before notification selection |
-| 28 | `scheduled-disabled` | Returns successful zero work without target reads |
-| 29 | `scheduled-mixed-bid-classification` | Applies the strict Fair Value plus Premium threshold |
-| 30 | `notification-outbox-smtp-delivery` | Delivers all applicable SQMS routes from immutable snapshots |
+| 25 | `25-scheduled-opportunity-open-notification` | Queues one grouped open occurrence |
+| 26 | `26-scheduled-opportunity-reminder` | Queues one grouped reminder occurrence |
+| 27 | `27-scheduled-catch-up-close-first` | Closes due Opportunities before notification selection |
+| 28 | `28-scheduled-disabled` | Returns successful zero work without target reads |
+| 29 | `29-scheduled-mixed-bid-classification` | Applies the strict Fair Value plus Premium threshold |
+| 30 | `30-notification-outbox-smtp-delivery` | Delivers all applicable SQMS routes from immutable snapshots |
 
 **Failure, replay, and ownership paths**
 
 | # | Directory | Expected behavior |
 |---:|---|---|
-| 31 | `failure-target-row-not-found` | `TargetNotFound`; no runtime effects |
-| 32 | `failure-workflow-not-started` | `NotWorkflowManaged`; no lazy start |
-| 33 | `failure-invalid-action-or-role` | Metadata rejection; no target persistence |
-| 34 | `failure-stale-workflow-version` | Concurrency conflict; caller refreshes |
-| 35 | `failure-seller-approval-enrichment` | Missing trusted Opportunity data prevents side effects |
-| 36 | `failure-bid-disposition-enrichment` | Missing Bid/parent data prevents side effects |
-| 37 | `replay-request-action` | Prior success returned without duplicate side effects |
-| 38 | `replay-notification-occurrence` | Existing occurrence returned without duplicate outbox row |
-| 39 | `rollback-target-persistence-after-workflow` | Outer transaction rolls workflow work back |
-| 40 | `rollback-scheduled-target-projection` | Projection failure rolls workflow transition back |
-| 41 | `scheduled-per-record-continuation` | One candidate failure does not block later candidates |
-| 42 | `request-versus-scheduled-projection-ownership` | Request unchanged, target-owned save, scheduled four-column projection |
+| 31 | `31-failure-target-row-not-found` | `TargetNotFound`; no runtime effects |
+| 32 | `32-failure-workflow-not-started` | `NotWorkflowManaged`; no lazy start |
+| 33 | `33-failure-invalid-action-or-role` | Metadata rejection; no target persistence |
+| 34 | `34-failure-stale-workflow-version` | Concurrency conflict; caller refreshes |
+| 35 | `35-failure-seller-approval-enrichment` | Missing trusted Opportunity data prevents side effects |
+| 36 | `36-failure-bid-disposition-enrichment` | Missing Bid/parent data prevents side effects |
+| 37 | `37-replay-request-action` | Prior success returned without duplicate side effects |
+| 38 | `38-replay-notification-occurrence` | Existing occurrence returned without duplicate outbox row |
+| 39 | `39-rollback-target-persistence-after-workflow` | Outer transaction rolls workflow work back |
+| 40 | `40-rollback-scheduled-target-projection` | Projection failure rolls workflow transition back |
+| 41 | `41-scheduled-per-record-continuation` | One candidate failure does not block later candidates |
+| 42 | `42-request-versus-scheduled-projection-ownership` | Request unchanged, target-owned save, scheduled four-column projection |
 
 **Composite acceptance**
 
 | # | Directory | Purpose |
 |---:|---|---|
-| 43 | `complete-opportunity-and-four-bids` | One Opportunity plus Accepted, Partially Accepted, Not Accepted, and Not Allocated Bids with scheduling and six emails |
+| 43 | `43-complete-opportunity-and-four-bids` | One Opportunity plus Accepted, Partially Accepted, Not Accepted, and Not Allocated Bids with scheduling and six emails |
 
 ## Valid Opportunity sequences
 
@@ -262,7 +266,7 @@ Seller-approval email behavior is part of `09`. Accepted, partially accepted, an
 - Run `31` and `32` before any workflow side effects to prove missing-target and not-started behavior.
 - Run `33` or `34` against a valid persisted workflow; rejection occurs before target persistence.
 - Run `35` before seller approval and `36` before a Bid disposition to prove trusted enrichment is required before any side effect commits.
-- Run `37` immediately after a successful request Action; the repeated request returns `replay = true` without another audit, idempotency, target mutation, or outbox effect.
+- Run `37` immediately after a successful request Action; the repeated request returns `replay = true` without another audit, idempotency, target write, or outbox effect. The target API reads and verifies the already committed projection instead of persisting it again.
 - Run `38` after a scheduled notification occurrence; the repeated occurrence returns the existing result without another outbox row.
 - Run `39` with **Testing only** target persistence failure injection; the target-owned outer transaction rolls back workflow work.
 - Run `40` with **Testing only** scheduled projection failure injection; the scheduled transition and projection roll back together.
