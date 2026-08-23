@@ -1,5 +1,7 @@
 # 28. Disabled SQMS scheduler performs zero work
 
+This pack invokes the implemented `ISqmsScheduledService`; it has no public HTTP route.
+
 ## Contract status
 
 **Implemented:** `SqmsScheduledService.RunAsync` checks `Sqms.Enabled` before resolving the time zone or reading any target table. **Target implementation required:** deployment configuration and operator scheduling.

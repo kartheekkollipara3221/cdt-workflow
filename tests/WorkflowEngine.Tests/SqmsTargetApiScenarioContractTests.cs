@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using WorkflowEngine.Sqms;
 
 namespace WorkflowEngine.Tests;
@@ -65,6 +68,93 @@ public sealed class SqmsTargetApiScenarioContractTests
         "41-scheduled-per-record-continuation",
         "42-request-versus-scheduled-projection-ownership"
     ];
+
+    private static readonly string[] ContextPacks =
+    [
+        "02-opportunity-get-context",
+        "16-bid-get-context"
+    ];
+
+    private static readonly string[] RequestPacks =
+    [
+        "01-opportunity-start-submit",
+        "03-opportunity-submit-existing-draft",
+        "04-opportunity-submitted-return-to-draft",
+        "05-opportunity-submitted-mark-pending",
+        "06-opportunity-pending-return-to-draft",
+        "07-opportunity-pending-open-for-bidding",
+        "09-opportunity-request-seller-approval",
+        "10-opportunity-mark-awaiting-allocation",
+        "11-opportunity-mark-partially-allocated",
+        "12-opportunity-mark-not-fulfilled",
+        "13-opportunity-complete-awaiting-allocation",
+        "14-opportunity-complete-partially-allocated",
+        "15-bid-start-submit",
+        "17-bid-submit-existing-draft",
+        "18-bid-submitted-return-to-draft",
+        "21-bid-send-to-seller-review",
+        "22-bid-seller-accept",
+        "23-bid-seller-partially-accept",
+        "24-bid-seller-reject",
+        "37-replay-request-action"
+    ];
+
+    private static readonly string[] ScheduledServicePacks =
+    [
+        "08-opportunity-scheduled-close-bidding",
+        "19-bid-scheduled-mark-not-allocated",
+        "20-bid-scheduled-move-to-ipg-review",
+        "25-scheduled-opportunity-open-notification",
+        "26-scheduled-opportunity-reminder",
+        "27-scheduled-catch-up-close-first",
+        "28-scheduled-disabled",
+        "29-scheduled-mixed-bid-classification",
+        "38-replay-notification-occurrence",
+        "40-rollback-scheduled-target-projection",
+        "41-scheduled-per-record-continuation",
+        "42-request-versus-scheduled-projection-ownership"
+    ];
+
+    private static readonly string[] RequestFiles =
+    [
+        "README.md",
+        "request.http",
+        "request.json",
+        "in-process.cs",
+        "expected-response.json",
+        "verify.sql"
+    ];
+
+    private static readonly string[] ContextFiles =
+    [
+        "README.md",
+        "request.http",
+        "expected-response.json",
+        "verify.sql"
+    ];
+
+    private static readonly string[] ScheduledOrFailureFiles =
+    [
+        "README.md",
+        "in-process.cs",
+        "verify.sql"
+    ];
+
+    private static readonly HashSet<string> ForbiddenPublicProperties = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "toState",
+        "status",
+        "workflowState",
+        "actor",
+        "roles",
+        "recipientInputs",
+        "emailAddress",
+        "notificationRouteKey",
+        "templateData",
+        "workflowInstanceId",
+        "idempotencyKey",
+        "correlationId"
+    };
 
     private static readonly string[] ExpectedCatalogSlugs =
     [
@@ -179,14 +269,14 @@ public sealed class SqmsTargetApiScenarioContractTests
         var readme = Read("README.md");
 
         Assert.Contains(
-            "Physical pack paths use `NN-{catalog-slug}` (for example, `01-opportunity-start-submit`); later packs will use numbered directories.",
+            "All physical pack paths use `NN-{catalog-slug}` (for example, `01-opportunity-start-submit`).",
             readme,
             StringComparison.Ordinal);
 
         for (var index = 0; index < ExpectedCatalogSlugs.Length; index++)
         {
             Assert.Contains(
-                $"| {index + 1:00} | `{ExpectedCatalogSlugs[index]}` |",
+                $"| {index + 1:00} | [{ExpectedCatalogSlugs[index]}](./{index + 1:00}-{ExpectedCatalogSlugs[index]}/) |",
                 readme,
                 StringComparison.Ordinal);
         }
@@ -412,6 +502,181 @@ public sealed class SqmsTargetApiScenarioContractTests
         Assert.Equal(20, sequence.Split('\n').Count(line => line.StartsWith("POST ", StringComparison.Ordinal)));
         Assert.DoesNotContain("/workflow/scheduled", sequence, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void PublicRequestJsonNeverCarriesServerOwnedAuthority()
+    {
+        foreach (var path in Directory.GetFiles(Root, "request.json", SearchOption.AllDirectories))
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var propertyNames = new List<string>();
+            CollectPropertyNames(document.RootElement, propertyNames);
+
+            var forbidden = propertyNames
+                .Where(ForbiddenPublicProperties.Contains)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            Assert.True(forbidden.Length == 0, $"{Path.GetRelativePath(Root, path)} contains forbidden public properties: {string.Join(", ", forbidden)}");
+        }
+    }
+
+    [Fact]
+    public void PublicHttpRequestsUseBearerAuthenticationAndOnlyApprovedRoutes()
+    {
+        var approvedRoute = new Regex(
+            @"^(?:GET \{\{baseUrl\}\}/v1/sqms/(?:opportunities/(?:\{\{opportunityId\}\}|\d+)|bids/(?:\{\{bidId\}\}|\d+))/workflow|POST \{\{baseUrl\}\}/v1/sqms/(?:opportunities/(?:\{\{opportunityId\}\}|\d+)|bids/(?:\{\{bidId\}\}|\d+))/workflow/(?:start|actions))$",
+            RegexOptions.CultureInvariant);
+
+        foreach (var path in Directory.GetFiles(Root, "request.http", SearchOption.AllDirectories))
+        {
+            var content = File.ReadAllText(path);
+            Assert.Contains("Authorization: Bearer {{accessToken}}", content, StringComparison.Ordinal);
+            Assert.DoesNotContain("X-Workflow-UserId", content, StringComparison.OrdinalIgnoreCase);
+
+            var requestLines = File.ReadLines(path)
+                .Where(line => Regex.IsMatch(line, @"^(GET|POST|PUT|PATCH|DELETE) "))
+                .ToArray();
+            Assert.NotEmpty(requestLines);
+            Assert.All(requestLines, line => Assert.Matches(approvedRoute, line));
+        }
+    }
+
+    [Fact]
+    public void CatalogHasExactlyFortyThreeUniquePhysicalPacksAndOneRootLinkEach()
+    {
+        var expected = AllPacks();
+        Assert.Equal(43, expected.Length);
+        Assert.Equal(expected.Length, expected.Distinct(StringComparer.Ordinal).Count());
+
+        var physical = Directory.GetDirectories(Root)
+            .Select(Path.GetFileName)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(expected.Order(StringComparer.Ordinal), physical);
+
+        var rootReadme = Read("README.md");
+        var linkedPacks = Regex.Matches(rootReadme, @"\]\(\./(?<pack>\d{2}-[^/)]+)/\)")
+            .Select(match => match.Groups["pack"].Value)
+            .ToArray();
+        Assert.Equal(43, linkedPacks.Length);
+        Assert.All(expected, pack => Assert.Equal(1, linkedPacks.Count(link => StringComparer.Ordinal.Equals(link, pack))));
+    }
+
+    [Fact]
+    public void EveryRelativeReadmeLinkResolves()
+    {
+        var relativeLink = new Regex(@"\[[^\]]+\]\((?<target>(?:\./|\.\./)[^)#]+)(?:#[^)]*)?\)", RegexOptions.CultureInvariant);
+
+        foreach (var readmePath in Directory.GetFiles(Root, "README.md", SearchOption.AllDirectories))
+        {
+            foreach (Match match in relativeLink.Matches(File.ReadAllText(readmePath)))
+            {
+                var target = match.Groups["target"].Value.Replace('/', Path.DirectorySeparatorChar);
+                var resolved = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(readmePath)!, target));
+                Assert.True(File.Exists(resolved) || Directory.Exists(resolved), $"Broken link in {Path.GetRelativePath(Root, readmePath)}: {target}");
+            }
+        }
+    }
+
+    [Fact]
+    public void EveryPackContainsItsRequiredFileCategory()
+    {
+        AssertRequiredFiles(RequestPacks, RequestFiles);
+        AssertRequiredFiles(ContextPacks, ContextFiles);
+
+        var scheduledOrFailurePacks = AllPacks()
+            .Except(RequestPacks, StringComparer.Ordinal)
+            .Except(ContextPacks, StringComparer.Ordinal)
+            .Except(["43-complete-opportunity-and-four-bids"], StringComparer.Ordinal)
+            .ToArray();
+        AssertRequiredFiles(scheduledOrFailurePacks, ScheduledOrFailureFiles);
+
+        AssertRequiredFiles(
+            ["43-complete-opportunity-and-four-bids"],
+            ["README.md", "sequence.http", "in-process.cs", "expected-results.sql", "expected-emails.md"]);
+    }
+
+    [Fact]
+    public void ScenarioSetCoversEveryStableActionRouteAndTerminalState()
+    {
+        var allContent = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(Root, "*", SearchOption.AllDirectories).Select(File.ReadAllText));
+
+        string[] stableKeys =
+        [
+            .. PublicStringConstants(typeof(SqmsKeys.OpportunityActions)),
+            .. PublicStringConstants(typeof(SqmsKeys.BidActions)),
+            .. PublicStringConstants(typeof(SqmsKeys.Routes)),
+            SqmsKeys.OpportunityStates.NotFulfilled,
+            SqmsKeys.OpportunityStates.Completed,
+            SqmsKeys.BidStates.Accepted,
+            SqmsKeys.BidStates.PartiallyAccepted,
+            SqmsKeys.BidStates.NotAccepted,
+            SqmsKeys.BidStates.NotAllocated
+        ];
+
+        Assert.All(stableKeys, key => Assert.Contains(key, allContent, StringComparison.Ordinal));
+        Assert.All(RequestPacks, pack => Assert.Contains("ISqmsWorkflowService", ReadAll(pack), StringComparison.Ordinal));
+        Assert.All(ScheduledServicePacks, pack =>
+        {
+            var content = ReadAll(pack);
+            Assert.Contains("ISqmsScheduledService", content, StringComparison.Ordinal);
+            Assert.DoesNotMatch(@"(?im)^(GET|POST|PUT|PATCH|DELETE)\s+\S*(scheduled|scheduler)", content);
+            Assert.False(File.Exists(Path.Combine(Root, pack, "request.http")), $"Scheduled pack {pack} must not contain request.http");
+        });
+    }
+
+    private static string[] AllPacks() =>
+    [
+        .. OpportunityPacks,
+        .. BidPacks,
+        .. SchedulerPacks,
+        .. FailurePacks,
+        .. OwnershipPacks,
+        "43-complete-opportunity-and-four-bids"
+    ];
+
+    private static void AssertRequiredFiles(IEnumerable<string> packs, IEnumerable<string> requiredFiles)
+    {
+        foreach (var pack in packs)
+        {
+            foreach (var file in requiredFiles)
+            {
+                Assert.True(File.Exists(Path.Combine(Root, pack, file)), $"Missing {file} in {pack}");
+            }
+        }
+    }
+
+    private static void CollectPropertyNames(JsonElement element, ICollection<string> names)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                names.Add(property.Name);
+                CollectPropertyNames(property.Value, names);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                CollectPropertyNames(item, names);
+            }
+        }
+    }
+
+    private static string ReadAll(string pack) => string.Join(
+        Environment.NewLine,
+        Directory.GetFiles(Path.Combine(Root, pack)).Select(File.ReadAllText));
+
+    private static IEnumerable<string> PublicStringConstants(Type type) => type
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Where(field => field.IsLiteral && !field.IsInitOnly && field.FieldType == typeof(string))
+        .Select(field => (string)field.GetRawConstantValue()!);
 
     private static string Read(params string[] segments) =>
         File.ReadAllText(Path.Combine([Root, .. segments]));

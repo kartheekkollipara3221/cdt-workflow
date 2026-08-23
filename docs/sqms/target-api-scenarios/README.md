@@ -166,75 +166,75 @@ The target should use its existing Problem Details convention. These mappings re
 
 ## Scenario catalog
 
-Every numbered row below is approved. The Directory cells reproduce the approved catalog slugs exactly. Physical pack paths use `NN-{catalog-slug}` (for example, `01-opportunity-start-submit`); later packs will use numbered directories. A row can be referenced before its directory exists; later authoring adds only the pack files defined by the design and must not rename or reinterpret these integration identifiers.
+Every numbered row below is approved. Each Directory link preserves the approved logical catalog slug while navigating to its physical `NN-{catalog-slug}` directory. All physical pack paths use `NN-{catalog-slug}` (for example, `01-opportunity-start-submit`). The integration identifiers must not be renamed or reinterpreted.
 
 **Opportunity paths**
 
 | # | Directory | Source | Result |
 |---:|---|---|---|
-| 01 | `opportunity-start-submit` | New saved Opportunity | `SUBMITTED` |
-| 02 | `opportunity-get-context` | Existing workflow | State/version unchanged |
-| 03 | `opportunity-submit-existing-draft` | `Draft` | `SUBMITTED` |
-| 04 | `opportunity-submitted-return-to-draft` | `SUBMITTED` | `Draft` |
-| 05 | `opportunity-submitted-mark-pending` | `SUBMITTED` | `PENDING` |
-| 06 | `opportunity-pending-return-to-draft` | `PENDING` | `Draft` |
-| 07 | `opportunity-pending-open-for-bidding` | `PENDING` | `OPEN TO BIDDING` |
-| 08 | `opportunity-scheduled-close-bidding` | Due `OPEN TO BIDDING` | `CLOSED TO BIDDING` |
-| 09 | `opportunity-request-seller-approval` | `CLOSED TO BIDDING` | `PENDING SELLER APPROVAL` |
-| 10 | `opportunity-mark-awaiting-allocation` | `PENDING SELLER APPROVAL` | `AWAITING ALLOCATION` |
-| 11 | `opportunity-mark-partially-allocated` | `PENDING SELLER APPROVAL` | `PARTIALLY ALLOCATED` |
-| 12 | `opportunity-mark-not-fulfilled` | `PENDING SELLER APPROVAL` | `NOT FULFILLED` |
-| 13 | `opportunity-complete-awaiting-allocation` | `AWAITING ALLOCATION` | `COMPLETED` |
-| 14 | `opportunity-complete-partially-allocated` | `PARTIALLY ALLOCATED` | `COMPLETED` |
+| 01 | [opportunity-start-submit](./01-opportunity-start-submit/) | New saved Opportunity | `SUBMITTED` |
+| 02 | [opportunity-get-context](./02-opportunity-get-context/) | Existing workflow | State/version unchanged |
+| 03 | [opportunity-submit-existing-draft](./03-opportunity-submit-existing-draft/) | `Draft` | `SUBMITTED` |
+| 04 | [opportunity-submitted-return-to-draft](./04-opportunity-submitted-return-to-draft/) | `SUBMITTED` | `Draft` |
+| 05 | [opportunity-submitted-mark-pending](./05-opportunity-submitted-mark-pending/) | `SUBMITTED` | `PENDING` |
+| 06 | [opportunity-pending-return-to-draft](./06-opportunity-pending-return-to-draft/) | `PENDING` | `Draft` |
+| 07 | [opportunity-pending-open-for-bidding](./07-opportunity-pending-open-for-bidding/) | `PENDING` | `OPEN TO BIDDING` |
+| 08 | [opportunity-scheduled-close-bidding](./08-opportunity-scheduled-close-bidding/) | Due `OPEN TO BIDDING` | `CLOSED TO BIDDING` |
+| 09 | [opportunity-request-seller-approval](./09-opportunity-request-seller-approval/) | `CLOSED TO BIDDING` | `PENDING SELLER APPROVAL` |
+| 10 | [opportunity-mark-awaiting-allocation](./10-opportunity-mark-awaiting-allocation/) | `PENDING SELLER APPROVAL` | `AWAITING ALLOCATION` |
+| 11 | [opportunity-mark-partially-allocated](./11-opportunity-mark-partially-allocated/) | `PENDING SELLER APPROVAL` | `PARTIALLY ALLOCATED` |
+| 12 | [opportunity-mark-not-fulfilled](./12-opportunity-mark-not-fulfilled/) | `PENDING SELLER APPROVAL` | `NOT FULFILLED` |
+| 13 | [opportunity-complete-awaiting-allocation](./13-opportunity-complete-awaiting-allocation/) | `AWAITING ALLOCATION` | `COMPLETED` |
+| 14 | [opportunity-complete-partially-allocated](./14-opportunity-complete-partially-allocated/) | `PARTIALLY ALLOCATED` | `COMPLETED` |
 
 **Bid paths**
 
 | # | Directory | Source | Result |
 |---:|---|---|---|
-| 15 | `bid-start-submit` | New saved Bid | `SUBMITTED` |
-| 16 | `bid-get-context` | Existing workflow | State/version unchanged |
-| 17 | `bid-submit-existing-draft` | `Draft` | `SUBMITTED` |
-| 18 | `bid-submitted-return-to-draft` | `SUBMITTED` | `Draft` |
-| 19 | `bid-scheduled-mark-not-allocated` | Submitted Discount Bid | `NOT ALLOCATED` |
-| 20 | `bid-scheduled-move-to-ipg-review` | Qualifying submitted Bid | `IPG REVIEW` |
-| 21 | `bid-send-to-seller-review` | `IPG REVIEW` | `UNDER REVIEW BY SELLER` |
-| 22 | `bid-seller-accept` | `UNDER REVIEW BY SELLER` | `ACCEPTED` |
-| 23 | `bid-seller-partially-accept` | `UNDER REVIEW BY SELLER` | `PARTIALLY ACCEPTED` |
-| 24 | `bid-seller-reject` | `UNDER REVIEW BY SELLER` | `NOT ACCEPTED` |
+| 15 | [bid-start-submit](./15-bid-start-submit/) | New saved Bid | `SUBMITTED` |
+| 16 | [bid-get-context](./16-bid-get-context/) | Existing workflow | State/version unchanged |
+| 17 | [bid-submit-existing-draft](./17-bid-submit-existing-draft/) | `Draft` | `SUBMITTED` |
+| 18 | [bid-submitted-return-to-draft](./18-bid-submitted-return-to-draft/) | `SUBMITTED` | `Draft` |
+| 19 | [bid-scheduled-mark-not-allocated](./19-bid-scheduled-mark-not-allocated/) | Submitted Discount Bid | `NOT ALLOCATED` |
+| 20 | [bid-scheduled-move-to-ipg-review](./20-bid-scheduled-move-to-ipg-review/) | Qualifying submitted Bid | `IPG REVIEW` |
+| 21 | [bid-send-to-seller-review](./21-bid-send-to-seller-review/) | `IPG REVIEW` | `UNDER REVIEW BY SELLER` |
+| 22 | [bid-seller-accept](./22-bid-seller-accept/) | `UNDER REVIEW BY SELLER` | `ACCEPTED` |
+| 23 | [bid-seller-partially-accept](./23-bid-seller-partially-accept/) | `UNDER REVIEW BY SELLER` | `PARTIALLY ACCEPTED` |
+| 24 | [bid-seller-reject](./24-bid-seller-reject/) | `UNDER REVIEW BY SELLER` | `NOT ACCEPTED` |
 
 **Notification and scheduler paths**
 
 | # | Directory | Expected behavior |
 |---:|---|---|
-| 25 | `scheduled-opportunity-open-notification` | Queues one grouped open occurrence |
-| 26 | `scheduled-opportunity-reminder` | Queues one grouped reminder occurrence |
-| 27 | `scheduled-catch-up-close-first` | Closes due Opportunities before notification selection |
-| 28 | `scheduled-disabled` | Returns successful zero work without target reads |
-| 29 | `scheduled-mixed-bid-classification` | Applies the strict Fair Value plus Premium threshold |
-| 30 | `notification-outbox-smtp-delivery` | Delivers all applicable SQMS routes from immutable snapshots |
+| 25 | [scheduled-opportunity-open-notification](./25-scheduled-opportunity-open-notification/) | Queues one grouped open occurrence |
+| 26 | [scheduled-opportunity-reminder](./26-scheduled-opportunity-reminder/) | Queues one grouped reminder occurrence |
+| 27 | [scheduled-catch-up-close-first](./27-scheduled-catch-up-close-first/) | Closes due Opportunities before notification selection |
+| 28 | [scheduled-disabled](./28-scheduled-disabled/) | Returns successful zero work without target reads |
+| 29 | [scheduled-mixed-bid-classification](./29-scheduled-mixed-bid-classification/) | Applies the strict Fair Value plus Premium threshold |
+| 30 | [notification-outbox-smtp-delivery](./30-notification-outbox-smtp-delivery/) | Delivers all applicable SQMS routes from immutable snapshots |
 
 **Failure, replay, and ownership paths**
 
 | # | Directory | Expected behavior |
 |---:|---|---|
-| 31 | `failure-target-row-not-found` | `TargetNotFound`; no runtime effects |
-| 32 | `failure-workflow-not-started` | `NotWorkflowManaged`; no lazy start |
-| 33 | `failure-invalid-action-or-role` | Metadata rejection; no target persistence |
-| 34 | `failure-stale-workflow-version` | Concurrency conflict; caller refreshes |
-| 35 | `failure-seller-approval-enrichment` | Missing trusted Opportunity data prevents side effects |
-| 36 | `failure-bid-disposition-enrichment` | Missing Bid/parent data prevents side effects |
-| 37 | `replay-request-action` | Prior success returned without duplicate side effects |
-| 38 | `replay-notification-occurrence` | Existing occurrence returned without duplicate outbox row |
-| 39 | `rollback-target-persistence-after-workflow` | Outer transaction rolls workflow work back |
-| 40 | `rollback-scheduled-target-projection` | Projection failure rolls workflow transition back |
-| 41 | `scheduled-per-record-continuation` | One candidate failure does not block later candidates |
-| 42 | `request-versus-scheduled-projection-ownership` | Request unchanged, target-owned save, scheduled four-column projection |
+| 31 | [failure-target-row-not-found](./31-failure-target-row-not-found/) | `TargetNotFound`; no runtime effects |
+| 32 | [failure-workflow-not-started](./32-failure-workflow-not-started/) | `NotWorkflowManaged`; no lazy start |
+| 33 | [failure-invalid-action-or-role](./33-failure-invalid-action-or-role/) | Metadata rejection; no target persistence |
+| 34 | [failure-stale-workflow-version](./34-failure-stale-workflow-version/) | Concurrency conflict; caller refreshes |
+| 35 | [failure-seller-approval-enrichment](./35-failure-seller-approval-enrichment/) | Missing trusted Opportunity data prevents side effects |
+| 36 | [failure-bid-disposition-enrichment](./36-failure-bid-disposition-enrichment/) | Missing Bid/parent data prevents side effects |
+| 37 | [replay-request-action](./37-replay-request-action/) | Prior success returned without duplicate side effects |
+| 38 | [replay-notification-occurrence](./38-replay-notification-occurrence/) | Existing occurrence returned without duplicate outbox row |
+| 39 | [rollback-target-persistence-after-workflow](./39-rollback-target-persistence-after-workflow/) | Outer transaction rolls workflow work back |
+| 40 | [rollback-scheduled-target-projection](./40-rollback-scheduled-target-projection/) | Projection failure rolls workflow transition back |
+| 41 | [scheduled-per-record-continuation](./41-scheduled-per-record-continuation/) | One candidate failure does not block later candidates |
+| 42 | [request-versus-scheduled-projection-ownership](./42-request-versus-scheduled-projection-ownership/) | Request unchanged, target-owned save, scheduled four-column projection |
 
 **Composite acceptance**
 
 | # | Directory | Purpose |
 |---:|---|---|
-| 43 | `complete-opportunity-and-four-bids` | One Opportunity plus Accepted, Partially Accepted, Not Accepted, and Not Allocated Bids with scheduling and six emails |
+| 43 | [complete-opportunity-and-four-bids](./43-complete-opportunity-and-four-bids/) | One Opportunity plus Accepted, Partially Accepted, Not Accepted, and Not Allocated Bids with scheduling and six emails |
 
 ## Valid Opportunity sequences
 

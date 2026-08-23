@@ -1,5 +1,7 @@
 # 42. Request versus scheduled projection ownership
 
+The scheduled half invokes the implemented `ISqmsScheduledService`; it has no public HTTP route.
+
 ## Contract status
 
 - **Implemented:** request Start/Action uses no adapter projection; scheduled transition uses the four-column adapter projection.
