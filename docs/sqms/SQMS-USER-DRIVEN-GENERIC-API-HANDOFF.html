@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQMS User-Driven Workflow API Handoff</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --muted: #52606d;
+      --navy: #102a43;
+      --navy-2: #173f5f;
+      --teal: #0f6b6e;
+      --teal-soft: #e3f5f4;
+      --blue-soft: #eaf2fb;
+      --line: #d8e2ec;
+      --panel: #fff;
+      --page: #f4f7fa;
+      --warn: #7a4a00;
+      --warn-soft: #fff4db;
+      --danger: #8a1f11;
+      --danger-soft: #fdecea;
+      --ok: #17613a;
+      --ok-soft: #e7f6ed;
+      --code: #101828;
+      --code-ink: #edf2f7;
+      --shadow: 0 12px 30px rgba(15, 42, 67, .08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); background: var(--page); font: 16px/1.55 "Segoe UI", Arial, sans-serif; }
+    a { color: var(--teal); }
+    a:focus-visible, button:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
+    h1, h2, h3, h4 { color: var(--navy); line-height: 1.2; }
+    h1 { margin: 0; color: #fff; font-size: clamp(30px, 4vw, 48px); letter-spacing: -.025em; }
+    h2 { margin-top: 0; padding-top: 6px; font-size: 28px; }
+    h3 { margin-top: 30px; font-size: 21px; }
+    h4 { margin-bottom: 8px; }
+    p { margin: 10px 0; }
+    code { font-family: Consolas, "Cascadia Code", monospace; }
+    .hero { color: #fff; background: radial-gradient(circle at 85% 20%, rgba(74,201,198,.23), transparent 32%), linear-gradient(135deg, var(--navy), var(--navy-2) 58%, var(--teal)); border-bottom: 4px solid #67c7c4; }
+    .hero-inner { width: min(1420px, calc(100% - 40px)); margin: auto; padding: 34px 0 30px; }
+    .eyebrow { margin: 0 0 8px; color: #aee6e3; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .lede { max-width: 980px; margin-top: 14px; color: #dbe9f2; font-size: 18px; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .pill, .badge { display: inline-flex; align-items: center; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+    .pill { min-height: 30px; padding: 5px 11px; color: #edf8fa; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.25); }
+    .layout { display: grid; grid-template-columns: 270px minmax(0,1fr); gap: 26px; width: min(1420px, calc(100% - 40px)); margin: auto; padding: 26px 0 80px; }
+    .sidebar { position: sticky; top: 18px; align-self: start; max-height: calc(100vh - 36px); overflow: auto; padding: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+    .sidebar strong { display: block; margin-bottom: 8px; color: var(--navy); }
+    .sidebar a { display: block; padding: 6px 8px; border-radius: 6px; color: #334e68; text-decoration: none; font-size: 14px; }
+    .sidebar a:hover { color: var(--navy); background: var(--teal-soft); }
+    main { min-width: 0; }
+    section { margin-bottom: 24px; padding: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+    .callout { margin: 16px 0; padding: 14px 16px; border-left: 5px solid var(--teal); border-radius: 7px; background: var(--teal-soft); }
+    .callout.warn { color: #5f3a00; background: var(--warn-soft); border-left-color: #d58b00; }
+    .callout.danger { color: #6d180d; background: var(--danger-soft); border-left-color: #c9402f; }
+    .callout.ok { color: #11512f; background: var(--ok-soft); border-left-color: #2d8a55; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .card { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fbfdff; }
+    .card h3, .card h4 { margin-top: 0; }
+    .badge { margin-right: 5px; padding: 4px 8px; color: var(--navy); background: var(--blue-soft); }
+    .badge.mfo { color: #184e77; background: #dceeff; }
+    .badge.ipg { color: #0b5c54; background: #d9f4ee; }
+    .badge.seller { color: #6a3f00; background: #ffedc2; }
+    .badge.terminal { color: #6d180d; background: #fde4df; }
+    .badge.scheduled { color: #67410a; background: #fff0c7; }
+    table { width: 100%; margin: 14px 0; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; vertical-align: top; border: 1px solid var(--line); }
+    th { color: var(--navy); background: #eef3f8; }
+    .codebox { position: relative; margin: 12px 0 18px; }
+    pre { margin: 0; padding: 18px; overflow: auto; color: var(--code-ink); background: var(--code); border-radius: 9px; font: 13px/1.55 Consolas, "Cascadia Code", monospace; white-space: pre; }
+    .copy { position: absolute; top: 8px; right: 8px; padding: 5px 9px; color: #e6f6ff; background: #243b53; border: 1px solid #486581; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .copy:hover { background: #334e68; }
+    .flow { padding: 16px; overflow: auto; color: #d9f7f4; background: #123548; border-radius: 9px; white-space: pre; font: 13px/1.6 Consolas, monospace; }
+    .step { margin: 22px 0; padding-top: 18px; border-top: 1px solid var(--line); }
+    .step:first-of-type { border-top: 0; }
+    .method { color: #fff; background: var(--teal); }
+    .path { font-family: Consolas, monospace; word-break: break-word; }
+    .small { color: var(--muted); font-size: 14px; }
+    .checklist li { margin: 7px 0; }
+    footer { width: min(1420px, calc(100% - 40px)); margin: 0 auto 50px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; max-height: none; } .grid { grid-template-columns: 1fr; } section { padding: 20px; } }
+    @media print { body { background: #fff; } .hero { color: #000; background: #fff; border-bottom: 2px solid #000; } h1, .lede, .eyebrow { color: #000; } .layout { display: block; width: 100%; padding: 0; } .sidebar, .copy { display: none; } section { box-shadow: none; break-inside: avoid; } pre, .flow { white-space: pre-wrap; } }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Target API implementation handoff</p>
+      <h1>SQMS user-driven workflow requests and responses</h1>
+      <p class="lede">Copy-ready headers, JSON bodies, response interpretation, state persistence rules, and every user-driven Opportunity and Bid branch using the existing generic Workflow API.</p>
+      <div class="pill-row">
+        <span class="pill">Generic API</span><span class="pill">Opportunity</span><span class="pill">Bid</span><span class="pill">User actions only</span><span class="pill">Scheduled overview included</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" aria-label="Document sections">
+      <strong>Contents</strong>
+      <a href="#scope">1. Scope and ownership</a>
+      <a href="#common">2. Common contract</a>
+      <a href="#responses">3. Read responses</a>
+      <a href="#opportunity">4. Opportunity requests</a>
+      <a href="#bid">5. Bid requests</a>
+      <a href="#notifications">6. Notification inputs</a>
+      <a href="#persistence">7. Persistence and replay</a>
+      <a href="#scheduled">8. Scheduled ownership</a>
+      <a href="#checklist">9. Target checklist</a>
+    </nav>
+
+    <main>
+      <section id="scope">
+        <h2>1. Scope and ownership</h2>
+        <div class="callout ok"><strong>Decision:</strong> the target API uses generic Start, Context, and Action services for user-driven SQMS workflow operations. It does not need <code>WorkflowEngine.Sqms</code> for these controller paths.</div>
+        <div class="grid">
+          <div class="card"><h3>Target API owns</h3><ul><li>Authentication and trusted actor roles</li><li>Opportunity/Bid validation and persistence</li><li>HTTP DTOs and status mapping</li><li>Recipient and template-data enrichment</li><li>Saving returned <code>Status</code>/<code>WorkflowState</code></li><li>The outer transaction</li></ul></div>
+          <div class="card"><h3>Generic engine owns</h3><ul><li>Workflow instance runtime</li><li>Metadata action/role validation</li><li>Authoritative next-state selection</li><li>Available actions and refreshed context</li><li>Audit, idempotency, and notification outbox</li><li>No knowledge of SQMS form fields</li></ul></div>
+        </div>
+        <div class="callout warn"><strong>Not covered as HTTP requests:</strong> automatic Opportunity close, Bid classification, opening announcements, and reminders. Section 8 explains how the current scheduled implementation can be retained or transferred later.</div>
+      </section>
+
+      <section id="common">
+        <h2>2. Common HTTP contract</h2>
+        <h3>Implemented endpoints</h3>
+        <table><thead><tr><th>Purpose</th><th>Method and route</th></tr></thead><tbody>
+          <tr><td>Start a workflow, optionally with its first action</td><td><span class="badge method">POST</span> <span class="path">/v1/WorkflowStart</span></td></tr>
+          <tr><td>Read state and role-filtered actions</td><td><span class="badge method">GET</span> <span class="path">/v1/WorkflowContext?workflowInstanceId={id}</span></td></tr>
+          <tr><td>Execute one metadata-authorized action</td><td><span class="badge method">POST</span> <span class="path">/v1/WorkflowAction</span></td></tr>
+        </tbody></table>
+
+        <h3>Trusted headers</h3>
+        <p>The target server constructs these values from authenticated identity. A browser must not choose its own user ID or roles.</p>
+        <div class="grid">
+          <div><h4>MFO</h4><div class="codebox"><button class="copy" type="button">Copy</button><pre><code>Content-Type: application/json
+Accept: application/json
+X-Workflow-UserId: mfo-user
+X-Workflow-Roles: MFO
+X-Workflow-DisplayName: MFO User</code></pre></div></div>
+          <div><h4>IPG</h4><div class="codebox"><button class="copy" type="button">Copy</button><pre><code>Content-Type: application/json
+Accept: application/json
+X-Workflow-UserId: ipg-user
+X-Workflow-Roles: IPG
+X-Workflow-DisplayName: IPG User</code></pre></div></div>
+          <div><h4>Seller</h4><div class="codebox"><button class="copy" type="button">Copy</button><pre><code>Content-Type: application/json
+Accept: application/json
+X-Workflow-UserId: seller-user
+X-Workflow-Roles: Seller
+X-Workflow-DisplayName: Seller User</code></pre></div></div>
+        </div>
+
+        <h3>Stable ID rules</h3>
+        <table><thead><tr><th>Entity</th><th>Business-object ID sent to Start</th><th>Generated workflow-instance ID</th></tr></thead><tbody>
+          <tr><td>Opportunity 10000</td><td><code>SQMS-OPP-10000</code></td><td><code>WF-SQMS-OPP-10000</code></td></tr>
+          <tr><td>Bid 20000</td><td><code>SQMS-BID-20000</code></td><td><code>WF-SQMS-BID-20000</code></td></tr>
+        </tbody></table>
+        <div class="callout danger"><strong>Never send a destination state.</strong> Request JSON sends an <code>actionKey</code>. The engine selects the next state from <code>dbo.WorkflowTransitionDefinition</code>.</div>
+      </section>
+
+      <section id="responses">
+        <h2>3. How to read responses</h2>
+        <div class="callout"><strong>Casing matters:</strong> the wrapper properties are lower camel case, while nested application-contract properties are PascalCase in the current API configuration.</div>
+        <table><thead><tr><th>JSON path</th><th>Meaning and target use</th></tr></thead><tbody>
+          <tr><td><code>result.actionResult.Success</code></td><td>Whether the Start/Action succeeded. Do not persist target workflow state when false.</td></tr>
+          <tr><td><code>result.actionResult.ResultCode</code></td><td>Stable workflow result classification for target error mapping and logs.</td></tr>
+          <tr><td><code>result.actionResult.WorkflowInstanceId</code></td><td>Engine identity. It should match the deterministic ID convention.</td></tr>
+          <tr><td><code>result.actionResult.OldState</code> / <code>NewState</code></td><td>What the current operation changed.</td></tr>
+          <tr><td><code>result.actionResult.Notification.Queued</code></td><td>Whether this operation created an outbox record.</td></tr>
+          <tr><td><code>result.actionResult.Diagnostics.Replay</code></td><td>True means the engine returned the stored result. Do not repeat target writes or side effects.</td></tr>
+          <tr><td><code>result.workflowContext.Workflow.CurrentState</code></td><td>Authoritative current state after success; persist this value to target <code>Status</code> and <code>WorkflowState</code>.</td></tr>
+          <tr><td><code>result.workflowContext.Workflow.WorkflowInstanceVersion</code></td><td>Current engine version for concurrency display/coordination.</td></tr>
+          <tr><td><code>result.workflowContext.ActorAccess.CanAct</code></td><td>Whether the resolved actor can perform at least one current action.</td></tr>
+          <tr><td><code>result.workflowContext.AvailableActions</code></td><td>Authoritative role-filtered buttons/actions for the UI. Do not hardcode actions from target status.</td></tr>
+        </tbody></table>
+
+        <h3>Representative successful Start response</h3>
+        <div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "result": {
+    "actionResult": {
+      "Success": true,
+      "ResultCode": "Success",
+      "CorrelationId": "generated-by-server",
+      "WorkflowInstanceId": "WF-SQMS-OPP-10000",
+      "ActionKey": "SubmitOpportunity",
+      "OldState": "Draft",
+      "NewState": "SUBMITTED",
+      "Notification": { "Queued": false, "NotificationType": null, "RecipientRole": null },
+      "Diagnostics": { "Replay": false }
+    },
+    "workflowContext": {
+      "Workflow": {
+        "WorkflowKey": "SqmsOpportunity",
+        "WorkflowInstanceId": "WF-SQMS-OPP-10000",
+        "WorkflowDefinitionVersion": 1,
+        "WorkflowInstanceVersion": 2,
+        "CurrentState": "SUBMITTED",
+        "CurrentStateLabel": "Submitted",
+        "Status": "Active",
+        "StartedAtUtc": "2026-08-23T14:00:00+00:00",
+        "CompletedAtUtc": null
+      },
+      "BusinessObject": { "ObjectType": "SqmsOpportunity", "ObjectId": "SQMS-OPP-10000", "ObjectVersion": null },
+      "ActorAccess": { "UserId": "mfo-user", "DisplayName": "MFO User", "EffectiveRoles": ["MFO"], "CanAct": false, "ReadOnlyReason": "Workflow is in SUBMITTED and you do not have an available workflow action." },
+      "CurrentTask": null,
+      "Sla": { "Status": "NoSla", "DueAtUtc": null, "Overdue": false, "OverdueByMinutes": 0 },
+      "AvailableActions": [],
+      "ServerTimeUtc": "2026-08-23T14:00:00+00:00"
+    }
+  }
+}</code></pre></div>
+        <p class="small">This example is intentionally focused on integration fields. Additional nullable diagnostic/result properties may also be serialized by the current application contract.</p>
+
+        <h3>Representative successful Context response for IPG</h3>
+        <div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "result": {
+    "workflowContext": {
+      "Workflow": {
+        "WorkflowKey": "SqmsOpportunity",
+        "WorkflowInstanceId": "WF-SQMS-OPP-10000",
+        "WorkflowDefinitionVersion": 1,
+        "WorkflowInstanceVersion": 2,
+        "CurrentState": "SUBMITTED",
+        "CurrentStateLabel": "Submitted",
+        "Status": "Active",
+        "StartedAtUtc": "2026-08-23T14:00:00+00:00",
+        "CompletedAtUtc": null
+      },
+      "BusinessObject": { "ObjectType": "SqmsOpportunity", "ObjectId": "SQMS-OPP-10000", "ObjectVersion": null },
+      "ActorAccess": { "UserId": "ipg-user", "DisplayName": "IPG User", "EffectiveRoles": ["IPG"], "CanAct": true, "ReadOnlyReason": null },
+      "CurrentTask": null,
+      "Sla": { "Status": "NoSla", "DueAtUtc": null, "Overdue": false, "OverdueByMinutes": 0 },
+      "AvailableActions": [
+        { "ActionKey": "ReturnOpportunityToDraft", "DisplayName": "Return Opportunity to Draft", "ExpectedCurrentState": "SUBMITTED" },
+        { "ActionKey": "MarkOpportunityPending", "DisplayName": "Mark Opportunity Pending", "ExpectedCurrentState": "SUBMITTED" }
+      ],
+      "ServerTimeUtc": "2026-08-23T14:01:00+00:00"
+    }
+  }
+}</code></pre></div>
+
+        <h3>Representative successful Action response</h3>
+        <div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "result": {
+    "actionResult": {
+      "Success": true,
+      "ResultCode": "Success",
+      "WorkflowInstanceId": "WF-SQMS-OPP-10000",
+      "ActionKey": "MarkOpportunityPending",
+      "OldState": "SUBMITTED",
+      "NewState": "PENDING",
+      "Notification": { "Queued": false, "NotificationType": null, "RecipientRole": null },
+      "Audit": { "Written": true, "ActionKey": "MarkOpportunityPending" },
+      "Diagnostics": { "Replay": false }
+    },
+    "workflowContext": {
+      "Workflow": { "WorkflowInstanceId": "WF-SQMS-OPP-10000", "WorkflowInstanceVersion": 3, "CurrentState": "PENDING", "Status": "Active" },
+      "ActorAccess": { "UserId": "ipg-user", "EffectiveRoles": ["IPG"], "CanAct": true },
+      "AvailableActions": [
+        { "ActionKey": "ReturnOpportunityToDraft", "ExpectedCurrentState": "PENDING" },
+        { "ActionKey": "OpenOpportunityForBidding", "ExpectedCurrentState": "PENDING" }
+      ]
+    }
+  }
+}</code></pre></div>
+
+        <h3>Workflow failure response</h3>
+        <p>The current Start and Action controllers return their normal wrapper with HTTP 500 when the engine result is unsuccessful.</p>
+        <div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "result": {
+    "actionResult": {
+      "Success": false,
+      "ResultCode": "InvalidTransition",
+      "WorkflowInstanceId": "WF-SQMS-OPP-10000",
+      "ActionKey": "CompleteOpportunity",
+      "Message": "No transition exists for state 'PENDING' with action 'CompleteOpportunity'.",
+      "Diagnostics": { "Replay": false }
+    },
+    "workflowContext": null
+  }
+}</code></pre></div>
+
+        <h3>Request/binding failure response</h3>
+        <p>Malformed or missing required input is returned as ProblemDetails, normally HTTP 400.</p>
+        <div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "Invalid workflow action request.",
+  "status": 400,
+  "detail": "workflowInstanceId is required."
+}</code></pre></div>
+      </section>
+
+      <section id="opportunity">
+        <h2>4. Opportunity: every user-driven request</h2>
+        <div class="flow">Draft
+  └─ SubmitOpportunity [MFO] ─► SUBMITTED
+       ├─ ReturnOpportunityToDraft [IPG] ─► Draft
+       └─ MarkOpportunityPending [IPG] ─► PENDING
+            ├─ ReturnOpportunityToDraft [IPG] ─► Draft
+            └─ OpenOpportunityForBidding [IPG] ─► OPEN TO BIDDING
+                 └─ [SCHEDULED CLOSE — NO USER REQUEST HERE] ─► CLOSED TO BIDDING
+                      └─ RequestSellerApproval [IPG] ─► PENDING SELLER APPROVAL
+                           ├─ MarkOpportunityAwaitingAllocation [IPG] ─► AWAITING ALLOCATION
+                           │    └─ CompleteOpportunity [IPG] ─► COMPLETED
+                           ├─ MarkOpportunityPartiallyAllocated [IPG] ─► PARTIALLY ALLOCATED
+                           │    └─ CompleteOpportunity [IPG] ─► COMPLETED
+                           └─ MarkOpportunityNotFulfilled [IPG] ─► NOT FULFILLED</div>
+
+        <div class="step"><h3>Start and submit <span class="badge mfo">MFO</span></h3><p><span class="badge method">POST</span> <code>/v1/WorkflowStart</code>. The Opportunity row must already exist.</p><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowKey": "SqmsOpportunity",
+  "businessObjectId": "SQMS-OPP-10000",
+  "actionKey": "SubmitOpportunity"
+}</code></pre></div><p><strong>Expected:</strong> <code>Draft → SUBMITTED</code>. To start at Draft instead, omit <code>actionKey</code>; do not call Start twice for the same ID.</p></div>
+
+        <div class="step"><h3>Start only at Draft <span class="badge mfo">MFO</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowKey": "SqmsOpportunity",
+  "businessObjectId": "SQMS-OPP-10000"
+}</code></pre></div><p><strong>Expected:</strong> <code>Draft</code>, version 1.</p></div>
+
+        <div class="step"><h3>Read Opportunity context</h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code>GET {{baseUrl}}/v1/WorkflowContext?workflowInstanceId=WF-SQMS-OPP-10000
+Accept: application/json
+X-Workflow-UserId: ipg-user
+X-Workflow-Roles: IPG
+X-Workflow-DisplayName: IPG User</code></pre></div><p>Use the current actor's headers. Read <code>result.workflowContext.AvailableActions</code> before presenting buttons.</p></div>
+
+        <div class="step"><h3>Submit existing Draft <span class="badge mfo">MFO</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "SubmitOpportunity"
+}</code></pre></div><p><strong>Expected:</strong> <code>Draft → SUBMITTED</code>.</p></div>
+
+        <div class="grid">
+          <div class="card"><h3>Return SUBMITTED to Draft <span class="badge ipg">IPG</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "ReturnOpportunityToDraft"
+}</code></pre></div><p><code>SUBMITTED → Draft</code></p></div>
+          <div class="card"><h3>Mark Pending <span class="badge ipg">IPG</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "MarkOpportunityPending"
+}</code></pre></div><p><code>SUBMITTED → PENDING</code></p></div>
+          <div class="card"><h3>Return PENDING to Draft <span class="badge ipg">IPG</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "ReturnOpportunityToDraft"
+}</code></pre></div><p><code>PENDING → Draft</code></p></div>
+          <div class="card"><h3>Open for bidding <span class="badge ipg">IPG</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "OpenOpportunityForBidding"
+}</code></pre></div><p><code>PENDING → OPEN TO BIDDING</code>. No opening email is sent by this request.</p></div>
+        </div>
+
+        <div class="callout warn"><span class="badge scheduled">Scheduled excluded</span> <code>OPEN TO BIDDING → CLOSED TO BIDDING</code> is performed by the scheduled System action. There is deliberately no browser/user request body in this handoff.</div>
+
+        <div class="step"><h3>Request Seller approval <span class="badge ipg">IPG</span></h3><p>Prerequisite: the scheduled process already reached <code>CLOSED TO BIDDING</code>. This request queues <code>SqmsOpportunityPendingSellerApproval</code>.</p><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "RequestSellerApproval",
+  "notification": {
+    "recipientInputs": {
+      "relationshipManager": [
+        { "userId": "relationship-manager-user", "emailAddress": "relationship.manager@example.com", "displayName": "Relationship Manager" }
+      ],
+      "sellerRmTeam": [
+        { "userId": "seller-rm-team", "emailAddress": "seller.rm.team@example.com", "displayName": "Seller RM Team" }
+      ]
+    },
+    "templateData": {
+      "quarter": "Q3",
+      "year": "2026",
+      "vehicle": "Example Vehicle",
+      "accountNumber": "123456",
+      "accountName": "Example Account",
+      "fund": "Example Fund",
+      "saleAmount": "1000000",
+      "sellerResponseDate": "09/04/2026",
+      "opportunityUrl": "https://app.example.com/sqms/opportunities/10000"
+    }
+  }
+}</code></pre></div><p><strong>Expected:</strong> <code>CLOSED TO BIDDING → PENDING SELLER APPROVAL</code>.</p></div>
+
+        <div class="grid">
+          <div class="card"><h3>Awaiting allocation <span class="badge ipg">IPG</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "MarkOpportunityAwaitingAllocation"
+}</code></pre></div><p><code>PENDING SELLER APPROVAL → AWAITING ALLOCATION</code></p></div>
+          <div class="card"><h3>Partially allocated <span class="badge ipg">IPG</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10001",
+  "actionKey": "MarkOpportunityPartiallyAllocated"
+}</code></pre></div><p><code>PENDING SELLER APPROVAL → PARTIALLY ALLOCATED</code></p></div>
+          <div class="card"><h3>Not fulfilled <span class="badge ipg">IPG</span> <span class="badge terminal">Terminal</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10002",
+  "actionKey": "MarkOpportunityNotFulfilled"
+}</code></pre></div><p><code>PENDING SELLER APPROVAL → NOT FULFILLED</code></p></div>
+          <div class="card"><h3>Complete allocation <span class="badge ipg">IPG</span> <span class="badge terminal">Terminal</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-OPP-10000",
+  "actionKey": "CompleteOpportunity"
+}</code></pre></div><p><code>AWAITING ALLOCATION → COMPLETED</code> or <code>PARTIALLY ALLOCATED → COMPLETED</code>.</p></div>
+        </div>
+      </section>
+
+      <section id="bid">
+        <h2>5. Bid: every user-driven request</h2>
+        <div class="flow">Draft
+  └─ SubmitBid [MFO] ─► SUBMITTED
+       ├─ ReturnBidToDraft [IPG] ─► Draft
+       └─ [SCHEDULED CLASSIFICATION — NO USER REQUEST HERE]
+            ├─► NOT ALLOCATED (terminal)
+            └─► IPG REVIEW
+                  └─ SendBidToSellerReview [IPG] ─► UNDER REVIEW BY SELLER
+                       ├─ AcceptBid [Seller] ─► ACCEPTED
+                       ├─ PartiallyAcceptBid [Seller] ─► PARTIALLY ACCEPTED
+                       └─ RejectBid [Seller] ─► NOT ACCEPTED</div>
+
+        <div class="step"><h3>Start and submit Bid <span class="badge mfo">MFO</span></h3><p><span class="badge method">POST</span> <code>/v1/WorkflowStart</code>. The Bid and parent Opportunity must already exist.</p><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowKey": "SqmsBid",
+  "businessObjectId": "SQMS-BID-20000",
+  "actionKey": "SubmitBid"
+}</code></pre></div><p><strong>Expected:</strong> <code>Draft → SUBMITTED</code>.</p></div>
+
+        <div class="grid">
+          <div class="card"><h3>Start only at Draft <span class="badge mfo">MFO</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowKey": "SqmsBid",
+  "businessObjectId": "SQMS-BID-20000"
+}</code></pre></div><p>Do not also call Start-and-Submit for this ID.</p></div>
+          <div class="card"><h3>Submit existing Draft <span class="badge mfo">MFO</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-BID-20000",
+  "actionKey": "SubmitBid"
+}</code></pre></div><p><code>Draft → SUBMITTED</code></p></div>
+          <div class="card"><h3>Return to Draft <span class="badge ipg">IPG</span></h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-BID-20000",
+  "actionKey": "ReturnBidToDraft"
+}</code></pre></div><p><code>SUBMITTED → Draft</code></p></div>
+          <div class="card"><h3>Read Bid context</h3><div class="codebox"><button class="copy" type="button">Copy</button><pre><code>GET {{baseUrl}}/v1/WorkflowContext?workflowInstanceId=WF-SQMS-BID-20000
+Accept: application/json
+X-Workflow-UserId: ipg-user
+X-Workflow-Roles: IPG
+X-Workflow-DisplayName: IPG User</code></pre></div></div>
+        </div>
+
+        <div class="callout warn"><span class="badge scheduled">Scheduled excluded</span> Submitted Bid classification is System-owned. It chooses metadata action <code>MoveBidToIpgReview</code> or <code>MarkBidNotAllocated</code>. There is deliberately no browser/user request body here.</div>
+
+        <div class="step"><h3>Send to Seller review <span class="badge ipg">IPG</span></h3><p>Prerequisite: scheduled classification already reached <code>IPG REVIEW</code>.</p><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-BID-20000",
+  "actionKey": "SendBidToSellerReview"
+}</code></pre></div><p><strong>Expected:</strong> <code>IPG REVIEW → UNDER REVIEW BY SELLER</code>. No email route is configured on this transition.</p></div>
+
+        <h3>Seller disposition requests</h3>
+        <p>Use the same trusted recipient/template structure for all three actions; change the Bid ID, data, and action key. Each branch is terminal.</p>
+        <div class="grid">
+          <div class="card"><h4>Accepted <span class="badge seller">Seller</span> <span class="badge terminal">Terminal</span></h4><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-BID-20000",
+  "actionKey": "AcceptBid",
+  "notification": {
+    "recipientInputs": {
+      "relationshipManager": [{ "userId": "buyer-rm", "emailAddress": "buyer.rm@example.com", "displayName": "Buyer Relationship Manager" }],
+      "buyerRmTeam": [{ "userId": "buyer-rm-team", "emailAddress": "buyer.rm.team@example.com", "displayName": "Buyer RM Team" }]
+    },
+    "templateData": {
+      "quarter": "Q3", "year": "2026", "buyerAccountNumber": "987654", "buyerAccountName": "Example Buyer Account",
+      "fund": "Example Fund", "vehicle": "Example Vehicle", "requestedAmount": "500000", "effectiveDate": "09/30/2026",
+      "bidUrl": "https://app.example.com/sqms/bids/20000"
+    }
+  }
+}</code></pre></div><p><code>UNDER REVIEW BY SELLER → ACCEPTED</code>; queues <code>SqmsBidAccepted</code>.</p></div>
+
+          <div class="card"><h4>Partially accepted <span class="badge seller">Seller</span> <span class="badge terminal">Terminal</span></h4><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-BID-20001",
+  "actionKey": "PartiallyAcceptBid",
+  "notification": {
+    "recipientInputs": {
+      "relationshipManager": [{ "userId": "buyer-rm", "emailAddress": "buyer.rm@example.com", "displayName": "Buyer Relationship Manager" }],
+      "buyerRmTeam": [{ "userId": "buyer-rm-team", "emailAddress": "buyer.rm.team@example.com", "displayName": "Buyer RM Team" }]
+    },
+    "templateData": {
+      "quarter": "Q3", "year": "2026", "buyerAccountNumber": "987655", "buyerAccountName": "Example Buyer Account Two",
+      "fund": "Example Fund", "vehicle": "Example Vehicle", "requestedAmount": "300000", "effectiveDate": "09/30/2026",
+      "bidUrl": "https://app.example.com/sqms/bids/20001"
+    }
+  }
+}</code></pre></div><p><code>UNDER REVIEW BY SELLER → PARTIALLY ACCEPTED</code>; queues <code>SqmsBidPartiallyAccepted</code>.</p></div>
+
+          <div class="card"><h4>Not accepted <span class="badge seller">Seller</span> <span class="badge terminal">Terminal</span></h4><div class="codebox"><button class="copy" type="button">Copy</button><pre><code data-json="true">{
+  "workflowInstanceId": "WF-SQMS-BID-20002",
+  "actionKey": "RejectBid",
+  "notification": {
+    "recipientInputs": {
+      "relationshipManager": [{ "userId": "buyer-rm", "emailAddress": "buyer.rm@example.com", "displayName": "Buyer Relationship Manager" }],
+      "buyerRmTeam": [{ "userId": "buyer-rm-team", "emailAddress": "buyer.rm.team@example.com", "displayName": "Buyer RM Team" }]
+    },
+    "templateData": {
+      "quarter": "Q3", "year": "2026", "buyerAccountNumber": "987656", "buyerAccountName": "Example Buyer Account Three",
+      "fund": "Example Fund", "vehicle": "Example Vehicle", "requestedAmount": "250000", "effectiveDate": "09/30/2026",
+      "bidUrl": "https://app.example.com/sqms/bids/20002"
+    }
+  }
+}</code></pre></div><p><code>UNDER REVIEW BY SELLER → NOT ACCEPTED</code>; queues <code>SqmsBidNotAccepted</code>.</p></div>
+        </div>
+      </section>
+
+      <section id="notifications">
+        <h2>6. Manual notification input rules</h2>
+        <table><thead><tr><th>Action</th><th>Required recipient input keys</th><th>Required template keys</th></tr></thead><tbody>
+          <tr><td><code>RequestSellerApproval</code></td><td><code>relationshipManager</code>, <code>sellerRmTeam</code></td><td><code>quarter</code>, <code>year</code>, <code>vehicle</code>, <code>accountNumber</code>, <code>accountName</code>, <code>fund</code>, <code>saleAmount</code>, <code>sellerResponseDate</code>, <code>opportunityUrl</code></td></tr>
+          <tr><td><code>AcceptBid</code>, <code>PartiallyAcceptBid</code>, <code>RejectBid</code></td><td><code>relationshipManager</code>, <code>buyerRmTeam</code></td><td><code>quarter</code>, <code>year</code>, <code>buyerAccountNumber</code>, <code>buyerAccountName</code>, <code>fund</code>, <code>vehicle</code>, <code>requestedAmount</code>, <code>effectiveDate</code>, <code>bidUrl</code></td></tr>
+        </tbody></table>
+        <ul><li>Resolve these values on the server from trusted Opportunity/Bid data and directory/application sources.</li><li>Do not let the browser select route keys, To/Cc placement, or arbitrary recipient input keys.</li><li>Metadata determines whether an action sends email and how inputs become To/Cc.</li><li>Static configured Cc recipients remain in <code>NotificationRecipientRule</code>; the request does not repeat them.</li></ul>
+      </section>
+
+      <section id="persistence">
+        <h2>7. Persistence, transaction, replay, and failure</h2>
+        <div class="flow">Begin target-owned SQL transaction
+  → save prerequisite Opportunity/Bid business changes
+  → invoke generic workflow service in-process on the same connection/transaction
+  → verify actionResult.Success
+  → verify Diagnostics.Replay is false
+  → persist workflowContext.Workflow.CurrentState to target Status and WorkflowState
+  → set target ModifiedBy and ModifiedDate
+  → commit once</div>
+        <table><thead><tr><th>Result</th><th>Target behavior</th></tr></thead><tbody>
+          <tr><td>Success, not replay</td><td>Persist authoritative returned state and commit target plus workflow changes together.</td></tr>
+          <tr><td>Replay</td><td>Do not repeat target updates, emails, or other business side effects. Reload and verify the already committed target state.</td></tr>
+          <tr><td>Workflow failure</td><td>Roll back target changes. Map <code>ResultCode</code>/<code>Message</code>; do not infer a new state.</td></tr>
+          <tr><td>Exception or target persistence failure</td><td>Roll back the shared transaction so runtime, audit, idempotency, outbox, and target state do not diverge.</td></tr>
+        </tbody></table>
+        <div class="callout danger"><strong>HTTP boundary warning:</strong> calling a separate Workflow API process over HTTP cannot share the target EF transaction. The strongest consistency model is in-process use of the generic application/infrastructure services behind a thin target-owned application service.</div>
+      </section>
+
+      <section id="scheduled">
+        <h2>8. Future scheduled ownership in the current code</h2>
+        <p>The target team may choose not to use <code>WorkflowEngine.Sqms</code> for user-driven Start/Context/Action while still retaining its tested scheduled implementation.</p>
+        <table><thead><tr><th>Current technical contract</th><th>Meaning</th></tr></thead><tbody>
+          <tr><td><code>ISqmsScheduledService.RunAsync(CancellationToken)</code></td><td>Supported entry point. Controllers should not call internal scheduled transition or notification-queue services directly.</td></tr>
+          <tr><td><code>AddSqmsWorkflowIntegration(configuration)</code></td><td>Registers the current SQMS data store, workflow helpers, scheduled service, link builder, and options.</td></tr>
+          <tr><td><code>dotnet WorkflowEngine.Console.dll run-sqms-scheduled</code></td><td>Existing operator/console trigger suitable for an external scheduler host.</td></tr>
+          <tr><td><code>process-notification-outbox</code></td><td>Separate operation that sends queued messages. The SQMS scheduled run queues; it does not replace the sender job.</td></tr>
+        </tbody></table>
+        <h3>Current run ordering</h3>
+        <ol><li>Read open Opportunities and close those whose bidding period is due.</li><li>Read closed Opportunities with submitted Bids and classify each valid Bid.</li><li>Re-read still-open Opportunities so a just-closed Opportunity cannot receive a stale opening/reminder.</li><li>Queue due opening/reminder occurrences with database replay protection.</li></ol>
+        <p>Scheduled transitions alone directly project <code>Status</code>, <code>WorkflowState</code>, <code>ModifiedBy</code>, and <code>ModifiedDate</code>. Other Opportunity/Bid columns remain target-owned.</p>
+        <div class="grid">
+          <div class="card"><h3>Option 1 — retain current scheduled project</h3><p>Reference <code>WorkflowEngine.Sqms</code> only from the scheduled host. Lowest implementation and regression risk.</p></div>
+          <div class="card"><h3>Option 2 — move scheduling into target worker</h3><p>Transfer the scheduler, data-store queries, parsing, occurrence keys, and projection behavior into a target-owned worker while preserving acceptance behavior.</p></div>
+          <div class="card"><h3>Option 3 — reimplement later</h3><p>Use the current scheduled scenarios and live evidence as the acceptance contract. This carries the most reimplementation risk.</p></div>
+        </div>
+        <div class="callout warn"><strong>No public scheduled route exists.</strong> The target team owns the operator host, service identity, trigger schedule, non-overlap control, deployment, monitoring, and alerting.</div>
+      </section>
+
+      <section id="checklist">
+        <h2>9. Target implementation checklist</h2>
+        <ul class="checklist">
+          <li>Register the generic workflow Application/Infrastructure services in the target host.</li>
+          <li>Keep controllers thin; use a target-owned workflow coordination service.</li>
+          <li>Build trusted actor ID/display name/roles from authenticated identity.</li>
+          <li>Use the exact SQMS workflow and ID keys shown here.</li>
+          <li>Save the Opportunity/Bid before Start.</li>
+          <li>Read <code>AvailableActions</code> instead of hardcoding UI actions from Status.</li>
+          <li>Supply server-resolved notification inputs only on configured notification actions.</li>
+          <li>Persist the authoritative context state only after non-replay success.</li>
+          <li>Use one in-process transaction across target and workflow persistence.</li>
+          <li>Keep scheduled processing disabled until its ownership and deployment are approved.</li>
+        </ul>
+        <p class="small"><strong>Source references:</strong> <code>workflow-api/WORKFLOW_API_BOUNDARIES.md</code>, Workflow API controllers/models/services, <code>sql/sqms/002_sqms_workflow_metadata_dml.sql</code>, <code>docs/sqms/TARGET-API-INTEGRATION.md</code>, and <code>docs/sqms/target-api-scenarios/</code>.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>Generated from the current repository contracts on 2026-08-23. Example identities, addresses, URLs, dates, and IDs are non-production placeholders.</footer>
+  <script>
+    document.querySelectorAll('.copy').forEach(function (button) {
+      button.addEventListener('click', async function () {
+        var code = button.parentElement.querySelector('code');
+        try {
+          await navigator.clipboard.writeText(code.innerText);
+          var original = button.textContent;
+          button.textContent = 'Copied';
+          setTimeout(function () { button.textContent = original; }, 1200);
+        } catch (_) {
+          button.textContent = 'Select text';
+          var range = document.createRange();
+          range.selectNodeContents(code);
+          var selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

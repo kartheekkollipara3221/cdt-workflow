@@ -80,6 +80,52 @@
 Inspect the retained one-Opportunity/three-Bid SQMS evidence at http://localhost:5001 and DOLLY/workflowengine_sqms_single_lifecycle_live_acceptance. Use docs/sqms/SQMS-SINGLE-LIFECYCLE-LIVE-ACCEPTANCE.md. Do not rerun the one-shot script. Preserve all retained SQMS databases and smtp4dev directories. Do not push, merge, deploy, execute production SQL, enable scheduling, stop smtp4dev, or remove evidence unless explicitly authorized.
 ```
 
+# 2026-08-23 Target API Notification Namespace Diagnosis
+
+## Current goal
+
+- Repair target API build failures after the current workflow source was copied folder-by-folder over its previously integrated engine source.
+
+## Completed analysis
+
+- Restored the previous `restore-repo.ps1` baseline (`e2ccd86aaa4b8b0ab83e41598f265cad93cf78ad`) to a temporary comparison directory and compared its notification namespaces/files with current source commit `981febc2`.
+- The previous generic engine already used `WorkflowEngine.Application.Notifications` and `WorkflowEngine.Infrastructure.Notifications` (plural).
+- `WorkflowNotificationInput` was already under `WorkflowEngine.Application.Contracts`; it was not under `WorkflowEngine.Application.WorkflowNotification`.
+- Neither the previous generic engine nor the current engine contains `WorkflowEngine.Domain.Notification` or `WorkflowEngine.Domain.Notifications`. Current Domain contains only the generic workflow keys.
+- Existing Application/Infrastructure notification namespaces were preserved. Current code additively introduces `IQueueWorkflowNotificationService` and `QueueWorkflowNotificationService` for notification-only scheduled occurrences.
+- Existing notification DTOs were extended compatibly for notification-only occurrences: workflow instance IDs became nullable annotations and additive occurrence/display properties were added. Existing namespace names were not changed.
+- Root-cause direction: target-specific compatibility/adapter files or stale imports were located inside/referencing the engine folders. Folder replacement erased or exposed them; this is not evidence that SQMS removed the old generic namespaces.
+
+## Changed files
+
+- `CODEX_HANDOFF.md` only.
+
+## Build/test status
+
+- Read-only source and Git diff analysis completed; no product build was run because the failing target API repository is not available in this workspace.
+- Current repository remained clean before this handoff update.
+
+## Remaining tasks
+
+1. Obtain the target API's exact compiler errors, including source file, line, namespace, and missing type.
+2. Restore target-owned files deleted by the folder replacement from target API Git history.
+3. Move target-owned adapters/compatibility types out of the generic engine folders into a target integration area/project.
+4. Map `WorkflowNotificationInput` and recipient inputs to `WorkflowEngine.Application.Contracts`; map sender/outbox/queue interfaces to `WorkflowEngine.Application.Notifications`; map concrete senders/services to `WorkflowEngine.Infrastructure.Notifications`.
+5. Do not fabricate a generic `WorkflowEngine.Domain.Notification` namespace. Identify each referenced Domain type and either restore it as target-owned or map it to its actual current owner.
+6. Add/reference `WorkflowEngine.Sqms`, register `AddSqmsWorkflow`, and build in dependency order: Domain, Application, Infrastructure, Sqms, then target API.
+
+## Known risks
+
+- Re-copying whole folders can repeatedly delete target-only files that were mixed into generic engine projects.
+- A namespace shim without knowing the missing types can hide the ownership problem and create long-term coupling.
+- The temporary comparison directory `C:\projects\cdt-workflow-old-analysis-e2ccd86` may still exist because automated recursive cleanup was rejected by command policy; it is outside the repository and contains only restored old bundle analysis files.
+
+## Next-session prompt
+
+```text
+Continue the target API notification build diagnosis. The old bundle at e2ccd86 already used WorkflowEngine.Application.Notifications and WorkflowEngine.Infrastructure.Notifications, WorkflowNotificationInput lived in WorkflowEngine.Application.Contracts, and no generic Domain.Notification namespace existed. Ask for or inspect the exact target compiler errors and restore target-owned files deleted by folder replacement. Keep generic engine source exact; relocate target adapters outside generic folders. Do not invent Domain.Notification compatibility types without mapping the exact missing symbols.
+```
+
 ## 2026-08-21 SQMS Corrected Email Templates
 
 ### Current goal
@@ -2894,4 +2940,48 @@ Resume the SQMS target API/UI handoff. Read PROJECT.md, .planning/.continue-here
 
 ```text
 Review completed SQMS projection ownership correction on branch sqms_projection_ownership. Read PROJECT.md, .planning/.continue-here.md, the projection ownership design/plan, TARGET-API-INTEGRATION.md, and the retained results. Request Start/Action no longer changes target rows; the target API must persist returned state. Scheduled close/classification retains atomic four-column projection. Do not rerun the retained live acceptance. Decide whether to integrate the branch; do not push or deploy without authorization.
+```
+
+# 2026-08-23 SQMS User-Driven Generic API HTML Handoff
+
+## Current goal
+
+- Give the target API team one self-contained HTML reference for all user-driven SQMS Opportunity and Bid workflow Start, Context, and Action requests through the existing generic Workflow API.
+
+## Completed changes
+
+- Created `docs/sqms/SQMS-USER-DRIVEN-GENERIC-API-HANDOFF.html` with trusted header sets, exact request JSON, user-driven branch maps, scheduled boundaries, manual notification enrichment, representative responses, response-field interpretation, persistence/replay rules, and target checklist.
+- Added a separate technical overview of the current scheduled implementation: `ISqmsScheduledService.RunAsync`, `AddSqmsWorkflowIntegration`, console trigger, close/classify/re-read/notify ordering, four-column scheduled projection, separate outbox processing, and future ownership choices.
+- Corrected response-reading guidance to reflect current serializer casing: wrapper properties such as `result.actionResult` are lower camel case, while nested Application contract properties such as `Workflow.CurrentState` are PascalCase.
+- Added and committed the approved design and inline implementation plan.
+
+## Changed files
+
+- `docs/sqms/SQMS-USER-DRIVEN-GENERIC-API-HANDOFF.html`
+- `docs/superpowers/specs/2026-08-23-sqms-user-driven-generic-api-html-design.md`
+- `docs/superpowers/plans/2026-08-23-sqms-user-driven-generic-api-html.md`
+- `CODEX_HANDOFF.md`
+
+## Verification
+
+- Parsed all 25 JSON request/response examples successfully with PowerShell native JSON parsing.
+- Cross-checked every documented user action and notification token against `002_sqms_workflow_metadata_dml.sql`.
+- Verified all three endpoints, trusted headers, response paths, scheduled entry point, and scheduled-exclusion language.
+- Verified no JSON block contains a `toState` property.
+- Verified nine fragment links resolve, no external assets exist, and no common secret/local-connection patterns exist.
+- Rendered the HTML with headless Chrome and visually inspected the resulting 1440x1100 screenshot.
+- `git diff --check` passed for the HTML before handoff update.
+- Runtime builds, database seed checks, and sample API execution were not run because this is a documentation-only change with no product behavior changes.
+
+## Remaining tasks
+
+- Target team reviews the HTML and replaces all example IDs, identities, addresses, URLs, dates, and business values with server-resolved environment values.
+- Target team confirms in-process shared-transaction integration for user actions.
+- Scheduled host/project ownership remains a later integration decision; no scheduled HTTP route was proposed.
+- Push remains a separate user authorization.
+
+## Next-session prompt
+
+```text
+Review docs/sqms/SQMS-USER-DRIVEN-GENERIC-API-HANDOFF.html with the target API team. It documents generic user-driven Opportunity/Bid Start, Context, and Action calls plus how to read responses. User actions are target-owned; scheduling remains a separate future decision around ISqmsScheduledService. Do not invent a scheduled HTTP route. If approved, decide whether to push the documentation commits.
 ```
