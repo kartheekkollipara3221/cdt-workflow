@@ -74,7 +74,19 @@ public sealed class SqmsTargetApiScenarioContractTests
             readme,
             StringComparison.Ordinal);
         Assert.Contains(
-            "Before calling `ISqmsWorkflowService`, the target API persists prerequisite target business changes inside the outer transaction; Start inserts a new target row first to obtain its ID.",
+            "The standalone recommended Start route loads the already-saved target row identified by `{id}` and never inserts another target row.",
+            readme,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Target-owned create-and-submit orchestration is not the standalone empty-body Start route; it inserts and saves the new target row inside the outer transaction to obtain its ID before invoking Start.",
+            readme,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Action loads the existing target row.",
+            readme,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Before calling `ISqmsWorkflowService`, the target API persists prerequisite target business changes inside the outer transaction so workflow enrichment reads persisted Opportunity or Bid columns.",
             readme,
             StringComparison.Ordinal);
         Assert.Contains(

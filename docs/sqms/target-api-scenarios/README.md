@@ -42,7 +42,10 @@ Scheduled examples call the implemented scheduled service directly or use the op
 For every request-driven Start or Action, the target API owns one outer SQL transaction:
 
 1. Begin the target-owned transaction.
-2. For Start, insert the new target row inside that transaction to obtain its numeric ID. For Action, load the existing target row.
+2. Select the target entry path:
+   - Standalone recommended `POST .../{id}/workflow/start`: load the already-saved target row identified by the route ID; never insert another target row.
+   - Target-owned create-and-submit orchestration: insert and save the new target row inside the outer transaction to obtain its numeric ID, then invoke Start. This orchestration is not the standalone empty-body Start route.
+   - Action: load the existing target row.
 3. Persist prerequisite target business changes inside the outer transaction before calling the workflow service. Workflow enrichment reads these persisted Opportunity or Bid columns.
 4. Enlist `WorkflowDbContext` in the same open SQL connection and transaction.
 5. Construct the trusted normalized `SqmsActor` from authenticated server-owned information.
@@ -53,7 +56,9 @@ For every request-driven Start or Action, the target API owns one outer SQL tran
 10. For `replay = true`, roll back the outer transaction so prerequisite target writes from this request do not commit. Reload the previously committed target row after rollback, verify that its projection matches the authoritative replay result, issue no update, and return the successful replay.
 11. For `replay = false`, persist the returned target `Status` and `WorkflowState` through the target repository and commit once after target and workflow work succeeds.
 
-Before calling `ISqmsWorkflowService`, the target API persists prerequisite target business changes inside the outer transaction; Start inserts a new target row first to obtain its ID. Request-driven SQMS adapter calls do not update `SSQMS.Opportunity` or `SSQMS.Bid` directly. The target API projection save is conditional on a successful non-replay result. A persistence failure after a non-replay workflow execution must roll the workflow transaction back with the target save.
+The standalone recommended Start route loads the already-saved target row identified by `{id}` and never inserts another target row. Target-owned create-and-submit orchestration is not the standalone empty-body Start route; it inserts and saves the new target row inside the outer transaction to obtain its ID before invoking Start. Action loads the existing target row.
+
+Before calling `ISqmsWorkflowService`, the target API persists prerequisite target business changes inside the outer transaction so workflow enrichment reads persisted Opportunity or Bid columns. Request-driven SQMS adapter calls do not update `SSQMS.Opportunity` or `SSQMS.Bid` directly. The target API projection save is conditional on a successful non-replay result. A persistence failure after a non-replay workflow execution must roll the workflow transaction back with the target save.
 
 On a replay success (`replay = true`), the target API rolls back the outer transaction, reloads the previously committed target row, verifies its projection, and issues no update.
 
@@ -67,12 +72,13 @@ Relationship and team address resolution is also target-owned. The target may su
 
 | Operation | Implemented behavior | Persistence owner |
 |---|---|---|
-| Request-driven Start | Starts workflow and returns authoritative state/version; does not update the SQMS target row | Target API inserts/persists the prerequisite target row before the call; on non-replay success it persists returned status/state and commits; unsuccessful `AlreadyExists` rolls the transaction back |
+| Standalone request-driven Start route | Loads an already-saved target row, calls Start, and returns authoritative state/version; the SQMS adapter does not update the target row | Target API never inserts another target row; it persists prerequisite changes before the call, persists returned status/state on non-replay success, and rolls back unsuccessful `AlreadyExists` |
+| Target-owned create-and-submit orchestration | Separate target application flow that inserts/saves a new target row to obtain its ID before calling Start; it is not the standalone empty-body route | Target API owns the insert and prerequisite save inside the outer transaction, then persists returned status/state and commits on non-replay success |
 | Request-driven Action | Executes metadata transition and returns authoritative state/version; does not update the SQMS target row | Target API persists prerequisites before the call; on non-replay success it persists returned status/state and commits; replay rolls back, reloads, and verifies without an update |
 | Context | Reads persisted workflow and target information without side effects | Read-only; no target or workflow persistence |
 | Scheduled Opportunity close or Bid classification | Executes scheduled transition and projects the result to the target row | SQMS scheduled adapter owns the four columns `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate` |
 
-For the implemented SQMS adapter itself: Request-driven Start does not update the SQMS target row. Request-driven Action does not update the SQMS target row. The target API separately owns the prerequisite writes described above. After a non-replay success (`replay = false`), the target API persists the returned `Status` and `WorkflowState`. After a replay success (`replay = true`), the target API performs no target write; it reads and verifies the already committed projection.
+For the implemented SQMS adapter itself: Request-driven Start does not update the SQMS target row. Request-driven Action does not update the SQMS target row. The target API separately owns the standalone load or create-and-submit insert plus the prerequisite writes described above. After a non-replay success (`replay = false`), the target API persists the returned `Status` and `WorkflowState`. After a replay success (`replay = true`), the target API performs no target write; it reads and verifies the already committed projection.
 
 Scheduled transitions are the only adapter-owned target write path. Scheduled projection updates exactly `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate`, and no other target columns. Scheduling uses its configured time zone and calendar-day `AddDays` behavior. The current implementation has no scheduler-wide mutual-exclusion lock, so operators must avoid overlapping scheduler invocations.
 
@@ -92,7 +98,7 @@ GET  /v1/sqms/bids/{id}/workflow
 POST /v1/sqms/bids/{id}/workflow/actions
 ```
 
-Start takes the numeric entity ID from the route and an empty target-owned request DTO:
+Standalone Start takes the numeric entity ID from the route and an empty target-owned request DTO. The target row must already be saved; this route loads it and never inserts a replacement row. Target-owned create-and-submit orchestration is a separate application flow and is not represented by this empty-body route.
 
 ```json
 {}
