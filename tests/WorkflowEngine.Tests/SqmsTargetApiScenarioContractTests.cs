@@ -36,6 +36,16 @@ public sealed class SqmsTargetApiScenarioContractTests
         "24-bid-seller-reject"
     ];
 
+    private static readonly string[] SchedulerPacks =
+    [
+        "25-scheduled-opportunity-open-notification",
+        "26-scheduled-opportunity-reminder",
+        "27-scheduled-catch-up-close-first",
+        "28-scheduled-disabled",
+        "29-scheduled-mixed-bid-classification",
+        "30-notification-outbox-smtp-delivery"
+    ];
+
     private static readonly string[] ExpectedCatalogSlugs =
     [
         "opportunity-start-submit",
@@ -180,6 +190,71 @@ public sealed class SqmsTargetApiScenarioContractTests
             Assert.True(Directory.Exists(Path.Combine(Root, pack)), $"Missing {pack}");
             Assert.True(File.Exists(Path.Combine(Root, pack, "README.md")), $"Missing README for {pack}");
         });
+    }
+
+    [Fact]
+    public void SchedulerCatalogContainsEveryApprovedPath()
+    {
+        Assert.All(SchedulerPacks, pack =>
+        {
+            Assert.True(Directory.Exists(Path.Combine(Root, pack)), $"Missing {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "README.md")), $"Missing README for {pack}");
+        });
+    }
+
+    [Fact]
+    public void SchedulerPacksPinOccurrenceOrderingClassificationAndDeliveryContracts()
+    {
+        var open = Read(SchedulerPacks[0], "README.md");
+        Assert.Contains("SQMS:OpportunityOpen:{year}:Q{quarter}:{occurrenceDate:yyyy-MM-dd}", open, StringComparison.Ordinal);
+        Assert.Contains("SQMS:OpportunityOpen:2030:Q1:2030-01-02", open, StringComparison.Ordinal);
+        Assert.Contains("WorkflowInstanceId IS NULL", open, StringComparison.Ordinal);
+        Assert.Contains("immutable", open, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("filtered unique", open, StringComparison.OrdinalIgnoreCase);
+
+        var reminder = Read(SchedulerPacks[1], "README.md");
+        Assert.Contains("SQMS:OpportunityReminder:{year}:Q{quarter}:{occurrenceDate:yyyy-MM-dd}", reminder, StringComparison.Ordinal);
+        Assert.Contains("SQMS:OpportunityReminder:2030:Q1:2030-01-15", reminder, StringComparison.Ordinal);
+        Assert.Contains("WorkflowInstanceId IS NULL", reminder, StringComparison.Ordinal);
+
+        var catchUp = Read(SchedulerPacks[2], "README.md");
+        Assert.Contains("close every due candidate", catchUp, StringComparison.Ordinal);
+        Assert.Contains("classify their valid Bids", catchUp, StringComparison.Ordinal);
+        Assert.Contains("queue due open/reminder", catchUp, StringComparison.Ordinal);
+        Assert.True(
+            catchUp.IndexOf("close every due candidate", StringComparison.Ordinal)
+            < catchUp.IndexOf("classify their valid Bids", StringComparison.Ordinal));
+        Assert.True(
+            catchUp.IndexOf("classify their valid Bids", StringComparison.Ordinal)
+            < catchUp.IndexOf("queue due open/reminder", StringComparison.Ordinal));
+
+        var disabled = Read(SchedulerPacks[3], "README.md");
+        Assert.Contains("before `GetOpenOpportunitiesAsync`", disabled, StringComparison.Ordinal);
+        Assert.Contains("successful zero work", disabled, StringComparison.Ordinal);
+
+        var mixed = Read(SchedulerPacks[4], "README.md");
+        Assert.Contains("Fair Value", mixed, StringComparison.Ordinal);
+        Assert.Contains("Premium", mixed, StringComparison.Ordinal);
+        Assert.Contains("Discount", mixed, StringComparison.Ordinal);
+        Assert.Contains("strictly greater", mixed, StringComparison.Ordinal);
+
+        var smtp = Read(SchedulerPacks[5], "README.md");
+        Assert.Contains("process-notification-outbox", smtp, StringComparison.Ordinal);
+        Assert.Contains("Status = Sent", smtp, StringComparison.Ordinal);
+        Assert.Contains("RetryCount = 0", smtp, StringComparison.Ordinal);
+        Assert.Contains("does not start smtp4dev", smtp, StringComparison.Ordinal);
+        foreach (var route in new[]
+                 {
+                     SqmsKeys.Routes.OpportunityOpen,
+                     SqmsKeys.Routes.OpportunityReminder,
+                     SqmsKeys.Routes.OpportunityPendingSellerApproval,
+                     SqmsKeys.Routes.BidAccepted,
+                     SqmsKeys.Routes.BidPartiallyAccepted,
+                     SqmsKeys.Routes.BidNotAccepted
+                 })
+        {
+            Assert.Contains(route, smtp, StringComparison.Ordinal);
+        }
     }
 
     private static string Read(params string[] segments) =>
