@@ -4,51 +4,51 @@ namespace WorkflowEngine.Tests;
 
 public sealed class SqmsTargetApiScenarioContractTests
 {
-    private static readonly string[] ExpectedScenarioDirectories =
+    private static readonly string[] ExpectedCatalogSlugs =
     [
-        "01-opportunity-start-submit",
-        "02-opportunity-get-context",
-        "03-opportunity-submit-existing-draft",
-        "04-opportunity-submitted-return-to-draft",
-        "05-opportunity-submitted-mark-pending",
-        "06-opportunity-pending-return-to-draft",
-        "07-opportunity-pending-open-for-bidding",
-        "08-opportunity-scheduled-close-bidding",
-        "09-opportunity-request-seller-approval",
-        "10-opportunity-mark-awaiting-allocation",
-        "11-opportunity-mark-partially-allocated",
-        "12-opportunity-mark-not-fulfilled",
-        "13-opportunity-complete-awaiting-allocation",
-        "14-opportunity-complete-partially-allocated",
-        "15-bid-start-submit",
-        "16-bid-get-context",
-        "17-bid-submit-existing-draft",
-        "18-bid-submitted-return-to-draft",
-        "19-bid-scheduled-mark-not-allocated",
-        "20-bid-scheduled-move-to-ipg-review",
-        "21-bid-send-to-seller-review",
-        "22-bid-seller-accept",
-        "23-bid-seller-partially-accept",
-        "24-bid-seller-reject",
-        "25-scheduled-opportunity-open-notification",
-        "26-scheduled-opportunity-reminder",
-        "27-scheduled-catch-up-close-first",
-        "28-scheduled-disabled",
-        "29-scheduled-mixed-bid-classification",
-        "30-notification-outbox-smtp-delivery",
-        "31-failure-target-row-not-found",
-        "32-failure-workflow-not-started",
-        "33-failure-invalid-action-or-role",
-        "34-failure-stale-workflow-version",
-        "35-failure-seller-approval-enrichment",
-        "36-failure-bid-disposition-enrichment",
-        "37-replay-request-action",
-        "38-replay-notification-occurrence",
-        "39-rollback-target-persistence-after-workflow",
-        "40-rollback-scheduled-target-projection",
-        "41-scheduled-per-record-continuation",
-        "42-request-versus-scheduled-projection-ownership",
-        "43-complete-opportunity-and-four-bids"
+        "opportunity-start-submit",
+        "opportunity-get-context",
+        "opportunity-submit-existing-draft",
+        "opportunity-submitted-return-to-draft",
+        "opportunity-submitted-mark-pending",
+        "opportunity-pending-return-to-draft",
+        "opportunity-pending-open-for-bidding",
+        "opportunity-scheduled-close-bidding",
+        "opportunity-request-seller-approval",
+        "opportunity-mark-awaiting-allocation",
+        "opportunity-mark-partially-allocated",
+        "opportunity-mark-not-fulfilled",
+        "opportunity-complete-awaiting-allocation",
+        "opportunity-complete-partially-allocated",
+        "bid-start-submit",
+        "bid-get-context",
+        "bid-submit-existing-draft",
+        "bid-submitted-return-to-draft",
+        "bid-scheduled-mark-not-allocated",
+        "bid-scheduled-move-to-ipg-review",
+        "bid-send-to-seller-review",
+        "bid-seller-accept",
+        "bid-seller-partially-accept",
+        "bid-seller-reject",
+        "scheduled-opportunity-open-notification",
+        "scheduled-opportunity-reminder",
+        "scheduled-catch-up-close-first",
+        "scheduled-disabled",
+        "scheduled-mixed-bid-classification",
+        "notification-outbox-smtp-delivery",
+        "failure-target-row-not-found",
+        "failure-workflow-not-started",
+        "failure-invalid-action-or-role",
+        "failure-stale-workflow-version",
+        "failure-seller-approval-enrichment",
+        "failure-bid-disposition-enrichment",
+        "replay-request-action",
+        "replay-notification-occurrence",
+        "rollback-target-persistence-after-workflow",
+        "rollback-scheduled-target-projection",
+        "scheduled-per-record-continuation",
+        "request-versus-scheduled-projection-ownership",
+        "complete-opportunity-and-four-bids"
     ];
 
     private static readonly string Root = Path.Combine(
@@ -74,11 +74,19 @@ public sealed class SqmsTargetApiScenarioContractTests
             readme,
             StringComparison.Ordinal);
         Assert.Contains(
+            "Before calling `ISqmsWorkflowService`, the target API persists prerequisite target business changes inside the outer transaction; Start inserts a new target row first to obtain its ID.",
+            readme,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "After a non-replay success (`replay = false`), the target API persists the returned `Status` and `WorkflowState`.",
             readme,
             StringComparison.Ordinal);
         Assert.Contains(
             "After a replay success (`replay = true`), the target API performs no target write; it reads and verifies the already committed projection.",
+            readme,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "On a replay success (`replay = true`), the target API rolls back the outer transaction, reloads the previously committed target row, verifies its projection, and issues no update.",
             readme,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -92,14 +100,19 @@ public sealed class SqmsTargetApiScenarioContractTests
     }
 
     [Fact]
-    public void RootCatalogUsesFullNumberedDirectoryNames()
+    public void RootCatalogUsesExactSlugsAndDeclaresNumberedPhysicalPaths()
     {
         var readme = Read("README.md");
 
-        for (var index = 0; index < ExpectedScenarioDirectories.Length; index++)
+        Assert.Contains(
+            "Physical pack paths use `NN-{catalog-slug}` (for example, `01-opportunity-start-submit`); later packs will use numbered directories.",
+            readme,
+            StringComparison.Ordinal);
+
+        for (var index = 0; index < ExpectedCatalogSlugs.Length; index++)
         {
             Assert.Contains(
-                $"| {index + 1:00} | `{ExpectedScenarioDirectories[index]}` |",
+                $"| {index + 1:00} | `{ExpectedCatalogSlugs[index]}` |",
                 readme,
                 StringComparison.Ordinal);
         }
