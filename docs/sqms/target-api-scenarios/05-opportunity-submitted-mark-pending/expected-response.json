@@ -1,0 +1,18 @@
+{
+  "entityId": 10000,
+  "status": "PENDING",
+  "workflowState": "PENDING",
+  "workflowVersion": 3,
+  "terminal": false,
+  "replay": false,
+  "availableActions": [
+    {
+      "actionKey": "ReturnOpportunityToDraft",
+      "label": "Return Opportunity to Draft"
+    },
+    {
+      "actionKey": "OpenOpportunityForBidding",
+      "label": "Open Opportunity for Bidding"
+    }
+  ]
+}

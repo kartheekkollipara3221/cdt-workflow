@@ -1,0 +1,9 @@
+{
+  "entityId": 10000,
+  "status": "OPEN TO BIDDING",
+  "workflowState": "OPEN TO BIDDING",
+  "workflowVersion": 4,
+  "terminal": false,
+  "replay": false,
+  "availableActions": []
+}

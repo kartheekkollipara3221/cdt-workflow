@@ -1,0 +1,9 @@
+{
+  "entityId": 10000,
+  "status": "COMPLETED",
+  "workflowState": "COMPLETED",
+  "workflowVersion": 8,
+  "terminal": true,
+  "replay": false,
+  "availableActions": []
+}

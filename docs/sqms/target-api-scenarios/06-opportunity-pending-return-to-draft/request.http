@@ -1,0 +1,11 @@
+@baseUrl = https://target-api.example.test
+@opportunityId = 10000
+@accessToken = replace-with-target-issued-token
+
+### Recommended target facade; not implemented in this repository
+POST {{baseUrl}}/v1/sqms/opportunities/{{opportunityId}}/workflow/actions
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+Content-Type: application/json
+
+< ./request.json

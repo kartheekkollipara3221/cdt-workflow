@@ -4,6 +4,24 @@ namespace WorkflowEngine.Tests;
 
 public sealed class SqmsTargetApiScenarioContractTests
 {
+    private static readonly string[] OpportunityPacks =
+    [
+        "01-opportunity-start-submit",
+        "02-opportunity-get-context",
+        "03-opportunity-submit-existing-draft",
+        "04-opportunity-submitted-return-to-draft",
+        "05-opportunity-submitted-mark-pending",
+        "06-opportunity-pending-return-to-draft",
+        "07-opportunity-pending-open-for-bidding",
+        "08-opportunity-scheduled-close-bidding",
+        "09-opportunity-request-seller-approval",
+        "10-opportunity-mark-awaiting-allocation",
+        "11-opportunity-mark-partially-allocated",
+        "12-opportunity-mark-not-fulfilled",
+        "13-opportunity-complete-awaiting-allocation",
+        "14-opportunity-complete-partially-allocated"
+    ];
+
     private static readonly string[] ExpectedCatalogSlugs =
     [
         "opportunity-start-submit",
@@ -128,6 +146,16 @@ public sealed class SqmsTargetApiScenarioContractTests
                 readme,
                 StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void OpportunityCatalogContainsEveryApprovedPath()
+    {
+        Assert.All(OpportunityPacks, pack =>
+        {
+            Assert.True(Directory.Exists(Path.Combine(Root, pack)), $"Missing {pack}");
+            Assert.True(File.Exists(Path.Combine(Root, pack, "README.md")), $"Missing README for {pack}");
+        });
     }
 
     private static string Read(params string[] segments) =>

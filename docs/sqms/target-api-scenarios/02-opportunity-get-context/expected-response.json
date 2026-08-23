@@ -1,0 +1,18 @@
+{
+  "entityId": 10000,
+  "status": "SUBMITTED",
+  "workflowState": "SUBMITTED",
+  "workflowVersion": 2,
+  "terminal": false,
+  "replay": false,
+  "availableActions": [
+    {
+      "actionKey": "ReturnOpportunityToDraft",
+      "label": "Return Opportunity to Draft"
+    },
+    {
+      "actionKey": "MarkOpportunityPending",
+      "label": "Mark Opportunity Pending"
+    }
+  ]
+}

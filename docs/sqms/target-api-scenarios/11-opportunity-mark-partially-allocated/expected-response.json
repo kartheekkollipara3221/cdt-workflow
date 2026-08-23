@@ -1,0 +1,14 @@
+{
+  "entityId": 10000,
+  "status": "PARTIALLY ALLOCATED",
+  "workflowState": "PARTIALLY ALLOCATED",
+  "workflowVersion": 7,
+  "terminal": false,
+  "replay": false,
+  "availableActions": [
+    {
+      "actionKey": "CompleteOpportunity",
+      "label": "Complete Opportunity"
+    }
+  ]
+}
