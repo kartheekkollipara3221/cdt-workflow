@@ -31,6 +31,16 @@ The document will explicitly exclude:
 - Scheduler deployment or configuration.
 - Any new HTTP contract, endpoint, or product behavior.
 
+It will include a short, non-HTTP scheduled-ownership overview that explains what already exists without documenting scheduled request bodies or deployment steps:
+
+- `ISqmsScheduledService.RunAsync(CancellationToken)` is the supported scheduled entry point.
+- `AddSqmsWorkflowIntegration(configuration)` registers the current scheduled implementation.
+- `WorkflowEngine.Console.dll run-sqms-scheduled` is the operator/console trigger.
+- There is no public or browser-callable scheduled endpoint.
+- Current processing closes due Opportunities, classifies submitted Bids, then re-reads still-open Opportunities before queueing valid opening/reminder occurrences.
+- Scheduled transitions alone project `Status`, `WorkflowState`, `ModifiedBy`, and `ModifiedDate`; SMTP delivery remains the separate `process-notification-outbox` operation.
+- The target team may retain `WorkflowEngine.Sqms` only for scheduled execution, move the scheduled code into a target-owned worker, or reimplement it against the documented behavior.
+
 ## Structure
 
 1. Scope and architectural boundary.
@@ -41,7 +51,8 @@ The document will explicitly exclude:
 6. Bid request catalog with branch map and scheduled boundary.
 7. Notification request data for manual notification-producing actions.
 8. Target persistence, transaction, replay, and failure checklist.
-9. Implementation checklist and source references.
+9. Future scheduled ownership in the current implementation.
+10. Implementation checklist and source references.
 
 ## Presentation
 
