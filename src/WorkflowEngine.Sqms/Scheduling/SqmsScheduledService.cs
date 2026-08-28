@@ -90,7 +90,10 @@ public sealed class SqmsScheduledService(
             foreach (var bid in bids)
             {
                 var amount = SqmsValueParser.ParseAmount(bid.CommitmentAmountRequested);
-                var category = SqmsValueParser.ParseBidCategory(bid.BidExpressedAsFairValue);
+                var categoryInput = string.IsNullOrWhiteSpace(bid.BidFairValue)
+                    ? bid.BidExpressedAsFairValue
+                    : bid.BidFairValue;
+                var category = SqmsValueParser.ParseBidCategory(categoryInput);
                 if (!amount.Success || !category.Success)
                 {
                     var error = string.Join(" ", new[] { amount.Error, category.Error }.Where(value => value is not null));

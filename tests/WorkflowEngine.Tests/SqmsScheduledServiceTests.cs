@@ -109,6 +109,27 @@ public sealed class SqmsScheduledServiceTests
     }
 
     [Fact]
+    public async Task BidClassificationUsesCategoryInsteadOfExpressedPercentage()
+    {
+        var store = new FakeStore();
+        store.AddClosed(Opportunity(10000, "$100.00", new DateTime(2030, 3, 31)));
+        store.AddBid(Bid(20000, "$60.00", "100 %") with { BidFairValue = "Yes, Fair Value" });
+        store.AddBid(Bid(20001, "$50.00", "5 %") with { BidFairValue = "No, Premium" });
+        store.AddBid(Bid(20002, "$25.00", "5 %") with { BidFairValue = "No, Discount" });
+        var workflow = new FakeWorkflowService(store);
+
+        var result = await CreateService(OpenedAt, store, workflow, new FakeQueueService())
+            .RunAsync(CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, result.BidsMovedToIpgReview);
+        Assert.Equal(1, result.BidsNotAllocated);
+        Assert.Equal(
+            [SqmsKeys.BidActions.MoveToIpgReview, SqmsKeys.BidActions.MoveToIpgReview, SqmsKeys.BidActions.MarkNotAllocated],
+            workflow.BidActions.Select(request => request.ActionKey));
+    }
+
+    [Fact]
     public async Task InvalidBidCandidatesFailWithoutBlockingOtherSubmittedBids()
     {
         var store = new FakeStore();
