@@ -48,17 +48,20 @@ public static class SqmsValueParser
         }
 
         var normalized = string.Concat(input.Where(character => !char.IsWhiteSpace(character)));
-        if (normalized.Equals("FairValue", StringComparison.OrdinalIgnoreCase))
+        if (normalized.Equals("FairValue", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("Yes,FairValue", StringComparison.OrdinalIgnoreCase))
         {
             return SqmsParseResult<SqmsBidCategory>.Succeeded(SqmsBidCategory.FairValue);
         }
 
-        if (normalized.Equals("Premium", StringComparison.OrdinalIgnoreCase))
+        if (normalized.Equals("Premium", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("No,Premium", StringComparison.OrdinalIgnoreCase))
         {
             return SqmsParseResult<SqmsBidCategory>.Succeeded(SqmsBidCategory.Premium);
         }
 
-        if (normalized.Equals("Discount", StringComparison.OrdinalIgnoreCase))
+        if (normalized.Equals("Discount", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("No,Discount", StringComparison.OrdinalIgnoreCase))
         {
             return SqmsParseResult<SqmsBidCategory>.Succeeded(SqmsBidCategory.Discount);
         }

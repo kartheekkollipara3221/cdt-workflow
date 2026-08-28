@@ -37,8 +37,12 @@ public sealed class SqmsValueParserTests
     [InlineData("Fair Value", SqmsBidCategory.FairValue)]
     [InlineData("FAIRVALUE", SqmsBidCategory.FairValue)]
     [InlineData("  fair value  ", SqmsBidCategory.FairValue)]
+    [InlineData("Yes, Fair Value", SqmsBidCategory.FairValue)]
+    [InlineData("  yes, fair value  ", SqmsBidCategory.FairValue)]
     [InlineData("Premium", SqmsBidCategory.Premium)]
+    [InlineData("No, Premium", SqmsBidCategory.Premium)]
     [InlineData("Discount", SqmsBidCategory.Discount)]
+    [InlineData("No, Discount", SqmsBidCategory.Discount)]
     public void ParseBidCategoryNormalizesApprovedValues(string input, SqmsBidCategory expected)
     {
         var result = SqmsValueParser.ParseBidCategory(input);
