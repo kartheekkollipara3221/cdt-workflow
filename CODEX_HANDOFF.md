@@ -2985,3 +2985,64 @@ Review completed SQMS projection ownership correction on branch sqms_projection_
 ```text
 Review docs/sqms/SQMS-USER-DRIVEN-GENERIC-API-HANDOFF.html with the target API team. It documents generic user-driven Opportunity/Bid Start, Context, and Action calls plus how to read responses. User actions are target-owned; scheduling remains a separate future decision around ISqmsScheduledService. Do not invent a scheduled HTTP route. If approved, decide whether to push the documentation commits.
 ```
+
+# 2026-08-28 SQMS Bid Category Column Correction
+
+## Current goal
+
+- Correct scheduled Bid classification to use the target's authoritative `BidFairValue` category labels while retaining `BidExpressedAsFairValue` as percentage text.
+
+## Completed changes
+
+- Added `SqmsBidRow.BidFairValue` as a non-positional init property, preserving the existing positional constructor and callers.
+- Appended `SSQMS.Bid.BidFairValue` to the SQL projection without shifting existing column ordinals.
+- Kept `BidExpressedAsFairValue` mapped separately for values such as `100 %` and `5 %`.
+- Added parser support for `Yes, Fair Value`, `No, Premium`, and `No, Discount` while retaining canonical `Fair Value`, `Premium`, and `Discount` inputs.
+- Changed scheduled classification to prefer `BidFairValue`, with a null/blank fallback for existing custom `ISqmsDataStore` implementations.
+- Added target-shaped parser, SQL mapping, and scheduled-classification regressions using the confirmed category and percentage values.
+- No target data, database migration, public HTTP contract, workflow metadata, transition, action key, or classification threshold changed.
+
+## Changed files
+
+- `src/WorkflowEngine.Sqms/SqmsValueParser.cs`
+- `src/WorkflowEngine.Sqms/Persistence/SqmsRows.cs`
+- `src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs`
+- `src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs`
+- `tests/WorkflowEngine.Tests/SqmsValueParserTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsDataStoreTests.cs`
+- `tests/WorkflowEngine.Tests/SqmsScheduledServiceTests.cs`
+- Design and implementation plan under `docs/superpowers/`.
+
+## Build and test status
+
+- Pre-change baseline: 469 non-SMTP main tests passed; Workflow API 63 passed with 2 expected dispatcher skips.
+- Parser RED: four confirmed legacy-label cases failed with `Bid category '<value>' is not recognized.`
+- Parser GREEN: 22 parser tests passed.
+- SQL mapping RED: compilation failed because `SqmsBidRow.BidFairValue` did not exist.
+- SQL mapping GREEN: the SQL-backed store test passed and proved `BidFairValue = No, Premium` alongside `BidExpressedAsFairValue = 5 %`.
+- Scheduler RED: the exact target-shaped `100 %` / `5 %` regression failed before the column switch.
+- Scheduler GREEN: all 12 scheduled-service tests passed.
+- Main and Workflow API warning-as-error builds: zero warnings and zero errors.
+- Post-change main suite: 474 passed, 0 failed, 0 skipped.
+- Post-change Workflow API suite: 63 passed, 0 failed, 2 expected skips.
+- Generic `verify-seed`: passed.
+- `sql/sqms/003_verify_sqms_deployment.sql` against local `DOLLY/workflowengine`: stopped at error 51201 because that local database has not applied pre-existing migration `20260820200000_AddNotificationOccurrenceKey`. Its `NotificationOutbox.WorkflowInstanceId` remains non-nullable and `NotificationOccurrenceKey` is absent. No database mutation was performed because this gap is unrelated to the Bid correction.
+- No sample JSON or one-shot live-acceptance launcher was executed.
+
+## Remaining tasks
+
+- Deploy the corrected build to the target host.
+- Rerun the scheduled command so Bids 10031-10034, which failed before classification, are retried while still Submitted.
+- Treat any target database migration/deployment verification separately; do not infer the local `workflowengine` schema state applies to the target database.
+- Push the three implementation commits plus this handoff commit only after explicit authorization.
+
+## Known risks
+
+- A custom `ISqmsDataStore` that does not populate `BidFairValue` retains the old canonical-label fallback. If it supplies a numeric percentage in the old property, classification still fails rather than guessing Premium versus Discount.
+- The local `workflowengine` database cannot pass the current SQMS deployment verifier until its already-existing notification occurrence migration/DDL is applied through an approved database-maintenance action.
+
+## Next-session prompt
+
+```text
+Resume after the SQMS Bid category column correction. BidFairValue now supplies Yes, Fair Value / No, Premium / No, Discount; BidExpressedAsFairValue remains numeric percentage text such as 100 % / 5 %. Builds and regression suites passed. Deploy the corrected build, then rerun scheduled processing to retry still-Submitted Bids 10031-10034. Do not modify target data to work around the former parser error. The local workflowengine SQMS deployment verifier remains blocked by its pre-existing pending AddNotificationOccurrenceKey migration.
+```
