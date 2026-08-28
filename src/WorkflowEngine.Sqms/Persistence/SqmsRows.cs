@@ -23,7 +23,10 @@ public sealed record SqmsBidRow(
     string? CommitmentAmountRequested,
     string? BidExpressedAsFairValue,
     string? Status,
-    string? WorkflowState);
+    string? WorkflowState)
+{
+    public string? BidFairValue { get; init; }
+}
 
 public sealed record SqmsOpenOpportunityRow(
     SqmsOpportunityRow Opportunity,

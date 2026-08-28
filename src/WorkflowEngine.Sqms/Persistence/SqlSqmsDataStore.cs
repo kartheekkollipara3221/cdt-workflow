@@ -18,7 +18,7 @@ public sealed class SqlSqmsDataStore(WorkflowDbContext dbContext) : ISqmsDataSto
     private const string BidColumns = """
         bid.[ID], bid.[OpportunityId], bid.[BuyerRmteam], bid.[AccountName], bid.[AccountNumber],
         bid.[RelationshipManager], bid.[CommitmentAmountRequested], bid.[BidExpressedAsFairValue],
-        bid.[Status], bid.[WorkflowState]
+        bid.[Status], bid.[WorkflowState], bid.[BidFairValue]
         """;
 
     private readonly WorkflowDbContext dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
@@ -321,7 +321,10 @@ public sealed class SqlSqmsDataStore(WorkflowDbContext dbContext) : ISqmsDataSto
             NullableString(reader, 6),
             NullableString(reader, 7),
             NullableString(reader, 8),
-            NullableString(reader, 9));
+            NullableString(reader, 9))
+        {
+            BidFairValue = NullableString(reader, 10)
+        };
 
     private static string? NullableString(DbDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);

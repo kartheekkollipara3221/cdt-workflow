@@ -55,6 +55,8 @@ public sealed class SqmsDataStoreTests
             var bid = await store.GetBidAsync(10000, CancellationToken.None);
             Assert.NotNull(bid);
             Assert.Equal(10001, bid.OpportunityId);
+            Assert.Equal("No, Premium", bid.BidFairValue);
+            Assert.Equal("5 %", bid.BidExpressedAsFairValue);
             Assert.Null(await store.GetBidAsync(10001, CancellationToken.None));
 
             var open = Assert.Single(await store.GetOpenOpportunitiesAsync(CancellationToken.None));
@@ -67,6 +69,8 @@ public sealed class SqmsDataStoreTests
 
             var submitted = Assert.Single(await store.GetSubmittedBidsAsync(10001, CancellationToken.None));
             Assert.Equal(10000, submitted.Id);
+            Assert.Equal("No, Premium", submitted.BidFairValue);
+            Assert.Equal("5 %", submitted.BidExpressedAsFairValue);
 
             var modifiedAtUtc = new DateTime(2030, 1, 16, 12, 0, 0, DateTimeKind.Utc);
             await store.ProjectOpportunityStateAsync(
@@ -127,11 +131,11 @@ public sealed class SqmsDataStoreTests
             SET IDENTITY_INSERT [SSQMS].[Bid] ON;
             INSERT INTO [SSQMS].[Bid]
                 ([ID], [OpportunityId], [BuyerRmteam], [BidForFullCommitment], [CommitmentAmountRequested],
-                 [AccountName], [AccountNumber], [RelationshipManager], [BidExpressedAsFairValue],
+                 [AccountName], [AccountNumber], [RelationshipManager], [BidFairValue], [BidExpressedAsFairValue],
                  [Status], [WorkflowState], [CreatedBy], [CreatedDate], [ModifiedBy], [ModifiedDate], [IsDeleted])
             VALUES
-                (10000, 10001, 'Buyer Team', 'Yes', '$500.00', 'Submitted Bidder', 'BA-1', 'Buyer RM', 'Premium', 'SUBMITTED', 'SUBMITTED', 'bidder', '2030-01-15', 'bidder', '2030-01-15', 0),
-                (10001, 10001, 'Buyer Team', 'Yes', '$600.00', 'Deleted Bidder', 'BA-2', NULL, 'Discount', 'SUBMITTED', 'SUBMITTED', 'bidder', '2030-01-15', 'bidder', '2030-01-15', 1);
+                (10000, 10001, 'Buyer Team', 'Yes', '$500.00', 'Submitted Bidder', 'BA-1', 'Buyer RM', 'No, Premium', '5 %', 'SUBMITTED', 'SUBMITTED', 'bidder', '2030-01-15', 'bidder', '2030-01-15', 0),
+                (10001, 10001, 'Buyer Team', 'Yes', '$600.00', 'Deleted Bidder', 'BA-2', NULL, 'No, Discount', '5 %', 'SUBMITTED', 'SUBMITTED', 'bidder', '2030-01-15', 'bidder', '2030-01-15', 1);
             SET IDENTITY_INSERT [SSQMS].[Bid] OFF;
 
             DECLARE @versionId bigint =
