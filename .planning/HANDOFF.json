@@ -1,65 +1,100 @@
-{
-  "version": "1.0",
-  "timestamp": "2026-08-22T22:29:20Z",
-  "phase": "SQMS",
-  "phase_name": "SQMS projection ownership correction",
-  "phase_dir": ".planning",
-  "plan": 1,
-  "task": 8,
-  "total_tasks": 8,
-  "status": "complete",
-  "completed_tasks": [
-    {
-      "id": 1,
-      "name": "Remove request-driven target-row projection and retain scheduled projection",
-      "status": "done",
-      "commit": "a636425"
-    },
-    {
-      "id": 2,
-      "name": "Prove target-owned manual persistence end to end",
-      "status": "done",
-      "commit": "5172576"
-    },
-    {
-      "id": 3,
-      "name": "Run isolated full Opportunity and four-Bid live SMTP acceptance",
-      "status": "done",
-      "commit": "cbaf972"
-    }
-  ],
-  "remaining_tasks": [],
-  "blockers": [],
-  "async_jobs": [],
-  "human_actions_pending": [
-    {
-      "action": "Integrate or cherry-pick the sqms_projection_ownership branch when approved.",
-      "context": "No merge, push, deployment, or production SQL was performed.",
-      "blocking": false
-    },
-    {
-      "action": "Update the external target API so every successful request Start/Action persists the returned authoritative state.",
-      "context": "Request-driven adapter calls no longer update SSQMS target rows; scheduled close/classification still does.",
-      "blocking": false
-    }
-  ],
-  "decisions": [
-    {
-      "decision": "Request-driven SQMS Start and Action methods never update Opportunity or Bid target rows.",
-      "rationale": "The target API owns request-side persistence and consumes authoritative returned state/context.",
-      "phase": "SQMS"
-    },
-    {
-      "decision": "Scheduled close and classification use a dedicated internal interface and retain atomic four-column target projection.",
-      "rationale": "The scheduler is the approved thin-layer-owned persistence path.",
-      "phase": "SQMS"
-    }
-  ],
-  "uncommitted_files": [
-    ".planning/HANDOFF.json",
-    ".planning/.continue-here.md",
-    "CODEX_HANDOFF.md"
-  ],
-  "next_action": "Review branch sqms_projection_ownership at cbaf972 plus the continuity commit, then choose whether to merge/cherry-pick it. Do not rerun the retained one-shot live acceptance.",
-  "context_notes": "Main tests passed 453 with 4 opt-in SMTP skips; Workflow API tests passed 68. Live database workflowengine_sqms_projection_ownership_live_acceptance retained Opportunity 10000, Bids 10000-10003, 20 RequestUnchanged proofs, 20 TargetOwnerPersisted proofs, 5 ScheduledProjected proofs, 25 audits, 25 idempotency rows, zero tasks/SLA schedules, and 6 Sent outbox/smtp4dev messages. smtp4dev launcher PID 9224 and child PID 18996 use ports 3027/5002 and retained data under .tools/smtp4dev/data/sqms-projection-ownership-live-acceptance-20260822."
+﻿{
+    "version":  "1.0",
+    "timestamp":  "2026-09-06T16:34:36.8788448+00:00",
+    "phase":  null,
+    "phase_name":  "Independent audit findings discussion",
+    "phase_dir":  ".planning/audits/2026-09-06-independent",
+    "plan":  null,
+    "task":  2,
+    "total_tasks":  9,
+    "status":  "paused",
+    "completed_tasks":  [
+                            {
+                                "status":  "done",
+                                "name":  "Code-based audit and live SQL/SMTP verification",
+                                "id":  1,
+                                "progress":  "Nine findings; audit source coverage explicitly incomplete; 546 tests passed."
+                            },
+                            {
+                                "status":  "done",
+                                "name":  "Discuss F01 migration deletion",
+                                "id":  2,
+                                "progress":  "User reports migrations applied to empty production DB and init-db will not be run again. Set aside as not an immediate production concern; retain historical technical finding."
+                            }
+                        ],
+    "remaining_tasks":  [
+                            {
+                                "status":  "in_progress",
+                                "name":  "Discuss F02 identity-header trust",
+                                "id":  3
+                            },
+                            {
+                                "status":  "not_started",
+                                "name":  "Discuss F03 through F09 individually in simple terms",
+                                "id":  4
+                            }
+                        ],
+    "blockers":  [
+
+                 ],
+    "async_jobs":  [
+
+                   ],
+    "human_actions_pending":  [
+                                  {
+                                      "context":  "F02 impact depends on this integration boundary; no production exposure conclusion yet.",
+                                      "blocking":  false,
+                                      "action":  "Explain which production component authenticates users and supplies the trusted headers: CDT/SQMS backend, gateway or browser."
+                                  }
+                              ],
+    "decisions":  [
+                      {
+                          "decision":  "Full file-by-file review of src and workflow-api deferred by user.",
+                          "rationale":  "Discuss each defect one at a time first."
+                      },
+                      {
+                          "decision":  "Use standalone AUDIT.html for reading, not Markdown reports.",
+                          "rationale":  "User presentation preference."
+                      },
+                      {
+                          "decision":  "F01 set aside for current production deployment.",
+                          "rationale":  "User says migrations ran on empty database and initialization will not be rerun; user-provided deployment context, not independently verified."
+                      }
+                  ],
+    "next_action":  "Resume F02 in plain language. Ask/resolve who authenticates production callers and controls X-Workflow-* headers. Do not proceed to F03 until the user finishes F02.",
+    "context_notes":  "Shared metadata/rules approval engine replaces legacy SharePoint approvals. CDT and SQMS integrated. No fixes authorized. Read CODEX_HANDOFF.md latest pause and audit discussion checkpoint. Do not re-run tests, migrations or full review just to resume conversation.",
+    "background_processes":  [
+                                 {
+                                     "verified_running_at":  "2026-09-06T16:34:36.8788448+00:00",
+                                     "name":  "Audit smtp4dev",
+                                     "storage":  "C:/Users/Dolly Gutta/AppData/Local/Temp/WorkflowAuditSmtp_20260906",
+                                     "pid":  30208,
+                                     "smtp":  "localhost:3025",
+                                     "url":  "http://localhost:5000"
+                                 },
+                                 {
+                                     "instance":  "WorkflowAudit_20260906",
+                                     "name":  "Private SQL LocalDB",
+                                     "note":  "Retained audit test databases; verify state before reuse."
+                                 }
+                             ],
+    "verification":  {
+                         "sql":  "Targeted probes SQL Server 2022 DOLLY; existing suites private SQL Server 2025 LocalDB",
+                         "seed":  "Passed",
+                         "smtp":  "Nine CDT/SQMS MIME recipient/plain/HTML matches",
+                         "core_tests":  478,
+                         "api_tests":  68,
+                         "skipped":  0,
+                         "builds":  "Both solutions and isolated probe passed with zero warnings/errors",
+                         "failed":  0,
+                         "samples":  "Supported branches/demo executed through regression tests"
+                     },
+    "uncommitted_files":  [
+                              " M .planning/.continue-here.md",
+                              " M .planning/HANDOFF.json",
+                              " M CODEX_HANDOFF.md",
+                              "?? .planning/audits/",
+                              "?? artifacts/"
+                          ],
+    "previous_handoff_archive":  ".planning/audits/2026-09-06-independent/previous-HANDOFF.json"
 }

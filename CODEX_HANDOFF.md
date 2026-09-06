@@ -3046,3 +3046,53 @@ Review docs/sqms/SQMS-USER-DRIVEN-GENERIC-API-HANDOFF.html with the target API t
 ```text
 Resume after the SQMS Bid category column correction. BidFairValue now supplies Yes, Fair Value / No, Premium / No, Discount; BidExpressedAsFairValue remains numeric percentage text such as 100 % / 5 %. Builds and regression suites passed. Deploy the corrected build, then rerun scheduled processing to retry still-Submitted Bids 10031-10034. Do not modify target data to work around the former parser error. The local workflowengine SQMS deployment verifier remains blocked by its pre-existing pending AddNotificationOccurrenceKey migration.
 ```
+
+## Independent implementation audit — 2026-09-06
+
+Current goal: Independent whole-current-implementation engineering audit; no application fixes or refactoring authorized.
+
+Completed: Reconstructed core runtime paths, challenged findings, verified primary framework/design sources, built both solutions, ran 130 selected safe tests and isolated production-code probes. Eight findings and separate design improvements recorded in .planning/audits/2026-09-06-independent/REVIEW.md.
+
+Changed files: Audit REVIEW.md, COVERAGE.md, FILES.csv, VERIFICATION.md, Reproduction.cs.txt, Reproduction.csproj.txt, and this handoff. Application source unchanged; no commit/push.
+
+Build/test status: Both warning-as-error builds passed with zero warnings/errors. API 63 and selected core 67 tests passed. Probe output and exact commands in VERIFICATION.md. No SQL migration, seed verification, live sample execution, SMTP or production connection performed.
+
+Remaining tasks: Exact unreviewed and partially reviewed files are in FILES.csv. SQL Server upgrade/concurrency, full SQL regression, SMTP recovery and deployed ingress controls remain unverified. No remediation implemented.
+
+Known risks: Pending historical migrations contain unconditional runtime deletes; header identity depends on unverified ingress protection; SQMS retries change classification cohort; SLA-only actions lack a role-policy check; poison outbox rows can starve subsequent delivery; HTTP retry identity, assignment hash and reason metadata findings also remain open. See report for conditions and counterevidence.
+
+Next-session prompt: Read the independent audit artifacts for HEAD 8cdfaf2d9c1180b95a8f1b78ff46d9b55be4f8d5, verify current Git state, then continue the exact coverage gaps or remediation explicitly requested by the user. Do not infer authorization to change application code from this audit. Do not execute database fixtures until isolation is established.
+
+### Audit presentation update
+
+User prefers a creative browser-readable review instead of Markdown. Primary reading artifact is now .planning/audits/2026-09-06-independent/AUDIT.html: standalone HTML with architecture visual, eight expandable findings, severity filters, SQMS retry example, full searchable 300-file ledger, evidence and print/PDF support. build_report.py regenerates it from the audit records; AUDIT-preview.png captures the rendered desktop view. No application changes. Edge headless rendering inspected; browser smoke checks passed for filters, expand/collapse, ledger search and print expansion/restoration. Application tests, seed verification and database-backed samples were not rerun for presentation changes. Original audit findings and coverage gaps remain unchanged.
+
+### SQL Server / smtp4dev audit follow-up — 2026-09-06
+
+Current goal completed for the exercised scope: validate previous findings with isolated real SQL Server and fake local SMTP, without application fixes. Primary user-facing artifact remains .planning/audits/2026-09-06-independent/AUDIT.html; the user prefers the interactive presentation.
+
+Architecture context supplied by user: shared rules-driven approval engine replacing legacy SharePoint workflows; CDT and SQMS are the first two integrations. This context guides review priorities; findings remain code-based.
+
+Completed: 478 core + 68 API tests passed (546 total, zero failed/skipped), including SQL, SMTP and fresh-clone tests, on new private LocalDB WorkflowAudit_20260906 (SQL Server 2025 17.0.4025.3). Targeted probes ran separately on DOLLY SQL Server 2022 Developer 16.0.1000.6 in unique new audit databases. Both solutions and probe warning-as-error builds passed with zero warnings/errors. Explicit seed verification passed. Sample branches/demo ran through existing tests. Six CDT and three SQMS MIME messages matched SQL ordered recipients and text/HTML bodies; deliberate post-acceptance failure produced two captured messages.
+
+Findings: confirmed historical migration data loss, retry-dependent SQMS classification, unrelated-role SLA persistence, poison-message starvation, HTTP committed-failure/retry behavior, changed-assignment replay and missing required reason. Added F09: task completion can race SLA edit and leave an active schedule on a completed task. Monitor Pending-task checks limit its downstream impact. Confirmed outer rollback prevents partial persistence, while an intentionally committing caller can persist partial work after ValidationFailed. Actual target transaction policy and ingress remain unknown.
+
+Changed files: audit report/generator, LIVE-VERIFICATION.md, coverage/verification ledger, isolated live-probe sources/project, live-results logs/TRX/JSON, preview and this handoff. Application source unchanged. Generated artifacts/audit-runtime is retained; automatic approval review rejected a combined cleanup command.
+
+Retained resources: SQL names listed in LIVE-VERIFICATION.md, private LocalDB test instance, smtp4dev 3.15.0 at localhost:3025 / http://localhost:5000, storage C:/Users/Dolly Gutta/AppData/Local/Temp/WorkflowAuditSmtp_20260906, PID 30208 at audit time. Existing DOLLY application/test databases were not altered. Audit databases from harness setup failures are identified separately, including the deliberately injected trigger in the failed SQMS run. No cleanup, application fixes, commits or pushes authorized/performed.
+
+Remaining: full target API/ingress inspection, remaining source-file review, whole suite on SQL Server 2022, exhaustive concurrency schedules, all SQMS opportunity message types through SMTP, TLS/relay and real crash recovery. No production-readiness conclusion.
+
+Next-session prompt: Open the updated AUDIT.html and LIVE-VERIFICATION evidence for HEAD 8cdfaf2d9c1180b95a8f1b78ff46d9b55be4f8d5. Verify current Git/resources before any continuation. User authorized audit verification only; implement fixes only if newly requested. Prioritize migration safety, stable SQMS retry decisions and authorization, then queue/retry/hash/reason issues and F09. Do not reset existing application databases.
+
+### PAUSED — resume defect discussion at F02 (2026-09-06)
+
+Current goal: explain each audit finding individually in simple terms. User explicitly deferred the remaining full source review of src/ and workflow-api/. No code fixes authorized.
+
+Completed discussion: F01 is caused by pending migration execution, including via init-db. User reports production initialization already ran on an empty database and will not be run again. Set aside as not an immediate concern for current production; retain historical technical finding. This is user-provided deployment context, not independently queried production history.
+
+Next question, already asked: In production, what authenticates the user and supplies the identity/role headers—the CDT/SQMS backend, a gateway, or the browser? Resume F02 here. No answer yet; do not assume direct browser access or protected gateway deployment. Continue one finding at a time.
+
+Saved files: .planning/HANDOFF.json, .planning/.continue-here.md, audit DISCUSSION-CHECKPOINT.md. Previous root handoffs archived beside the audit. Existing test/build status remains 546 passed and zero-warning builds; no tests, seed verification or sample executions rerun for the pause. Audit HTML remains primary reading format. Infrastructure: audit smtp4dev PID 30208 verified running; SQL/test evidence retained. No application/database changes during pause.
+
+Next-session prompt: Resume the independent audit findings discussion from DISCUSSION-CHECKPOINT.md. F01 is set aside for the user's deployment. Continue F02 by resolving who authenticates callers and owns the trusted headers. Keep explanations simple and do not start fixes or the deferred full source review.
