@@ -138,6 +138,42 @@ public sealed class SqlSqmsDataStore(WorkflowDbContext dbContext) : ISqmsDataSto
             cancellationToken);
     }
 
+    public Task<IReadOnlyList<SqmsBidRow>> GetBidClassificationBasisAsync(
+        int opportunityId,
+        CancellationToken cancellationToken)
+    {
+        ValidateId(opportunityId, nameof(opportunityId));
+        return QueryBidsAsync(
+            $"""
+            SELECT {BidColumns}
+            FROM [SSQMS].[Bid] AS bid
+            WHERE bid.[OpportunityId] = @opportunityId
+              AND (bid.[IsDeleted] IS NULL OR bid.[IsDeleted] = 0)
+              AND
+              (
+                  bid.[WorkflowState] = @submitted
+                  OR EXISTS
+                  (
+                      SELECT 1
+                      FROM [dbo].[WorkflowAudit] AS classification
+                      WHERE classification.[WorkflowInstanceId] = CONCAT(N'WF-SQMS-BID-', bid.[ID])
+                        AND classification.[BusinessObjectType] = @workflowKey
+                        AND classification.[FromStateKey] = @submitted
+                        AND classification.[ActionKey] IN (@moveToReview, @markNotAllocated)
+                  )
+              )
+            ORDER BY bid.[ID];
+            """,
+            [
+                Parameter("@opportunityId", DbType.Int32, opportunityId),
+                Parameter("@submitted", DbType.String, SqmsKeys.BidStates.Submitted, 100),
+                Parameter("@workflowKey", DbType.String, SqmsKeys.BidWorkflow, 100),
+                Parameter("@moveToReview", DbType.String, SqmsKeys.BidActions.MoveToIpgReview, 100),
+                Parameter("@markNotAllocated", DbType.String, SqmsKeys.BidActions.MarkNotAllocated, 100)
+            ],
+            cancellationToken);
+    }
+
     public Task ProjectOpportunityStateAsync(
         int id,
         string state,

@@ -85,7 +85,7 @@ public sealed class SqmsScheduledService(
                 continue;
             }
 
-            var bids = await dataStore.GetSubmittedBidsAsync(opportunity.Id, cancellationToken);
+            var bids = await dataStore.GetBidClassificationBasisAsync(opportunity.Id, cancellationToken);
             var validBids = new List<ParsedBid>();
             foreach (var bid in bids)
             {
@@ -110,6 +110,11 @@ public sealed class SqmsScheduledService(
             var rejectDiscounts = qualifyingSum > saleAmount.Value;
             foreach (var candidate in validBids)
             {
+                if (candidate.Bid.WorkflowState != SqmsKeys.BidStates.Submitted)
+                {
+                    continue;
+                }
+
                 var actionKey = rejectDiscounts && candidate.Category == SqmsBidCategory.Discount
                     ? SqmsKeys.BidActions.MarkNotAllocated
                     : SqmsKeys.BidActions.MoveToIpgReview;

@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Sqms;
 using WorkflowEngine.Sqms.Contracts;
 using WorkflowEngine.Sqms.DependencyInjection;
+using WorkflowEngine.Sqms.Persistence;
 
 namespace WorkflowEngine.Tests;
 
@@ -180,6 +182,64 @@ public sealed class SqmsEndToEndTests
         await fixture.AssertSentinelsAsync([10000, 10001]);
     }
 
+    [Fact]
+    public async Task ClassificationRetryAfterSqlFailureUsesCommittedHistoryInFreshScope()
+    {
+        await using var fixture = await Fixture.CreateAsync("classification_retry");
+        await fixture.SetOpportunityStateAsync(10000, SqmsKeys.OpportunityStates.ClosedToBidding);
+        await fixture.SetBidDataAsync(20000, "$60.00", "Fair Value");
+        await fixture.SetBidDataAsync(20001, "$50.00", "Premium");
+        await fixture.SetBidDataAsync(20002, "$25.00", "Discount");
+        // A never-submitted draft must not contribute to the threshold.
+        await fixture.SetBidDataAsync(20003, "$500.00", "Fair Value");
+        foreach (var id in new[] { 20000, 20001, 20002 })
+        {
+            AssertState(await fixture.StartBid(id, Mfo), SqmsKeys.BidStates.Submitted, 2);
+        }
+
+        await fixture.DbContext.Database.ExecuteSqlRawAsync("""
+            CREATE TRIGGER [SSQMS].[FailClassificationForRetryTest] ON [SSQMS].[Bid] AFTER UPDATE AS
+            BEGIN
+                IF EXISTS (SELECT 1 FROM inserted WHERE [ID] = 20002 AND [WorkflowState] <> N'SUBMITTED')
+                    THROW 51000, 'Injected classification projection failure', 1;
+            END
+            """);
+        try
+        {
+            var failure = await Assert.ThrowsAsync<SqlException>(() => fixture.Scheduled.RunAsync(CancellationToken.None));
+            Assert.Equal(51000, failure.Number);
+        }
+        finally
+        {
+            await fixture.DbContext.Database.ExecuteSqlRawAsync("DROP TRIGGER [SSQMS].[FailClassificationForRetryTest]");
+        }
+
+        Assert.Equal(SqmsKeys.BidStates.IpgReview, await fixture.TargetWorkflowStateAsync("Bid", 20000));
+        Assert.Equal(SqmsKeys.BidStates.IpgReview, await fixture.TargetWorkflowStateAsync("Bid", 20001));
+        Assert.Equal(SqmsKeys.BidStates.Submitted, await fixture.TargetWorkflowStateAsync("Bid", 20002));
+        Assert.Equal(1, await fixture.AuditCountAsync(SqmsKeys.BidWorkflowInstanceId(20002)));
+        AssertState(await fixture.BidAction(20000, SqmsKeys.BidActions.SendToSellerReview, 3, Ipg),
+            SqmsKeys.BidStates.UnderReviewBySeller, 4);
+
+        using var retryScope = fixture.CreateScope();
+        var store = retryScope.ServiceProvider.GetRequiredService<ISqmsDataStore>();
+        var basis = await store.GetBidClassificationBasisAsync(10000, CancellationToken.None);
+        Assert.Equal([20000, 20001, 20002], basis.Select(row => row.Id));
+        Assert.Equal(20002, Assert.Single(await store.GetSubmittedBidsAsync(10000, CancellationToken.None)).Id);
+        var scheduler = retryScope.ServiceProvider.GetRequiredService<ISqmsScheduledService>();
+        var retry = await scheduler.RunAsync(CancellationToken.None);
+        Assert.True(retry.Success);
+        Assert.Equal(1, retry.BidsNotAllocated);
+        Assert.Equal(0, retry.BidsMovedToIpgReview);
+        Assert.Equal(SqmsKeys.BidStates.NotAllocated, await fixture.TargetWorkflowStateAsync("Bid", 20002));
+        Assert.Equal(2, await fixture.AuditCountAsync(SqmsKeys.BidWorkflowInstanceId(20002)));
+        Assert.Equal(3, await fixture.AuditCountAsync(SqmsKeys.BidWorkflowInstanceId(20000)));
+        Assert.Equal(2, await fixture.AuditCountAsync(SqmsKeys.BidWorkflowInstanceId(20001)));
+        var replay = await scheduler.RunAsync(CancellationToken.None);
+        Assert.True(replay.Success);
+        Assert.Equal(0, replay.BidsNotAllocated + replay.BidsMovedToIpgReview);
+    }
+
     private static void AssertState(SqmsOperationResult result, string state, int version)
     {
         Assert.True(result.Success, result.Message);
@@ -220,6 +280,7 @@ public sealed class SqmsEndToEndTests
         public WorkflowDbContext DbContext => scope.ServiceProvider.GetRequiredService<WorkflowDbContext>();
         public ISqmsWorkflowService Workflow => scope.ServiceProvider.GetRequiredService<ISqmsWorkflowService>();
         public ISqmsScheduledService Scheduled => scope.ServiceProvider.GetRequiredService<ISqmsScheduledService>();
+        public IServiceScope CreateScope() => provider.CreateScope();
 
         public static async Task<Fixture> CreateAsync(string suffix)
         {

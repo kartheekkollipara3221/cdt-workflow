@@ -171,6 +171,38 @@ public sealed class SqmsScheduledServiceTests
         Assert.Equal(SqmsKeys.BidStates.IpgReview, store.Bids.Single(row => row.Id == 20002).WorkflowState);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RetryKeepsPreviouslyClassifiedBidsInThresholdWithoutExecutingThemAgain(bool advanceEarlierBids)
+    {
+        var store = new FakeStore();
+        store.AddClosed(Opportunity(10000, "$100.00", new DateTime(2030, 3, 31)));
+        store.AddBid(Bid(20000, "$60.00", "Fair Value"));
+        store.AddBid(Bid(20001, "$50.00", "Premium"));
+        store.AddBid(Bid(20002, "$25.00", "Discount"));
+        var firstWorkflow = new FakeWorkflowService(store) { FailingBidId = 20002 };
+        var first = await CreateService(OpenedAt, store, firstWorkflow, new FakeQueueService())
+            .RunAsync(CancellationToken.None);
+        Assert.Equal(2, first.BidsMovedToIpgReview);
+        Assert.Single(first.Failures);
+        if (advanceEarlierBids)
+        {
+            store.SetBidState(20000, SqmsKeys.BidStates.UnderReviewBySeller);
+            store.SetBidState(20001, SqmsKeys.BidStates.UnderReviewBySeller);
+        }
+
+        var retryWorkflow = new FakeWorkflowService(store);
+        var retry = await CreateService(OpenedAt.AddDays(1), store, retryWorkflow, new FakeQueueService())
+            .RunAsync(CancellationToken.None);
+
+        Assert.True(retry.Success);
+        Assert.Equal(1, retry.BidsNotAllocated);
+        Assert.Equal(0, retry.BidsMovedToIpgReview);
+        Assert.Equal(20002, Assert.Single(retryWorkflow.BidActions).EntityId);
+        Assert.Equal(SqmsKeys.BidStates.NotAllocated, store.Bids.Single(row => row.Id == 20002).WorkflowState);
+    }
+
     private static SqmsScheduledService CreateService(
         DateTimeOffset now,
         FakeStore store,
@@ -213,6 +245,7 @@ public sealed class SqmsScheduledServiceTests
         public List<SqmsOpenOpportunityRow> Open { get; } = [];
         public List<SqmsOpportunityRow> Closed { get; } = [];
         public List<SqmsBidRow> Bids { get; } = [];
+        private readonly HashSet<int> classifiedBidIds = [];
 
         public void AddOpen(SqmsOpportunityRow row, DateTimeOffset openedAt) => Open.Add(new(row, openedAt));
         public void AddClosed(SqmsOpportunityRow row) => Closed.Add(row with { WorkflowState = SqmsKeys.OpportunityStates.ClosedToBidding });
@@ -228,6 +261,9 @@ public sealed class SqmsScheduledServiceTests
             Task.FromResult<IReadOnlyList<SqmsOpportunityRow>>(Closed.Where(opportunity => Bids.Any(bid => bid.OpportunityId == opportunity.Id && bid.WorkflowState == SqmsKeys.BidStates.Submitted)).ToArray());
         public Task<IReadOnlyList<SqmsBidRow>> GetSubmittedBidsAsync(int opportunityId, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<SqmsBidRow>>(Bids.Where(row => row.OpportunityId == opportunityId && row.WorkflowState == SqmsKeys.BidStates.Submitted).ToArray());
+        public Task<IReadOnlyList<SqmsBidRow>> GetBidClassificationBasisAsync(int opportunityId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<SqmsBidRow>>(Bids.Where(row => row.OpportunityId == opportunityId &&
+                (row.WorkflowState == SqmsKeys.BidStates.Submitted || classifiedBidIds.Contains(row.Id))).ToArray());
         public Task ProjectOpportunityStateAsync(int id, string state, string modifiedBy, DateTime modifiedAtUtc, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ProjectBidStateAsync(int id, string state, string modifiedBy, DateTime modifiedAtUtc, CancellationToken cancellationToken) => Task.CompletedTask;
 
@@ -247,6 +283,10 @@ public sealed class SqmsScheduledServiceTests
 
         public void SetBidState(int id, string state)
         {
+            if (state is SqmsKeys.BidStates.IpgReview or SqmsKeys.BidStates.NotAllocated)
+            {
+                classifiedBidIds.Add(id);
+            }
             var index = Bids.FindIndex(row => row.Id == id);
             Bids[index] = Bids[index] with { WorkflowState = state };
         }
