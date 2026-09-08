@@ -92,3 +92,15 @@ Phase 6 is signed off. The v1 milestone is ready for milestone completion or rel
 Last session: 2026-08-10T08:23:55.6348754-04:00
 Stopped at: Session resumed from Codex thread `019fe83e-77af-7272-8d7d-016000aaece6`; cumulative-audience work is complete and published, and the repository is awaiting the user's next request.
 Resume file: None; structured handoff and stale checkpoint consumed after successful resumption.
+
+### 2026-09-07 audit correction
+
+Quick task 20260907-f03-classification-retry completed locally (uncommitted): SQMS retry threshold corrected. 477 core and 68 API tests passed; builds clean. Details: quick/20260907-f03-classification-retry/SUMMARY.md. Full audit deferred; next discussion F04. Identity/authentication is target-owned.
+
+### 2026-09-07 F05 audit correction
+
+Quick task 20260907-f05-outbox-isolation completed locally (uncommitted): failed emails no longer stop healthy later messages; complete failure reporting retained. 484 core and 68 API tests passed, including five SMTP tests; builds clean. F04 accepted as target-owned edit protection. Next discussion F06; full audit deferred.
+
+### 2026-09-07 approved push
+
+F03 committed as 589b89b and F05 as 3ca34fe; both pushed to origin/console-code-first-0518. Target sync: docs/AUDIT-FIXES-TARGET-SYNC-20260907.html. F07/F09 deferred. Prior uncommitted status is superseded.

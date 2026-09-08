@@ -3096,3 +3096,53 @@ Next question, already asked: In production, what authenticates the user and sup
 Saved files: .planning/HANDOFF.json, .planning/.continue-here.md, audit DISCUSSION-CHECKPOINT.md. Previous root handoffs archived beside the audit. Existing test/build status remains 546 passed and zero-warning builds; no tests, seed verification or sample executions rerun for the pause. Audit HTML remains primary reading format. Infrastructure: audit smtp4dev PID 30208 verified running; SQL/test evidence retained. No application/database changes during pause.
 
 Next-session prompt: Resume the independent audit findings discussion from DISCUSSION-CHECKPOINT.md. F01 is set aside for the user's deployment. Continue F02 by resolving who authenticates callers and owns the trusted headers. Keep explanations simple and do not start fixes or the deferred full source review.
+
+### F03 corrected locally — 2026-09-07
+
+Current goal: user authorized correcting SQMS classification after partial failure/retry. Completed for the built-in SQL data store. Full source audit remains deferred. User clarified F02 identity/authentication belongs to the target API; F01 remains set aside for the reported empty-database deployment.
+
+Changed files: ISqmsDataStore.cs, SqlSqmsDataStore.cs, SqmsScheduledService.cs, SqmsScheduledServiceTests.cs, SqmsEndToEndTests.cs; audit presentation/checkpoint and session/quick-task records. Submitted plus audit-confirmed classified bids contribute to the threshold; only Submitted bids receive actions. No schema/HTTP contract change.
+
+Build/test status: both solutions built with warnings as errors, zero warnings/errors. 477 core tests including FreshClone plus 68 API tests passed, zero failed/skipped. Seed/sample/demo checks passed through tests on private LocalDB WorkflowAudit_20260906. SMTP excluded. SQL failure/retry regression passed in fresh scope. Full evidence: .planning/quick/20260907-f03-classification-retry/SUMMARY.md and results/*.trx.
+
+Known limits: custom stores must override the new compatible basis method; current target financial inputs and retained success history are assumed. No production data repair or deployment. Earlier audit findings/evidence remain historical; HTML now labels F03 as locally corrected.
+
+Remaining tasks/next-session prompt: finish discussing F03, then explain F04 impact simply. Do not restart full audit or implement other findings without authorization. Existing audit artifacts/resources remain retained. Changes are local and uncommitted.
+
+### F05 corrected locally; F04 accepted — 2026-09-07
+
+Current goal completed: user authorized fixing a failed email blocking later outbox rows. The processor now accumulates failures and continues; failed rows remain Pending with RetryCount/LastError and released claims. Cancellation stops processing. Existing first-Failure field/constructor remain; additive Failures collection and explicit remaining count support console reporting of all failures.
+
+Files changed: ProcessNotificationOutboxService.cs, IProcessNotificationOutboxService.cs, ProcessNotificationOutboxCommandHandler.cs, Phase5OutboxTests.cs, SmtpNotificationSenderIntegrationTests.cs, audit presentation/checkpoint and session/quick-task records. Prior F03 changes preserved.
+
+Verification: 484 core + 68 API tests passed, zero failed/skipped. Includes five SMTP tests, SQL seed/sample/demo/FreshClone checks. Both solution warning-as-error builds passed. New real SMTP regression proves healthy rows deliver across two runs while the malformed earlier row remains retryable. Evidence and commands: .planning/quick/20260907-f05-outbox-isolation/SUMMARY.md and results/*.trx. Private audit LocalDB only; no DOLLY application changes.
+
+Retained resource: hidden smtp4dev PID 25248 on SMTP 127.0.0.1:3025, UI http://localhost:5000; separate quick-task smtp4dev-data directory, relay disabled. PID is point-in-time; check before reuse. No production deployment, commit or push; changes remain local.
+
+Limits: retry delay/quarantine and relay outage circuit breaker are separate work; at-least-once SMTP semantics remain. Failure to persist SQL failure state still stops the run.
+
+F04 disposition: user confirmed target API protects deadline edits and accepted that boundary. No engine correction. F01 remains set aside; F02 identity target-owned.
+
+Next-session prompt: answer any F05 follow-up, then explain F06 in simple terms before changing it. Full source audit remains deferred. Use HTML audit for presentation; original F03/F05 defect descriptions are historical and correction banners identify current status.
+
+### F06 set aside; F07 separately deferred — 2026-09-07
+
+User directed that F06 can be disregarded. F07 remains a required correction but is lower priority and explicitly excluded from this round; keep it separate from accepted/set-aside issues. Future F07 fix must include assignment role in retry comparison while preserving historical replay compatibility. No application code changed for these decisions.
+
+Next: explain F08 in simple terms before implementation. Updated HTML audit, discussion checkpoint and session handoffs. Prior F03/F05 code and verification remain unchanged; no builds/tests, seed or samples rerun for this disposition-only update.
+
+### Deferred agenda finalized — 2026-09-07
+
+All nine current findings have been discussed. User set F08 aside because action reasons are not needed. User requested F09 be fixed later at low priority and added to the agenda alongside F07. Deferred agenda: F07 assignment-role retry comparison with historical replay compatibility; F09 deadline edit versus concurrent task completion. Both remain required fixes, excluded from this round; no implementation authorized now.
+
+F03/F05 corrections remain local and uncommitted. Prior verification unchanged: 484 core + 68 API passed, builds clean. This update only changes audit presentation/checkpoint and handoffs; no application edits, tests, seed verification or sample runs. Full source audit remains deferred.
+
+Next-session prompt: review the deferred agenda and await user direction. Do not automatically implement F07/F09 or restart the full source review.
+
+### Approved fixes committed and pushed — 2026-09-07
+
+User requested saving/pushing fixes and the target integration file list. F03: 589b89b; F05: 3ca34fe. Both pushed normally to origin/console-code-first-0518, including the existing audit pause commit. Target handoff: docs/AUDIT-FIXES-TARGET-SYNC-20260907.html lists all six production files and four changed tests, compatibility notes and verification. No migration, init-db, package/config or workflow-api source updates required. Target destination code was not inspected; rebuild its host after syncing corresponding project files.
+
+Validation is the already-completed final-source session run: 484 core + 68 API passed, both warning-as-error builds clean; no application changes since. Commit/push and documentation work did not rerun tests, seeds or samples. F07/F09 remain low-priority deferred agenda. No target deployment performed.
+
+Documentation and audit HTML are saved in a follow-up commit. Generated test/SMTP artifacts and original audit working materials remain local; do not publish generated databases/logs or remove them automatically. Next: user integrates files; await further direction.

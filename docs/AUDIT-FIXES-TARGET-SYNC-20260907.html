@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>F03 and F05 target integration</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:1100px;margin:40px auto;padding:0 24px;color:#183042}h1,h2{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #ccd7df;vertical-align:top}code{overflow-wrap:anywhere}a{color:#075b9a}.note{background:#edf5fa;padding:16px}@media print{body{margin:0;max-width:none}}</style></head><body>
+<h1>Target integration: F03 and F05</h1>
+<p>September 7, 2026 · Branch <code>console-code-first-0518</code></p>
+<p>F03 commit: <code>589b89b</code>. F05 commit: <code>3ca34fe</code>. These are the two application fixes approved during the audit discussion.</p>
+<h2>Production files to sync</h2>
+<table><thead><tr><th>Fix</th><th>Repository file</th><th>Change</th></tr></thead><tbody>
+<tr><td>F03</td><td><a href="../src/WorkflowEngine.Sqms/Persistence/ISqmsDataStore.cs"><code>src/WorkflowEngine.Sqms/Persistence/ISqmsDataStore.cs</code></a></td><td>Adds the compatible classification-basis read.</td></tr>
+<tr><td>F03</td><td><a href="../src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs"><code>src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs</code></a></td><td>Reads submitted and audit-confirmed previously classified bids.</td></tr>
+<tr><td>F03</td><td><a href="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs"><code>src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs</code></a></td><td>Retains earlier bids in the classification total; acts only on Submitted bids.</td></tr>
+<tr><td>F05</td><td><a href="../src/WorkflowEngine.Application/Notifications/IProcessNotificationOutboxService.cs"><code>src/WorkflowEngine.Application/Notifications/IProcessNotificationOutboxService.cs</code></a></td><td>Adds complete failure reporting while retaining the existing result constructor and first Failure field.</td></tr>
+<tr><td>F05</td><td><a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs"><code>src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs</code></a></td><td>Records failed messages and continues with later rows. Cancellation stops the run.</td></tr>
+<tr><td>F05</td><td><a href="../src/WorkflowEngine.Application/Commands/ProcessNotificationOutboxCommandHandler.cs"><code>src/WorkflowEngine.Application/Commands/ProcessNotificationOutboxCommandHandler.cs</code></a></td><td>Reports all failures and correct counts in console output.</td></tr>
+</tbody></table>
+<p class="note">Sync these files into their corresponding existing projects and rebuild the host with the updated Application, Infrastructure and Sqms assemblies together. The command handler applies where the console command is included. Target-specific destination paths were not inspected.</p>
+<h2>Integration notes</h2>
+<ul><li>No SQL migration, seed change, package/configuration update, HTTP DTO change or workflow-api source change is required for these fixes. Do not rerun init-db.</li>
+<li>If the target uses the built-in SqlSqmsDataStore, the F03 read is included. A custom ISqmsDataStore must override GetBidClassificationBasisAsync to obtain the same protection; its default retains legacy submitted-only behavior.</li>
+<li>F03 uses current nondeleted financial rows and successful classification history. It does not freeze external financial edits or repair previously misclassified data.</li>
+<li>F05 attempts each selected row at most once per invocation. Retry delays, quarantine and a relay-outage circuit breaker remain separate work; SMTP retains at-least-once delivery semantics.</li></ul>
+<h2>Tests changed</h2><ul>
+<li><code>tests/WorkflowEngine.Tests/SqmsScheduledServiceTests.cs</code></li>
+<li><code>tests/WorkflowEngine.Tests/SqmsEndToEndTests.cs</code></li>
+<li><code>tests/WorkflowEngine.Tests/Phase5OutboxTests.cs</code></li>
+<li><code>tests/WorkflowEngine.Tests/SmtpNotificationSenderIntegrationTests.cs</code></li></ul>
+<p>These four files are regression tests, not production deployment files.</p>
+<h2>Verification</h2><p>The final combined implementation passed 484 core and 68 API tests, zero failures/skips, including five smtp4dev tests and SQL seed/sample/FreshClone gates. Both solutions built with warnings treated as errors, zero warnings/errors. SQL verification used the private audit SQL Server LocalDB instance. No target deployment or production database repair was performed.</p>
+<p>After integration, build the target host and verify a classification failure/retry and a failed-email-followed-by-valid-email scenario in its test environment.</p>
+<h2>Deferred agenda</h2><p>F07 (assignment role in retry comparison) and F09 (deadline edit versus concurrent task completion) remain required, low-priority fixes for a later round. They are not included here. All nine current findings were discussed; the full source audit remains deferred.</p>
+</body></html>
