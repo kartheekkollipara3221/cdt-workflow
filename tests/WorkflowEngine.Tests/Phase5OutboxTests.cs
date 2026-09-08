@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MimeKit;
+using WorkflowEngine.Application.Commands;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Notifications;
@@ -82,7 +83,7 @@ public sealed class Phase5OutboxTests
     }
 
     [Fact]
-    public async Task ProcessNotificationOutboxRollsBackCurrentRowAndAbortsWhenSenderThrows()
+    public async Task ProcessNotificationOutboxRetainsFailedRowAndContinuesWhenSenderThrows()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
         AddNotification(dbContext, "WF-PT-1", "First", Now.AddMinutes(-3));
@@ -98,22 +99,23 @@ public sealed class Phase5OutboxTests
         Assert.Equal(secondId, result.Failure.Id);
         Assert.Equal(["first@example.test", "second@example.test"], result.Failure.ToEmailAddresses);
         Assert.Equal(["manager@example.test", "operations@example.test"], result.Failure.CcEmailAddresses);
-        Assert.Single(result.Processed);
-        Assert.Equal(1, result.NotAttemptedCount);
+        Assert.Equal(2, result.Processed.Count);
+        Assert.Equal(0, result.NotAttemptedCount);
         dbContext.ChangeTracker.Clear();
         Assert.Equal("Sent", dbContext.NotificationOutbox.Single(row => row.Subject == "First").Status);
         Assert.Equal("Pending", dbContext.NotificationOutbox.Single(row => row.Subject == "Second").Status);
         Assert.Equal(1, dbContext.NotificationOutbox.Single(row => row.Subject == "Second").RetryCount);
         Assert.Contains("send failed", dbContext.NotificationOutbox.Single(row => row.Subject == "Second").LastError, StringComparison.Ordinal);
-        Assert.Equal("Pending", dbContext.NotificationOutbox.Single(row => row.Subject == "Third").Status);
+        Assert.Equal("Sent", dbContext.NotificationOutbox.Single(row => row.Subject == "Third").Status);
     }
 
     [Fact]
-    public async Task MalformedRecipientSnapshotReleasesClaimAndAbortsBeforeSending()
+    public async Task MalformedRecipientSnapshotDoesNotBlockHealthyRowsAcrossRepeatedRuns()
     {
         using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
         var notification = AddNotification(dbContext, "WF-PT-1", "Malformed", Now);
         notification.NotificationRecipientsJson = "{";
+        AddNotification(dbContext, "WF-PT-2", "Healthy", Now.AddMinutes(1));
         dbContext.SaveChanges();
         var sender = new RecordingNotificationSender();
 
@@ -125,14 +127,24 @@ public sealed class Phase5OutboxTests
         Assert.NotNull(result.Failure);
         Assert.Empty(result.Failure.ToEmailAddresses);
         Assert.Empty(result.Failure.CcEmailAddresses);
-        Assert.Empty(sender.SentRows);
+        Assert.Equal("Healthy", Assert.Single(sender.SentRows).Subject);
         dbContext.ChangeTracker.Clear();
-        var row = dbContext.NotificationOutbox.Single();
+        var row = dbContext.NotificationOutbox.Single(item => item.Subject == "Malformed");
         Assert.Equal("Pending", row.Status);
         Assert.Equal(1, row.RetryCount);
         Assert.Contains("recipient snapshot is invalid", row.LastError, StringComparison.Ordinal);
         Assert.Null(row.ProcessingToken);
         Assert.Null(row.ProcessingStartedAtUtc);
+
+        AddNotification(dbContext, "WF-PT-3", "Later healthy", Now.AddMinutes(2));
+        dbContext.SaveChanges();
+        var retry = await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now))
+            .ProcessAsync(CancellationToken.None);
+        Assert.NotNull(retry.Failure);
+        Assert.Equal(0, retry.NotAttemptedCount);
+        Assert.Equal(["Healthy", "Later healthy"], sender.SentRows.Select(item => item.Subject));
+        dbContext.ChangeTracker.Clear();
+        Assert.Equal(2, dbContext.NotificationOutbox.Single(item => item.Subject == "Malformed").RetryCount);
     }
 
     [Fact]
@@ -287,6 +299,69 @@ public sealed class Phase5OutboxTests
         Assert.Equal(Now, row.CancelledAtUtc);
         Assert.Null(row.ProcessingToken);
         Assert.Null(row.ProcessingStartedAtUtc);
+    }
+
+    [Fact]
+    public async Task CommandReportsEveryFailedRowAndStillSendsHealthyMessage()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-PT-1", "Bad first", Now).NotificationRecipientsJson = "{";
+        AddNotification(dbContext, "WF-PT-2", "Bad second", Now.AddMinutes(1)).NotificationRecipientsJson = "{";
+        AddNotification(dbContext, "WF-PT-3", "Healthy", Now.AddMinutes(2));
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+        var processor = new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now));
+
+        var result = await new ProcessNotificationOutboxCommandHandler(processor, sender)
+            .RunAsync([], CancellationToken.None);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Bad first", result.Message, StringComparison.Ordinal);
+        Assert.Contains("Bad second", result.Message, StringComparison.Ordinal);
+        Assert.Contains("1 notification processed, 2 failed, 0 not attempted.", result.Message, StringComparison.Ordinal);
+        Assert.Equal("Healthy", Assert.Single(sender.SentRows).Subject);
+        dbContext.ChangeTracker.Clear();
+        Assert.All(dbContext.NotificationOutbox.Where(row => row.Status == "Pending"), row => Assert.Equal(1, row.RetryCount));
+    }
+
+    [Fact]
+    public async Task CancellationReleasesCurrentClaimAndDoesNotAttemptRemainingMessages()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-PT-1", "Cancelled", Now);
+        AddNotification(dbContext, "WF-PT-2", "Remaining", Now.AddMinutes(1));
+        dbContext.SaveChanges();
+        using var cancellation = new CancellationTokenSource();
+        var sender = new CancellingNotificationSender(cancellation);
+
+        var result = await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now))
+            .ProcessAsync(cancellation.Token);
+
+        Assert.IsAssignableFrom<OperationCanceledException>(Assert.Single(result.Failures).Exception);
+        Assert.Same(result.Failure, result.Failures[0]);
+        Assert.Equal(1, result.NotAttemptedCount);
+        Assert.Equal(1, sender.Attempts);
+        dbContext.ChangeTracker.Clear();
+        Assert.All(dbContext.NotificationOutbox, row =>
+        {
+            Assert.Equal("Pending", row.Status);
+            Assert.Null(row.ProcessingToken);
+            Assert.Null(row.ProcessingStartedAtUtc);
+        });
+        Assert.Equal(0, dbContext.NotificationOutbox.Single(row => row.Subject == "Remaining").RetryCount);
+    }
+
+    private sealed class CancellingNotificationSender(CancellationTokenSource cancellation) : INotificationSender
+    {
+        public string SenderName => "Cancelling";
+        public int Attempts { get; private set; }
+        public Task SendAsync(NotificationDelivery notification, CancellationToken cancellationToken)
+        {
+            Attempts++;
+            cancellation.Cancel();
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
     }
 
     private static NotificationOutbox AddNotification(

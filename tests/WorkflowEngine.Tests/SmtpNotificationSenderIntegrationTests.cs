@@ -200,6 +200,78 @@ public sealed class SmtpNotificationSenderIntegrationTests
         Assert.False(await HasMessageAsync(client, subject, CancellationToken.None));
     }
 
+    [SmtpFact]
+    public async Task BadMailboxDoesNotBlockLaterMessagesAcrossOutboxRuns()
+    {
+        await EnsureSmtp4DevAvailableAsync();
+        var connectionString = TestSqlConnectionFactory.ConnectionString("workflowengine_f05_smtp_tests");
+        var options = new DbContextOptionsBuilder<WorkflowDbContext>().UseSqlServer(connectionString).Options;
+        await using var dbContext = new WorkflowDbContext(options);
+        await dbContext.Database.EnsureDeletedAsync();
+        try
+        {
+            await dbContext.Database.MigrateAsync();
+            var now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
+            var marker = Guid.NewGuid().ToString("N");
+            NotificationOutbox Message(string suffix, string address, int offset) => new()
+            {
+                NotificationOccurrenceKey = $"F05:{marker}:{suffix}",
+                BusinessObjectType = "AuditTest",
+                BusinessObjectId = marker,
+                NotificationType = "Test",
+                NotificationRecipientsJson = JsonSerializer.Serialize(new
+                {
+                    toEmailAddresses = new[] { address },
+                    ccEmailAddresses = Array.Empty<string>()
+                }),
+                Subject = $"F05 {marker} {suffix}",
+                Body = "F05 delivery regression",
+                HtmlBody = "<p>F05 delivery regression</p>",
+                PayloadJson = "{}",
+                Status = "Pending",
+                CorrelationId = marker,
+                CreatedAtUtc = now.AddMinutes(offset)
+            };
+            var bad = Message("bad", "<", 0);
+            var healthy = Message("healthy", "recipient@example.test", 1);
+            dbContext.NotificationOutbox.AddRange(bad, healthy);
+            await dbContext.SaveChangesAsync();
+            var sender = new SmtpNotificationSender(SmtpNotificationSenderTests.Configuration(new()
+            {
+                ["Smtp:Host"] = "localhost",
+                ["Smtp:Port"] = "3025",
+                ["Smtp:From"] = "workflow@example.test"
+            }));
+            var processor = new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(now));
+
+            var first = await processor.ProcessAsync(CancellationToken.None);
+            Assert.Equal(bad.Id, Assert.Single(first.Failures).Id);
+            Assert.Equal(healthy.Id, Assert.Single(first.Processed).Id);
+            var later = Message("later", "later@example.test", 2);
+            dbContext.NotificationOutbox.Add(later);
+            await dbContext.SaveChangesAsync();
+            var retry = await processor.ProcessAsync(CancellationToken.None);
+            Assert.Equal(bad.Id, Assert.Single(retry.Failures).Id);
+            Assert.Equal(later.Id, Assert.Single(retry.Processed).Id);
+            Assert.Equal(0, retry.NotAttemptedCount);
+            dbContext.ChangeTracker.Clear();
+            var failed = await dbContext.NotificationOutbox.SingleAsync(row => row.Id == bad.Id);
+            Assert.Equal("Pending", failed.Status);
+            Assert.Equal(2, failed.RetryCount);
+            Assert.NotNull(failed.LastError);
+            Assert.Null(failed.ProcessingToken);
+            Assert.Equal(2, await dbContext.NotificationOutbox.CountAsync(row => row.Status == "Sent"));
+            using var client = new HttpClient { BaseAddress = Smtp4DevApi };
+            await WaitForMessageAsync(client, healthy.Subject, CancellationToken.None);
+            await WaitForMessageAsync(client, later.Subject, CancellationToken.None);
+            Assert.False(await HasMessageAsync(client, bad.Subject, CancellationToken.None));
+        }
+        finally
+        {
+            await dbContext.Database.EnsureDeletedAsync();
+        }
+    }
+
     private static async Task EnsureSmtp4DevAvailableAsync()
     {
         try

@@ -30,6 +30,8 @@ public sealed class ProcessNotificationOutboxService(
 
         var processed = new List<ProcessedNotification>();
         var warnings = new List<string>();
+        var failures = new List<NotificationOutboxFailure>();
+        var notAttemptedCount = 0;
 
         if (pendingRows.Count == 0)
         {
@@ -143,22 +145,22 @@ public sealed class ProcessNotificationOutboxService(
             catch (Exception exception)
             {
                 await ReleaseClaimAfterFailureAsync(row.Id, processingToken, exception, cancellationToken);
-                return new ProcessNotificationOutboxResult(
-                    notificationSender.SenderName,
-                    pendingRows.Count,
-                    processed,
-                    warnings,
-                    new NotificationOutboxFailure(
-                        row.Id,
-                        row.NotificationType,
-                        delivery?.ToEmailAddresses ?? [],
-                        delivery?.CcEmailAddresses ?? [],
-                        row.Subject,
-                        row.WorkflowInstanceId,
-                        exception)
-                    {
-                        NotificationOccurrenceKey = row.NotificationOccurrenceKey
-                    });
+                failures.Add(new NotificationOutboxFailure(
+                    row.Id,
+                    row.NotificationType,
+                    delivery?.ToEmailAddresses ?? [],
+                    delivery?.CcEmailAddresses ?? [],
+                    row.Subject,
+                    row.WorkflowInstanceId,
+                    exception)
+                {
+                    NotificationOccurrenceKey = row.NotificationOccurrenceKey
+                });
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    notAttemptedCount = pendingRows.Count - index - 1;
+                    break;
+                }
             }
         }
 
@@ -167,7 +169,11 @@ public sealed class ProcessNotificationOutboxService(
             pendingRows.Count,
             processed,
             warnings,
-            null);
+            failures.FirstOrDefault())
+        {
+            Failures = failures,
+            NotAttemptedCount = notAttemptedCount
+        };
     }
 
     private static NotificationDelivery ToDelivery(NotificationOutbox row)

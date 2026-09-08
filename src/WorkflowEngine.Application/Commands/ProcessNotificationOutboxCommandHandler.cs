@@ -31,17 +31,19 @@ public sealed class ProcessNotificationOutboxCommandHandler(
             output.AppendLine(CultureInfo.InvariantCulture, $"WARN: {warning}");
         }
 
-        if (result.Failure is not null)
+        if (result.Failures.Count > 0)
         {
-            var failure = result.Failure;
-            output.AppendLine(
-                CultureInfo.InvariantCulture,
-                $"[FAIL] {failure.NotificationType} | To: {string.Join(", ", failure.ToEmailAddresses)} | Cc: {string.Join(", ", failure.CcEmailAddresses)} | {failure.Subject} | {failure.DisplayReference}");
-            output.AppendLine(CultureInfo.InvariantCulture, $"       Exception: {failure.Exception}");
+            foreach (var failure in result.Failures)
+            {
+                output.AppendLine(
+                    CultureInfo.InvariantCulture,
+                    $"[FAIL] {failure.NotificationType} | To: {string.Join(", ", failure.ToEmailAddresses)} | Cc: {string.Join(", ", failure.CcEmailAddresses)} | {failure.Subject} | {failure.DisplayReference}");
+                output.AppendLine(CultureInfo.InvariantCulture, $"       Exception: {failure.Exception}");
+            }
             output.AppendLine();
             output.AppendLine(
                 CultureInfo.InvariantCulture,
-                $"{result.Processed.Count} notification{Plural(result.Processed.Count)} processed, 1 failed, {result.NotAttemptedCount} not attempted.");
+                $"{result.Processed.Count} notification{Plural(result.Processed.Count)} processed, {result.Failures.Count} failed, {result.NotAttemptedCount} not attempted.");
             return CommandResult.Failure(output.ToString().TrimEnd());
         }
 

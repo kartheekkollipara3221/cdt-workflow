@@ -12,7 +12,20 @@ public sealed record ProcessNotificationOutboxResult(
     IReadOnlyList<string> Warnings,
     NotificationOutboxFailure? Failure)
 {
-    public int NotAttemptedCount => Failure is null ? 0 : PendingCount - Processed.Count - 1;
+    private IReadOnlyList<NotificationOutboxFailure>? failures;
+    private int? notAttemptedCount;
+
+    public IReadOnlyList<NotificationOutboxFailure> Failures
+    {
+        get => failures ?? (Failure is null ? [] : [Failure]);
+        init => failures = value;
+    }
+
+    public int NotAttemptedCount
+    {
+        get => notAttemptedCount ?? (Failure is null ? 0 : PendingCount - Processed.Count - 1);
+        init => notAttemptedCount = value;
+    }
 }
 
 public sealed record ProcessedNotification(
