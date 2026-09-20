@@ -1,0 +1,157 @@
+﻿{
+    "version":  "1.0",
+    "timestamp":  "2026-09-20T12:48:09.5843440-04:00",
+    "phase":  null,
+    "phase_name":  "SQMS Bid return to seller review",
+    "phase_dir":  ".planning/audits/2026-09-06-independent",
+    "plan":  null,
+    "task":  9,
+    "total_tasks":  9,
+    "status":  "paused_sqms_bid_return_to_seller_review",
+    "completed_tasks":  [
+                            {
+                                "status":  "done",
+                                "name":  "Code-based audit and live SQL/SMTP verification",
+                                "id":  1,
+                                "progress":  "Nine findings; audit source coverage explicitly incomplete; 546 tests passed."
+                            },
+                            {
+                                "status":  "done",
+                                "name":  "Discuss F01 migration deletion",
+                                "id":  2,
+                                "progress":  "User reports migrations applied to empty production DB and init-db will not be run again. Set aside as not an immediate production concern; retain historical technical finding."
+                            },
+                            {
+                                "id":  3,
+                                "status":  "done",
+                                "name":  "F02 target-owned identity",
+                                "progress":  "User clarified target API owns authentication and identity."
+                            },
+                            {
+                                "id":  4,
+                                "status":  "done",
+                                "name":  "F03 classification retry corrected",
+                                "progress":  "Three runtime files, two test files; 477 core and 68 API passed; builds clean. See quick-task summary."
+                            },
+                            {
+                                "id":  5,
+                                "status":  "done",
+                                "name":  "F04 accepted target-owned deadline edits",
+                                "progress":  "User confirms target API protects edits. No engine change."
+                            },
+                            {
+                                "id":  6,
+                                "status":  "done",
+                                "name":  "F05 failed-email isolation corrected",
+                                "progress":  "484 core and 68 API tests passed; five SMTP tests included; both builds clean."
+                            }
+                        ],
+    "remaining_tasks":  [
+                            {
+                                "id":  7,
+                                "status":  "deferred",
+                                "name":  "F07 assignment-role retry comparison",
+                                "priority":  "Low; future round",
+                                "progress":  "Include assignment role while preserving historical replay compatibility."
+                            },
+                            {
+                                "id":  9,
+                                "status":  "deferred",
+                                "name":  "F09 deadline edit racing task completion",
+                                "priority":  "Low; future round",
+                                "progress":  "Prevent an active SLA schedule/deadline rewrite after completion. Verify both concurrent orderings on SQL Server."
+                            }
+                        ],
+    "blockers":  [
+
+                 ],
+    "async_jobs":  [
+
+                   ],
+    "human_actions_pending":  [
+                                  {
+                                      "action":  "Confirm same buyer relationship manager/buyer RM team recipients and existing CC list, or seller recipients instead.",
+                                      "blocking":  true
+                                  },
+                                  {
+                                      "action":  "Confirm existing completed bids and future bids, or future only.",
+                                      "blocking":  true
+                                  }
+                              ],
+    "decisions":  [
+                      {
+                          "decision":  "Full file-by-file review of src and workflow-api deferred by user.",
+                          "rationale":  "Discuss each defect one at a time first."
+                      },
+                      {
+                          "decision":  "Use standalone AUDIT.html for reading, not Markdown reports.",
+                          "rationale":  "User presentation preference."
+                      },
+                      {
+                          "decision":  "F01 set aside for current production deployment.",
+                          "rationale":  "User says migrations ran on empty database and initialization will not be rerun; user-provided deployment context, not independently verified."
+                      }
+                  ],
+    "next_action":  "Resume SQMS Bid return-to-seller-review discussion. Confirm recipients/CC and whether existing completed bids must be supported. Explain minimal compatible design before implementation.",
+    "context_notes":  "User uses sql/sqms seed scripts and built-in SqlSqmsDataStore in target API. New request: IPG can send Accepted, Partially Accepted and Not Accepted bids back to Under Review by Seller, with the same email language pattern. These states currently complete the workflow; SQL transition inserts alone are insufficient. No feature code, SQL or tests changed. User paused until tomorrow. Prior F03/F05 fixes pushed at HEAD 25240b6; target sync handoff exists. F07/F09 remain deferred. Explicitly parked on 2026-09-20 while user discusses Client Directed Trades NotificationRecipientRule. Resume only when requested using the named checkpoint; keep this snapshot independent of the active discussion.",
+    "background_processes":  [
+                                 {
+                                     "verified_running_at":  "2026-09-06T16:34:36.8788448+00:00",
+                                     "name":  "Audit smtp4dev",
+                                     "storage":  "C:/Users/Dolly Gutta/AppData/Local/Temp/WorkflowAuditSmtp_20260906",
+                                     "pid":  30208,
+                                     "smtp":  "localhost:3025",
+                                     "url":  "http://localhost:5000"
+                                 },
+                                 {
+                                     "instance":  "WorkflowAudit_20260906",
+                                     "name":  "Private SQL LocalDB",
+                                     "note":  "Retained audit test databases; verify state before reuse."
+                                 },
+                                 {
+                                     "name":  "F05 isolated smtp4dev",
+                                     "pid":  25248,
+                                     "smtp":  "127.0.0.1:3025",
+                                     "url":  "http://localhost:5000",
+                                     "storage":  ".planning/quick/20260907-f05-outbox-isolation/smtp4dev-data",
+                                     "verified_running_at":  "2026-09-07T22:41:33.9705424-04:00"
+                                 }
+                             ],
+    "verification":  {
+                         "sql":  "Targeted probes SQL Server 2022 DOLLY; existing suites private SQL Server 2025 LocalDB",
+                         "seed":  "Passed",
+                         "smtp":  "Nine CDT/SQMS MIME recipient/plain/HTML matches",
+                         "core_tests":  478,
+                         "api_tests":  68,
+                         "skipped":  0,
+                         "builds":  "Both solutions and isolated probe passed with zero warnings/errors",
+                         "failed":  0,
+                         "samples":  "Supported branches/demo executed through regression tests"
+                     },
+    "uncommitted_files":  [
+                              " M .planning/.continue-here.md",
+                              " M .planning/HANDOFF.json",
+                              " M CODEX_HANDOFF.md",
+                              "?? .planning/audits/2026-09-06-independent/AUDIT-preview.png",
+                              "?? .planning/audits/2026-09-06-independent/COVERAGE.md",
+                              "?? .planning/audits/2026-09-06-independent/FILES.csv",
+                              "?? .planning/audits/2026-09-06-independent/LIVE-VERIFICATION.md",
+                              "?? .planning/audits/2026-09-06-independent/REVIEW.md",
+                              "?? .planning/audits/2026-09-06-independent/Reproduction.cs.txt",
+                              "?? .planning/audits/2026-09-06-independent/Reproduction.csproj.txt",
+                              "?? .planning/audits/2026-09-06-independent/VERIFICATION.md",
+                              "?? .planning/audits/2026-09-06-independent/build_report.py",
+                              "?? .planning/audits/2026-09-06-independent/live-probe/",
+                              "?? .planning/audits/2026-09-06-independent/live-results/",
+                              "?? .planning/audits/2026-09-06-independent/update_live_report.py",
+                              "?? .planning/paused/",
+                              "?? .planning/quick/20260907-f03-classification-retry/results/",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/results/",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.err.log",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.out.log",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp4dev-data/",
+                              "?? artifacts/"
+                          ],
+    "previous_handoff_archive":  ".planning/audits/2026-09-06-independent/previous-HANDOFF.json",
+    "resume_command":  "$gsd-resume-work .planning/paused/sqms-bid-return-to-seller-review"
+}

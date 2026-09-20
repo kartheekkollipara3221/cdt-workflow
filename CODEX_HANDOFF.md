@@ -3146,3 +3146,39 @@ User requested saving/pushing fixes and the target integration file list. F03: 5
 Validation is the already-completed final-source session run: 484 core + 68 API passed, both warning-as-error builds clean; no application changes since. Commit/push and documentation work did not rerun tests, seeds or samples. F07/F09 remain low-priority deferred agenda. No target deployment performed.
 
 Documentation and audit HTML are saved in a follow-up commit. Generated test/SMTP artifacts and original audit working materials remain local; do not publish generated databases/logs or remove them automatically. Next: user integrates files; await further direction.
+
+### PAUSED until tomorrow — SQMS Bid return to Seller Review (2026-09-07)
+
+Current goal: add IPG transitions from Accepted, Partially Accepted and Not Accepted back to Under Review by Seller, with existing email language pattern. User uses sql/sqms scripts to seed SQMS and the built-in SqlSqmsDataStore in the target. This is a new feature request following completed audit discussion/fix push.
+
+Completed investigation: sql/sqms/002_sqms_workflow_metadata_dml.sql marks all three states terminal. WorkflowExecutionService rejects Completed instances (around line 96); WorkflowContextReader hides actions on Completed instances (around line 108). Nonterminal transition handling currently preserves instance status/CompletedAtUtc, so reopening requires coherent code and metadata handling. SqmsWorkflowService enriches Bid notification template data only for Accept/PartiallyAccept/Reject; new action needs appropriate enrichment. Existing outcome emails use buyer account/fund/vehicle/amount/date/link and buyer relationshipManager/buyerRmTeam request recipients plus static CC. Existing initial SendBidToSellerReview from IPG REVIEW currently has no notification route.
+
+Proposed, not approved: one new IPG Return to Seller Review action from the three outcome states; email opening says the bid has been sent back to the Seller for review, retaining subject/details/link. No action key, schema approach or reopening design finalized.
+
+Pending questions: (1) same buyer-side recipients and existing CC, or seller-side recipients? (2) existing completed bids plus future bids, or future only? User has not answered; elapsed time is not approval.
+
+Changed files for pause: CODEX_HANDOFF.md, .planning/HANDOFF.json, .planning/.continue-here.md. No feature application code, SQL or tests changed. No tests, seed verification or sample execution for this discussion/pause. Prior fixes verified 484 core + 68 API passing and warning-as-error builds clean, pushed at 25240b6 on console-code-first-0518. Target sync HTML lists six production files. Checkpoint remains local; no new commit/push requested for this pause.
+
+Known risks: terminal/completed reopening affects generic engine behavior and existing persisted bids; maintain backward compatibility, generic metadata authority, role validation, version/replay correctness and completion timestamps. No second workflow lifetime or target-row ownership changes. Need safe in-place metadata update rather than rerunning initialization blindly. F07/F09 and full audit remain separately deferred.
+
+Next-session prompt: Resume SQMS Bid return-to-seller-review feature from .planning/.continue-here.md. Confirm recipients/CC and existing-bid scope, present a small compatible design, then implement after agreement. Do not run SQL/migrations or infer answers. Retained audit/smtp4dev data remains in workspace; verify process identity before reuse. Nothing cleaned up or stopped during pause.
+
+### Discussion restored - 2026-09-20
+
+Current goal: resume the last discussion from Codex logs and memory.
+Completed: checked the original September 7 local-time discussion, September 13 resume log, current checkpoints and Git status. Both email recipient/CC choice and existing-completed-bid scope remain unanswered. Local HEAD is 25240b6 on console-code-first-0518; remote not refreshed. GSD reports no interrupted agent.
+Changed files: CODEX_HANDOFF.md only this turn. Existing local checkpoint changes and audit artifacts preserved.
+Build/test status: not rerun; prior recorded 484 core and 68 API passing is historical. Seed verification and sample JSON: not run.
+Remaining tasks: resolve recipients and existing-bid scope, then discuss a compatible design before implementation.
+Known risks: reopening completed instances affects metadata, action visibility, completion timestamps and replay/version behavior. F07/F09 and full source audit remain deferred.
+Next-session prompt: Continue SQMS Bid return to Seller Review. Confirm buyer-side recipients plus existing CC versus seller recipients, and existing completed bids plus future bids versus future only. No feature implementation or database changes have started.
+
+### SQMS parked; CDT recipient-rule discussion active - 2026-09-20
+
+Current goal: pause SQMS Bid return independently and switch to the user's Client Directed Trades NotificationRecipientRule implementation question.
+Completed changes: saved a durable named snapshot under .planning/paused/sqms-bid-return-to-seller-review with both pending business decisions and prior context.
+Changed files: named .continue-here.md and HANDOFF.json snapshots, plus CODEX_HANDOFF.md. No application or SQL changes.
+Build/test status: not run for checkpoint-only work. Seed verification/sample JSON: not run.
+Remaining tasks: await the specific CDT implementation question. SQMS remains paused, with recipient/CC and existing-completed-bid scope unresolved; F07/F09 remain deferred.
+Known risks: do not overwrite the named SQMS snapshot with CDT discussion state.
+Next-session prompt / single resume command: $gsd-resume-work .planning/paused/sqms-bid-return-to-seller-review
