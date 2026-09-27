@@ -1,0 +1,62 @@
+﻿{
+    "version":  "1.0",
+    "timestamp":  "2026-09-27T09:05:12.9076824-04:00",
+    "phase":  null,
+    "phase_name":  "CDT recipients, SLA, and library discussion",
+    "phase_dir":  ".planning/paused/cdt-recipients-sla-libraries",
+    "plan":  null,
+    "status":  "paused",
+    "completed_tasks":  [
+                            {
+                                "status":  "done",
+                                "name":  "Recipient and SLA guidance, SQL report, library recommendations",
+                                "id":  1
+                            }
+                        ],
+    "remaining_tasks":  [
+
+                        ],
+    "blockers":  [
+
+                 ],
+    "async_jobs":  [
+
+                   ],
+    "human_actions_pending":  [
+                                  {
+                                      "blocking":  false,
+                                      "action":  "Provide changed recipient entries if continuing cp_sharepoint constraint debugging"
+                                  }
+                              ],
+    "decisions":  [
+                      "Only latest BDRM duration edit to 1440 minutes; preserve daily 9 AM recurrence and other user-supplied settings. Earlier broad SLA proposal superseded.",
+                      "No implementation, database updates or new packages authorized.",
+                      "SQMS remains separately paused."
+                  ],
+    "next_action":  "Read named checkpoint; continue library recommendations or next CDT question without automatic implementation.",
+    "context_notes":  "Named checkpoint contains exact latest guidance-only SLA array, unresolved recipient constraint error, and report verification evidence.",
+    "uncommitted_files":  [
+                              " M .planning/.continue-here.md",
+                              " M .planning/HANDOFF.json",
+                              " M CODEX_HANDOFF.md",
+                              "?? .planning/audits/2026-09-06-independent/AUDIT-preview.png",
+                              "?? .planning/audits/2026-09-06-independent/COVERAGE.md",
+                              "?? .planning/audits/2026-09-06-independent/FILES.csv",
+                              "?? .planning/audits/2026-09-06-independent/LIVE-VERIFICATION.md",
+                              "?? .planning/audits/2026-09-06-independent/REVIEW.md",
+                              "?? .planning/audits/2026-09-06-independent/Reproduction.cs.txt",
+                              "?? .planning/audits/2026-09-06-independent/Reproduction.csproj.txt",
+                              "?? .planning/audits/2026-09-06-independent/VERIFICATION.md",
+                              "?? .planning/audits/2026-09-06-independent/build_report.py",
+                              "?? .planning/audits/2026-09-06-independent/live-probe/",
+                              "?? .planning/audits/2026-09-06-independent/live-results/",
+                              "?? .planning/audits/2026-09-06-independent/update_live_report.py",
+                              "?? .planning/paused/cdt-recipients-sla-libraries/",
+                              "?? .planning/quick/20260907-f03-classification-retry/results/",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/results/",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.err.log",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.out.log",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp4dev-data/",
+                              "?? artifacts/"
+                          ]
+}

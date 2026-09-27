@@ -3182,3 +3182,29 @@ Build/test status: not run for checkpoint-only work. Seed verification/sample JS
 Remaining tasks: await the specific CDT implementation question. SQMS remains paused, with recipient/CC and existing-completed-bid scope unresolved; F07/F09 remain deferred.
 Known risks: do not overwrite the named SQMS snapshot with CDT discussion state.
 Next-session prompt / single resume command: $gsd-resume-work .planning/paused/sqms-bid-return-to-seller-review
+
+### CDT discussion recovered from Codex logs - 2026-09-24
+
+Current goal: resume the last discussion. Latest substantive session: September 20, 01a0bfae-a509-7ac0-82c5-2f083a8515ef.
+Completed: recovered the final request for guidance only on adding a unique Checker email through PortfolioTradeSeedData.cs for both submit and resubmit, preserving the existing address. Prior answer: add two StaticAddress To entries to NotificationRecipientRules, for RouteCheckerAssignedOnSubmit and RouteCheckerAssignedOnResubmit, using checker2@example.test, SortOrder 4, IsRequired true. The existing insertion method was identified as WorkflowSeedService.UpsertNotificationRecipientRules(long versionId); no method change proposed.
+Changed files: CODEX_HANDOFF.md only. Current seed source checked; the two additional entries are absent. No application or SQL changes.
+Build/test status: not run. Seed verification run: none. Sample JSON executed: none; discussion recovery only.
+Remaining tasks: continue CDT recipient-rule discussion. User requested the member name and changes only, not implementation or seed execution.
+Known risks: checker2@example.test is a sample address. SQMS remains separately paused at .planning/paused/sqms-bid-return-to-seller-review, with recipients and existing-completed-bid scope unresolved. F07/F09 remain deferred. Branch console-code-first-0518 reports ahead of cached origin by one commit; remote not refreshed.
+Next-session prompt: Continue CDT multiple Checker recipients on submit/resubmit from the September 20 final answer. Do not resume SQMS automatically.
+### Portfolio Trade routing report - 2026-09-24
+Current goal: provide one read-only SQL query covering Portfolio Trade transition paths, notification routes/recipient rules, and SLA configuration.
+Completed changes: created artifacts/portfolio-trade-routing-report.sql. It reports one row per active transition in active workflow versions, includes SaveDraft paths, aggregates active recipient rules with assignment-role filters, and includes created-task SLA timing plus due/overdue routes and subject prefixes. SLA runtime reuses task recipient snapshots and primary email bodies.
+Changed files: report SQL and local report results under artifacts; CODEX_HANDOFF.md.
+Build/test status: verified live INFORMATION_SCHEMA columns, then executed the read-only query against DOLLY/workflowengine successfully: 11 rows. No application tests needed. Seed verification run: none. Sample JSON executed: none. No database writes.
+Remaining tasks: user runs the query against the intended target database; user will add Checker users themselves.
+Known risks: report shows configuration rather than runtime notification history; dynamic recipients resolve per record. Assigned-role rules are conditional, not a combined unconditional audience. Remote and target deployment were not checked. SQMS remains paused.
+Next-session prompt: Continue Portfolio Trade notification/SLA configuration discussion using artifacts/portfolio-trade-routing-report.sql.
+### Session saved - 2026-09-27: CDT recipients, SLA and libraries
+Current goal: save this session for resumption.
+Completed changes: created named and current GSD checkpoints with recipient guidance, SQL report evidence, unresolved cp_sharepoint constraint error, latest BDRM-only SLA duration decision, and Serilog/OpenTelemetry/Hangfire recommendations. Earlier all-route 24-hour proposal is superseded. Exact guidance-only SLA array is preserved in the checkpoint; no source or target DB edits were performed.
+Changed files: .planning/.continue-here.md, .planning/HANDOFF.json, .planning/paused/cdt-recipients-sla-libraries/ (checkpoint, structured handoff, durable report SQL), CODEX_HANDOFF.md.
+Build/test status: no suites run for documentation-only save. Earlier read-only routing report returned 11 rows on DOLLY/workflowengine. Seed verification run: none. Sample JSON executed: none.
+Remaining tasks: resume discussion; no automatic implementation. Recipient failure needs user's changed entries for exact diagnosis. No library approved for installation.
+Known risks: target cp_sharepoint not inspected; existing task recipient/SLA snapshots remain unchanged by policy edits. SQMS and F07/F09 remain separately deferred. Preserve unrelated local artifacts.
+Next-session prompt / resume command: $gsd-resume-work .planning/paused/cdt-recipients-sla-libraries

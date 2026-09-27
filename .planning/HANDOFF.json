@@ -1,66 +1,20 @@
 ﻿{
     "version":  "1.0",
-    "timestamp":  "2026-09-07T22:57:01.5200590-04:00",
+    "timestamp":  "2026-09-27T09:05:12.9076824-04:00",
     "phase":  null,
-    "phase_name":  "Independent audit findings discussion",
-    "phase_dir":  ".planning/audits/2026-09-06-independent",
+    "phase_name":  "CDT recipients, SLA, and library discussion",
+    "phase_dir":  ".planning/paused/cdt-recipients-sla-libraries",
     "plan":  null,
-    "task":  9,
-    "total_tasks":  9,
-    "status":  "fixes_pushed_deferred_agenda",
+    "status":  "paused",
     "completed_tasks":  [
                             {
                                 "status":  "done",
-                                "name":  "Code-based audit and live SQL/SMTP verification",
-                                "id":  1,
-                                "progress":  "Nine findings; audit source coverage explicitly incomplete; 546 tests passed."
-                            },
-                            {
-                                "status":  "done",
-                                "name":  "Discuss F01 migration deletion",
-                                "id":  2,
-                                "progress":  "User reports migrations applied to empty production DB and init-db will not be run again. Set aside as not an immediate production concern; retain historical technical finding."
-                            },
-                            {
-                                "id":  3,
-                                "status":  "done",
-                                "name":  "F02 target-owned identity",
-                                "progress":  "User clarified target API owns authentication and identity."
-                            },
-                            {
-                                "id":  4,
-                                "status":  "done",
-                                "name":  "F03 classification retry corrected",
-                                "progress":  "Three runtime files, two test files; 477 core and 68 API passed; builds clean. See quick-task summary."
-                            },
-                            {
-                                "id":  5,
-                                "status":  "done",
-                                "name":  "F04 accepted target-owned deadline edits",
-                                "progress":  "User confirms target API protects edits. No engine change."
-                            },
-                            {
-                                "id":  6,
-                                "status":  "done",
-                                "name":  "F05 failed-email isolation corrected",
-                                "progress":  "484 core and 68 API tests passed; five SMTP tests included; both builds clean."
+                                "name":  "Recipient and SLA guidance, SQL report, library recommendations",
+                                "id":  1
                             }
                         ],
     "remaining_tasks":  [
-                            {
-                                "id":  7,
-                                "status":  "deferred",
-                                "name":  "F07 assignment-role retry comparison",
-                                "priority":  "Low; future round",
-                                "progress":  "Include assignment role while preserving historical replay compatibility."
-                            },
-                            {
-                                "id":  9,
-                                "status":  "deferred",
-                                "name":  "F09 deadline edit racing task completion",
-                                "priority":  "Low; future round",
-                                "progress":  "Prevent an active SLA schedule/deadline rewrite after completion. Verify both concurrent orderings on SQL Server."
-                            }
+
                         ],
     "blockers":  [
 
@@ -69,66 +23,23 @@
 
                    ],
     "human_actions_pending":  [
-
+                                  {
+                                      "blocking":  false,
+                                      "action":  "Provide changed recipient entries if continuing cp_sharepoint constraint debugging"
+                                  }
                               ],
     "decisions":  [
-                      {
-                          "decision":  "Full file-by-file review of src and workflow-api deferred by user.",
-                          "rationale":  "Discuss each defect one at a time first."
-                      },
-                      {
-                          "decision":  "Use standalone AUDIT.html for reading, not Markdown reports.",
-                          "rationale":  "User presentation preference."
-                      },
-                      {
-                          "decision":  "F01 set aside for current production deployment.",
-                          "rationale":  "User says migrations ran on empty database and initialization will not be rerun; user-provided deployment context, not independently verified."
-                      }
+                      "Only latest BDRM duration edit to 1440 minutes; preserve daily 9 AM recurrence and other user-supplied settings. Earlier broad SLA proposal superseded.",
+                      "No implementation, database updates or new packages authorized.",
+                      "SQMS remains separately paused."
                   ],
-    "next_action":  "User integrates six production files listed in docs/AUDIT-FIXES-TARGET-SYNC-20260907.html. F07 and F09 remain deferred. Do not deploy or implement more fixes automatically.",
-    "context_notes":  "F03 commit 589b89b and F05 commit 3ca34fe pushed to origin/console-code-first-0518. Six production files and four test files changed. No SQL migration or workflow-api source change. 484 core and 68 API tests passed in this session; unchanged source since that run. Separate handoff documentation commit follows.",
-    "background_processes":  [
-                                 {
-                                     "verified_running_at":  "2026-09-06T16:34:36.8788448+00:00",
-                                     "name":  "Audit smtp4dev",
-                                     "storage":  "C:/Users/Dolly Gutta/AppData/Local/Temp/WorkflowAuditSmtp_20260906",
-                                     "pid":  30208,
-                                     "smtp":  "localhost:3025",
-                                     "url":  "http://localhost:5000"
-                                 },
-                                 {
-                                     "instance":  "WorkflowAudit_20260906",
-                                     "name":  "Private SQL LocalDB",
-                                     "note":  "Retained audit test databases; verify state before reuse."
-                                 },
-                                 {
-                                     "name":  "F05 isolated smtp4dev",
-                                     "pid":  25248,
-                                     "smtp":  "127.0.0.1:3025",
-                                     "url":  "http://localhost:5000",
-                                     "storage":  ".planning/quick/20260907-f05-outbox-isolation/smtp4dev-data",
-                                     "verified_running_at":  "2026-09-07T22:41:33.9705424-04:00"
-                                 }
-                             ],
-    "verification":  {
-                         "sql":  "Targeted probes SQL Server 2022 DOLLY; existing suites private SQL Server 2025 LocalDB",
-                         "seed":  "Passed",
-                         "smtp":  "Nine CDT/SQMS MIME recipient/plain/HTML matches",
-                         "core_tests":  478,
-                         "api_tests":  68,
-                         "skipped":  0,
-                         "builds":  "Both solutions and isolated probe passed with zero warnings/errors",
-                         "failed":  0,
-                         "samples":  "Supported branches/demo executed through regression tests"
-                     },
+    "next_action":  "Read named checkpoint; continue library recommendations or next CDT question without automatic implementation.",
+    "context_notes":  "Named checkpoint contains exact latest guidance-only SLA array, unresolved recipient constraint error, and report verification evidence.",
     "uncommitted_files":  [
                               " M .planning/.continue-here.md",
                               " M .planning/HANDOFF.json",
-                              " M .planning/STATE.md",
-                              " M .planning/audits/2026-09-06-independent/DISCUSSION-CHECKPOINT.md",
                               " M CODEX_HANDOFF.md",
                               "?? .planning/audits/2026-09-06-independent/AUDIT-preview.png",
-                              "?? .planning/audits/2026-09-06-independent/AUDIT.html",
                               "?? .planning/audits/2026-09-06-independent/COVERAGE.md",
                               "?? .planning/audits/2026-09-06-independent/FILES.csv",
                               "?? .planning/audits/2026-09-06-independent/LIVE-VERIFICATION.md",
@@ -140,10 +51,12 @@
                               "?? .planning/audits/2026-09-06-independent/live-probe/",
                               "?? .planning/audits/2026-09-06-independent/live-results/",
                               "?? .planning/audits/2026-09-06-independent/update_live_report.py",
-                              "?? .planning/quick/20260907-f03-classification-retry/",
-                              "?? .planning/quick/20260907-f05-outbox-isolation/",
-                              "?? artifacts/",
-                              "?? docs/AUDIT-FIXES-TARGET-SYNC-20260907.html"
-                          ],
-    "previous_handoff_archive":  ".planning/audits/2026-09-06-independent/previous-HANDOFF.json"
+                              "?? .planning/paused/cdt-recipients-sla-libraries/",
+                              "?? .planning/quick/20260907-f03-classification-retry/results/",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/results/",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.err.log",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.out.log",
+                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp4dev-data/",
+                              "?? artifacts/"
+                          ]
 }
