@@ -3208,3 +3208,19 @@ Build/test status: no suites run for documentation-only save. Earlier read-only 
 Remaining tasks: resume discussion; no automatic implementation. Recipient failure needs user's changed entries for exact diagnosis. No library approved for installation.
 Known risks: target cp_sharepoint not inspected; existing task recipient/SLA snapshots remain unchanged by policy edits. SQMS and F07/F09 remain separately deferred. Preserve unrelated local artifacts.
 Next-session prompt / resume command: $gsd-resume-work .planning/paused/cdt-recipients-sla-libraries
+### Discussion context restored - 2026-10-01
+Current goal: resume previous discussion points from the last chat cache.
+Completed: read CDT checkpoints and memory recap; newer September 27 chat messages belong to CP Atlas. CDT discussion remains recipients, BDRM-only SLA guidance and operational libraries. Newer cross-project discussion concerns a reusable Opportunity form engine, backend contracts and CDT Opportunity state rules.
+Changed files: CODEX_HANDOFF.md only.
+Build/test status: not run for discussion recovery. Seed verification run: none. Sample JSON executed: none. GSD init.resume reports no interrupted agent.
+Remaining tasks: continue discussion; no implementation, database changes or package installation authorized by this resume request.
+Known risks: BDRM change remains guidance only; recipient constraint error unresolved. SQMS return-to-Seller-review and F07/F09 remain separately deferred. Existing artifacts preserved.
+Next-session prompt: continue CDT recipients/SLA/library discussion, or the newer CP Atlas reusable Opportunity form engine discussion referencing CDT rules if that is the intended topic.
+### PAUSED - CDT Trading Desk recipients - 2026-10-01
+Current goal: Trading Desk task emails only to Trading Desk, using UI changes plus SQL metadata with no workflow engine change.
+Completed discussion: UI must OMIT selectedCcUsers key on affected actions; disabling its rule otherwise causes validation failure even for an empty array. Disable originalMaker and selectedCcUsers rules; retain intended static To rules. Initial route RouteTradingDeskAssigned; optional rework route RouteTradingDeskReworkAssigned. Other routes unchanged.
+Changed files: CODEX_HANDOFF.md, root GSD handoffs, named .planning/paused/cdt-trading-desk-recipients handoffs.
+Build/test status: source inspection only; no tests, seed verification or sample JSON run. No application, SQL, UI or package changes.
+Remaining tasks: confirm whether rework is included, whether Trading Operations remains, target database/version and UI rollout coordination. No implementation authorized.
+Known risks: old UI requests fail if selectedCcUsers rule is disabled before callers stop sending it; existing task/outbox recipient snapshots persist; reseeding reactivates seeded rules unless deployment/seed policy is aligned. Prior SLA/library checkpoint and separate SQMS/deferred audit items preserved.
+Next-session prompt: $gsd-resume-work .planning/paused/cdt-trading-desk-recipients
