@@ -2,6 +2,7 @@
 
 Current documentation kept in this repo:
 
+- [How one workflow action works](how-one-workflow-action-works.html): developer onboarding. Trace submit-for-checker through code, SQL records, failures, replay, and notification processing. Includes a debugging exercise and linked test evidence.
 - `beginners-api-console-handoff.html`: single-file beginner handoff for API, console, and target API integration.
 - `api-json-bodies-and-console-real-usage.html`: complete reference for current workflow API JSON bodies, Portfolio Trade sample flow, and console commands that apply to real operations.
 - `frontend-workflow-api-handoff.html`: frontend-focused reference API contract, request/response parameters, and full Portfolio Trade happy path demo.

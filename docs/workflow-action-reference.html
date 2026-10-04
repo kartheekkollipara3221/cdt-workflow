@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow action: evidence and SQL reference</title>
+<style>
+:root { color-scheme: light; --ink:#202b3a; --blue:#194b7a; --line:#d8e2eb; --paper:#fff; --wash:#f2f6fa; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:24px; }
+body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.layout { display:grid; grid-template-columns:245px minmax(0,980px); gap:48px; max-width:1350px; margin:auto; padding:36px 28px 70px; }
+aside { align-self:start; position:sticky; top:24px; max-height:calc(100vh - 48px); overflow:auto; font-size:14px; }
+.eyebrow { color:#49637c; font-size:12px; letter-spacing:.09em; text-transform:uppercase; font-weight:700; }
+nav ol { list-style:none; padding:0; }
+nav li { margin:0 0 9px; }
+nav a { display:block; text-decoration:none; padding:4px 0; }
+main { min-width:0; }
+h1,h2,h3 { color:var(--blue); line-height:1.25; }
+h1 { font-size:clamp(30px,4vw,44px); margin:0 0 24px; letter-spacing:-.025em; }
+h2 { margin:46px 0 16px; padding-top:20px; border-top:1px solid var(--line); font-size:26px; }
+h3 { margin:28px 0 12px; font-size:21px; }
+p { margin:14px 0; }
+a { color:#125a91; text-underline-offset:3px; overflow-wrap:anywhere; }
+a:hover { color:#0d3658; }
+a:focus-visible { outline:3px solid #eaa52d; outline-offset:3px; }
+code { font-family:ui-monospace,Consolas,monospace; font-size:.9em; background:#edf2f7; padding:2px 4px; border-radius:3px; overflow-wrap:anywhere; }
+pre { overflow:auto; padding:20px; background:#142536; color:#f2f6fa; border-radius:8px; font-size:14px; line-height:1.55; }
+pre code { background:none; color:inherit; padding:0; overflow-wrap:normal; }
+.table-scroll { overflow:auto; margin:20px 0; border:1px solid var(--line); border-radius:7px; }
+table { border-collapse:collapse; width:100%; text-align:left; font-size:14px; }
+th,td { padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top; min-width:150px; }
+th { background:var(--wash); color:var(--blue); font-weight:650; }
+tr:last-child td { border-bottom:0; }
+tbody tr:nth-child(even) { background:#fafcfe; }
+li { margin:7px 0; }
+.figure { padding:22px; margin:24px 0; border:1px solid var(--line); background:var(--wash); border-radius:8px; }
+.flow { list-style:none; padding:0; margin:0; counter-reset:step; }
+.flow li { padding:10px 16px; background:white; border-left:4px solid #36739c; margin:0 0 12px; }
+.flow li.transaction { border-color:#358474; }
+.flow strong { display:block; color:var(--blue); }
+figcaption { font-size:14px; margin-top:16px; }
+.utility { font-size:14px; border-bottom:1px solid var(--line); padding-bottom:20px; margin-bottom:28px; }
+@media(max-width:1000px) { .layout { display:block; padding:24px 18px 50px; } aside { position:static; max-height:none; margin-bottom:30px; border-bottom:1px solid var(--line); } nav ol { columns:2; } }
+@media(max-width:540px) { nav ol { columns:1; } th,td { min-width:140px; } }
+@media print { .layout { display:block; padding:0; } aside,.utility { display:none; } body { font-size:10pt; } h2,h3 { break-after:avoid; } pre { white-space:pre-wrap; overflow-wrap:anywhere; color:#111; background:#f3f3f3; } .table-scroll { overflow:visible; } tr { break-inside:avoid; } a { color:inherit; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<aside><p class="eyebrow">Workflow engine / developer guide</p><nav aria-label="On this page"><ol><li><a href="#read-only-sql">Read-only SQL</a></li><li><a href="#verification-commands">Verification commands</a></li><li><a href="#evidence-ledger">Evidence ledger</a></li><li><a href="#existing-references">Existing references</a></li></ol></nav></aside>
+<main><div class="utility"><a href="README.md">Documentation index</a> &nbsp; / &nbsp; <a href="how-one-workflow-action-works.html">Walkthrough</a> &nbsp; / &nbsp; <a href="workflow-action-reference.html">Evidence and SQL</a></div>
+<h1 id="workflow-action-evidence-and-sql-reference">Workflow action: evidence and SQL reference</h1>
+<p>Start with <a href="how-one-workflow-action-works.html">How one workflow action works</a>. This page contains supporting checks, not a second walkthrough.</p>
+<h2 id="read-only-sql">Read-only SQL</h2>
+<p>Run these queries against the disposable exercise database. Replace the instance ID with the value from the exercise. The table and column names come from <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs">WorkflowDbContext.OnModelCreating</a> and its <a href="../src/WorkflowEngine.Infrastructure/Persistence/Entities">entities</a>.</p>
+<pre><code class="language-sql">DECLARE @instance nvarchar(100) = N&#x27;WF-PT-ONBOARD-REPLACE&#x27;;
+DECLARE @definitionVersion bigint;
+SELECT @definitionVersion = WorkflowDefinitionVersionId
+FROM dbo.WorkflowInstance WHERE WorkflowInstanceId = @instance;
+
+SELECT WorkflowInstanceId, BusinessObjectType, BusinessObjectId,
+       WorkflowDefinitionVersionId, CurrentStateKey, Status, Version,
+       StartedByUserId, StartedAtUtc, CompletedAtUtc
+FROM dbo.WorkflowInstance WHERE WorkflowInstanceId = @instance;
+
+SELECT FromStateKey, ActionKey, AllowedRoleKey, ToStateKey,
+       TaskToCloseKey, TaskToCreateKey, NotificationRouteKey, IsActive
+FROM dbo.WorkflowTransitionDefinition
+WHERE WorkflowDefinitionVersionId = @definitionVersion
+  AND FromStateKey = N&#x27;Draft&#x27; AND ActionKey = N&#x27;SubmitForChecker&#x27;;
+
+SELECT TaskKey, OwnerRoleKey, SlaPolicyKey, IsActive
+FROM dbo.WorkflowTaskDefinition
+WHERE WorkflowDefinitionVersionId = @definitionVersion
+  AND TaskKey = N&#x27;CheckerReviewTask&#x27;;
+
+SELECT SlaPolicyKey, CalculationMode, DurationMinutes,
+       RecurrenceIntervalMinutes, IsActive
+FROM dbo.SlaPolicy
+WHERE WorkflowDefinitionVersionId = @definitionVersion
+  AND SlaPolicyKey = N&#x27;CheckerReviewSla&#x27;;
+
+SELECT Id, TaskKey, AssignedRoleKey, AssignedUserId, Status,
+       CreatedAtUtc, DueAtUtc, NotificationRecipientsJson,
+       NotificationRouteKey, NotificationContextJson
+FROM dbo.WorkflowTask WHERE WorkflowInstanceId = @instance ORDER BY Id;
+
+SELECT s.Id, s.WorkflowTaskId, s.ScheduleVersion, s.Status,
+       s.SlaPolicyKey, s.CalculationMode, s.TargetDate,
+       s.OverdueAtUtc, s.NextReminderAtUtc, s.RecurrenceIntervalMinutes
+FROM dbo.WorkflowTaskSlaSchedule s
+JOIN dbo.WorkflowTask t ON t.Id = s.WorkflowTaskId
+WHERE t.WorkflowInstanceId = @instance ORDER BY s.Id;
+
+SELECT o.Id, o.WorkflowTaskId, o.NotificationType, o.Status,
+       o.Subject, o.NotificationRecipientsJson, o.CorrelationId,
+       o.RetryCount, o.LastError, o.ProcessingStartedAtUtc, o.SentAtUtc
+FROM dbo.NotificationOutbox o WHERE o.WorkflowInstanceId = @instance ORDER BY o.Id;
+
+SELECT ActionKey, FromStateKey, ToStateKey, PerformedByUserId,
+       PerformedByRoleKey, Reason, CorrelationId, CreatedAtUtc
+FROM dbo.WorkflowAudit WHERE WorkflowInstanceId = @instance ORDER BY Id;
+
+SELECT IdempotencyKey, RequestHash, ResultHash, ResultJson
+FROM dbo.IdempotencyRecord WHERE WorkflowInstanceId = @instance;
+
+SELECT m.SectionKey, m.PayloadJson, m.SavedByUserId, m.CorrelationId
+FROM dbo.MockSectionData m
+JOIN dbo.WorkflowInstance i ON i.BusinessObjectType = m.BusinessObjectType
+  AND i.BusinessObjectId = m.BusinessObjectId
+WHERE i.WorkflowInstanceId = @instance ORDER BY m.Id;</code></pre>
+<p>Compare the task and outbox recipient JSON. For the console sample, expect the exact arrays in <a href="../samples/workflow-actions/02-submit-for-checker.json">sample 02</a>. For API execution, inspect <code>NotificationRecipientRule</code> by the route&#x27;s ID and <code>WorkflowParticipant</code> by instance ID. The two paths can produce different audiences.</p>
+<p>SQL queries above were checked against source mappings. <strong>Not verified:</strong> execution of these exact queries during this documentation task.</p>
+<h2 id="verification-commands">Verification commands</h2>
+<p>Run from the repo root. SQL tests recreate suite-specific databases. Use a local test server and do not run competing test sessions against the same suite databases. <a href="../tests/WorkflowEngine.Tests/TestSqlConnectionFactory.cs">TestSqlConnectionFactory.ConnectionString</a> replaces the connection&#x27;s database name. <a href="../tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs">WorkflowExecutionValidationTests.CreateSeededContext</a> uses <code>burrito_phase4_execution_tests</code>. <a href="../tests/WorkflowEngine.Tests/SampleExpectationTests.cs">SampleExpectationTests</a> uses <code>burrito_phase6_sample_expectation_tests</code>.</p>
+<pre><code class="language-powershell">$env:WORKFLOW_ENGINE_TEST_CONNECTION_STRING = &#x27;Server=DOLLY;Database=workflowengine;Integrated Security=true;TrustServerCertificate=True;Encrypt=False&#x27;
+dotnet test src/WorkflowEngine.sln --no-restore --filter &#x27;FullyQualifiedName~WorkflowTransitionTests|FullyQualifiedName~WorkflowExecutionValidationTests|FullyQualifiedName~WorkflowSamplesTests|FullyQualifiedName~SampleExpectationTests|FullyQualifiedName~SeedDataSmokeTests|FullyQualifiedName~ReadmeValidationTests&#x27; -warnaserror
+dotnet test workflow-api/WorkflowEngine.WorkflowApi.slnx --no-restore --filter &#x27;FullyQualifiedName~WorkflowActionServiceTests|FullyQualifiedName~WorkflowActionControllerTests&#x27; -warnaserror</code></pre>
+<p><code>--no-restore</code> assumes restored dependencies. On a fresh clone, follow the <a href="../README.md#quickstart">root README setup</a> first.</p>
+<p>Useful debugger tests:</p>
+<pre><code class="language-powershell">dotnet test src/WorkflowEngine.sln --no-restore --filter &#x27;FullyQualifiedName~SubmitForCheckerWithMissingNotificationTokenReturnsValidationFailedAndRollsBackSideEffects|FullyQualifiedName~SaveDraftVersionConcurrencyConflictDoesNotSaveSectionData&#x27;</code></pre>
+<h2 id="evidence-ledger">Evidence ledger</h2>
+<p>Verification date: 2026-10-04. Source commit: <code>417f31ca878a2d12950f1fc59b93b8fd22e82d92</code>. The guide uses short sentences and consistent terms, following ASD-STE100 style principles. It does not claim formal ASD-STE100 certification.</p>
+<div class="table-scroll"><table><thead><tr><th scope="col">Evidence</th><th scope="col">Inspection / execution status</th></tr></thead><tbody>
+<tr><td>Core focused command above</td><td>Executed outside the sandbox: 74 passed, 0 failed, 0 skipped. Includes all core suites listed in the command above.</td></tr>
+<tr><td>API service/controller tests</td><td>Executed: 14 passed, 0 failed. These use test doubles; they are not live HTTP/SMTP acceptance tests. The executed filter also included <code>WorkflowActionRequestSerializationTests</code>, which is not a test class on this branch and added no cases.</td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/WorkflowSamplesTests.cs">WorkflowSamplesTests</a></td><td>Inspected sample shape and recipient-array assertions. Executed: all cases passed.</td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs">WorkflowTransitionTests</a></td><td>Inspected success, missing-token rollback, replay, and stored-result assertions. Executed: all cases passed.</td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs">WorkflowExecutionValidationTests</a></td><td>Inspected wrong-role, stale instance/definition version, identity, and recipient-resolution assertions. Executed: all cases passed.</td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/SampleExpectationTests.cs">SampleExpectationTests.ExecuteJson_SamplesProduceTheirTestExpectations</a></td><td>Inspected and executed: all ten sample files passed their expectations on valid happy/return/rework paths through the command handler.</td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/SeedDataSmokeTests.cs">SeedDataSmokeTests.PortfolioTradeSeedVerificationPassesOnSqlServer</a></td><td>Inspected and executed: migration, seed, and <code>SeedVerificationService.Verify</code> passed against the suite database. No standalone <code>verify-seed</code> command ran against an application database.</td></tr>
+<tr><td><a href="../workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionServiceTests.cs">WorkflowActionServiceTests</a></td><td>Inspected adapter flags, generated identity, trusted actor, and notification-failure assertions; executed in the API command.</td></tr>
+<tr><td><a href="../workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Controllers/WorkflowActionControllerTests.cs">WorkflowActionControllerTests.ExecuteWorkflowActionReturnsCustom500ForWorkflowFailures</a></td><td>Inspected and executed.</td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/WorkflowActionEnvelopeNormalizationTests.cs">WorkflowActionEnvelopeNormalizationTests</a></td><td>Inspected hash ordering and excluded-field assertions. Not executed in this focused run.</td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/Phase5OutboxTests.cs">Phase5OutboxTests</a></td><td>Inspected failed-row isolation and malformed-snapshot assertions. Not executed in this focused run.</td></tr>
+<tr><td>Manual exercise, exact SQL queries, live HTTP, SMTP, production scheduler</td><td>Not verified during this task. Commands and expected observations were checked against source.</td></tr>
+<tr><td>Full regression suite</td><td>Not executed. The change is documentation-only; focused coverage targets claims made by the guide.</td></tr>
+</tbody></table></div>
+<p>The initial sandbox core test run reported 19 passes and 55 failures. The failures occurred at SQL login with <code>Cannot generate SSPI context</code>. The same command was retried outside the sandbox with Windows authentication.</p>
+<h2 id="existing-references">Existing references</h2>
+<ul><li><a href="../PROJECT.md">PROJECT.md</a>: intended behavior, sections 9, 12–16; required tests and gates, sections 20–22.</li><li><a href="../workflow-api/WORKFLOW_API_BOUNDARIES.md">Workflow API boundaries</a>: public responsibilities, trusted actors, delivery behavior, and response codes.</li><li><a href="api-json-bodies-and-console-real-usage.html">API JSON and console usage</a>: detailed request and command reference.</li><li><a href="sqms/TARGET-API-INTEGRATION.md">Target API integration</a>: in-process ownership and integration surfaces.</li><li><a href="sqms/DBA-DEPLOYMENT.md">DBA deployment runbook</a>: deployment reference; the onboarding exercise is not a production migration procedure.</li><li><a href="../tests/WorkflowEngine.Tests/README.md">Test README</a>: opt-in local SMTP procedure. Its Tier 1 no-I/O claim conflicts with the SQL/file tests described above.</li></ul>
+</main>
+</div>
+</body>
+</html>

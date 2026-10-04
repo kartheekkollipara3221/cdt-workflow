@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How one workflow action works</title>
+<style>
+:root { color-scheme: light; --ink:#202b3a; --blue:#194b7a; --line:#d8e2eb; --paper:#fff; --wash:#f2f6fa; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:24px; }
+body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.layout { display:grid; grid-template-columns:245px minmax(0,980px); gap:48px; max-width:1350px; margin:auto; padding:36px 28px 70px; }
+aside { align-self:start; position:sticky; top:24px; max-height:calc(100vh - 48px); overflow:auto; font-size:14px; }
+.eyebrow { color:#49637c; font-size:12px; letter-spacing:.09em; text-transform:uppercase; font-weight:700; }
+nav ol { list-style:none; padding:0; }
+nav li { margin:0 0 9px; }
+nav a { display:block; text-decoration:none; padding:4px 0; }
+main { min-width:0; }
+h1,h2,h3 { color:var(--blue); line-height:1.25; }
+h1 { font-size:clamp(30px,4vw,44px); margin:0 0 24px; letter-spacing:-.025em; }
+h2 { margin:46px 0 16px; padding-top:20px; border-top:1px solid var(--line); font-size:26px; }
+h3 { margin:28px 0 12px; font-size:21px; }
+p { margin:14px 0; }
+a { color:#125a91; text-underline-offset:3px; overflow-wrap:anywhere; }
+a:hover { color:#0d3658; }
+a:focus-visible { outline:3px solid #eaa52d; outline-offset:3px; }
+code { font-family:ui-monospace,Consolas,monospace; font-size:.9em; background:#edf2f7; padding:2px 4px; border-radius:3px; overflow-wrap:anywhere; }
+pre { overflow:auto; padding:20px; background:#142536; color:#f2f6fa; border-radius:8px; font-size:14px; line-height:1.55; }
+pre code { background:none; color:inherit; padding:0; overflow-wrap:normal; }
+.table-scroll { overflow:auto; margin:20px 0; border:1px solid var(--line); border-radius:7px; }
+table { border-collapse:collapse; width:100%; text-align:left; font-size:14px; }
+th,td { padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top; min-width:150px; }
+th { background:var(--wash); color:var(--blue); font-weight:650; }
+tr:last-child td { border-bottom:0; }
+tbody tr:nth-child(even) { background:#fafcfe; }
+li { margin:7px 0; }
+.figure { padding:22px; margin:24px 0; border:1px solid var(--line); background:var(--wash); border-radius:8px; }
+.flow { list-style:none; padding:0; margin:0; counter-reset:step; }
+.flow li { padding:10px 16px; background:white; border-left:4px solid #36739c; margin:0 0 12px; }
+.flow li.transaction { border-color:#358474; }
+.flow strong { display:block; color:var(--blue); }
+figcaption { font-size:14px; margin-top:16px; }
+.utility { font-size:14px; border-bottom:1px solid var(--line); padding-bottom:20px; margin-bottom:28px; }
+@media(max-width:1000px) { .layout { display:block; padding:24px 18px 50px; } aside { position:static; max-height:none; margin-bottom:30px; border-bottom:1px solid var(--line); } nav ol { columns:2; } }
+@media(max-width:540px) { nav ol { columns:1; } th,td { min-width:140px; } }
+@media print { .layout { display:block; padding:0; } aside,.utility { display:none; } body { font-size:10pt; } h2,h3 { break-after:avoid; } pre { white-space:pre-wrap; overflow-wrap:anywhere; color:#111; background:#f3f3f3; } .table-scroll { overflow:visible; } tr { break-inside:avoid; } a { color:inherit; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<aside><p class="eyebrow">Workflow engine / developer guide</p><nav aria-label="On this page"><ol><li><a href="#1-what-the-engine-owns">1. What the engine owns</a></li><li><a href="#2-essential-terms">2. Essential terms</a></li><li><a href="#3-the-request-and-its-metadata">3. The request and its metadata</a></li><li><a href="#4-follow-the-request-through-the-code">4. Follow the request through the code</a></li><li><a href="#5-read-the-database-before-and-after">5. Read the database before and after</a></li><li><a href="#6-what-happens-after-commit">6. What happens after commit</a></li><li><a href="#7-rejection-replay-and-stale-versions">7. Rejection, replay, and stale versions</a></li><li><a href="#8-where-to-make-maintenance-changes">8. Where to make maintenance changes</a></li><li><a href="#9-debugging-exercise">9. Debugging exercise</a></li><li><a href="#10-known-discrepancies-and-verification-limits">10. Known discrepancies and verification limits</a></li><li><a href="#three-questions-you-must-be-able-to-answer">Three questions you must be able to answer</a></li></ol></nav></aside>
+<main><div class="utility"><a href="README.md">Documentation index</a> &nbsp; / &nbsp; <a href="how-one-workflow-action-works.html">Walkthrough</a> &nbsp; / &nbsp; <a href="workflow-action-reference.html">Evidence and SQL</a></div>
+<h1 id="how-one-workflow-action-works">How one workflow action works</h1>
+<p>Read this guide to explain, debug, and maintain an action from request to stored result. Allow about 20 minutes for reading. Allow more time for the exercise.</p>
+<p>This guide describes branch <code>console-code-first-0518</code>, inspected at commit <code>417f31ca878a2d12950f1fc59b93b8fd22e82d92</code>. It uses the existing <a href="../samples/workflow-actions/02-submit-for-checker.json">submit-for-checker sample</a>. The <a href="workflow-action-reference.html">evidence and SQL reference</a> records verification results and limits.</p>
+<h2 id="1-what-the-engine-owns">1. What the engine owns</h2>
+<p>The engine selects a transition from SQL metadata. It changes workflow state, manages tasks and deadlines, queues notifications, and records successful actions. It uses .NET 10, EF Core, and SQL Server. A workflow instance has one current state and at most one pending task.</p>
+<p>The calling application owns form data, field validation, authentication, and role resolution. Portfolio Trade supplies sample metadata. Its field values must not select transitions in the reusable engine. These are the intended boundaries in <a href="../PROJECT.md">PROJECT.md, sections 5, 6, and 18</a>.</p>
+<p>There are two entry paths. Do not mix their request contracts.</p>
+<div class="table-scroll"><table><thead><tr><th scope="col">Entry path</th><th scope="col">Caller supplies</th><th scope="col">Adapter behavior</th></tr></thead><tbody>
+<tr><td>Console <code>execute-json</code></td><td><code>WorkflowActionEnvelope</code>, including actor, section payload, guards, and request identity</td><td>Validates the envelope. Saves opaque section JSON to <code>MockSectionData</code>.</td></tr>
+<tr><td>HTTP <code>POST /v1/WorkflowAction</code></td><td><code>WorkflowActionRequest</code>, containing workflow-only fields</td><td>Resolves the trusted actor. Generates request identity. Loads business identity from persistence. Disables section saving.</td></tr>
+</tbody></table></div>
+<p>Both paths call <a href="../src/WorkflowEngine.Application/WorkflowExecution/IWorkflowExecutionService.cs">IWorkflowExecutionService.Execute</a>. See the <a href="../workflow-api/WORKFLOW_API_BOUNDARIES.md">API boundaries</a> for the full public contract. For integration inside a target API, use the existing <a href="sqms/TARGET-API-INTEGRATION.md">target API integration reference</a>.</p>
+<h2 id="2-essential-terms">2. Essential terms</h2>
+<div class="table-scroll"><table><thead><tr><th scope="col">Term</th><th scope="col">Meaning in this engine</th></tr></thead><tbody>
+<tr><td>Workflow definition</td><td>The named process, such as <code>PortfolioTrade</code>.</td></tr>
+<tr><td>Definition version</td><td>A set of state, action, transition, task, SLA, and notification metadata. An instance refers to one version.</td></tr>
+<tr><td>Workflow instance</td><td>The stored execution for one business object. It has its own identity, current state, and status.</td></tr>
+<tr><td>Instance version</td><td>An integer used to detect a competing update. It is different from the definition version.</td></tr>
+<tr><td>State</td><td>The current workflow position, such as <code>Draft</code>.</td></tr>
+<tr><td>Action</td><td>A requested operation, such as <code>SubmitForChecker</code>. It does not specify the destination state.</td></tr>
+<tr><td>Transition</td><td>A metadata row selected by definition version, current state, action, and allowed role. It defines the destination and side effects.</td></tr>
+<tr><td>Actor / role</td><td>The user performing the action and the supplied roles used for transition authorization. A role is not an email address.</td></tr>
+<tr><td>Task</td><td>Work assigned to a role. A task is <code>Pending</code> or <code>Completed</code>. The submitting actor is not automatically its assignee.</td></tr>
+<tr><td>SLA policy / schedule</td><td>A service-level timing rule and its stored application to a task. The schedule tracks deadline and reminder timing.</td></tr>
+<tr><td>Recipient snapshot</td><td>The final To/Cc arrays stored for a task or message. Later SLA messages reuse the task snapshot.</td></tr>
+<tr><td>Outbox</td><td>Stored messages waiting for a sender. Queueing a message and delivering it are separate operations.</td></tr>
+<tr><td>Audit</td><td>A record of a successful action. Rejected attempts do not create audit rows.</td></tr>
+<tr><td>Idempotency key / request hash</td><td>A lookup key for an action attempt and a fingerprint of selected request content. Together they distinguish replay from conflicting reuse.</td></tr>
+<tr><td>Correlation ID</td><td>A value that connects an action with its audit and notification records. It is not the idempotency key.</td></tr>
+</tbody></table></div>
+<p>See <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs">WorkflowDbContext.OnModelCreating</a> for table mappings and constraints. See <a href="../PROJECT.md">PROJECT.md, sections 9 and 12</a> for the intended contracts.</p>
+<h2 id="3-the-request-and-its-metadata">3. The request and its metadata</h2>
+<p>Start with a fresh Portfolio Trade instance. <a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs">StartWorkflowService.InsertFreshInstance</a> stores <code>Draft</code>, <code>Active</code>, and instance version <code>1</code>. Starting alone creates no task or transition audit.</p>
+<p>The sample asks for this action:</p>
+<div class="table-scroll"><table><thead><tr><th scope="col">Sample field</th><th scope="col">Value and purpose</th></tr></thead><tbody>
+<tr><td>Business / workflow identity</td><td><code>PT-1001</code> / <code>WF-PT-1001</code></td></tr>
+<tr><td>Actor</td><td><code>maker1</code>, with role <code>Maker</code></td></tr>
+<tr><td>UI echo</td><td>Section <code>Maker</code>, button <code>MakerPrimary</code>, <code>saveAsDraft=false</code></td></tr>
+<tr><td>Section payload</td><td><code>{ &quot;comment&quot;: &quot;Submit for checker.&quot; }</code>; stored as opaque JSON</td></tr>
+<tr><td>Action</td><td><code>SubmitForChecker</code></td></tr>
+<tr><td>Guards</td><td>Definition version <code>1</code>, current state <code>Draft</code>, instance version <code>1</code></td></tr>
+<tr><td>Task guards</td><td>Both null. Null means no supplied guard; it does not assert that no task exists.</td></tr>
+<tr><td>Idempotency key</td><td><code>sample-02-submit-for-checker</code></td></tr>
+<tr><td>Correlation ID</td><td><code>corr-sample-02</code></td></tr>
+</tbody></table></div>
+<p>The full sample also contains final To/Cc arrays and template values. Console execution uses those arrays directly. It does not use the public API recipient resolver for this sample.</p>
+<p><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs">PortfolioTradeSeedData</a> supplies the decision:</p>
+<pre><code class="language-text">Definition version 1 + Draft + SubmitForChecker + Maker
+  -&gt; CheckerReview
+  -&gt; close no task
+  -&gt; create CheckerReviewTask, owned by Checker
+  -&gt; use RouteCheckerAssignedOnSubmit</code></pre>
+<p><code>CheckerReviewTask</code> uses <code>CheckerReviewSla</code>. The checked-in demo policy sets a two-minute deadline and two-minute overdue recurrence. It uses <code>DurationFromTaskCreation</code>. The sample&#x27;s <code>requestedAtUtc</code> does not set the engine clock. The deadline comes from task creation time through <code>TimeProvider</code>.</p>
+<p>These values describe the checked-in seed. <strong>Not verified:</strong> deployed policy values. Do not assume that a deployed database still has demo timings.</p>
+<h2 id="4-follow-the-request-through-the-code">4. Follow the request through the code</h2>
+<figure class="figure" aria-labelledby="execution-caption">
+<ol class="flow">
+<li><strong>1. Console handler</strong>Normalize identity, validate the envelope, and compute the request hash.</li>
+<li><strong>2. Execution service: initial reads</strong>Check replay, identity, metadata, guards, and role.</li>
+<li class="transaction"><strong>3. Begin SQL transaction</strong>Reload state and task. Recheck guards. Update state with a version condition.</li>
+<li class="transaction"><strong>4. Store all action effects</strong>Save section, task, SLA schedule, outbox message, audit, and result.</li>
+<li class="transaction"><strong>5. Commit</strong>Return success with workflow context.</li>
+<li><strong>6. Deliver separately</strong>A sender processes the committed outbox message.</li>
+</ol><figcaption id="execution-caption">Execution order for the console sample. Steps 3?5 share the action transaction. Message delivery is outside it.</figcaption></figure>
+<h3 id="step-1-adapt-and-validate-the-request">Step 1: Adapt and validate the request</h3>
+<p><a href="../src/WorkflowEngine.Console/Program.cs">Program.cs</a> builds the services and calls <code>CommandRegistry.Dispatch</code>. <a href="../src/WorkflowEngine.Application/Commands/ExecuteJsonCommandHandler.cs">ExecuteJsonCommandHandler.Execute</a> reads and deserializes the file.</p>
+<p>It calls <a href="../src/WorkflowEngine.Application/Normalization/WorkflowActionEnvelopeNormalizer.cs">WorkflowActionEnvelopeNormalizer.Normalize</a> before validation and hashing. Console identity overrides therefore affect the request hash. Overrides also add a deterministic suffix to effective request IDs. This lets the sample run for separate demo objects without reusing one global idempotency key.</p>
+<p><a href="../src/WorkflowEngine.Application/Validation/WorkflowActionEnvelopeValidator.cs">WorkflowActionEnvelopeValidator.Validate</a> checks required blocks and the Maker button/action combination. It requires <code>saveAsDraft=false</code> for this submit action. It does not validate the business meaning of <code>comment</code>.</p>
+<p><a href="../src/WorkflowEngine.Application/Normalization/CanonicalRequestHasher.cs">CanonicalRequestHasher.ComputeHash</a> hashes selected content with stable object-property ordering. It preserves array order. It excludes transport identity fields such as correlation ID and requested time. Consult that method before changing replay behavior; the hash is not a hash of every envelope property.</p>
+<h3 id="step-2-resolve-replay-before-current-state">Step 2: Resolve replay before current state</h3>
+<p><a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs">WorkflowExecutionService.Execute</a> first calls <code>TryBuildIdempotencyReplay</code>.</p>
+<ul><li>No record: continue.</li><li>Same key and hash: return stored <code>ResultJson</code>, with replay diagnostics.</li><li>Same key and different hash: return <code>IdempotencyConflict</code>.</li></ul>
+<p>The replay must precede current-state checks. A successful submit has already left <code>Draft</code>. Checking its old guards first would reject a valid replay. <a href="../PROJECT.md">PROJECT.md, section 9</a> states this reason explicitly.</p>
+<p>Replay returns the stored context too. It does not refresh that context to the latest state.</p>
+<h3 id="step-3-find-and-authorize-the-transition">Step 3: Find and authorize the transition</h3>
+<p><code>Execute</code> loads the instance and validates identity. It then checks the definition version, completed status, action metadata, and console action echo. It loads active transitions for the instance&#x27;s definition version, state, and action.</p>
+<p>The service calls <code>CheckConcurrency</code> before role selection. It then selects a transition whose <code>AllowedRoleKey</code> matches an actor role. No matching role returns <code>Forbidden</code>. Multiple matching roles return <code>AmbiguousRoleMatch</code>.</p>
+<p>For this request, metadata selects <code>Draft -&gt; CheckerReview</code>. The engine does not calculate the next state from a stage number. The request does not select <code>toState</code>. This implements <a href="../PROJECT.md">PROJECT.md, section 6</a>.</p>
+<p><code>ValidateAssignedRoleKey</code> and <code>ValidateSlaInput</code> check the task requirements. Checker assignment is static, so this sample needs no desk selection or target date. <code>BuildOptionWarnings</code> reports conflicts with optional request hints; metadata still controls side effects.</p>
+<p>For the API path, <code>NotificationInput</code> is present. The service calls <a href="../src/WorkflowEngine.Infrastructure/Notifications/NotificationRecipientResolver.cs">NotificationRecipientResolver.Resolve</a> before side effects. The seeded submit route selects static Checker To addresses, the captured <code>originalMaker</code> participant for Cc, and optional <code>selectedCcUsers</code>. Unknown inputs or missing required sources fail validation. The console sample supplies its final arrays directly. In both paths, storing a snapshot lets later SLA messages reuse the task&#x27;s audience.</p>
+<h3 id="step-4-open-the-transaction-and-recheck">Step 4: Open the transaction and recheck</h3>
+<p><code>ExecuteSideEffects</code> opens a transaction unless the caller already owns one on the same context. It reloads the instance and pending task. It runs <code>CheckConcurrency</code> and <code>CheckTransitionStillCurrent</code> again.</p>
+<p>This recheck detects changes made after the first read. The state update also uses <code>WHERE Id = ... AND Version = ...</code>. It increments <code>Version</code>. Zero updated rows produce <code>ConcurrencyConflict</code>.</p>
+<p>The default transaction uses SQL Server <code>READ COMMITTED</code>. The conditional update and the unique pending-task index support concurrency control. <a href="../PROJECT.md">PROJECT.md, section 15</a> states why the engine uses these mechanisms instead of <code>SERIALIZABLE</code>.</p>
+<h3 id="step-5-store-the-action-effects">Step 5: Store the action effects</h3>
+<p>For this submit, <code>ExecuteSideEffects</code> performs these operations in the transaction:</p>
+<ol><li>Adds the mock section save.</li><li>Changes the state to <code>CheckerReview</code> and version to <code>2</code>.</li><li>Creates <code>CheckerReviewTask</code> with role <code>Checker</code> and <code>AssignedUserId=null</code>.</li><li>Calls <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs">WorkflowSlaSynchronizationService.Synchronize</a>. It creates schedule version <code>1</code> and projects its deadline onto <code>WorkflowTask.DueAtUtc</code>.</li><li>Renders the route templates and queues one <code>WorkflowTaskAssigned</code> message.</li><li>Writes the audit and builds the success result.</li><li>Reads context for the submitting actor. Stores the canonical result in <code>IdempotencyRecord</code>. Commits.</li></ol>
+<p>Several <code>SaveChanges</code> calls occur before commit. They do not commit the outer transaction. The early task save obtains its SQL identity for the schedule and outbox references.</p>
+<p>Template rendering can fail after writes have begun. The service rolls back its transaction in that case. It does not leave the workflow partly moved. If a caller supplies the transaction, that caller owns commit and rollback. Do not interpret a returned result as an independent commit in that case.</p>
+<h3 id="step-6-interpret-the-result">Step 6: Interpret the result</h3>
+<p>Expect <code>Success</code>, old state <code>Draft</code>, new state <code>CheckerReview</code>, one created task, a queued notification, and an audit summary. The result&#x27;s context is for <code>maker1</code>. It does not imply that Maker can perform Checker actions.</p>
+<p><a href="../src/WorkflowEngine.Infrastructure/WorkflowContext/WorkflowContextReader.cs">WorkflowContextReader.Read and BuildAvailableActions</a> use current state and actor roles. A separate context read as <code>checker1</code> with role <code>Checker</code> exposes <code>CheckerReturnToMaker</code> and <code>CheckerSendToTradingDesk</code>.</p>
+<p>The console handler wraps a structured workflow rejection in a successful command result. Inspect JSON <code>result.success</code> and <code>result.resultCode</code>; process exit code alone does not prove that the action succeeded.</p>
+<h2 id="5-read-the-database-before-and-after">5. Read the database before and after</h2>
+<p>This table assumes a fresh instance and a direct submit. If you run SaveDraft first, it adds its own section, audit, and idempotency rows. It leaves instance version <code>1</code>.</p>
+<div class="table-scroll"><table><thead><tr><th scope="col">Table</th><th scope="col">Before submit</th><th scope="col">After commit</th></tr></thead><tbody>
+<tr><td><code>WorkflowInstance</code></td><td><code>Draft</code>, <code>Active</code>, version <code>1</code></td><td><code>CheckerReview</code>, <code>Active</code>, version <code>2</code>; <code>CompletedAtUtc</code> remains null</td></tr>
+<tr><td><code>WorkflowTask</code></td><td>None</td><td>One pending <code>CheckerReviewTask</code>; role <code>Checker</code>; no assigned user; due at creation + 2 minutes</td></tr>
+<tr><td><code>WorkflowTaskSlaSchedule</code></td><td>None</td><td>One active schedule, version <code>1</code>; <code>CheckerReviewSla</code>; recurrence 2 minutes; no target date</td></tr>
+<tr><td><code>MockSectionData</code></td><td>None</td><td>One Maker payload row, saved by <code>maker1</code></td></tr>
+<tr><td><code>NotificationOutbox</code></td><td>None</td><td>One pending <code>WorkflowTaskAssigned</code>; subject <code>Directed Trade Pending Checker Approval</code>; linked to the new task</td></tr>
+<tr><td><code>WorkflowAudit</code></td><td>None</td><td>One <code>SubmitForChecker</code>, <code>Draft -&gt; CheckerReview</code>, actor <code>maker1</code>, role <code>Maker</code></td></tr>
+<tr><td><code>IdempotencyRecord</code></td><td>None</td><td>One effective key, request hash, result hash, and stored success JSON</td></tr>
+<tr><td>Definition and route tables</td><td>Seeded metadata</td><td>Unchanged by this action</td></tr>
+</tbody></table></div>
+<p>Task and outbox both store the sample&#x27;s ordered two To and two Cc addresses. The task also stores the route and template context for later SLA use. See <code>ExecuteSideEffects</code> and <a href="../tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs">WorkflowTransitionTests.SubmitForCheckerMovesDraftAndCreatesCheckerTaskNotificationAuditAndIdempotency</a>. Use the <a href="workflow-action-reference.html#read-only-sql">read-only SQL queries</a> to inspect the records.</p>
+<h2 id="6-what-happens-after-commit">6. What happens after commit</h2>
+<p>Console execution queues the assignment message. <a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs">ProcessNotificationOutboxService.ProcessAsync</a> delivers it when invoked. It claims a row as <code>Processing</code>, calls <code>INotificationSender</code>, then marks it <code>Sent</code>. A send exception returns the row to <code>Pending</code>, increments <code>RetryCount</code>, and records <code>LastError</code>. The processor continues with later rows unless cancellation stops it.</p>
+<p><a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs">RunSlaService.RunAsync</a> scans active schedules for pending tasks. Each candidate has a separate transaction. It queues eligible reminder occurrences and advances the schedule. It copies the task&#x27;s recipient snapshot. It does not send email. An external scheduler must invoke the commands; storing a deadline does not start a timer.</p>
+<p>Delivery is outside the workflow transaction. Do not claim exactly-once email delivery. A process can send a message and stop before it records <code>Sent</code>. The outbox processor can reclaim an expired processing lease after 15 minutes.</p>
+<h3 id="the-http-path-differs-here">The HTTP path differs here</h3>
+<p><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs">WorkflowActionService.ExecuteWorkflowAction</a> generates a new GUID identity per call. It sets <code>PersistSectionData=false</code>, <code>ValidateActionEcho=false</code>, and <code>DeriveIdentityFromPersistence=true</code>.</p>
+<p>After execution, it calls <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs">WorkflowActionNotificationDispatcher.DispatchCreatedNotifications</a>. That dispatcher selects pending messages by workflow instance and action correlation ID. It attempts delivery before the HTTP response.</p>
+<p>If delivery fails, the API changes the returned result to <code>NotificationDeliveryFailed</code>. <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowActionController.cs">WorkflowActionController.ExecuteWorkflowAction</a> returns HTTP 500 for a failed workflow result. <strong>The workflow can already be committed.</strong> Inspect state and outbox before retrying. The stored engine result is the pre-dispatch success result.</p>
+<p>Public <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs">WorkflowActionRequest</a> accepts neither client idempotency keys nor expected-version guards. Repeating an HTTP body is a new attempt, not the console replay described below. After a successful submit, another submit has no transition from <code>CheckerReview</code> and returns <code>InvalidTransition</code> if the state remains there.</p>
+<h2 id="7-rejection-replay-and-stale-versions">7. Rejection, replay, and stale versions</h2>
+<p>Order matters. These cases assume valid shape and identity unless stated otherwise.</p>
+<div class="table-scroll"><table><thead><tr><th scope="col">Case</th><th scope="col">Verified implementation behavior</th><th scope="col">Test evidence</th></tr></thead><tbody>
+<tr><td>Maker submit with only role <code>Checker</code></td><td><code>Forbidden</code> before side effects</td><td><code>WrongRoleReturnsForbidden</code> in <a href="../tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs">validation tests</a></td></tr>
+<tr><td>Submit with missing template token <code>tradeLink</code></td><td><code>ValidationFailed</code>; rollback leaves Draft/version 1 and no task, outbox, section, audit, or idempotency rows</td><td><code>SubmitForCheckerWithMissingNotificationTokenReturnsValidationFailedAndRollsBackSideEffects</code> in <a href="../tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs">transition tests</a></td></tr>
+<tr><td>Repeat the same successful internal request</td><td>Stored success with <code>diagnostics.replay=true</code>; no duplicate effects; version remains 2</td><td><code>IdempotentReplayDoesNotDuplicateSideEffects</code> in <a href="../tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs">transition tests</a></td></tr>
+<tr><td>Reuse its key with changed hashed content</td><td><code>IdempotencyConflict</code>, before state lookup</td><td><code>IdempotencyConflictFiresBeforeInstanceLookup</code> in <a href="../tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs">validation tests</a></td></tr>
+<tr><td>Valid action/state, stale instance version</td><td><code>ConcurrencyConflict</code>, <code>failedGuard=expectedInstanceVersion</code>; no action effects</td><td><code>SaveDraftVersionConcurrencyConflictDoesNotSaveSectionData</code> in <a href="../tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs">validation tests</a></td></tr>
+<tr><td>Definition version 2 against instance definition version 1</td><td><code>WorkflowDefinitionVersionMismatch</code>, expected <code>2</code>, actual <code>1</code>, with context</td><td><code>DefinitionVersionMismatchReturnsExpectedActualAndContext</code> in <a href="../tests/WorkflowEngine.Tests/WorkflowExecutionValidationTests.cs">validation tests</a></td></tr>
+</tbody></table></div>
+<p>A fresh key does not guarantee a concurrency error for an old submit. Transition lookup occurs before guard checks. If no transition exists from the current state, the result is <code>InvalidTransition</code>. Likewise, an unchanged successful request replays before its old version guard is checked.</p>
+<p>No rejected attempt writes a failure audit. This is an explicit limitation in <a href="../PROJECT.md">PROJECT.md, section 16.1</a>. Capture the result code, failed guard, expected/actual values, correlation ID, and workflow instance ID for diagnosis.</p>
+<h2 id="8-where-to-make-maintenance-changes">8. Where to make maintenance changes</h2>
+<div class="table-scroll"><table><thead><tr><th scope="col">Task</th><th scope="col">Configuration or metadata</th><th scope="col">Code to inspect</th><th scope="col">Tests to use</th></tr></thead><tbody>
+<tr><td>Add or change an allowed route</td><td>Versioned states, actions, roles, transitions</td><td><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs">PortfolioTradeSeedData</a>, <code>Execute</code></td><td><a href="../tests/WorkflowEngine.Tests/SeedDataSmokeTests.cs">SeedDataSmokeTests</a>, <a href="../tests/WorkflowEngine.Tests/WorkflowTransitionTests.cs">WorkflowTransitionTests</a></td></tr>
+<tr><td>Change public notification audience</td><td><code>NotificationRecipientRule</code>, participants, permitted request inputs</td><td><a href="../src/WorkflowEngine.Infrastructure/Notifications/NotificationRecipientResolver.cs">NotificationRecipientResolver.Resolve</a></td><td><a href="../tests/WorkflowEngine.Tests/NotificationRecipientResolverTests.cs">NotificationRecipientResolverTests</a>, validation tests</td></tr>
+<tr><td>Change email text</td><td>Route subject/body/HTML templates</td><td><a href="../src/WorkflowEngine.Application/Notifications/NotificationTemplateRenderer.cs">NotificationTemplateRenderer</a>, <code>ExecuteSideEffects</code></td><td><a href="../tests/WorkflowEngine.Tests/NotificationTemplateRendererTests.cs">NotificationTemplateRendererTests</a>, transition tests</td></tr>
+<tr><td>Change a deadline or recurrence</td><td>Versioned <code>SlaPolicy</code>; target date only where required</td><td><code>WorkflowSlaSynchronizationService</code>, <a href="../src/WorkflowEngine.Infrastructure/Sla/SlaScheduleCalculator.cs">SlaScheduleCalculator</a></td><td><a href="../tests/WorkflowEngine.Tests/WorkflowSlaSynchronizationTests.cs">WorkflowSlaSynchronizationTests</a>, <a href="../tests/WorkflowEngine.Tests/RecurringSlaMonitorTests.cs">RecurringSlaMonitorTests</a></td></tr>
+<tr><td>Diagnose missing or duplicate mail</td><td>Sender configuration, outbox status/claim/retry fields</td><td><code>ProcessAsync</code>, API dispatcher</td><td><a href="../tests/WorkflowEngine.Tests/Phase5OutboxTests.cs">Phase5OutboxTests</a>, <a href="../workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionNotificationDispatcherTests.cs">dispatcher tests</a></td></tr>
+<tr><td>Diagnose rejected or repeated actions</td><td>Inspect key, hash, guards, metadata, actor roles</td><td><code>Execute</code>, <code>CheckConcurrency</code>, <code>TryBuildIdempotencyReplay</code></td><td>Validation and transition tests</td></tr>
+<tr><td>Change the HTTP adapter</td><td>Public DTO and trusted actor contract</td><td><code>WorkflowActionService</code>, controller, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/TrustedHeaderWorkflowActorResolver.cs">actor resolver</a></td><td><a href="../workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Services/WorkflowActionServiceTests.cs">WorkflowActionServiceTests</a>, <a href="../workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/Models/WorkflowRequestContractTests.cs">WorkflowRequestContractTests</a></td></tr>
+<tr><td>Change form-field validation</td><td>Calling application</td><td>Follow the <a href="../workflow-api/WORKFLOW_API_BOUNDARIES.md">API boundary</a>; keep business validation outside the engine</td><td>Calling-application tests; engine coverage does not prove form validity</td></tr>
+</tbody></table></div>
+<p>Metadata changes do not rewrite existing recipient snapshots. Check persisted records as well as seed source. Keep integration keys stable. Read <a href="../AGENTS.MD">AGENTS.MD</a> and <a href="../PROJECT.md">PROJECT.md, section 22</a> before changing contracts, schema, or workflow behavior.</p>
+<h2 id="9-debugging-exercise">9. Debugging exercise</h2>
+<p>Use .NET 10 and a disposable local SQL database. From the repo root, run the following PowerShell commands. <code>init-db</code> migrates and seeds the selected database. Choose a new database name if this one already contains useful data.</p>
+<pre><code class="language-powershell">git branch --show-current
+$env:ConnectionStrings__DefaultConnection = &#x27;Server=DOLLY;Database=workflowengine_onboarding_local;Integrated Security=true;TrustServerCertificate=True;Encrypt=False&#x27;
+$env:Notifications__Sender = &#x27;Console&#x27;
+dotnet build src/WorkflowEngine.sln -warnaserror
+dotnet run --project src/WorkflowEngine.Console -- init-db
+dotnet run --project src/WorkflowEngine.Console -- verify-seed
+$onboardingId = &#x27;PT-ONBOARD-&#x27; + [Guid]::NewGuid().ToString(&#x27;N&#x27;).Substring(0, 8)
+$onboardingWorkflowId = &#x27;WF-&#x27; + $onboardingId
+dotnet run --project src/WorkflowEngine.Console -- start-workflow PortfolioTrade $onboardingId --user maker1</code></pre>
+<p>Confirm the requested branch before continuing. The new instance must be Draft/version 1, with no task. Keep the two generated IDs for inspection. No reset is needed.</p>
+<p>Configure your debugger to launch <code>WorkflowEngine.Console</code> from the repo root. Give it the same environment variables. Use these arguments, replacing the two PowerShell variables with their generated values:</p>
+<pre><code class="language-text">execute-json ./samples/workflow-actions/02-submit-for-checker.json --business-object &lt;generated-object-id&gt; --workflow-instance &lt;generated-workflow-id&gt; --format json</code></pre>
+<p>Set these breakpoints in the linked files from section 4:</p>
+<div class="table-scroll"><table><thead><tr><th scope="col">Breakpoint</th><th scope="col">Expected observation</th></tr></thead><tbody>
+<tr><td><code>ExecuteJsonCommandHandler.Execute</code>, after normalization</td><td>Overridden object identity; effective IDs have a suffix.</td></tr>
+<tr><td><code>WorkflowExecutionService.TryBuildIdempotencyReplay</code></td><td>First call finds no record.</td></tr>
+<tr><td><code>Execute</code>, after transition selection</td><td>From <code>Draft</code>, role <code>Maker</code>, destination <code>CheckerReview</code>; no task to close.</td></tr>
+<tr><td><code>ExecuteSideEffects</code>, after <code>BeginTransaction</code></td><td><code>Database.CurrentTransaction</code> is set.</td></tr>
+<tr><td><code>WorkflowSlaSynchronizationService.Synchronize</code></td><td>Existing outer transaction; duration policy; new schedule version 1.</td></tr>
+<tr><td><code>ExecuteSideEffects</code>, before commit</td><td>New task and result are available; do not treat intermediate SQL writes as committed.</td></tr>
+</tbody></table></div>
+<p>Run the action once in the debugger. Then inspect it:</p>
+<pre><code class="language-powershell">dotnet run --project src/WorkflowEngine.Console -- show $onboardingWorkflowId
+dotnet run --project src/WorkflowEngine.Console -- show-tasks $onboardingWorkflowId
+dotnet run --project src/WorkflowEngine.Console -- show-history $onboardingWorkflowId
+dotnet run --project src/WorkflowEngine.Console -- show-notifications $onboardingWorkflowId
+dotnet run --project src/WorkflowEngine.Console -- show-context $onboardingWorkflowId --user checker1 --roles Checker --format json
+dotnet run --project src/WorkflowEngine.Console -- execute-json ./samples/workflow-actions/02-submit-for-checker.json --business-object $onboardingId --workflow-instance $onboardingWorkflowId --format json</code></pre>
+<p>Compare the rows with section 5. The last command must replay. It must not create a second task or message. Run <code>process-notification-outbox</code> in this disposable database to observe <code>Pending -&gt; Processing -&gt; Sent</code>. With sender <code>Console</code>, <code>Sent</code> means that the console sender completed; it does not prove email delivery.</p>
+<p>For deterministic failure debugging, run the <a href="workflow-action-reference.html#verification-commands">focused test commands</a>. Debug the missing-token rollback test and the stale-version test. These tests set up their own SQL state. Watch the result and query the tables after execution. Do not edit the tracked sample to simulate those failures.</p>
+<h2 id="10-known-discrepancies-and-verification-limits">10. Known discrepancies and verification limits</h2>
+<div class="table-scroll"><table><thead><tr><th scope="col">Source statement</th><th scope="col">Current evidence and consequence</th></tr></thead><tbody>
+<tr><td>PROJECT.md section 15 puts validation, hashing, initial lookup, and authorization inside the transaction.</td><td>The handler validates and hashes first. <code>Execute</code> performs initial checks before <code>ExecuteSideEffects</code> opens the transaction. The service rechecks state/task before writing. Do not describe all reads as one transactional snapshot.</td></tr>
+<tr><td>The root README&#x27;s form-open example shows <code>CheckerReviewTask</code> with <code>ApplicationTargetDate</code>.</td><td>Checked-in <code>PortfolioTradeSeedData.SlaPolicies</code> assigns Checker a duration policy. This guide uses that seed and the tested submit path.</td></tr>
+<tr><td>The test README says Tier 1 performs no file I/O or network calls.</td><td><code>SampleExpectationTests</code> reads files and uses SQL Server. <code>CreateSeededContext</code> recreates a SQL test database. Default tests are not all isolated unit tests.</td></tr>
+</tbody></table></div>
+<p>These discrepancies are reported, not resolved by this documentation task. Implementation and tests establish the described behavior. PROJECT.md remains the source of intended requirements.</p>
+<p><strong>Not verified:</strong> deployed metadata, production scheduling, live HTTP/SMTP behavior, and crash recovery during this documentation task. See the <a href="workflow-action-reference.html#evidence-ledger">evidence ledger</a> for tests executed versus inspected.</p>
+<h2 id="three-questions-you-must-be-able-to-answer">Three questions you must be able to answer</h2>
+<ol><li>Which metadata row permits this actor&#x27;s action, and which records must change together before it commits?</li><li>Why does a repeated request replay, conflict, or fail a state/version check, and where can you prove the decision?</li><li>If the API reports notification failure, how do you determine whether the workflow committed and which message needs recovery?</li></ol>
+</main>
+</div>
+</body>
+</html>

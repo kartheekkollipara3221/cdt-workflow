@@ -1,5 +1,44 @@
 # Codex Handoff
 
+## 2026-10-04 HTML workflow action developer onboarding
+
+### Current goal
+
+- Complete documentation-only onboarding on `console-code-first-0518`, using HTML files as requested. Branch verified before inspection and after the format correction. Source baseline: `417f31ca878a2d12950f1fc59b93b8fd22e82d92`.
+
+### Completed changes / changed files
+
+- `docs/how-one-workflow-action-works.html`: single entry point, about 20 minutes to read. Includes boundaries, glossary, submit trace, reasons supported by code/specification, database effects, transactions, failures/replay/version checks, maintenance table, and breakpoint exercise. Ends with three developer questions.
+- `docs/workflow-action-reference.html`: linked SQL queries, test evidence ledger, commands, and existing reference links.
+- `docs/README.md`: links to the HTML entry point.
+- `CODEX_HANDOFF.md`: this checkpoint. Prior content preserved byte-for-byte because it contains non-UTF-8 bytes.
+- Removed only the two Markdown drafts created for this task. HTML uses inline styles and an offline execution-order figure. No external assets or scripts are required.
+- Applied GSD docs-update inspection/write/verification inline within the requested scope. No milestone or implementation changes.
+
+### Build/test status
+
+- Focused core tests with `--no-restore -warnaserror`: 74 passed, 0 failed, 0 skipped. Suites: WorkflowTransitionTests, WorkflowExecutionValidationTests, WorkflowSamplesTests, SampleExpectationTests, SeedDataSmokeTests, ReadmeValidationTests.
+- First sandbox attempt had 19 passes and 55 SQL login failures (`Cannot generate SSPI context`). Same command passed outside the sandbox with Windows authentication.
+- Focused API service/controller tests with `--no-restore -warnaserror`: 14 passed, 0 failed. Extra filter term WorkflowActionRequestSerializationTests matched no class.
+- SQL seed verification passed through SeedDataSmokeTests. All ten sample JSON files executed through SampleExpectationTests on valid paths.
+- Test commands compiled referenced projects. No separate full-solution build or full regression run.
+- HTML parser checks passed: balanced tags, unique IDs, one H1 per page, local links and HTML anchors resolve, no draft placeholders.
+- Manual debugger exercise, exact SQL query execution, browser visual rendering, live HTTP/SMTP, and deployed policies/scheduling: Not verified.
+
+### Remaining tasks
+
+- No content work remains. Check Git history/status for the documentation commit.
+
+### Known risks
+
+- Reported three existing discrepancies: PROJECT.md transaction-start wording, README Checker SLA example, and test README no-I/O claim. No fixes to these sources or implementation are included.
+- Existing untracked audit/live-result artifacts predate this task. Do not stage or remove them.
+- SQL tests recreate named suite databases. Avoid competing test sessions against the same databases.
+
+### Next-session prompt
+
+Read this checkpoint and open `docs/how-one-workflow-action-works.html`. Verify branch `console-code-first-0518` and Git status. Use the linked HTML reference for evidence and limits. This task authorizes documentation only, not fixes for the reported discrepancies.
+
 ## 2026-08-21 SQMS Single-Lifecycle Retained Acceptance
 
 ### Current goal
