@@ -2,6 +2,8 @@
 
 Current documentation kept in this repo:
 
+- [How workflow tables support the engine](how-workflow-tables-support-the-engine.html): how the 20 core tables work together for rules, state, tasks, deadlines, messages, history, and replay. Includes one action trace.
+- [Portfolio Trade: one successful workflow](portfolio-trade-happy-path.html): one direct path from Maker to completion. Shows each handoff, one complete Checker request, engine orchestration, email, and task deadlines.
 - [How one workflow action works](how-one-workflow-action-works.html): developer onboarding. Trace submit-for-checker through code, SQL records, failures, replay, and notification processing. Includes a debugging exercise and linked test evidence.
 - `beginners-api-console-handoff.html`: single-file beginner handoff for API, console, and target API integration.
 - `api-json-bodies-and-console-real-usage.html`: complete reference for current workflow API JSON bodies, Portfolio Trade sample flow, and console commands that apply to real operations.

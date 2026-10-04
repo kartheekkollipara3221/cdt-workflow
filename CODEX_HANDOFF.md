@@ -1,5 +1,107 @@
 # Codex Handoff
 
+## 2026-10-04 Git publication of documentation
+
+- Current goal: publish pending documentation and local commits to origin/console-code-first-0518.
+- Fetched origin. Initial comparison: local branch four commits ahead, zero behind.
+- Publication files: CODEX_HANDOFF.md, docs/README.md, docs/portfolio-trade-happy-path.html, docs/how-workflow-tables-support-the-engine.html.
+- Verified both HTML structures and links again. Working and staged diff checks passed. Engine source is unchanged; preceding test evidence remains applicable.
+- Next action at checkpoint creation: commit these four files, push normally, then fetch and verify full SHA equality and ahead/behind 0/0.
+- Known risk: older untracked audit files, logs, binaries, and SMTP data remain local. They are outside this documentation publication.
+- Next-session prompt: fetch origin and compare HEAD with origin/console-code-first-0518. Check tracked status and preserve older untracked artifacts.
+
+
+## 2026-10-04 Workflow tables HTML explanation
+
+### Current goal
+
+Explain how workflow engine tables support the overall engine. Deliver HTML with short sentences, active voice, consistent terms, and definitions at first use. Use ASD-STE100 as the style guide.
+
+### Completed changes
+
+- Created docs/how-workflow-tables-support-the-engine.html.
+- Explained configuration versus runtime data, the operation read/write matrix, one Checker handoff, and every table's purpose.
+- Covered all 20 core WorkflowDbContext tables: 12 configuration tables and eight runtime tables.
+- Explained logical lookup paths versus actual foreign keys, three version fields, SLA schedules, recipient snapshots, message delivery, replay, and database constraints.
+- Explained that definition-version selection does not make mutable metadata an immutable snapshot. Included standalone outbox occurrence ownership and public versus console form-data boundaries.
+- Linked the new page from docs/README.md. Used GSD docs-update source/write/verification inline for the requested documentation scope.
+
+### Changed files
+
+- docs/how-workflow-tables-support-the-engine.html
+- docs/README.md
+- CODEX_HANDOFF.md
+
+### Build/test status
+
+- 75 core tests passed, zero failed or skipped. Command: dotnet test src/WorkflowEngine.sln --no-restore -warnaserror --filter "FullyQualifiedName~SchemaConstraintTests|FullyQualifiedName~MigrationSchemaTests|FullyQualifiedName~SeedDataSmokeTests|FullyQualifiedName~WorkflowSamplesTests|FullyQualifiedName~SampleExpectationTests|FullyQualifiedName~WorkflowSlaSynchronizationTests|FullyQualifiedName~Phase5OutboxTests".
+- Set WORKFLOW_ENGINE_TEST_CONNECTION_STRING to PROJECT.md's approved local integrated-security connection. The test factory selects dedicated suite databases.
+- SQL seed verification passed through SeedDataSmokeTests. All ten existing sample JSON files executed through SampleExpectationTests.
+- HTML checks passed: balanced tags, one H1, unique IDs, local links/anchors, and exact inventory match against all 20 WorkflowDbContext table mappings.
+- Prose sentence check found no paragraph or list sentence above 25 words. git diff --check passed.
+- No full solution regression, new API test run, deployed database inspection, or browser visual check. Changes are documentation only.
+
+### Remaining tasks
+
+None for the requested explanation. No commit or push performed.
+
+### Known risks
+
+- The diagrams show data use and logical lookup paths. They do not claim every relationship has a database foreign key.
+- The page documents current source behavior. Deployment configuration can differ.
+- Existing untracked audit and acceptance files predate these documentation tasks; preserve them.
+- No full ASD-STE100 dictionary compliance certification was performed.
+
+### Next-session prompt
+
+Open docs/how-workflow-tables-support-the-engine.html. Read this checkpoint and verify Git status before further work. Preserve the preceding Portfolio Trade explanation. Documentation scope does not authorize changes to engine code, fixtures, schema, or deployed metadata.
+
+
+## 2026-10-04 Portfolio Trade happy-path HTML
+
+### Current goal
+
+Deliver a source-backed HTML explanation of one direct Portfolio Trade happy path. Use ASD-STE100 as a style guide, short sentences, active voice, and consistent terms.
+
+### Completed changes
+
+- Created docs/portfolio-trade-happy-path.html. It follows Maker, Checker, Trading Desk, Client Service, and completion.
+- Explained one complete public Checker request, metadata selection, SQL transaction work, task roles, SLA schedules, recipient snapshots, and delivery after commit.
+- Distinguished human trade execution, public application-owned form data, and console mock section saves.
+- Used direct instance versions 1 through 5. Documented that existing final console sample expects version 6 after rework; preserved that sample.
+- Linked the explanation from docs/README.md. Applied GSD docs-update source/write/verify steps inline within the user's documentation scope.
+
+### Changed files
+
+- docs/portfolio-trade-happy-path.html
+- docs/README.md
+- CODEX_HANDOFF.md
+
+### Build/test status
+
+- Core: 31 passed, zero failed. Filter: WorkflowSamplesTests, SampleExpectationTests, SeedDataSmokeTests, WorkflowTransitionTests. Warning-as-error compilation succeeded.
+- API: 26 passed, zero failed. Filter: WorkflowActionServiceTests and WorkflowStartServiceTests. Warning-as-error compilation succeeded.
+- Core SQL tests used PROJECT.md's approved local integrated-security connection through WORKFLOW_ENGINE_TEST_CONNECTION_STRING. Test connection factory selects suite-specific databases.
+- Seed verification passed through SeedDataSmokeTests. All ten existing sample JSON files executed through SampleExpectationTests.
+- Initial core attempt lacked the required SQL test connection variable. Configured it and reran successfully. Initial simultaneous API/core builds conflicted on a shared output DLL. Reran API build after core build successfully.
+- HTML parser: balanced tags, one H1, unique IDs, valid local links/anchors, valid public Checker JSON, and source-backed seed identifiers. git diff --check passed.
+- No full solution regression, live HTTP/SMTP request, deployed database inspection, or browser visual check. This is a documentation-only change.
+
+### Remaining tasks
+
+None for the requested explanation. No commit or push performed.
+
+### Known risks
+
+- Production policy and route configuration can differ from checked-in demo seed data. The page identifies this boundary.
+- Existing untracked audit and acceptance artifacts predate this task; preserve them.
+- Use the supplied writing guidance as a style guide. No full ASD-STE100 dictionary compliance certification was performed.
+
+### Next-session prompt
+
+Open docs/portfolio-trade-happy-path.html. Read this checkpoint and verify Git status before further work. This task authorizes documentation only. Do not change fixtures, engine behavior, metadata, or deployed databases from this explanation.
+
+
 ## 2026-10-04 HTML workflow action developer onboarding
 
 ### Current goal

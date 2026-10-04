@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portfolio Trade: one successful workflow</title>
+  <style>
+    :root{color-scheme:light;--ink:#183044;--muted:#4a6070;--blue:#115b86;--line:#ccd9e1;--paper:#fff;--wash:#edf4f7}
+    *{box-sizing:border-box}body{margin:0;background:var(--wash);color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:1080px;margin:auto;padding:40px 28px 70px}header{margin-bottom:30px}h1{font-size:clamp(2rem,5vw,3.25rem);line-height:1.12;max-width:800px;margin:12px 0 18px}
+    h2{font-size:1.6rem;line-height:1.25;margin:0 0 18px}h3{font-size:1.18rem;margin:22px 0 8px}p{margin:10px 0}a{color:var(--blue);text-underline-offset:3px}
+    section{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:28px;margin:22px 0;scroll-margin-top:20px}
+    .eyebrow{font-size:.8rem;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}.lead{font-size:1.2rem;max-width:820px}
+    .note{border-left:4px solid var(--blue);padding:12px 18px;background:var(--wash);margin:18px 0}.muted,small{color:var(--muted)}
+    nav{display:flex;gap:16px;flex-wrap:wrap;margin:24px 0}code{font: .88em/1.5 Consolas,"Courier New",monospace;overflow-wrap:anywhere}
+    pre{background:#142b3b;color:#eef6fc;padding:20px;border-radius:8px;overflow:auto;font-size:.88rem;line-height:1.6}pre code{font-size:inherit;overflow-wrap:normal}
+    .route{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:20px 0}.route a{background:var(--wash);border:1px solid var(--line);border-top:4px solid var(--blue);border-radius:6px;padding:14px 10px;text-decoration:none;font-size:.92rem}
+    .route strong{display:block;margin-bottom:8px}.route code{display:block;margin-top:6px}.route a:last-child{border-top-color:#16734b}
+    .table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.94rem}th,td{text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid var(--line)}th{background:var(--wash)}
+    .columns{display:grid;grid-template-columns:1fr 1fr;gap:24px}.columns h3{margin-top:0}li{margin:8px 0}summary{cursor:pointer;color:var(--blue);font-weight:650}details{margin:18px 0}
+    .flow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0}.flow span{border:1px solid var(--line);padding:10px 14px;border-radius:6px;background:var(--wash)}.flow b{color:var(--blue)}
+    :focus-visible{outline:3px solid #d78a15;outline-offset:4px}
+    @media(max-width:760px){main{padding:24px 16px 45px}section{padding:22px 18px}.columns{grid-template-columns:1fr}.route{grid-template-columns:1fr}.route a{padding:12px}.route code{display:inline;margin-left:8px}}
+    @media print{body{background:white;font-size:11pt}main{max-width:none;padding:0}section{break-inside:avoid;border-radius:0}nav{display:none}pre{white-space:pre-wrap;color:black;background:#eee}.route{grid-template-columns:repeat(5,1fr)}a{color:inherit}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Portfolio Trade · One happy path</div>
+    <h1>How the engine moves one trade through the workflow</h1>
+    <p class="lead">Maker submits a trade request. Checker approves it. Trading Desk executes the trade. Client Service confirms fulfillment. The engine controls each handoff.</p>
+    <p>A <strong>happy path</strong> is a successful sequence without a return for correction.</p>
+    <nav aria-label="Page sections">
+      <a href="#example">The example</a><a href="#path">The path</a><a href="#inside">Inside one action</a><a href="#messages">Email and SLA</a><a href="#finish">Final records</a><a href="#sources">Source evidence</a>
+    </nav>
+  </header>
+
+  <section id="example">
+    <h2>One trade request</h2>
+    <p>ABC Capital requests a USD 1,000,000 purchase of a security. This business example explains the process. The engine does not calculate the trade amount.</p>
+    <p>The application identifies the trade as <code>PT-HAPPY-1001</code>. The engine identifies its workflow as <code>WF-PT-HAPPY-1001</code>.</p>
+    <p>A <strong>workflow instance</strong> is the engine record for this one trade request.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>People in this example</caption>
+        <thead><tr><th>Person</th><th>Role</th><th>Work</th></tr></thead>
+        <tbody>
+          <tr><td><code>maker1</code></td><td>Maker</td><td>Prepare and submit the request.</td></tr>
+          <tr><td><code>checker1</code></td><td>Checker</td><td>Review the request and select the desk.</td></tr>
+          <tr><td><code>trader1</code></td><td>Trading Desk</td><td>Execute the trade and record its execution.</td></tr>
+          <tr><td><code>bdrm1</code></td><td>BDRM Client Service</td><td>Confirm correct trade fulfillment.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>A <strong>role</strong> is a named permission group. BDRM Client Service is the sample role for final confirmation. This page calls it <strong>Client Service</strong>.</p>
+    <div class="note"><strong>The people perform the business work.</strong> The engine does not buy securities or settle trades. It controls state, tasks, deadlines, notifications, and history.</div>
+    <h3>Four engine terms</h3>
+    <ul>
+      <li>A <strong>state</strong> is the current workflow stage.</li>
+      <li>An <strong>action key</strong> is the stable code for a user decision. For example, <code>SubmitForChecker</code> means “submit for review.”</li>
+      <li>A <strong>task</strong> is a record of work for a role. A pending task still needs completion.</li>
+      <li><strong>Metadata</strong> is configuration in SQL Server. It defines states, actions, roles, tasks, deadlines, and notification rules.</li>
+    </ul>
+    <p><strong>SQL Server</strong> is the database system that stores these rules and workflow records. <strong>Seed data</strong> is the sample configuration that the repository supplies.</p>
+    <p>The instance has one current state. It can have at most one pending task.</p>
+  </section>
+
+  <section id="path">
+    <h2>The complete path</h2>
+    <p>Select a stage to read its handoff.</p>
+    <div class="route" aria-label="Workflow path">
+      <a href="#draft"><strong>1. Maker prepares</strong><code>Draft</code><small>Version 1 →</small></a>
+      <a href="#checker"><strong>2. Checker reviews</strong><code>CheckerReview</code><small>Version 2 →</small></a>
+      <a href="#trading"><strong>3. Trading Desk executes</strong><code>TradingDeskReview</code><small>Version 3 →</small></a>
+      <a href="#client"><strong>4. Client Service confirms</strong><code>BdrmClientServiceReview</code><small>Version 4 →</small></a>
+      <a href="#completed"><strong>5. Workflow ends</strong><code>Completed</code><small>Version 5</small></a>
+    </div>
+    <p>The <strong>instance version</strong> is a change counter. The engine increases it once for each state-changing action.</p>
+    <p>The <strong>definition version</strong> identifies the metadata set. It remains 1 throughout this example.</p>
+  </section>
+
+  <section id="draft">
+    <div class="eyebrow">Stage 1 · Draft · Instance version 1</div>
+    <h2>Maker prepares the request</h2>
+    <p>The application starts the <code>PortfolioTrade</code> workflow for <code>PT-HAPPY-1001</code>. The engine selects the active definition version.</p>
+    <p>The engine creates the instance in <code>Draft</code>. It sets status to <code>Active</code>. It records the starting user and time.</p>
+    <p>The public Start request supplies the Maker address under <code>notification.recipientInputs.originalMaker</code>. The engine stores this address for later notifications.</p>
+    <p>A <strong>participant</strong> is a recipient that the engine stores for the workflow lifetime. The seeded <code>originalMaker</code> participant is required and immutable. Immutable means later actions cannot replace it.</p>
+    <p>The instance has no pending task in <code>Draft</code>. Starting the instance does not create an action history row.</p>
+    <h3>Maker selects Submit</h3>
+    <p>The application sends <code>actionKey = SubmitForChecker</code>. The engine finds the matching transition in SQL Server.</p>
+    <p>A <strong>transition</strong> is a metadata rule for movement between states. This rule maps <code>Draft + SubmitForChecker + Maker</code> to <code>CheckerReview</code>.</p>
+    <ul>
+      <li>The engine moves the instance to <code>CheckerReview</code>.</li>
+      <li>It increases the instance version to 2.</li>
+      <li>It creates <code>CheckerReviewTask</code> for role <code>Checker</code>.</li>
+      <li>It starts the task deadline schedule.</li>
+      <li>It queues <code>WorkflowTaskAssigned</code> through <code>RouteCheckerAssignedOnSubmit</code>.</li>
+      <li>It records the action in history.</li>
+    </ul>
+    <p>Maker can also select <code>SaveDraft</code> before submission. That action saves console section data and records history. It keeps state and instance version unchanged.</p>
+  </section>
+
+  <section id="checker">
+    <div class="eyebrow">Stage 2 · CheckerReview · Instance version 2</div>
+    <h2>Checker approves the request</h2>
+    <p>Checker opens the request. The application gets <strong>workflow context</strong>: the current state, task, deadline status, and available actions.</p>
+    <p>Checker selects “Send to Trading Desk.” The application sends <code>CheckerSendToTradingDesk</code>.</p>
+    <p>Checker selects the Taxable desk. The application sends <code>assignedRoleKey = TradingDeskTaxable</code>. This value selects the role for the new task.</p>
+    <p>The application also sends <code>slaTargetDate = 2030-01-20</code>. The current Trading Desk policy requires this date.</p>
+    <ul>
+      <li>The engine completes <code>CheckerReviewTask</code> and its deadline schedule.</li>
+      <li>It moves the instance to <code>TradingDeskReview</code>.</li>
+      <li>It increases the instance version to 3.</li>
+      <li>It creates <code>TradingDeskReviewTask</code> for <code>TradingDeskTaxable</code>.</li>
+      <li>It calculates the new deadline from the target date and policy.</li>
+      <li>It queues <code>WorkflowTaskAssigned</code> through <code>RouteTradingDeskAssigned</code>.</li>
+      <li>It records the Checker action in history.</li>
+    </ul>
+    <p>The task belongs to the selected role. The engine leaves <code>AssignedUserId</code> null. Checker does not become the task assignee.</p>
+    <p>The selected desk controls task assignment and applicable recipient rules. The display value <code>deskName</code> controls email text only.</p>
+  </section>
+
+  <section id="trading">
+    <div class="eyebrow">Stage 3 · TradingDeskReview · Instance version 3</div>
+    <h2>Trading Desk records execution</h2>
+    <p>Trading Desk executes the trade through its business process. Then <code>trader1</code> selects “Trade Executed.”</p>
+    <p>The application sends <code>TradingTradeExecuted</code>. The seeded transition requires actor role <code>TradingDesk</code>.</p>
+    <p>The selected task role is <code>TradingDeskTaxable</code>. The actor role for this action remains <code>TradingDesk</code>. The upstream application supplies that trusted actor role.</p>
+    <ul>
+      <li>The engine completes <code>TradingDeskReviewTask</code> and its deadline schedule.</li>
+      <li>It moves the instance to <code>BdrmClientServiceReview</code>.</li>
+      <li>It increases the instance version to 4.</li>
+      <li>It creates <code>BdrmClientServiceReviewTask</code> for <code>BDRMClientService</code>.</li>
+      <li>It starts the new task deadline schedule.</li>
+      <li>It queues <code>WorkflowTaskAssigned</code> through <code>RouteBdrmAssigned</code>.</li>
+      <li>It records the execution action in history.</li>
+    </ul>
+    <p>The trade has an execution record. The workflow still needs Client Service confirmation.</p>
+  </section>
+
+  <section id="client">
+    <div class="eyebrow">Stage 4 · BdrmClientServiceReview · Instance version 4</div>
+    <h2>Client Service confirms fulfillment</h2>
+    <p>Client Service checks the trade result. Trading Desk executed the trade correctly. Settlement also completed correctly.</p>
+    <p><code>bdrm1</code> selects “Trade Fulfilled.” The application sends <code>BdrmTradeFulfilled</code>.</p>
+    <ul>
+      <li>The engine completes <code>BdrmClientServiceReviewTask</code> and its deadline schedule.</li>
+      <li>It moves the instance to <code>Completed</code>.</li>
+      <li>It increases the instance version to 5.</li>
+      <li>It sets instance status to <code>Completed</code> and records the completion time.</li>
+      <li>It queues <code>WorkflowCompleted</code> through <code>RouteWorkflowCompleted</code>.</li>
+      <li>It records the fulfillment action in history.</li>
+    </ul>
+  </section>
+
+  <section id="completed">
+    <div class="eyebrow">Stage 5 · Completed · Instance version 5</div>
+    <h2>The workflow has no remaining task</h2>
+    <p>The engine creates no new task or deadline schedule. Workflow context returns no available actions.</p>
+    <p>The engine keeps the instance, completed tasks, and history in SQL Server. The completion route sends the final confirmation to the stored Maker address.</p>
+    <p>This business object has one workflow lifetime. Another Start request for the same object returns <code>AlreadyExists</code>.</p>
+  </section>
+
+  <section id="inside">
+    <h2>How the engine processes one Checker action</h2>
+    <p><strong>Orchestration</strong> means that the engine coordinates several changes for one action. The Checker handoff shows this work.</p>
+    <div class="flow" aria-label="Action execution order">
+      <span>Application request</span><b aria-hidden="true">→</b><span>Metadata checks</span><b aria-hidden="true">→</b><span>SQL transaction</span><b aria-hidden="true">→</b><span>Result and context</span><b aria-hidden="true">→</b><span>Email delivery</span>
+    </div>
+    <h3>1. The application sends a decision</h3>
+    <p>An <strong>API</strong> is a callable software interface. The public API receives this body at <code>POST /v1/WorkflowAction</code>.</p>
+    <p><strong>JSON</strong> is a text format for structured data. This JSON shows the complete Checker body for the example.</p>
+    <pre><code>{
+  "workflowInstanceId": "WF-PT-HAPPY-1001",
+  "actionKey": "CheckerSendToTradingDesk",
+  "assignedRoleKey": "TradingDeskTaxable",
+  "slaTargetDate": "2030-01-20",
+  "notification": {
+    "recipientInputs": {
+      "selectedCcUsers": [
+        {
+          "userId": "checker1",
+          "emailAddress": "checker.person@example.test",
+          "displayName": "Checker One"
+        }
+      ]
+    },
+    "templateData": {
+      "submitterDisplayName": "Maker One",
+      "deskName": "Taxable",
+      "securityType": "Bond",
+      "accountShortName": "ABC",
+      "accountDisplayName": "ABC Capital",
+      "tradeLink": "https://application.example.test/trades/PT-HAPPY-1001"
+    }
+  }
+}</code></pre>
+    <p>This body assumes the instance already exists in <code>CheckerReview</code>. It also assumes Start captured <code>maker.person@example.test</code> as <code>originalMaker</code>.</p>
+    <p>The upstream application supplies <code>X-Workflow-UserId: checker1</code> and <code>X-Workflow-Roles: Checker</code>. The API reads actor identity from these trusted headers.</p>
+    <p>The request sends the chosen action. SQL metadata supplies the destination state.</p>
+
+    <h3>2. The engine checks persisted state and metadata</h3>
+    <p>The API loads business identity through the engine. It generates internal request identifiers. The engine reads the instance and its pending task.</p>
+    <p>It matches this transition in the instance definition version:</p>
+    <pre><code>FromStateKey         = CheckerReview
+ActionKey            = CheckerSendToTradingDesk
+AllowedRoleKey       = Checker
+ToStateKey           = TradingDeskReview
+TaskToCloseKey       = CheckerReviewTask
+TaskToCreateKey      = TradingDeskReviewTask
+NotificationRouteKey = RouteTradingDeskAssigned</code></pre>
+    <p>It checks the selected assignment role against allowed task roles. It requires the target date for the new task policy.</p>
+    <p>It resolves recipients from the notification route. A <strong>notification route</strong> selects message templates and recipient rules.</p>
+    <p>The engine uses the same generic procedure for the other three actions. Their transition rows supply different states, tasks, and routes.</p>
+
+    <h3>3. The engine commits the handoff</h3>
+    <p>A <strong>transaction</strong> groups database changes. The database commits the group together or rolls it back.</p>
+    <ol>
+      <li>Recheck the current state, pending task, and instance version inside the transaction.</li>
+      <li>Update the state to <code>TradingDeskReview</code>. Increase the version from 2 to 3.</li>
+      <li>Complete the Checker task. Record the actor, completion time, and closing action.</li>
+      <li>Complete its deadline schedule. Create the Trading Desk task and new schedule.</li>
+      <li>Store the message and recipient snapshot in <code>NotificationOutbox</code>.</li>
+      <li>Write the action history in <code>WorkflowAudit</code>.</li>
+      <li>Store the successful result in <code>IdempotencyRecord</code>. Commit the transaction.</li>
+    </ol>
+    <p>The <strong>outbox</strong> is a database queue of messages for delivery. An <strong>audit row</strong> records who performed an action and how the state changed.</p>
+    <p><strong>Idempotency</strong> prevents duplicate execution for the same internal request key and content. The engine can return the stored result for that key.</p>
+    <p>The public API generates a new internal key for each HTTP request. It does not expose the console replay key to callers.</p>
+    <p><strong>Optimistic concurrency</strong> checks that another action did not change the instance. A conflicting update cannot commit this handoff.</p>
+
+    <h3>4. The API returns the result and context</h3>
+    <p>The result reports the old state, new state, closed task, and created task. It also includes refreshed workflow context.</p>
+    <p>The context uses the submitting actor. Checker now sees <code>TradingDeskReview</code> and no available actions.</p>
+    <p>Trading Desk gets its own available actions when it opens the request.</p>
+    <div class="note"><strong>Form data has a separate owner.</strong> The public workflow API does not accept or save trade form fields. The calling application owns that data and its transaction design.</div>
+    <p>The console uses an internal <code>WorkflowActionEnvelope</code> fixture. That fixture includes <code>dataSave</code> and simulated actor roles.</p>
+    <p>On the console path, the engine saves an append-only <code>MockSectionData</code> row in the workflow transaction. Append-only means each save adds a row. The public API disables that mock save.</p>
+  </section>
+
+  <section id="messages">
+    <h2>How email and deadlines support the path</h2>
+    <div class="columns">
+      <div>
+        <h3>Email recipients</h3>
+        <p>The public path uses the current route rules. For the Checker example, the checked-in seed selects these recipients:</p>
+        <ul>
+          <li><strong>To:</strong> <code>taxable-trading-desk@example.test</code> and <code>taxable-trading-operations@example.test</code>.</li>
+          <li><strong>Cc:</strong> the stored Maker address and <code>checker.person@example.test</code>.</li>
+        </ul>
+        <p><strong>To</strong> identifies primary email recipients. <strong>Cc</strong> identifies copied recipients.</p>
+        <p>A <strong>snapshot</strong> is the exact recipient list stored for this action. The engine stores it on the task and outbox message.</p>
+        <p>The engine removes duplicate addresses without regard to letter case. To takes precedence over Cc.</p>
+        <p>The caller supplies the complete copied audience in <code>selectedCcUsers</code> for each action. The engine does not accumulate previous lists.</p>
+        <p>Later rule changes do not change existing snapshots. Deployed route rules can differ from the checked-in seed.</p>
+      </div>
+      <div>
+        <h3>Task deadlines</h3>
+        <p><strong>SLA</strong> means service-level agreement. Here, an SLA policy defines a task deadline and reminder schedule.</p>
+        <p>The checked-in demo seed gives Checker and Client Service two-minute deadlines. Production policies can use different durations.</p>
+        <p>The Trading Desk policy uses the supplied target date. It sets a due-today reminder at 09:00 in <code>America/New_York</code>.</p>
+        <p>For target date 2030-01-20, the task becomes overdue at 09:00 on 2030-01-21 in that timezone.</p>
+        <p>The engine stores the overdue threshold in <code>DueAtUtc</code>. <strong>UTC</strong> is Coordinated Universal Time.</p>
+        <p>The <code>run-sla</code> processor checks active schedules on pending tasks. It queues due reminders from policy metadata.</p>
+        <p>SLA reminders reuse the task recipient snapshot. A reminder does not move the workflow state.</p>
+      </div>
+    </div>
+    <h3>Delivery follows the database commit</h3>
+    <p>The public API attempts delivery of the new action messages after engine execution. The console uses <code>process-notification-outbox</code>.</p>
+    <p>The configured sender handles delivery. The default console sender prints the message. The SMTP sender sends email through a mail server.</p>
+    <p><strong>SMTP</strong> means Simple Mail Transfer Protocol. It is the protocol for sending email.</p>
+    <p>An email failure does not undo the committed workflow transition. The API can return <code>NotificationDeliveryFailed</code> after the state has changed.</p>
+    <p>The outbox retains failed messages for another delivery attempt. Workflow completion does not prove that every email reached a mailbox.</p>
+    <p>In this happy path, every person finishes before the task deadline. No overdue reminder is necessary.</p>
+  </section>
+
+  <section id="finish">
+    <h2>What SQL Server holds at the end</h2>
+    <p>For this path, assume one Start and four successful actions. Exclude the optional SaveDraft action and duplicate requests.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Expected records for the example</caption>
+        <thead><tr><th>Record</th><th>Final result</th></tr></thead>
+        <tbody>
+          <tr><td><code>WorkflowInstance</code></td><td>One instance. State <code>Completed</code>. Status <code>Completed</code>. Version 5.</td></tr>
+          <tr><td><code>WorkflowTask</code></td><td>Three completed tasks. Zero pending tasks.</td></tr>
+          <tr><td><code>WorkflowTaskSlaSchedule</code></td><td>Three completed schedules. Zero active schedules.</td></tr>
+          <tr><td><code>WorkflowAudit</code></td><td>Four action rows. Start has no action audit row.</td></tr>
+          <tr><td><code>NotificationOutbox</code></td><td>Four action messages. Three task assignments and one completion message.</td></tr>
+          <tr><td><code>IdempotencyRecord</code></td><td>Four successful action results.</td></tr>
+          <tr><td><code>WorkflowParticipant</code></td><td>The stored original Maker recipient.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>The action history tells the story</h3>
+    <pre><code>maker1   SubmitForChecker         Draft → CheckerReview
+checker1 CheckerSendToTradingDesk CheckerReview → TradingDeskReview
+trader1  TradingTradeExecuted     TradingDeskReview → BdrmClientServiceReview
+bdrm1    BdrmTradeFulfilled        BdrmClientServiceReview → Completed</code></pre>
+    <p>The four actions drive four handoffs. Each action uses metadata to coordinate the database changes.</p>
+  </section>
+
+  <section id="sources">
+    <h2>Source evidence</h2>
+    <p>This page follows the checked-in source reviewed on 2026-10-04. It does not report the configuration of a deployed database.</p>
+    <details>
+      <summary>Open the source map and console fixture note</summary>
+      <ul>
+        <li><a href="../PROJECT.md">PROJECT.md</a>: process rules and public contract boundaries.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs">PortfolioTradeSeedData.cs</a>: transitions, desk roles, policies, routes, and recipient rules.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs">StartWorkflowService.cs</a>: instance creation and participant capture.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs">WorkflowExecutionService.cs</a>: action checks and transaction changes.</li>
+        <li><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs">WorkflowActionService.cs</a>: public request mapping and delivery after execution.</li>
+        <li><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs">WorkflowActionRequest.cs</a>: accepted public action fields.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/WorkflowContext/WorkflowContextReader.cs">WorkflowContextReader.cs</a>: state, task, SLA, and available actions.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Sla/SlaScheduleCalculator.cs">SlaScheduleCalculator.cs</a>: date and duration calculations.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs">ProcessNotificationOutboxService.cs</a>: delivery and retry.</li>
+      </ul>
+      <p>The existing <a href="../samples/workflow-actions/08-bdrm-trade-fulfilled.json">final console fixture</a> expects instance version 6. It follows a rework loop.</p>
+      <p>A direct path reaches Client Service at version 4. A separate console fixture for this path must use <code>expectedInstanceVersion = 4</code>.</p>
+      <p>The public action body does not contain that console guard field. This explanation uses the public path and preserves the existing fixtures.</p>
+    </details>
+    <p class="muted">Writing guide: <a href="https://www.asd-ste100.org/STE_faq.html">ASD-STE100</a>. This page uses short sentences, active voice, and consistent technical terms.</p>
+  </section>
+</main>
+</body>
+</html>

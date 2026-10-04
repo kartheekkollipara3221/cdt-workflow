@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How workflow tables support the engine</title>
+  <style>
+    :root{color-scheme:light;--ink:#183044;--muted:#496170;--blue:#115b86;--line:#ccd9e1;--wash:#edf4f7;--green:#176e4f}
+    *{box-sizing:border-box}body{margin:0;background:var(--wash);color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:1140px;margin:auto;padding:40px 28px 70px}h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.15;max-width:850px;margin:12px 0 18px}
+    h2{font-size:1.6rem;line-height:1.25;margin:0 0 18px}h3{font-size:1.2rem;margin:24px 0 10px}p{margin:10px 0}a{color:var(--blue);text-underline-offset:3px}
+    section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px;margin:24px 0;scroll-margin-top:20px}.lead{font-size:1.2rem;max-width:850px}
+    .eyebrow{font-size:.8rem;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}nav{display:flex;gap:16px;flex-wrap:wrap;margin:24px 0}
+    .note{padding:14px 18px;border-left:4px solid var(--blue);background:var(--wash);margin:18px 0}.muted,small{color:var(--muted)}
+    code{font:.87em/1.5 Consolas,"Courier New",monospace;overflow-wrap:anywhere}pre{background:#142b3b;color:#eef6fc;padding:20px;border-radius:8px;overflow:auto;font-size:.87rem;line-height:1.6}pre code{font-size:inherit;overflow-wrap:normal}
+    .table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.94rem}th,td{text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid var(--line)}th{background:var(--wash)}caption{text-align:left;font-weight:650;margin:0 0 12px}
+    .map{display:grid;grid-template-columns:1fr auto .85fr auto 1.1fr;gap:12px;align-items:center;margin:22px 0}.box{border:1px solid var(--line);border-top:4px solid var(--blue);background:var(--wash);padding:18px;border-radius:7px}.box strong{display:block;margin-bottom:8px}.box code{display:block;margin:6px 0}.engine{border-top-color:var(--green)}.arrow{font-size:1.5rem;color:var(--blue)}
+    .pair{display:grid;grid-template-columns:1fr 1fr;gap:24px}.pair h3{margin-top:0}li{margin:8px 0}details{margin:18px 0}summary{cursor:pointer;font-weight:650;color:var(--blue)}:focus-visible{outline:3px solid #d78a15;outline-offset:4px}
+    @media(max-width:800px){main{padding:24px 16px 45px}section{padding:22px 18px}.map,.pair{grid-template-columns:1fr}.arrow{text-align:center;transform:rotate(90deg)}table{font-size:.9rem}}
+    @media print{body{background:white;font-size:10.5pt}main{padding:0;max-width:none}nav{display:none}section{border-radius:0}h2,h3{break-after:avoid}tr,.box{break-inside:avoid}pre{white-space:pre-wrap;color:black;background:#eee}a{color:inherit}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Workflow engine · Table support</div>
+    <h1>How the tables work together to run a workflow</h1>
+    <p class="lead">The engine reads rules from configuration tables. It records progress in runtime tables. Other tables support deadlines, messages, history, and duplicate protection.</p>
+    <p>The tables store rules and records. Engine code performs the work that connects them.</p>
+    <nav aria-label="Page sections">
+      <a href="#overview">Overall model</a><a href="#lifecycle">Engine operations</a><a href="#example">One action</a><a href="#configuration">Configuration tables</a><a href="#runtime">Runtime tables</a><a href="#links">Relationships</a><a href="#safety">Correctness</a>
+    </nav>
+  </header>
+
+  <section id="overview">
+    <h2>Start with two types of data</h2>
+    <p><strong>SQL Server</strong> is the database system. A <strong>table</strong> stores records with the same fields. A <strong>row</strong> is one record.</p>
+    <p><strong>Configuration data</strong> defines what a workflow permits. The engine calls this data <strong>metadata</strong>.</p>
+    <p><strong>Runtime data</strong> records what happens to a specific item. A <strong>workflow instance</strong> is the engine record for one item.</p>
+    <p>A <strong>definition version</strong> identifies a set of workflow rules. A <strong>task</strong> records work for a role.</p>
+    <p>A <strong>role</strong> is a named permission group. An <strong>SLA</strong> is a service-level agreement. Here, an SLA policy defines deadlines and reminder timing.</p>
+    <p>An <strong>outbox</strong> is a stored queue of complete messages. A database <strong>constraint</strong> is a rule that stored data must satisfy.</p>
+    <div class="map" role="img" aria-label="The engine reads configuration rules and writes runtime records.">
+      <div class="box"><strong>Configuration tables</strong><code>WorkflowTransitionDefinition</code><code>WorkflowTaskDefinition</code><code>SlaPolicy</code><code>NotificationRoute</code><small>Rules for many workflow instances.</small></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box engine"><strong>Engine code</strong><p>Check the action.<br>Apply the transition.<br>Commit the changes.</p></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><strong>Runtime tables</strong><code>WorkflowInstance</code><code>WorkflowTask</code><code>WorkflowTaskSlaSchedule</code><code>NotificationOutbox</code><small>Progress and work for one instance.</small></div>
+    </div>
+    <p>This is a data-use diagram. Its arrows do not represent database constraints.</p>
+    <div class="pair">
+      <div><h3>A task definition describes work</h3><p><code>WorkflowTaskDefinition</code> can define <code>CheckerReviewTask</code>. It specifies a default owner role and an SLA policy.</p></div>
+      <div><h3>A task records actual work</h3><p><code>WorkflowTask</code> records one Checker task for one trade. It stores the status, creation time, deadline, and completion evidence.</p></div>
+    </div>
+    <p>One definition can support many instances. Each instance has one current state and at most one pending task.</p>
+    <p>A <strong>state</strong> is the current workflow stage. A pending task still needs completion.</p>
+  </section>
+
+  <section id="lifecycle">
+    <h2>The tables support each engine operation</h2>
+    <p>The engine does not read every table for every operation. It uses the tables that support the current operation.</p>
+    <p>A <strong>transaction</strong> groups database changes. The database commits the group together or rolls it back.</p>
+    <p>A <strong>replay</strong> repeats a request with the same internal identity. Later sections explain how the engine prevents duplicate work.</p>
+    <p>An <strong>audit</strong> is a history record of a successful action.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>How the engine uses the database</caption>
+        <thead><tr><th>Operation</th><th>Main reads</th><th>Main writes</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Start a workflow</strong></td><td>Definition, definition version, states, participant definitions, and any existing instance.</td><td>A new <code>WorkflowInstance</code>. Required <code>WorkflowParticipant</code> rows on the public Start path.</td><td>The item has a workflow identity and initial state.</td></tr>
+          <tr><td><strong>Open the form</strong></td><td>Instance, version, state, pending task, task definition, active schedule, transitions, and actions.</td><td>None.</td><td>The engine returns the current work and permitted actions.</td></tr>
+          <tr><td><strong>Execute an action</strong></td><td>Replay record, instance, current task, and applicable configuration.</td><td>Instance, tasks, schedules, outbox, audit, and replay result. The console can also write mock section data.</td><td>The engine commits the handoff as one transaction.</td></tr>
+          <tr><td><strong>Check reminders</strong></td><td>Active schedules, pending tasks, active instances, routes, and original task messages.</td><td>Reminder rows in <code>NotificationOutbox</code>. Updated schedule timing.</td><td>The engine queues eligible reminders.</td></tr>
+          <tr><td><strong>Deliver messages</strong></td><td>Outbox rows. Linked schedule status for SLA messages.</td><td>Outbox claim, delivery status, retry count, or error.</td><td>The sender processes queued messages.</td></tr>
+          <tr><td><strong>Replay an internal request</strong></td><td><code>IdempotencyRecord</code>.</td><td>None for a matching successful replay.</td><td>The engine returns the stored result.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Workflow context</strong> is a response with the current state, task, SLA status, and available actions.</p>
+    <p>A Start request can include an initial action. In that case, Start also performs the action work in its transaction.</p>
+  </section>
+
+  <section id="example">
+    <h2>Watch the tables support one handoff</h2>
+    <p>Use the same trade from the <a href="portfolio-trade-happy-path.html">Portfolio Trade explanation</a>. Its instance is <code>WF-PT-HAPPY-1001</code>.</p>
+    <p>Checker sends the request to the Taxable desk. This <strong>action key</strong> identifies the decision: <code>CheckerSendToTradingDesk</code>.</p>
+    <h3>1. Runtime rows tell the engine where the item is</h3>
+    <pre><code>WorkflowInstance
+  WorkflowInstanceId          = WF-PT-HAPPY-1001
+  WorkflowDefinitionVersionId = the internal ID for definition version 1
+  CurrentStateKey             = CheckerReview
+  Status                      = Active
+  Version                     = 2
+
+WorkflowTask
+  WorkflowInstanceId = WF-PT-HAPPY-1001
+  TaskKey            = CheckerReviewTask
+  AssignedRoleKey    = Checker
+  Status             = Pending</code></pre>
+    <p>The engine uses persisted state as authority. The request supplies the action, selected desk role, target date, and notification inputs.</p>
+    <p>A <strong>notification route</strong> selects a message type, templates, and recipient rules. A <strong>template</strong> is message text with named placeholders.</p>
+    <p>A <strong>participant</strong> is a recipient that Start stores for the workflow lifetime.</p>
+    <h3>2. Configuration rows tell the engine what to do</h3>
+    <p>A <strong>transition</strong> is a rule for movement between states. The engine matches the current state, action key, actor role, and definition version.</p>
+    <pre><code>WorkflowTransitionDefinition
+  FromStateKey         = CheckerReview
+  ActionKey            = CheckerSendToTradingDesk
+  AllowedRoleKey       = Checker
+  ToStateKey           = TradingDeskReview
+  TaskToCloseKey       = CheckerReviewTask
+  TaskToCreateKey      = TradingDeskReviewTask
+  NotificationRouteKey = RouteTradingDeskAssigned</code></pre>
+    <ul>
+      <li><code>WorkflowStateDefinition</code> confirms the active destination state.</li>
+      <li><code>WorkflowTaskDefinition</code> describes the new Trading Desk task.</li>
+      <li><code>WorkflowTaskAssignmentRoleDefinition</code> permits <code>TradingDeskTaxable</code> as its selected owner role.</li>
+      <li><code>SlaPolicy</code> defines how the engine uses the target date.</li>
+      <li><code>NotificationRoute</code> supplies the message type and templates.</li>
+      <li><code>NotificationRecipientRule</code> selects the recipient sources for the selected desk.</li>
+      <li><code>WorkflowParticipant</code> supplies the stored original Maker address.</li>
+    </ul>
+    <h3>3. The engine commits the runtime changes</h3>
+    <p>A <strong>hash</strong> is a fingerprint of content. The engine uses a request hash to compare a replay with the original request.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Rows that change for this action</caption>
+        <thead><tr><th>Table</th><th>Engine change</th></tr></thead>
+        <tbody>
+          <tr><td><code>WorkflowInstance</code></td><td>Set state to <code>TradingDeskReview</code>. Increase <code>Version</code> from 2 to 3.</td></tr>
+          <tr><td><code>WorkflowTask</code></td><td>Complete the Checker task. Create a pending Trading Desk task for <code>TradingDeskTaxable</code>.</td></tr>
+          <tr><td><code>WorkflowTaskSlaSchedule</code></td><td>Complete the Checker schedule. Create the Trading Desk schedule from its policy and target date.</td></tr>
+          <tr><td><code>NotificationOutbox</code></td><td>Add the rendered task-assignment message and exact recipient list.</td></tr>
+          <tr><td><code>WorkflowAudit</code></td><td>Record the actor, action, previous state, new state, and time.</td></tr>
+          <tr><td><code>IdempotencyRecord</code></td><td>Store the internal request key, content hash, and successful result.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The engine rechecks current work inside the transaction. A conflicting change prevents this handoff from committing.</p>
+    <p>The engine reads configuration rows during this action. It does not change them as part of the handoff.</p>
+    <p>The next action uses the same procedure. Different transition rows supply the next state, task, and route.</p>
+  </section>
+
+  <section id="configuration">
+    <h2>The 12 configuration tables define the rules</h2>
+    <p><strong>Seed data</strong> is the sample configuration that the repository supplies. Portfolio Trade lives in seed data.</p>
+    <p>The generic engine uses these table structures for other workflows too.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Each configuration table answers an engine question</caption>
+        <thead><tr><th>Table</th><th>Question it answers</th><th>How the engine uses it</th></tr></thead>
+        <tbody>
+          <tr><td><code>WorkflowDefinition</code></td><td>Which workflow is this?</td><td>Identify the workflow by <code>WorkflowKey</code>. Determine its business object type.</td></tr>
+          <tr><td><code>WorkflowDefinitionVersion</code></td><td>Which rule set applies?</td><td>Select a definition version at Start. Store its internal ID on the instance.</td></tr>
+          <tr><td><code>WorkflowStateDefinition</code></td><td>Which stages exist?</td><td>Resolve state labels. Check active destinations. Use <code>IsTerminal</code> to complete an instance.</td></tr>
+          <tr><td><code>WorkflowActionDefinition</code></td><td>Which decisions exist?</td><td>Check action keys. Supply button, section, label, order, and reason hints for available actions.</td></tr>
+          <tr><td><code>WorkflowRoleDefinition</code></td><td>Which role keys belong to this workflow?</td><td>Define the role vocabulary. Support seed and metadata consistency checks.</td></tr>
+          <tr><td><code>WorkflowTransitionDefinition</code></td><td>What does this decision do here?</td><td>Match state, action, and allowed actor role. Select the destination, task changes, and notification route.</td></tr>
+          <tr><td><code>WorkflowTaskDefinition</code></td><td>What work should the new task represent?</td><td>Supply the task label, default owner role, and optional <code>SlaPolicyKey</code>.</td></tr>
+          <tr><td><code>WorkflowTaskAssignmentRoleDefinition</code></td><td>Which owner role may the caller select?</td><td>Validate <code>assignedRoleKey</code> for tasks with selectable ownership.</td></tr>
+          <tr><td><code>WorkflowParticipantDefinition</code></td><td>Which recipients must Start capture?</td><td>Define the participant key, required status, capture stage, single-or-many count, and immutability.</td></tr>
+          <tr><td><code>SlaPolicy</code></td><td>When does work become due or overdue?</td><td>Supply the calculation mode, duration or date rules, timezone, recurrence, and reminder routes.</td></tr>
+          <tr><td><code>NotificationRoute</code></td><td>Which message should this event produce?</td><td>Supply message type, subject template, text body, HTML body, and reminder subject prefix.</td></tr>
+          <tr><td><code>NotificationRecipientRule</code></td><td>Who should receive this route?</td><td>Select ordered primary and copied recipients from static addresses, stored participants, or declared request inputs.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Actor role and task owner have different purposes</h3>
+    <p><code>AllowedRoleKey</code> controls who can perform the transition. <code>AssignedRoleKey</code> controls the new task owner.</p>
+    <p>In the example, Checker performs the action. <code>TradingDeskTaxable</code> owns the new task.</p>
+    <p><code>WorkflowRoleDefinition</code> does not map users to roles. The upstream application supplies trusted actor roles.</p>
+    <h3>Definition versions keep lookups together</h3>
+    <p>Most configuration rows carry <code>WorkflowDefinitionVersionId</code>. The engine uses that ID with each state, action, task, policy, or route key.</p>
+    <p><code>NotificationRecipientRule</code> uses <code>NotificationRouteId</code>. The route supplies the definition version.</p>
+    <p>An existing instance keeps its selected definition-version ID. A newer definition version does not automatically move that instance to new rules.</p>
+    <p>A definition version is not an immutable database snapshot. Editing rows within that version can affect later reads.</p>
+  </section>
+
+  <section id="runtime">
+    <h2>The eight runtime tables record the work</h2>
+    <p>A <strong>snapshot</strong> is a stored copy of values at a specific time. Tasks, schedules, and messages preserve selected values this way.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Each runtime table preserves a different fact</caption>
+        <thead><tr><th>Table</th><th>Fact it stores</th><th>How the engine uses it</th></tr></thead>
+        <tbody>
+          <tr><td><code>WorkflowInstance</code></td><td>Where the item is now.</td><td>Store current state, status, definition version, business identity, starting actor, timestamps, and change counter.</td></tr>
+          <tr><td><code>WorkflowTask</code></td><td>Which work exists for this item.</td><td>Track pending and completed tasks, owner roles, deadlines, closing evidence, and notification snapshots.</td></tr>
+          <tr><td><code>WorkflowParticipant</code></td><td>Which recipients Start captured.</td><td>Store participant keys, addresses, optional user IDs, display names, and order for this instance.</td></tr>
+          <tr><td><code>WorkflowTaskSlaSchedule</code></td><td>Which deadline schedule applies to this task.</td><td>Store copied timing settings, calculated dates, next reminder time, schedule version, and lifecycle status.</td></tr>
+          <tr><td><code>NotificationOutbox</code></td><td>Which messages need delivery or already completed delivery.</td><td>Store message content, recipient list, processing claim, retry evidence, and reminder occurrence identity.</td></tr>
+          <tr><td><code>WorkflowAudit</code></td><td>Who successfully performed each action.</td><td>Store action, actor, role, previous state, next state, reason, and time.</td></tr>
+          <tr><td><code>IdempotencyRecord</code></td><td>Which internal request already succeeded.</td><td>Compare request content and return the saved result without repeating its database effects.</td></tr>
+          <tr><td><code>MockSectionData</code></td><td>Which sample section data the console saved.</td><td>Add a row for each successful, new console save. Identify rows by business object and section.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>An <strong>API</strong> is a callable software interface. The public workflow API does not save form fields in <code>MockSectionData</code>.</p>
+    <p>The calling application owns its form data.</p>
+    <p><code>NotificationOutbox</code> also supports messages without a workflow instance. Those messages use <code>NotificationOccurrenceKey</code> as their unique event identity.</p>
+    <p><code>WorkflowAudit</code> records successful actions. Start stores its actor and time on the instance. Failed actions do not create failure audit rows.</p>
+    <p><code>SaveDraft</code> can create an audit row without changing state. Its previous and next states are the same.</p>
+  </section>
+
+  <section id="links">
+    <h2>How the engine connects the rows</h2>
+    <p>A <strong>key</strong> identifies a record or a named configuration item. An internal <code>Id</code> and a public workflow key serve different purposes.</p>
+    <p>A <strong>foreign key</strong> is a database constraint that requires a referenced row to exist. Some engine relationships use key lookups instead.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Main lookup paths</caption>
+        <thead><tr><th>From</th><th>To</th><th>How the engine connects them</th></tr></thead>
+        <tbody>
+          <tr><td>Definition version</td><td>Workflow definition</td><td><code>WorkflowDefinitionId → WorkflowDefinition.Id</code>.</td></tr>
+          <tr><td>Instance</td><td>Definition version</td><td><code>WorkflowDefinitionVersionId → WorkflowDefinitionVersion.Id</code>.</td></tr>
+          <tr><td>Instance and task</td><td>State and task definitions</td><td>Match the instance definition-version ID plus <code>CurrentStateKey</code> or <code>TaskKey</code>.</td></tr>
+          <tr><td>Transition</td><td>States, action, role, tasks, and route</td><td>Match its named keys within the same definition version.</td></tr>
+          <tr><td>Task definition</td><td>SLA policy</td><td>Match definition-version ID plus <code>SlaPolicyKey</code>.</td></tr>
+          <tr><td>Recipient rule</td><td>Notification route</td><td><code>NotificationRouteId → NotificationRoute.Id</code>.</td></tr>
+          <tr><td>Task, participant, audit, and replay result</td><td>Instance</td><td>Match the string <code>WorkflowInstanceId</code>.</td></tr>
+          <tr><td>SLA schedule</td><td>Task</td><td><code>WorkflowTaskId → WorkflowTask.Id</code>.</td></tr>
+          <tr><td>Outbox message</td><td>Instance, task, and optional SLA schedule</td><td>Use <code>WorkflowInstanceId</code>, <code>WorkflowTaskId</code>, and <code>WorkflowTaskSlaScheduleId</code>.</td></tr>
+          <tr><td>Mock section data</td><td>Application item</td><td>Match <code>BusinessObjectType</code> and <code>BusinessObjectId</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>These are lookup paths. They do not all have foreign-key constraints. <code>WorkflowDbContext</code> defines the actual constraints.</p>
+    <p><strong>EF Core</strong> is the .NET database library. <code>WorkflowDbContext</code> maps its record classes to tables in schema <code>dbo</code>.</p>
+    <p>A <strong>schema</strong> is a namespace for database objects. For example, the full instance table name is <code>dbo.WorkflowInstance</code>.</p>
+    <h3>Three version fields answer three different questions</h3>
+    <ul>
+      <li><code>WorkflowDefinitionVersion.VersionNumber</code>: Which numbered rule set applies?</li>
+      <li><code>WorkflowInstance.Version</code>: How many state changes has this instance committed, after its initial version 1?</li>
+      <li><code>WorkflowTaskSlaSchedule.ScheduleVersion</code>: Which deadline schedule revision belongs to this task?</li>
+    </ul>
+    <p>The internal definition-version ID identifies a row. It is not the same value as <code>VersionNumber</code>.</p>
+  </section>
+
+  <section id="snapshots">
+    <h2>Stored schedules and recipients preserve task behavior</h2>
+    <div class="pair">
+      <div>
+        <h3>Policy becomes a task schedule</h3>
+        <p><code>SlaPolicy</code> defines timing rules. The engine copies applicable settings into <code>WorkflowTaskSlaSchedule</code> and calculates actual times.</p>
+        <p>The active schedule drives reminder scans. <code>WorkflowTask.DueAtUtc</code> mirrors its overdue threshold for task display.</p>
+        <p><strong>UTC</strong> means Coordinated Universal Time. Fields ending in <code>Utc</code> store timestamps on that time basis.</p>
+        <p>A changed application target date can supersede the active schedule. Superseded means a newer schedule replaces it.</p>
+        <p>The engine creates the next schedule version and cancels undelivered reminders for the old schedule.</p>
+        <p>Task completion marks its active schedule <code>Completed</code>. The task keeps its historical deadline.</p>
+      </div>
+      <div>
+        <h3>Recipient rules become a message snapshot</h3>
+        <p><code>NotificationRecipientRule</code> chooses sources. A stored participant or current request input supplies values for dynamic sources.</p>
+        <p>The engine stores the final ordered list in <code>WorkflowTask.NotificationRecipientsJson</code> and <code>NotificationOutbox.NotificationRecipientsJson</code>.</p>
+        <p><strong>JSON</strong> is a text format for structured data. These fields store primary recipients and copied recipients as arrays.</p>
+        <p>SLA reminders copy the task recipient list. They do not resolve a new audience from changed recipient rules.</p>
+        <p>The monitor also copies the original task message body. It adds the configured reminder prefix to the original subject.</p>
+        <p>Changing route rules does not rewrite existing task or outbox recipient snapshots.</p>
+      </div>
+    </div>
+    <p><code>WorkflowParticipant</code> stores workflow-lifetime recipients. A task snapshot stores the final audience for one task. They serve different time spans.</p>
+  </section>
+
+  <section id="safety">
+    <h2>Tables help the engine prevent conflicting work</h2>
+    <p>A <strong>unique index</strong> prevents duplicate values for a specified set of columns. A filtered unique index applies that rule to selected rows.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Database rules and engine checks work together</caption>
+        <thead><tr><th>Protection</th><th>Table support</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>One workflow lifetime per item.</td><td>Unique workflow key, business object type, and business object ID in <code>WorkflowInstance</code>.</td><td>A completed instance still occupies that identity.</td></tr>
+          <tr><td>One pending task per instance.</td><td>Unique instance ID in <code>WorkflowTask</code>, filtered to <code>Status = Pending</code>.</td><td>The database rejects a second pending task.</td></tr>
+          <tr><td>One active schedule per task.</td><td>Unique task ID in <code>WorkflowTaskSlaSchedule</code>, filtered to <code>Status = Active</code>.</td><td>The database rejects competing active schedules.</td></tr>
+          <tr><td>No duplicate action execution for one internal key.</td><td>Unique <code>IdempotencyKey</code> in <code>IdempotencyRecord</code>, plus <code>RequestHash</code> and <code>ResultJson</code>.</td><td>Matching content returns the stored result. Different content returns a conflict.</td></tr>
+          <tr><td>No duplicate SLA message for one occurrence.</td><td>Unique schedule ID, exact UTC occurrence time, and reminder kind in <code>NotificationOutbox</code>.</td><td>Repeated or concurrent scans cannot add the same occurrence twice.</td></tr>
+          <tr><td>No conflicting instance update.</td><td><code>WorkflowInstance.Version</code> in the engine update condition.</td><td>The update succeeds only if the persisted version still matches.</td></tr>
+          <tr><td>No competing schedule update.</td><td>Database-generated <code>WorkflowTaskSlaSchedule.RowVersion</code>.</td><td>EF Core detects a changed schedule row during an update.</td></tr>
+          <tr><td>One active processing claim for a message.</td><td>Outbox status, <code>ProcessingToken</code>, and <code>ProcessingStartedAtUtc</code>.</td><td>A processor claims a row before delivery. Another processor can recover an expired claim.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Idempotency</strong> means that replay of the same identified request does not repeat its effects.</p>
+    <p><strong>Optimistic concurrency</strong> means checking that a row did not change before an update. The engine combines these checks with database rules.</p>
+    <p>The public API generates a new internal request key per HTTP request. Its public body does not accept the console replay key.</p>
+    <h3>Message delivery has its own lifecycle</h3>
+    <pre><code>NotificationOutbox.Status
+  Pending → Processing → Sent
+               │
+               └─ delivery failure → Pending
+
+  Undelivered SLA message → Cancelled
+  when its schedule becomes inactive</code></pre>
+    <p>The sender records retry count and error details on delivery failure. The workflow transition remains committed.</p>
+    <p>One outbox row represents one complete message. The engine does not track a separate retry lifecycle for each recipient.</p>
+    <p>A processing claim prevents ordinary concurrent delivery. It does not guarantee exactly-once delivery across mail-server and database failures.</p>
+  </section>
+
+  <section id="source">
+    <h2>Use this model when you inspect a workflow</h2>
+    <ol>
+      <li>Read <code>WorkflowInstance</code> to find the current state and definition-version ID.</li>
+      <li>Read its pending <code>WorkflowTask</code> to find the current work.</li>
+      <li>Read matching definition rows to understand the permitted next actions.</li>
+      <li>Read the active schedule to understand deadlines and reminders.</li>
+      <li>Read audit rows to understand successful actions.</li>
+      <li>Read outbox rows to understand message delivery.</li>
+    </ol>
+    <p>This page covers the 20 core tables mapped by <code>WorkflowDbContext</code>. The source review date is 2026-10-04.</p>
+    <details>
+      <summary>Source evidence</summary>
+      <ul>
+        <li><a href="../PROJECT.md">PROJECT.md</a>: generic workflow requirements and supported lifecycle.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs">WorkflowDbContext.cs</a>: all 20 table mappings, indexes, and constraints.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs">PortfolioTradeSeedData.cs</a>: example configuration rows.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs">StartWorkflowService.cs</a>: instance creation and definition selection.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs">WorkflowExecutionService.cs</a>: transition lookup, transaction changes, and replay.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/WorkflowContext/WorkflowContextReader.cs">WorkflowContextReader.cs</a>: form-open reads and available actions.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs">WorkflowSlaSynchronizationService.cs</a>: schedule creation, replacement, and completion.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs">RunSlaService.cs</a>: reminder scans and original message reuse.</li>
+        <li><a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs">ProcessNotificationOutboxService.cs</a>: claims, delivery, retries, and suppression.</li>
+        <li><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs">WorkflowActionService.cs</a>: public action mapping and request identity.</li>
+      </ul>
+    </details>
+    <p class="muted">Writing guide: <a href="https://www.asd-ste100.org/STE_faq.html">ASD-STE100</a>. This page uses short sentences, active voice, and consistent technical terms.</p>
+  </section>
+</main>
+</body>
+</html>
