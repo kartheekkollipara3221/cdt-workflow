@@ -23,7 +23,7 @@ authorize fixes or establish that historical load measurements describe target c
 | L6 | Open: SLA scan change-tracker growth. |
 | L7 | Open: local SQL defaults and deployment configuration. |
 | L8 | Open: acceptance tool has no explicit solution entry (it remains a test project dependency). |
-| L9 | Open: review package patch levels. The old report's latest-version claim is historical. |
+| L9 | Known Pkcs vulnerability resolved on 2026-10-14: explicit 10.0.13 reference; core/API/tool vulnerability scans clear. Broader package-lifecycle review remains separate. [Verification](../.planning/quick/261014-p51-patch-vulnerable-pkcs-dependency-and-ver/261014-p51-SUMMARY.md). |
 | F07 | Open: assignment role missing from request hash. |
 | F08 | Open: action reason not accepted/enforced consistently. |
 | F09 | Open: SLA edit versus task-completion race. |
@@ -47,6 +47,11 @@ build tests fail with NU1902/NU1903 for the existing transitive
 pass; a fully clean build is not verified passing. Track this with L9. Logs are in
 `C:/projects/cdt-workflow-archive/20261014-cleanup/verification/`. No package or
 warning-policy changes were made during cleanup.
+
+Subsequent package correction on 2026-10-14 resolves that cleanup limitation:
+Pkcs now resolves to 10.0.13, both previously failing fresh-build tests pass,
+and all 564 final core/API/local SMTP tests pass. See the L9 verification above.
+Historical cleanup and C06 reports retain their original measured results.
 
 - [SQMS Bid return to Seller Review](../.planning/paused/sqms-bid-return-to-seller-review/.continue-here.md): recipient/CC choice and existing-completed-Bid scope remain unanswered.
 - [CDT Trading Desk recipients](../.planning/paused/cdt-trading-desk-recipients/.continue-here.md).

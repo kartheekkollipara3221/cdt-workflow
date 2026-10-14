@@ -131,3 +131,15 @@ closure required. Code commit: `ad47084`. Publication to
 seed, sample and supported workflow tests passed. Both no-restore builds have
 zero warnings/errors. See the task SUMMARY and CODEX_HANDOFF.md. Other review
 fixes remain paused. Production metadata repair and deployment are not performed.
+
+## Current package security correction - 2026-10-14
+
+Patched System.Security.Cryptography.Pkcs to 10.0.13 via an explicit reference in
+Infrastructure. Both MimeKit and SqlClient paths resolve the patched version.
+Quick task: `quick/261014-p51-patch-vulnerable-pkcs-dependency-and-ver/261014-p51-SUMMARY.md`.
+Forced restores and builds passed with warnings as errors; core/API/tool audits
+report no vulnerable packages. Final core 491/491, API 68/68 and local SMTP 5/5
+passed. Both earlier fresh-build failures are resolved. First SMTP attempt hit
+a capture-server readiness timeout; verified readiness and rerun passed without
+code changes. The task-owned capture server is stopped. Seed/sample/branch/demo
+checks passed. No push/deployment performed; all other review fixes remain paused.
