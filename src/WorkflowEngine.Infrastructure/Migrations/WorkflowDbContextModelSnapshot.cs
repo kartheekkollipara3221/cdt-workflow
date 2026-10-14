@@ -165,6 +165,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<DateTimeOffset?>("NextAttemptAtUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("NotificationOccurrenceKey")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
@@ -237,6 +240,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.HasIndex("WorkflowTaskSlaScheduleId", "SlaOccurrenceAtUtc", "SlaReminderKind")
                         .IsUnique()
                         .HasFilter("[WorkflowTaskSlaScheduleId] IS NOT NULL AND [SlaOccurrenceAtUtc] IS NOT NULL");
+
+                    b.HasIndex("Status", "NextAttemptAtUtc", "CreatedAtUtc", "Id")
+                        .HasDatabaseName("IX_NotificationOutbox_RetryEligibility");
 
                     b.ToTable("NotificationOutbox", "dbo", t =>
                         {

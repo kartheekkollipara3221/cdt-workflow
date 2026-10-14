@@ -24,6 +24,7 @@ public sealed class NotificationOutbox
     public string? ProcessingToken { get; set; }
     public DateTimeOffset? ProcessingStartedAtUtc { get; set; }
     public int RetryCount { get; set; }
+    public DateTimeOffset? NextAttemptAtUtc { get; set; }
     public string? LastError { get; set; }
     public DateTimeOffset? SentAtUtc { get; set; }
     public DateTimeOffset? CancelledAtUtc { get; set; }

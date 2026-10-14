@@ -1,5 +1,10 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using WorkflowEngine.Infrastructure.DependencyInjection;
 using MimeKit;
 using WorkflowEngine.Application.Commands;
 using WorkflowEngine.Application.Contracts;
@@ -15,6 +20,222 @@ public sealed class Phase5OutboxTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
     private const string RecipientSnapshot = """{"toEmailAddresses":["first@example.test","second@example.test"],"ccEmailAddresses":["manager@example.test","operations@example.test"]}""";
+
+    [Fact]
+    public async Task ConfiguredBatchLeavesRemainingRowsForTheNextRun()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        for (var i = 0; i < 5; i++)
+        {
+            AddNotification(dbContext, $"WF-BATCH-{i}", $"Message {i}", Now.AddMinutes(i));
+        }
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+        using var provider = ConfiguredProvider(dbContext, sender);
+        var processor = provider.GetRequiredService<IProcessNotificationOutboxService>();
+
+        var first = await processor.ProcessAsync(CancellationToken.None);
+        Assert.Equal(2, first.PendingCount);
+        Assert.Equal(["Message 0", "Message 1"], sender.SentRows.Select(row => row.Subject));
+        Assert.Equal(3, dbContext.NotificationOutbox.Count(row => row.Status == "Pending"));
+        await processor.ProcessAsync(CancellationToken.None);
+        await processor.ProcessAsync(CancellationToken.None);
+        Assert.Equal(5, sender.SentRows.Count);
+    }
+
+    [Fact]
+    public async Task ConfiguredRetryDoesNotRetryPoisonRowOnImmediateNextRun()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-RETRY", "Poison", Now).NotificationRecipientsJson = "{";
+        dbContext.SaveChanges();
+        using var provider = ConfiguredProvider(dbContext, new RecordingNotificationSender());
+        var processor = provider.GetRequiredService<IProcessNotificationOutboxService>();
+        Assert.Single((await processor.ProcessAsync(CancellationToken.None)).Failures);
+        var second = await processor.ProcessAsync(CancellationToken.None);
+        Assert.Empty(second.Failures);
+        Assert.Equal(0, second.PendingCount);
+    }
+
+    private static ServiceProvider ConfiguredProvider(WorkflowDbContext dbContext, INotificationSender sender)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:DefaultConnection"] = dbContext.Database.GetConnectionString(),
+            ["Notifications:Sender"] = "NoOp",
+            ["Notifications:Outbox:BatchSize"] = "2",
+            ["Notifications:Outbox:RetryInitialDelaySeconds"] = "60",
+            ["Notifications:Outbox:RetryMaxDelaySeconds"] = "3600"
+        }).Build();
+        var services = new ServiceCollection().AddWorkflowInfrastructure(configuration);
+        services.AddSingleton(dbContext);
+        services.AddSingleton(sender);
+        services.AddSingleton<TimeProvider>(new FixedTimeProvider(Now));
+        return services.BuildServiceProvider();
+    }
+
+    [Fact]
+    public async Task RetryDelayDoublesCapsAndSurvivesNewProcessorThenRecovers()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var row = AddNotification(dbContext, "WF-BACKOFF", "Poison", Now);
+        row.NotificationRecipientsJson = "{";
+        dbContext.SaveChanges();
+        var options = new OutboxProcessingOptions(1, 60, 3600);
+        var clock = Now;
+        for (var attempt = 0; attempt < 8; attempt++)
+        {
+            await using var context = CreateDbContext();
+            var processor = new ProcessNotificationOutboxService(context, new RecordingNotificationSender(), new FixedTimeProvider(clock), options);
+            Assert.Single((await processor.ProcessAsync(CancellationToken.None)).Failures);
+            var persisted = context.NotificationOutbox.Single();
+            var next = clock.AddSeconds(Math.Min(60 * Math.Pow(2, attempt), 3600));
+            Assert.Equal(next, persisted.NextAttemptAtUtc);
+            Assert.Equal(attempt + 1, persisted.RetryCount);
+            Assert.Equal("Pending", persisted.Status);
+            Assert.Null(persisted.ProcessingToken);
+            var early = new ProcessNotificationOutboxService(context, new RecordingNotificationSender(), new FixedTimeProvider(next.AddTicks(-1)));
+            Assert.Equal(0, (await early.ProcessAsync(CancellationToken.None)).PendingCount);
+            clock = next;
+        }
+        dbContext.ChangeTracker.Clear();
+        var repaired = dbContext.NotificationOutbox.Single();
+        repaired.NotificationRecipientsJson = RecipientSnapshot;
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+        await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(clock), options).ProcessAsync(CancellationToken.None);
+        Assert.Single(sender.SentRows);
+        dbContext.ChangeTracker.Clear();
+        Assert.Null(dbContext.NotificationOutbox.Single().NextAttemptAtUtc);
+        Assert.Equal("Sent", dbContext.NotificationOutbox.Single().Status);
+        Assert.Equal(8, dbContext.NotificationOutbox.Single().RetryCount);
+    }
+
+    [Fact]
+    public async Task DeferredPoisonRowDoesNotStarveLaterHealthyRowsInSingleRowBatches()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-BAD", "Poison", Now).NotificationRecipientsJson = "{";
+        AddNotification(dbContext, "WF-GOOD", "Healthy", Now);
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+        var processor = new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now), new OutboxProcessingOptions(1, 60));
+        Assert.Single((await processor.ProcessAsync(CancellationToken.None)).Failures);
+        Assert.Single((await processor.ProcessAsync(CancellationToken.None)).Processed);
+        Assert.Equal("Healthy", Assert.Single(sender.SentRows).Subject);
+    }
+
+    [Fact]
+    public async Task AtomicClaimRechecksRetryTimeChangedAfterCandidateSelection()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-RACE-1", "First", Now);
+        var second = AddNotification(dbContext, "WF-RACE-2", "Second", Now);
+        dbContext.SaveChanges();
+        var sender = new BlockingNotificationSender();
+        var run = new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now), new OutboxProcessingOptions(2, 60))
+            .ProcessAsync(CancellationToken.None);
+        await sender.WaitForSendAsync();
+        try
+        {
+            await using var other = CreateDbContext();
+            await other.NotificationOutbox.Where(row => row.Id == second.Id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.NextAttemptAtUtc, Now.AddMinutes(1)));
+        }
+        finally { sender.Release(); }
+        var result = await run;
+        Assert.Single(result.Processed);
+        Assert.Single(sender.SentRows);
+        Assert.Single(result.Warnings);
+    }
+
+    [Fact]
+    public async Task BatchBoundsActiveClaimWarningsAndExpiredLeaseStillRecovers()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        for (var i = 0; i < 5; i++)
+        {
+            var row = AddNotification(dbContext, $"WF-CLAIM-{i}", $"Claim {i}", Now);
+            row.Status = "Processing";
+            row.ProcessingToken = $"owner-{i}";
+            row.ProcessingStartedAtUtc = Now;
+        }
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+        var options = new OutboxProcessingOptions(2, 60);
+        var active = await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now), options).ProcessAsync(CancellationToken.None);
+        Assert.Equal(2, active.Warnings.Count);
+        Assert.Empty(sender.SentRows);
+        var expired = await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now.AddMinutes(15)), options).ProcessAsync(CancellationToken.None);
+        Assert.Equal(2, expired.Processed.Count);
+        Assert.Equal(3, dbContext.NotificationOutbox.Count(row => row.Status == "Processing"));
+    }
+
+    [Fact]
+    public async Task UncertainDeliveryCanRepeatOnlyWhenRetryBecomesDue()
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddNotification(dbContext, "WF-UNCERTAIN", "Uncertain", Now);
+        dbContext.SaveChanges();
+        var sender = new AcceptedThenFailedSender();
+        var options = new OutboxProcessingOptions(1, 60);
+        var first = new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now), options);
+        Assert.Single((await first.ProcessAsync(CancellationToken.None)).Failures);
+        Assert.Equal(0, (await first.ProcessAsync(CancellationToken.None)).PendingCount);
+        await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now.AddMinutes(1)), options).ProcessAsync(CancellationToken.None);
+        Assert.Equal(2, sender.Accepted.Count);
+        Assert.Equal(sender.Accepted[0], sender.Accepted[1]);
+    }
+
+    private sealed class AcceptedThenFailedSender : INotificationSender
+    {
+        public string SenderName => "Uncertain";
+        public List<long> Accepted { get; } = [];
+        public Task SendAsync(NotificationDelivery notification, CancellationToken cancellationToken)
+        {
+            Accepted.Add(notification.Id);
+            if (Accepted.Count == 1)
+                throw new IOException("Simulated connection loss after acceptance");
+            return Task.CompletedTask;
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdditiveRetryUpgradePreservesExistingActiveWorkflowsAndOutbox(bool manualSql)
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var row = AddNotification(dbContext, "WF-UPGRADE", "Preserved", Now);
+        row.RetryCount = 3;
+        row.LastError = "Previous failure";
+        dbContext.SaveChanges();
+        var id = row.Id;
+        await dbContext.GetService<IMigrator>().MigrateAsync("20260820200000_AddNotificationOccurrenceKey");
+        if (manualSql)
+        {
+            var path = Path.Combine(SqmsDatabasePackageTests.RepositoryRoot(), "sql", "upgrades", "20261014_outbox_retry_scheduling.sql");
+            await SqmsDatabasePackageTests.ExecuteScriptAsync(dbContext.Database.GetConnectionString()!, path);
+            await SqmsDatabasePackageTests.ExecuteScriptAsync(dbContext.Database.GetConnectionString()!, path);
+        }
+        else
+        {
+            await dbContext.Database.MigrateAsync();
+        }
+        dbContext.ChangeTracker.Clear();
+        var preserved = dbContext.NotificationOutbox.Single();
+        Assert.Equal(id, preserved.Id);
+        Assert.Equal("Pending", preserved.Status);
+        Assert.Equal("Preserved", preserved.Subject);
+        Assert.Equal(RecipientSnapshot, preserved.NotificationRecipientsJson);
+        Assert.Equal(3, preserved.RetryCount);
+        Assert.Equal("Previous failure", preserved.LastError);
+        Assert.Null(preserved.NextAttemptAtUtc);
+        Assert.Equal("Active", dbContext.WorkflowInstances.Single().Status);
+        var result = await new ProcessNotificationOutboxService(dbContext, new RecordingNotificationSender(), new FixedTimeProvider(Now), new OutboxProcessingOptions(100, 60))
+            .ProcessAsync(CancellationToken.None);
+        Assert.Single(result.Processed);
+    }
 
     [Fact]
     public async Task ProcessNotificationOutboxSendsPendingRowsInCreatedThenIdOrder()

@@ -419,6 +419,8 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.SlaOccurrenceDate).HasColumnType("date");
             entity.Property(row => row.SlaReminderKind).HasMaxLength(30);
             entity.Property(row => row.CancellationReason).HasMaxLength(500);
+            entity.HasIndex(row => new { row.Status, row.NextAttemptAtUtc, row.CreatedAtUtc, row.Id })
+                .HasDatabaseName("IX_NotificationOutbox_RetryEligibility");
             entity.HasIndex(row => new
             {
                 row.WorkflowTaskSlaScheduleId,

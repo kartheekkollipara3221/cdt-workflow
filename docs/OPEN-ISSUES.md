@@ -10,7 +10,7 @@ authorize fixes or establish that historical load measurements describe target c
 |---|---|
 | D02 / F06 | Open: SMTP failure can return an error after state is saved. Review dispatch and retry behavior. [Tracking](../.planning/defects/D02-email-in-request-load.md). |
 | D03 | Understood: business failures return HTTP 500. Any changed status semantics require a new v2 endpoint. |
-| D04 | Open: outbox retry limit, backoff, and dead-letter handling. F05 already prevents one failed message from blocking later messages. |
+| D04 / C13 | Optional batch limits and durable exponential backoff implemented and verified on 2026-10-14. Enable explicitly after coordinated schema/consumer deployment. SMTP remains at least once; maximum attempts/dead-letter policy remains an owner decision. [Rollout](OUTBOX_RETRY_ROLLOUT.md). |
 | D05 | Open: add API solution coverage to CI. |
 | D06 | Open, Major: async operations, cancellation, and load limits. [Tracking](../.planning/defects/D06-sync-engine-no-cancellation.md). |
 | D09 | Open, Major: transactional seed updates and workflow-version publication. [Tracking](../.planning/defects/D09-seed-updates-v1-in-place.md). |

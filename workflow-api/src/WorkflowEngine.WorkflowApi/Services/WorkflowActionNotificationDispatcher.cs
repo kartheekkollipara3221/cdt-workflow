@@ -4,6 +4,7 @@ using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
+using WorkflowEngine.Infrastructure.Notifications;
 
 namespace WorkflowEngine.WorkflowApi.Services;
 
@@ -12,16 +13,33 @@ public sealed class WorkflowActionNotificationDispatcher(
     INotificationSender notificationSender,
     TimeProvider timeProvider) : IWorkflowActionNotificationDispatcher
 {
+    private readonly OutboxProcessingOptions options = new();
+
+    public WorkflowActionNotificationDispatcher(WorkflowDbContext dbContext, INotificationSender notificationSender,
+        TimeProvider timeProvider, OutboxProcessingOptions options)
+        : this(dbContext, notificationSender, timeProvider)
+    {
+        this.options = options ?? throw new ArgumentNullException(nameof(options));
+    }
+
     public WorkflowActionNotificationDispatchResult DispatchCreatedNotifications(
         string workflowInstanceId,
         string correlationId)
     {
+        var now = timeProvider.GetUtcNow();
+        if (dbContext.NotificationOutbox.Any(row => row.WorkflowInstanceId == workflowInstanceId
+            && row.CorrelationId == correlationId && row.Status == "Pending" && row.NextAttemptAtUtc > now))
+        {
+            return WorkflowActionNotificationDispatchResult.Failed(
+                $"Notification delivery is deferred until its scheduled retry for workflow action correlation id '{correlationId}'.");
+        }
         var pendingRows = dbContext.NotificationOutbox
             .AsNoTracking()
             .Where(row =>
                 row.WorkflowInstanceId == workflowInstanceId
                 && row.CorrelationId == correlationId
-                && row.Status == "Pending")
+                && row.Status == "Pending"
+                && (row.NextAttemptAtUtc == null || row.NextAttemptAtUtc <= now))
             .OrderBy(row => row.CreatedAtUtc)
             .ThenBy(row => row.Id)
             .ToList();
@@ -40,7 +58,8 @@ public sealed class WorkflowActionNotificationDispatcher(
             {
                 var claimedAtUtc = timeProvider.GetUtcNow();
                 var claimed = dbContext.NotificationOutbox
-                    .Where(item => item.Id == row.Id && item.Status == "Pending")
+                    .Where(item => item.Id == row.Id && item.Status == "Pending"
+                        && (item.NextAttemptAtUtc == null || item.NextAttemptAtUtc <= claimedAtUtc))
                     .ExecuteUpdate(setters => setters
                         .SetProperty(item => item.Status, "Processing")
                         .SetProperty(item => item.ProcessingToken, processingToken)
@@ -67,6 +86,7 @@ public sealed class WorkflowActionNotificationDispatcher(
                     .ExecuteUpdate(setters => setters
                         .SetProperty(item => item.Status, "Sent")
                         .SetProperty(item => item.SentAtUtc, sentAtUtc)
+                        .SetProperty(item => item.NextAttemptAtUtc, (DateTimeOffset?)null)
                         .SetProperty(item => item.ProcessingToken, (string?)null)
                         .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
                         .SetProperty(item => item.LastError, (string?)null));
@@ -144,13 +164,20 @@ public sealed class WorkflowActionNotificationDispatcher(
         var message = exception.Message.Length <= 1000
             ? exception.Message
             : exception.Message[..1000];
+        var retryCount = dbContext.NotificationOutbox
+            .Where(item => item.Id == id && item.Status == "Processing" && item.ProcessingToken == processingToken)
+            .Select(item => (int?)item.RetryCount).SingleOrDefault();
+        if (retryCount is null)
+            return;
+        var nextAttempt = options.GetNextAttemptAtUtc(retryCount.Value, timeProvider.GetUtcNow());
         dbContext.NotificationOutbox
             .Where(item => item.Id == id && item.Status == "Processing" && item.ProcessingToken == processingToken)
             .ExecuteUpdate(setters => setters
                 .SetProperty(item => item.Status, "Pending")
                 .SetProperty(item => item.ProcessingToken, (string?)null)
                 .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
-                .SetProperty(item => item.RetryCount, item => item.RetryCount + 1)
+                .SetProperty(item => item.NextAttemptAtUtc, nextAttempt)
+                .SetProperty(item => item.RetryCount, item => item.RetryCount < int.MaxValue ? item.RetryCount + 1 : item.RetryCount)
                 .SetProperty(item => item.LastError, message));
     }
 }

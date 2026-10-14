@@ -78,6 +78,7 @@ Phase 6 is signed off. The v1 milestone is ready for milestone completion or rel
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 261014-pj7 | Fix C13 bounded outbox batches and durable retry scheduling | 2026-10-14 | See task commit | [261014-pj7](quick/261014-pj7-fix-c13-bounded-outbox-batches-and-durab/261014-pj7-SUMMARY.md) |
 | 260809-f8m | Optimize the UI-facing Workflow Start and Action envelope | 2026-08-09 | 9317013 | [260809-f8m-optimize-the-ui-facing-workflowstart-and](C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/quick/260809-f8m-optimize-the-ui-facing-workflowstart-and) |
 | 260809-lb6 | Create executable public Workflow API envelope scenario packs | 2026-08-09 | ceb3999 | [260809-lb6-create-executable-public-workflow-api-en](C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/quick/260809-lb6-create-executable-public-workflow-api-en) |
 
@@ -143,3 +144,16 @@ passed. Both earlier fresh-build failures are resolved. First SMTP attempt hit
 a capture-server readiness timeout; verified readiness and rerun passed without
 code changes. The task-owned capture server is stopped. Seed/sample/branch/demo
 checks passed. No push/deployment performed; all other review fixes remain paused.
+
+## Current C13 correction - 2026-10-14
+
+User approved optional bounded batches and durable retry scheduling, including
+an additive database change. Implementation and read-only code review complete.
+Core 508/508, API 70/70 and local SMTP 5/5 passed (583 total); both warning-as-error
+builds passed. EF/manual upgrade tests preserved active workflows and queued mail;
+manual SQL was executed twice. Seed verification, all ten samples and branch/demo
+checks passed. See quick task 261014-pj7 and docs/OUTBOX_RETRY_ROLLOUT.md.
+No active workflow closure is required. Schema/consumer deployment and opt-in
+settings remain operational steps; production was not touched. SMTP remains at
+least once; maximum retries/dead-letter decisions and other review items remain
+outside this change. No push performed.

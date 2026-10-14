@@ -13,20 +13,32 @@ public sealed class ProcessNotificationOutboxService(
     TimeProvider timeProvider) : IProcessNotificationOutboxService
 {
     private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(15);
+    private readonly OutboxProcessingOptions options = new();
+
+    public ProcessNotificationOutboxService(WorkflowDbContext dbContext, INotificationSender notificationSender,
+        TimeProvider timeProvider, OutboxProcessingOptions options)
+        : this(dbContext, notificationSender, timeProvider)
+    {
+        this.options = options ?? throw new ArgumentNullException(nameof(options));
+    }
 
     public async Task<ProcessNotificationOutboxResult> ProcessAsync(CancellationToken cancellationToken)
     {
-        var leaseCutoff = timeProvider.GetUtcNow().Subtract(ProcessingLease);
-        var pendingRows = await dbContext.NotificationOutbox
+        var now = timeProvider.GetUtcNow();
+        var leaseCutoff = now.Subtract(ProcessingLease);
+        var pendingQuery = dbContext.NotificationOutbox
             .AsNoTracking()
             .Where(row =>
-                row.Status == "Pending"
+                (row.Status == "Pending" && (row.NextAttemptAtUtc == null || row.NextAttemptAtUtc <= now))
                 || (row.Status == "Processing"
                     && row.ProcessingStartedAtUtc != null
                     && row.ProcessingStartedAtUtc <= leaseCutoff))
             .OrderBy(row => row.CreatedAtUtc)
             .ThenBy(row => row.Id)
-            .ToListAsync(cancellationToken);
+            .Select(row => new { row.Id, row.NotificationType, row.Subject, row.WorkflowInstanceId, row.NotificationOccurrenceKey });
+        if (options.BatchSize is int batchSize)
+            pendingQuery = pendingQuery.Take(batchSize);
+        var pendingRows = await pendingQuery.ToListAsync(cancellationToken);
 
         var processed = new List<ProcessedNotification>();
         var warnings = new List<string>();
@@ -35,7 +47,7 @@ public sealed class ProcessNotificationOutboxService(
 
         if (pendingRows.Count == 0)
         {
-            var activeClaimedRows = await dbContext.NotificationOutbox
+            var activeClaimedQuery = dbContext.NotificationOutbox
                 .AsNoTracking()
                 .Where(row =>
                     row.Status == "Processing"
@@ -43,8 +55,10 @@ public sealed class ProcessNotificationOutboxService(
                     && row.ProcessingStartedAtUtc > leaseCutoff)
                 .OrderBy(row => row.CreatedAtUtc)
                 .ThenBy(row => row.Id)
-                .Select(row => row.Id)
-                .ToListAsync(cancellationToken);
+                .Select(row => row.Id);
+            if (options.BatchSize is int warningLimit)
+                activeClaimedQuery = activeClaimedQuery.Take(warningLimit);
+            var activeClaimedRows = await activeClaimedQuery.ToListAsync(cancellationToken);
 
             warnings.AddRange(activeClaimedRows.Select(id => $"row {id} was already claimed by another process"));
         }
@@ -60,7 +74,7 @@ public sealed class ProcessNotificationOutboxService(
                 var claimed = await dbContext.NotificationOutbox
                     .Where(item =>
                         item.Id == row.Id
-                        && (item.Status == "Pending"
+                        && ((item.Status == "Pending" && (item.NextAttemptAtUtc == null || item.NextAttemptAtUtc <= claimedAtUtc))
                             || (item.Status == "Processing"
                                 && item.ProcessingStartedAtUtc != null
                                 && item.ProcessingStartedAtUtc <= leaseCutoff)))
@@ -100,6 +114,7 @@ public sealed class ProcessNotificationOutboxService(
                                 .SetProperty(item => item.Status, "Cancelled")
                                 .SetProperty(item => item.CancelledAtUtc, cancelledAtUtc)
                                 .SetProperty(item => item.CancellationReason, "SlaScheduleInactive")
+                                .SetProperty(item => item.NextAttemptAtUtc, (DateTimeOffset?)null)
                                 .SetProperty(item => item.ProcessingToken, (string?)null)
                                 .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
                                 .SetProperty(item => item.LastError, (string?)null),
@@ -121,6 +136,7 @@ public sealed class ProcessNotificationOutboxService(
                     .ExecuteUpdateAsync(setters => setters
                         .SetProperty(item => item.Status, "Sent")
                         .SetProperty(item => item.SentAtUtc, sentAtUtc)
+                        .SetProperty(item => item.NextAttemptAtUtc, (DateTimeOffset?)null)
                         .SetProperty(item => item.ProcessingToken, (string?)null)
                         .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
                         .SetProperty(item => item.LastError, (string?)null), cancellationToken);
@@ -144,7 +160,7 @@ public sealed class ProcessNotificationOutboxService(
             }
             catch (Exception exception)
             {
-                await ReleaseClaimAfterFailureAsync(row.Id, processingToken, exception, cancellationToken);
+                await ReleaseClaimAfterFailureAsync(row.Id, processingToken, exception);
                 failures.Add(new NotificationOutboxFailure(
                     row.Id,
                     row.NotificationType,
@@ -228,19 +244,25 @@ public sealed class ProcessNotificationOutboxService(
     private async Task ReleaseClaimAfterFailureAsync(
         long id,
         string processingToken,
-        Exception exception,
-        CancellationToken cancellationToken)
+        Exception exception)
     {
         var message = exception.Message.Length <= 1000
             ? exception.Message
             : exception.Message[..1000];
+        var ownedRow = dbContext.NotificationOutbox
+            .Where(item => item.Id == id && item.Status == "Processing" && item.ProcessingToken == processingToken);
+        var retryCount = await ownedRow.Select(item => (int?)item.RetryCount).SingleOrDefaultAsync(CancellationToken.None);
+        if (retryCount is null)
+            return;
+        var nextAttempt = options.GetNextAttemptAtUtc(retryCount.Value, timeProvider.GetUtcNow());
         await dbContext.NotificationOutbox
             .Where(item => item.Id == id && item.Status == "Processing" && item.ProcessingToken == processingToken)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(item => item.Status, "Pending")
                 .SetProperty(item => item.ProcessingToken, (string?)null)
                 .SetProperty(item => item.ProcessingStartedAtUtc, (DateTimeOffset?)null)
-                .SetProperty(item => item.RetryCount, item => item.RetryCount + 1)
+                .SetProperty(item => item.NextAttemptAtUtc, nextAttempt)
+                .SetProperty(item => item.RetryCount, item => item.RetryCount < int.MaxValue ? item.RetryCount + 1 : item.RetryCount)
                 .SetProperty(item => item.LastError, message), CancellationToken.None);
     }
 }

@@ -1,5 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using WorkflowEngine.Infrastructure.Notifications;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
@@ -12,6 +14,52 @@ namespace WorkflowEngine.WorkflowApi.Tests.Services;
 public sealed class WorkflowActionNotificationDispatcherTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2030-08-05T15:30:00Z");
+
+    [SqlServerFact]
+    public async Task ConfiguredDispatcherFailureDefersBackgroundRetryAndRetainsSnapshot()
+    {
+        using var dbContext = CreateSeededContext();
+        var row = AddNotification(dbContext, "{");
+        var sender = new RecordingNotificationSender();
+        using var provider = new ServiceCollection()
+            .AddSingleton(dbContext)
+            .AddSingleton<INotificationSender>(sender)
+            .AddSingleton<TimeProvider>(new FixedTimeProvider(Now))
+            .AddSingleton(new OutboxProcessingOptions(100, 60))
+            .AddTransient<WorkflowActionNotificationDispatcher>()
+            .BuildServiceProvider();
+        var dispatcher = provider.GetRequiredService<WorkflowActionNotificationDispatcher>();
+        Assert.False(dispatcher.DispatchCreatedNotifications(row.WorkflowInstanceId!, row.CorrelationId).Success);
+        dbContext.ChangeTracker.Clear();
+        var failed = dbContext.NotificationOutbox.Single();
+        Assert.Equal(Now.AddMinutes(1), failed.NextAttemptAtUtc);
+        Assert.Equal(1, failed.RetryCount);
+        Assert.Equal("{", failed.NotificationRecipientsJson);
+        Assert.Equal(0, (await new ProcessNotificationOutboxService(dbContext, sender, new FixedTimeProvider(Now))
+            .ProcessAsync(CancellationToken.None)).PendingCount);
+        Assert.False(dispatcher.DispatchCreatedNotifications(row.WorkflowInstanceId!, row.CorrelationId).Success);
+        Assert.Empty(sender.SentRows);
+    }
+
+    [SqlServerFact]
+    public void DispatcherHonorsPersistedRetryTimeEvenWithLegacyOptions()
+    {
+        using var dbContext = CreateSeededContext();
+        var row = AddNotification(dbContext, """{"toEmailAddresses":["first@example.test"],"ccEmailAddresses":[]}""");
+        row.NextAttemptAtUtc = Now.AddMinutes(1);
+        dbContext.SaveChanges();
+        var sender = new RecordingNotificationSender();
+        var deferred = new WorkflowActionNotificationDispatcher(dbContext, sender, new FixedTimeProvider(Now))
+            .DispatchCreatedNotifications(row.WorkflowInstanceId!, row.CorrelationId);
+        Assert.False(deferred.Success);
+        Assert.Empty(sender.SentRows);
+        var due = new WorkflowActionNotificationDispatcher(dbContext, sender, new FixedTimeProvider(Now.AddMinutes(1)))
+            .DispatchCreatedNotifications(row.WorkflowInstanceId!, row.CorrelationId);
+        Assert.True(due.Success);
+        Assert.Single(sender.SentRows);
+        dbContext.ChangeTracker.Clear();
+        Assert.Null(dbContext.NotificationOutbox.Single().NextAttemptAtUtc);
+    }
 
     [SqlServerFact]
     public void DispatchCreatedNotificationsPreservesOrderedTypedRecipients()
