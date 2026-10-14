@@ -1,0 +1,51 @@
+{
+    "version": "1.0",
+    "timestamp": "2026-10-11T19:30:00.000Z",
+    "phase": null,
+    "phase_name": "Engine defect fixes (workflow + load)",
+    "phase_dir": ".planning/paused/engine-defect-fixes",
+    "plan": null,
+    "status": "paused",
+    "completed_tasks": [
+        { "id": 1, "status": "done", "name": "Defect-by-defect review of C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/WORKFLOW_ENGINE_REVIEW.md top 10 with owner decisions O1-O8" },
+        { "id": 2, "status": "done", "name": "Full test run on DOLLY SQL Server 2022 + smtp4dev: 552/552 pass" },
+        { "id": 3, "status": "done", "name": "Load probes: NoOp 424 req/s; SMTP-in-request 19 req/s with thread starvation and 338 saved-after-timeout" },
+        { "id": 4, "status": "done", "name": "Final review (MD + HTML), load review (HTML), tracking files D02, D06, D09, D10" }
+    ],
+    "remaining_tasks": [
+        { "id": 5, "status": "not_started", "name": "WP1 D05: add API solution to CI" },
+        { "id": 6, "status": "not_started", "name": "WP2 D02/F06: Notifications:DispatchMode Inline|Outbox, SMTP reuse, outbox batch + index" },
+        { "id": 7, "status": "not_started", "name": "WP3 L1/F06/F07: optional Idempotency-Key header, versioned request hash" },
+        { "id": 8, "status": "not_started", "name": "WP4 D10: logging, correlation scope, health, metrics" },
+        { "id": 9, "status": "not_started", "name": "WP5 D09: seed transaction, version publish procedure" },
+        { "id": 10, "status": "not_started", "name": "WP6 D06: async overloads, CancellationToken, pool limit, rate limiting" },
+        { "id": 11, "status": "not_started", "name": "WP7 F08/F09: action reason, SLA edit race" },
+        { "id": 12, "status": "not_started", "name": "WP8 D04, L3-L9, SLA index, archive" }
+    ],
+    "blockers": [],
+    "async_jobs": [],
+    "human_actions_pending": [
+        { "blocking": true, "action": "Authorize the first work package (recommended WP1, then WP2)" },
+        { "blocking": true, "action": "Answer the open decisions in the selected tracking file before implementation" },
+        { "blocking": false, "action": "Confirm D02 tag (High, load-confirmed; proposed Major)" },
+        { "blocking": false, "action": "Give expected peak volume (actions per minute, concurrent users)" },
+        { "blocking": false, "action": "Approve or reject third-party packages (Serilog, OpenTelemetry, HealthChecks.SqlServer, Polly, Quartz.NET/Hangfire)" }
+    ],
+    "decisions": [
+        "O1 auth outside repo; O2 caller-unique business object IDs; O3 Draft/SaveDraft manageable; O4 no parallel approvals; O5 timers never move state; O6 engine never decides on business data; O7 F01 set aside; O8 F04 accepted.",
+        "D06, D09, D10 tagged Major with tracking files; D02 tracking file created with load evidence.",
+        "All fixes backward compatible; no new third-party packages without approval.",
+        "Dialogue and docs in ASD-STE100."
+    ],
+    "next_action": "Read .continue-here.md in this folder, confirm which work package to start, resolve its decisions, then implement as a GSD quick task.",
+    "context_notes": "No application code changed. Baseline commit e805698, 552/552 tests. Load evidence in C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/audits/2026-10-11-final/. Preserve other paused topics.",
+    "uncommitted_files": [
+        "?? C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/WORKFLOW_ENGINE_REVIEW.md",
+        "?? C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/WORKFLOW_ENGINE_FINAL_REVIEW.md",
+        "?? C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/WORKFLOW_ENGINE_FINAL_REVIEW.html",
+        "?? C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/WORKFLOW_ENGINE_LOAD_REVIEW.html",
+        "?? .planning/defects/",
+        "?? C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/audits/2026-10-11-final/",
+        "?? .planning/paused/engine-defect-fixes/"
+    ]
+}

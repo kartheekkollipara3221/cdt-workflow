@@ -1,67 +1,25 @@
 {
-    "version":  "1.0",
-    "timestamp":  "2026-10-01T22:40:17.593Z",
-    "phase":  null,
-    "phase_name":  "CDT Trading Desk recipient discussion",
-    "phase_dir":  ".planning/paused/cdt-trading-desk-recipients",
-    "plan":  null,
-    "status":  "paused",
-    "completed_tasks":  [
-                            {
-                                "status":  "done",
-                                "name":  "Verify metadata plus UI approach without engine code changes",
-                                "id":  1
-                            }
-                        ],
-    "remaining_tasks":  [
-                            {
-                                "status":  "not_started",
-                                "name":  "Confirm initial/rework scope, operations recipients and target rollout details when user revisits",
-                                "id":  2
-                            }
-                        ],
-    "blockers":  [
-
-                 ],
-    "async_jobs":  [
-
-                   ],
-    "human_actions_pending":  [
-                                  {
-                                      "blocking":  false,
-                                      "action":  "Confirm rework inclusion and Trading Operations recipient scope before implementation"
-                                  }
-                              ],
-    "decisions":  [
-                      "Guidance only; no implementation or database changes authorized.",
-                      "UI must omit selectedCcUsers key on affected routes; deactivate its rule and originalMaker CC rule, retain intended static To rules.",
-                      "Existing task and outbox snapshots remain unchanged; reseeding can reactivate rules.",
-                      "CDT discussion selected; SQMS and F07/F09 remain separately deferred."
-                  ],
-    "next_action":  "Read named checkpoint and continue discussion; confirm remaining scope before preparing target changes.",
-    "context_notes":  "Source verified this session. Preserve prior cdt-recipients-sla-libraries checkpoint. No engine modification needed if affected UI calls omit the undeclared recipient key.",
-    "uncommitted_files":  [
-                              " M .planning/.continue-here.md",
-                              " M .planning/HANDOFF.json",
-                              " M CODEX_HANDOFF.md",
-                              "?? .planning/audits/2026-09-06-independent/AUDIT-preview.png",
-                              "?? .planning/audits/2026-09-06-independent/COVERAGE.md",
-                              "?? .planning/audits/2026-09-06-independent/FILES.csv",
-                              "?? .planning/audits/2026-09-06-independent/LIVE-VERIFICATION.md",
-                              "?? .planning/audits/2026-09-06-independent/REVIEW.md",
-                              "?? .planning/audits/2026-09-06-independent/Reproduction.cs.txt",
-                              "?? .planning/audits/2026-09-06-independent/Reproduction.csproj.txt",
-                              "?? .planning/audits/2026-09-06-independent/VERIFICATION.md",
-                              "?? .planning/audits/2026-09-06-independent/build_report.py",
-                              "?? .planning/audits/2026-09-06-independent/live-probe/",
-                              "?? .planning/audits/2026-09-06-independent/live-results/",
-                              "?? .planning/audits/2026-09-06-independent/update_live_report.py",
-                              "?? .planning/paused/cdt-trading-desk-recipients/",
-                              "?? .planning/quick/20260907-f03-classification-retry/results/",
-                              "?? .planning/quick/20260907-f05-outbox-isolation/results/",
-                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.err.log",
-                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp.out.log",
-                              "?? .planning/quick/20260907-f05-outbox-isolation/smtp4dev-data/",
-                              "?? artifacts/"
-                          ]
+  "version": "1.0",
+  "timestamp": "2026-10-14",
+  "phase": null,
+  "phase_name": "Repository cleanup",
+  "phase_dir": ".planning/quick/261014-er0-clean-repository-and-archive-historical-",
+  "status": "cleanup-implemented-quality-gate-incomplete",
+  "completed_tasks": [
+    "Archive 527 files with SHA-256 verification",
+    "Relocate four registered worktrees",
+    "Consolidate issue index and current handoff"
+  ],
+  "remaining_tasks": [
+    "Review clean-build NuGet advisory failure separately"
+  ],
+  "archive_path": "C:/projects/cdt-workflow-archive/20261014-cleanup",
+  "paused_topics": [
+    "cdt-recipients-sla-libraries",
+    "cdt-trading-desk-recipients",
+    "engine-defect-fixes",
+    "sqms-bid-return-to-seller-review"
+  ],
+  "next_action": "Read CODEX_HANDOFF.md and cleanup SUMMARY.md; no defect implementation authorized.",
+  "context_notes": "Root PROJECT.md and six existing milestones remain authoritative. No source or package changes. User authorized cleanup publication to origin/console-code-first-0518 with the documented limitations; 561 protected files reverified."
 }

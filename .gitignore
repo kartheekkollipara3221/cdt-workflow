@@ -29,3 +29,7 @@ console-dbfirst-clean/
 # Accidental duplicate generated docs under the source tree
 src/docs/workflow-map/
 .worktrees/
+
+# Reproducible local scratch output (historical evidence archived outside repo)
+artifacts/
+.bundle-test/

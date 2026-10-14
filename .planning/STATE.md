@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 status: milestone_complete
-last_updated: "2026-08-09T16:20:00.000Z"
+last_updated: "2026-10-14"
 progress:
   total_phases: 6
   completed_phases: 6
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` and repository-root `PROJECT.md`.
 
 **Core value:** A user can run the console, pass a standard workflow action JSON envelope, and see SQL metadata drive workflow state, tasks, notifications, SLA, idempotency, concurrency, and audit without Portfolio Trade logic embedded in the engine.
 
-**Current focus:** Phase 06 — Samples, Tests, and Demo
+**Historical milestone focus:** Phase 06 — Samples, Tests, and Demo
 
 Last activity: 2026-08-09 - Completed quick task 260809-lb6: Create executable public Workflow API envelope scenario packs
 
@@ -78,8 +78,8 @@ Phase 6 is signed off. The v1 milestone is ready for milestone completion or rel
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 260809-f8m | Optimize the UI-facing Workflow Start and Action envelope | 2026-08-09 | 9317013 | [260809-f8m-optimize-the-ui-facing-workflowstart-and](./quick/260809-f8m-optimize-the-ui-facing-workflowstart-and/) |
-| 260809-lb6 | Create executable public Workflow API envelope scenario packs | 2026-08-09 | ceb3999 | [260809-lb6-create-executable-public-workflow-api-en](./quick/260809-lb6-create-executable-public-workflow-api-en/) |
+| 260809-f8m | Optimize the UI-facing Workflow Start and Action envelope | 2026-08-09 | 9317013 | [260809-f8m-optimize-the-ui-facing-workflowstart-and](C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/quick/260809-f8m-optimize-the-ui-facing-workflowstart-and) |
+| 260809-lb6 | Create executable public Workflow API envelope scenario packs | 2026-08-09 | ceb3999 | [260809-lb6-create-executable-public-workflow-api-en](C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/quick/260809-lb6-create-executable-public-workflow-api-en) |
 
 ## Open Issues
 
@@ -104,3 +104,17 @@ Quick task 20260907-f05-outbox-isolation completed locally (uncommitted): failed
 ### 2026-09-07 approved push
 
 F03 committed as 589b89b and F05 as 3ca34fe; both pushed to origin/console-code-first-0518. Target sync: docs/AUDIT-FIXES-TARGET-SYNC-20260907.html. F07/F09 deferred. Prior uncommitted status is superseded.
+
+## Current maintenance checkpoint - 2026-10-14
+
+Repository cleanup is implemented. Verification: 550 tests passed; two fresh-clone
+build tests failed on existing dependency advisories. All 527 archive hashes and
+561 protected files verified; documentation file links and restore packages passed.
+Task: [261014-er0](quick/261014-er0-clean-repository-and-archive-historical-/PLAN.md).
+Archive: `C:/projects/cdt-workflow-archive/20261014-cleanup`.
+Read `CODEX_HANDOFF.md` and `docs/OPEN-ISSUES.md` for current state. Earlier
+session continuity and open-issue notes above are historical. The six milestones
+are unchanged. Engine defect fixes and the other named topics remain paused.
+Cleanup publication authorized to origin/console-code-first-0518 with source
+unchanged; 561 protected files reverified. Fresh-clone build tests fail on existing dependency
+advisories; see verification logs in the archive.

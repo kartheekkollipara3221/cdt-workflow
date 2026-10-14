@@ -2,6 +2,25 @@
 
 Reusable .NET workflow engine for replacing SharePoint Designer workflow behavior. Portfolio Trade is the first sample workflow definition. The active repo shape is the reusable engine and console/demo host under `src/`, plus the ASP.NET Core workflow host under `workflow-api/`.
 
+## Repository layout
+
+| Location | Purpose |
+|---|---|
+| `src/`, `workflow-api/` | Engine, console, SQMS adapter, API host, and API tests. |
+| `Directory.Build.props`, `dotnet-tools.json`, `.github/` | Shared build settings, EF tool version, and CI. |
+| `tests/`, `samples/`, `tools/`, `scripts/` | Regression tests, executable requests, and acceptance tooling. |
+| `sql/` | Deployment metadata and SQL verification. |
+| `docs/` | Current guidance, design contracts, and executable scenario packs. |
+| `.planning/`, `CODEX_HANDOFF.md` | Current GSD state and paused work. |
+| `restore-repo.ps1`, `restore-bundles/` | Historical self-contained restore packages; preserved entrypoints. |
+
+Start with [documentation](docs/README.md) and the [open issue index](docs/OPEN-ISSUES.md).
+The 2026-10-14 cleanup archive is outside this repository at
+`C:/projects/cdt-workflow-archive/20261014-cleanup`. It contains old reviews,
+implementation plans, legacy snapshots, working-tree backups, and four Git
+worktrees. It is local historical evidence, not a dependency for building or testing.
+See `CODEX_HANDOFF.md` for cleanup verification and recovery details.
+
 ## Quickstart
 
 ### Prerequisites

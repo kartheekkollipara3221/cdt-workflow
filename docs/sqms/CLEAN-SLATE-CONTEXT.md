@@ -12,7 +12,7 @@ Future SQMS work starts from the generic workflow engine at pre-SQMS commit `136
 
 ## Source Authority
 
-The raw legacy files under `SQMS/` are preserved as evidence. Before proposing an SQMS behavior, trace it to one of these supplied functions or to an explicit user decision:
+The raw legacy files under `C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/SQMS/` are preserved as evidence. Before proposing an SQMS behavior, trace it to one of these supplied functions or to an explicit user decision:
 
 - `NewOpportunitySetup`
 - `OpportunitystatusDailyActivities`
@@ -97,7 +97,7 @@ On 2026-08-18, `restore-repo.ps1` was restored into an isolated temporary direct
 
 The restored bundle was compared path-by-path and by SHA-256 with this clean branch. All 411 comparable bundled files are unchanged. There are zero differences under `src/`, `workflow-api/`, `tests/`, or `samples/`. The only six changed bundled paths are repository governance and handoff files: `.gitignore`, `AGENTS.MD`, `.planning/.continue-here.md`, `.planning/HANDOFF.json`, `.planning/STATE.md`, and `CODEX_HANDOFF.md`.
 
-The stale `docs/sqms-approved-workflow-flowchart.html` was removed because it described the rejected custom coordinator, notification-batch workflows, reconciliation commands, and cross-row orchestration. The retained post-bundle files are knowledge-only: the original `restore-repo.ps1`, raw `SQMS/` legacy evidence, `tareget-api-integration/` reference snapshots, and this corrected clean-slate context.
+The stale `docs/sqms-approved-workflow-flowchart.html` was removed because it described the rejected custom coordinator, notification-batch workflows, reconciliation commands, and cross-row orchestration. The retained post-bundle files are knowledge-only: the original `restore-repo.ps1`, raw `C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/SQMS/` legacy evidence, `C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/tareget-api-integration/` reference snapshots, and this corrected clean-slate context.
 
 ## Clean-Slate Next Step
 
