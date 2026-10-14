@@ -118,3 +118,16 @@ are unchanged. Engine defect fixes and the other named topics remain paused.
 Cleanup publication authorized to origin/console-code-first-0518 with source
 unchanged; 561 protected files reverified. Fresh-clone build tests fail on existing dependency
 advisories; see verification logs in the archive.
+
+## Current C06 correction - 2026-10-14
+
+User approved C06-only SLA schedule failure isolation. Quick task:
+`quick/261014-orf-fix-c06-sla-schedule-failure-isolation/261014-orf-PLAN.md`.
+Known schedule data/calendar failures now roll back and warn without preventing
+later healthy reminders. No schema or public API change; no active workflow
+closure required. Code commit: `ad47084`. Publication to
+`origin/console-code-first-0518` authorized with full commit release notes. Core: 489 passed,
+2 pre-existing clean-build advisory failures; API: 68 passed. All 12 C06 cases,
+seed, sample and supported workflow tests passed. Both no-restore builds have
+zero warnings/errors. See the task SUMMARY and CODEX_HANDOFF.md. Other review
+fixes remain paused. Production metadata repair and deployment are not performed.
