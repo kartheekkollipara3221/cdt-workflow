@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -13,6 +14,157 @@ public sealed class Phase5SlaTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
     private const string RecipientSnapshot = """{"toEmailAddresses":["primary@example.test","secondary@example.test"],"ccEmailAddresses":["cc.one@example.test","cc.two@example.test"]}""";
+
+    [Theory]
+    [InlineData("duration-metadata")]
+    [InlineData("application-metadata")]
+    [InlineData("invalid-zone")]
+    [InlineData("missing-route")]
+    [InlineData("inactive-route")]
+    [InlineData("current-dst-gap")]
+    [InlineData("next-dst-gap")]
+    [InlineData("advance-overflow")]
+    [InlineData("display-overflow")]
+    public async Task C06RunSlaIsolatesInvalidScheduleAndRetriesWithoutDuplicatingHealthyReminder(string failure)
+    {
+        using var dbContext = WorkflowExecutionValidationTests.CreateSeededContext();
+        var now = DateTimeOffset.Parse(failure == "current-dst-gap"
+            ? "2030-03-10T17:00:00Z"
+            : "2030-03-09T17:00:00Z");
+        var versionId = PortfolioTradeVersionId(dbContext);
+        AddInstance(dbContext, "WF-C06-BAD", "C06-BAD", "Active", versionId);
+        AddInstance(dbContext, "WF-C06-GOOD", "C06-GOOD", "Active", versionId);
+        var badTask = AddTask(dbContext, "WF-C06-BAD", "CheckerReviewTask", "Checker", now.AddMinutes(-10));
+        var goodTask = AddTask(dbContext, "WF-C06-GOOD", "CheckerReviewTask", "Checker", now.AddMinutes(-5));
+        dbContext.SaveChanges();
+        var badSchedule = dbContext.WorkflowTaskSlaSchedules.Single(row => row.WorkflowTaskId == badTask.Id);
+        switch (failure)
+        {
+            case "duration-metadata":
+                badSchedule.RecurrenceIntervalDays = 1;
+                break;
+            case "application-metadata":
+                badSchedule.CalculationMode = "ApplicationTargetDate";
+                break;
+            case "invalid-zone":
+                badSchedule.RecurrenceIntervalDays = 1;
+                badSchedule.ReminderLocalTime = new TimeOnly(9, 0);
+                badSchedule.TimeZoneId = "C06/UnknownTimeZone";
+                break;
+            case "missing-route":
+                badSchedule.OverdueNotificationRouteKey = "C06MissingRoute";
+                break;
+            case "inactive-route":
+                badSchedule.OverdueNotificationRouteKey = "RouteCheckerAssignedOnSubmit";
+                dbContext.NotificationRoutes.Single(row => row.WorkflowDefinitionVersionId == versionId
+                    && row.RouteKey == "RouteCheckerAssignedOnSubmit").IsActive = false;
+                break;
+            case "current-dst-gap":
+                badSchedule.CalculationMode = "ApplicationTargetDate";
+                badSchedule.TargetDate = new DateOnly(2030, 3, 9);
+                badSchedule.RecurrenceIntervalDays = 1;
+                badSchedule.ReminderLocalTime = new TimeOnly(2, 30);
+                badSchedule.TimeZoneId = "Eastern Standard Time";
+                break;
+            case "next-dst-gap":
+                badSchedule.RecurrenceIntervalDays = 1;
+                badSchedule.ReminderLocalTime = new TimeOnly(2, 30);
+                badSchedule.TimeZoneId = "Eastern Standard Time";
+                break;
+            case "advance-overflow":
+                badSchedule.RecurrenceIntervalDays = int.MaxValue;
+                badSchedule.ReminderLocalTime = new TimeOnly(9, 0);
+                badSchedule.TimeZoneId = "UTC";
+                break;
+            case "display-overflow":
+                badSchedule.OverdueAtUtc = DateTimeOffset.MinValue;
+                break;
+        }
+        dbContext.SaveChanges();
+        var originalSchedule = JsonSerializer.Serialize(badSchedule);
+        var originalTask = JsonSerializer.Serialize(badTask);
+        var originalInstance = JsonSerializer.Serialize(dbContext.WorkflowInstances.Single(row => row.WorkflowInstanceId == badTask.WorkflowInstanceId));
+        dbContext.ChangeTracker.Clear();
+        var service = new RunSlaService(dbContext, new SlaScheduleCalculator());
+
+        var first = await service.RunAsync(new(now), CancellationToken.None);
+        var second = await service.RunAsync(new(now), CancellationToken.None);
+
+        Assert.Equal([goodTask.Id], first.QueuedNotifications.Select(row => row.WorkflowTaskId));
+        Assert.Empty(second.QueuedNotifications);
+        foreach (var result in new[] { first, second })
+        {
+            var warning = Assert.Single(result.Warnings);
+            Assert.Contains($"schedule {badSchedule.Id}", warning, StringComparison.Ordinal);
+            Assert.Contains($"task {badTask.Id}", warning, StringComparison.Ordinal);
+            Assert.Contains(badTask.WorkflowInstanceId, warning, StringComparison.Ordinal);
+        }
+        // Read persisted data, not tracked objects. A failed next-reminder calculation occurs
+        // after an outbox insert is staged; the later healthy SaveChanges must not save it.
+        var unchangedSchedule = dbContext.WorkflowTaskSlaSchedules.AsNoTracking().Single(row => row.Id == badSchedule.Id);
+        Assert.Equal(originalSchedule, JsonSerializer.Serialize(unchangedSchedule));
+        Assert.Equal(originalTask, JsonSerializer.Serialize(dbContext.WorkflowTasks.AsNoTracking().Single(row => row.Id == badTask.Id)));
+        Assert.Equal(originalInstance, JsonSerializer.Serialize(dbContext.WorkflowInstances.AsNoTracking().Single(row => row.WorkflowInstanceId == badTask.WorkflowInstanceId)));
+        var notification = Assert.Single(dbContext.NotificationOutbox.AsNoTracking().Where(row => row.SlaReminderKind != null));
+        Assert.Equal(goodTask.Id, notification.WorkflowTaskId);
+        Assert.Equal("Overdue: Original CheckerReviewTask subject", notification.Subject);
+        Assert.Equal("Original CheckerReviewTask plain body", notification.Body);
+        Assert.Equal("<p>Original CheckerReviewTask HTML body</p>", notification.HtmlBody);
+        Assert.Equal(RecipientSnapshot, notification.NotificationRecipientsJson);
+        Assert.DoesNotContain(dbContext.ChangeTracker.Entries(), entry => entry.State is EntityState.Added or EntityState.Modified);
+
+        // A later, separately authorized metadata repair can recover this same
+        // active task; no workflow closure or reminder deletion is required.
+        var repaired = dbContext.WorkflowTaskSlaSchedules.Single(row => row.Id == badSchedule.Id);
+        repaired.CalculationMode = "DurationFromTaskCreation";
+        repaired.RecurrenceIntervalDays = null;
+        repaired.OverdueAtUtc = badTask.DueAtUtc!.Value;
+        repaired.OverdueNotificationRouteKey = "RouteSlaTaskOverdue";
+        dbContext.SaveChanges();
+        var recovered = await service.RunAsync(new(now), CancellationToken.None);
+        Assert.Empty(recovered.Warnings);
+        Assert.Equal(badTask.Id, Assert.Single(recovered.QueuedNotifications).WorkflowTaskId);
+        Assert.Equal(2, dbContext.NotificationOutbox.Count(row => row.SlaReminderKind != null));
+        Assert.Empty((await service.RunAsync(new(now), CancellationToken.None)).QueuedNotifications);
+    }
+
+    [Theory]
+    [InlineData("cancel")]
+    [InlineData("database")]
+    [InlineData("unexpected")]
+    public async Task C06RunSlaPropagatesFailuresOutsideScheduleData(string failure)
+    {
+        using var setup = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(setup, "WF-C06-FATAL", "C06-FATAL", "Active", PortfolioTradeVersionId(setup));
+        var task = AddTask(setup, "WF-C06-FATAL", "CheckerReviewTask", "Checker", Now.AddMinutes(-5));
+        setup.SaveChanges();
+        Exception expected = failure switch
+        {
+            "cancel" => new OperationCanceledException("C06 injected cancellation"),
+            "database" => new DbUpdateException("C06 injected database failure"),
+            _ => new InvalidOperationException("C06 injected unexpected failure")
+        };
+        var options = new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(setup.Database.GetConnectionString())
+            .AddInterceptors(new C06SaveFailureInterceptor(expected))
+            .Options;
+        using var dbContext = new WorkflowDbContext(options);
+
+        var actual = await Record.ExceptionAsync(() => new RunSlaService(dbContext, new SlaScheduleCalculator())
+            .RunAsync(new(Now), CancellationToken.None));
+
+        Assert.Same(expected, actual);
+        Assert.Empty(setup.NotificationOutbox.AsNoTracking().Where(row => row.SlaReminderKind != null));
+        Assert.Equal(task.DueAtUtc, setup.WorkflowTaskSlaSchedules.AsNoTracking().Single().NextReminderAtUtc);
+    }
+
+    private sealed class C06SaveFailureInterceptor(Exception failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default) => throw failure;
+    }
 
     [Fact]
     public async Task RunSlaQueuesOnlyOverduePendingTasksWithoutExistingOverdueNotification()

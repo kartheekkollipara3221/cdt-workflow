@@ -76,7 +76,7 @@ public sealed class RunSlaService(
                     continue;
                 }
 
-                var occurrence = ResolveOccurrence(schedule, now);
+                var occurrence = CalculateScheduleValue(() => ResolveOccurrence(schedule, now));
                 if (occurrence.EligibleAtUtc > now)
                 {
                     schedule.NextReminderAtUtc = occurrence.EligibleAtUtc;
@@ -93,7 +93,7 @@ public sealed class RunSlaService(
                 if (exists)
                 {
                     alreadyQueued++;
-                    AdvanceSchedule(schedule, occurrence);
+                    schedule.NextReminderAtUtc = CalculateScheduleValue(() => CalculateNextReminder(schedule, occurrence));
                     await dbContext.SaveChangesAsync(cancellationToken);
                     await transaction.CommitAsync(cancellationToken);
                     continue;
@@ -116,11 +116,15 @@ public sealed class RunSlaService(
                     continue;
                 }
 
-                var route = await dbContext.NotificationRoutes.AsNoTracking().SingleAsync(item =>
+                var route = await dbContext.NotificationRoutes.AsNoTracking().SingleOrDefaultAsync(item =>
                     item.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
                     && item.RouteKey == routeKey
                     && item.IsActive,
                     cancellationToken);
+                if (route is null)
+                {
+                    throw new SlaScheduleDataException($"{occurrence.Kind} notification route '{routeKey}' is missing or inactive");
+                }
 
                 if (!TryBuildNotificationContext(
                     task,
@@ -180,7 +184,7 @@ public sealed class RunSlaService(
                     CreatedAtUtc = now
                 };
                 dbContext.NotificationOutbox.Add(outbox);
-                AdvanceSchedule(schedule, occurrence);
+                schedule.NextReminderAtUtc = CalculateScheduleValue(() => CalculateNextReminder(schedule, occurrence));
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
 
@@ -196,6 +200,14 @@ public sealed class RunSlaService(
                     occurrence.EligibleAtUtc,
                     occurrence.Date,
                     occurrence.Kind));
+            }
+            catch (SlaScheduleDataException exception)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                // Rollback does not remove a staged outbox insert from EF tracking.
+                // It must not be saved by the next healthy schedule's transaction.
+                dbContext.ChangeTracker.Clear();
+                warnings.Add($"schedule {row.ScheduleId} task {row.TaskId} workflow {row.WorkflowInstanceId} skipped: {exception.Message}");
             }
             catch (DbUpdateException exception) when (IsSlaOutboxUniqueViolation(exception))
             {
@@ -243,7 +255,7 @@ public sealed class RunSlaService(
             if (schedule.ReminderLocalTime is null
                 || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
             {
-                throw new InvalidOperationException($"SLA schedule {schedule.Id} metadata is invalid.");
+                throw new SlaScheduleDataException("duration recurrence requires reminder time and time zone");
             }
 
             var durationTimeZone = TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZoneId);
@@ -268,7 +280,7 @@ public sealed class RunSlaService(
             || schedule.ReminderLocalTime is null
             || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
         {
-            throw new InvalidOperationException($"SLA schedule {schedule.Id} metadata is invalid.");
+            throw new SlaScheduleDataException("calculation mode or application target date, reminder time and time zone metadata is invalid");
         }
 
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(schedule.TimeZoneId);
@@ -283,52 +295,47 @@ public sealed class RunSlaService(
         return new SlaOccurrence(currentLocalDate, kind, eligibleAtUtc);
     }
 
-    private void AdvanceSchedule(WorkflowTaskSlaSchedule schedule, SlaOccurrence occurrence)
+    private DateTimeOffset? CalculateNextReminder(WorkflowTaskSlaSchedule schedule, SlaOccurrence occurrence)
     {
         if (schedule.CalculationMode == "DurationFromTaskCreation")
         {
             if (schedule.RecurrenceIntervalMinutes is > 0)
             {
-                schedule.NextReminderAtUtc = occurrence.EligibleAtUtc.AddMinutes(
+                return occurrence.EligibleAtUtc.AddMinutes(
                     schedule.RecurrenceIntervalMinutes.Value);
-                return;
             }
 
             if (schedule.RecurrenceIntervalDays is null)
             {
-                schedule.NextReminderAtUtc = null;
-                return;
+                return null;
             }
 
             if (schedule.ReminderLocalTime is null
                 || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
             {
-                throw new InvalidOperationException($"SLA schedule {schedule.Id} metadata is invalid.");
+                throw new SlaScheduleDataException("duration recurrence requires reminder time and time zone");
             }
 
-            schedule.NextReminderAtUtc = scheduleCalculator.CalculateNextRecurringOccurrence(
+            return scheduleCalculator.CalculateNextRecurringOccurrence(
                 occurrence.Date,
                 schedule.ReminderLocalTime.Value,
                 schedule.TimeZoneId,
                 schedule.RecurrenceIntervalDays.Value);
-            return;
         }
 
         if (occurrence.Kind == "DueToday")
         {
-            schedule.NextReminderAtUtc = schedule.OverdueAtUtc;
-            return;
+            return schedule.OverdueAtUtc;
         }
 
         if (schedule.RecurrenceIntervalDays is null
             || schedule.ReminderLocalTime is null
             || string.IsNullOrWhiteSpace(schedule.TimeZoneId))
         {
-            schedule.NextReminderAtUtc = null;
-            return;
+            return null;
         }
 
-        schedule.NextReminderAtUtc = scheduleCalculator.CalculateNextRecurringOccurrence(
+        return scheduleCalculator.CalculateNextRecurringOccurrence(
             occurrence.Date,
             schedule.ReminderLocalTime.Value,
             schedule.TimeZoneId,
@@ -415,10 +422,28 @@ public sealed class RunSlaService(
 
     private static string FormatFixedUtcMinusFiveDate(DateTimeOffset value)
     {
-        return value
+        return CalculateScheduleValue(() => value
             .ToOffset(FixedUtcMinusFiveOffset)
-            .ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
+            .ToString("MM/dd/yyyy", CultureInfo.InvariantCulture));
     }
+
+    private static T CalculateScheduleValue<T>(Func<T> calculate)
+    {
+        try
+        {
+            return calculate();
+        }
+        catch (Exception exception) when (exception is ArgumentException
+            or TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            // Only calendar calculations use this boundary. Database, cancellation
+            // and unexpected runtime failures must still escape the scan.
+            throw new SlaScheduleDataException($"calendar calculation failed: {exception.Message}", exception);
+        }
+    }
+
+    private sealed class SlaScheduleDataException(string message, Exception? innerException = null)
+        : Exception(message, innerException);
 
     private static DateTimeOffset ResolveLatestMinuteOccurrence(
         DateTimeOffset next,
