@@ -78,6 +78,7 @@ Phase 6 is signed off. The v1 milestone is ready for milestone completion or rel
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 261017-vqr | Bound SLA batches/context lifetime; defer archive decision | 2026-10-17 | See task commit | [261017-vqr](quick/261017-vqr-implement-c14-bounded-sla-batches-and-de/261017-vqr-SUMMARY.md) |
 | 261014-pj7 | Fix C13 bounded outbox batches and durable retry scheduling | 2026-10-14 | See task commit | [261014-pj7](quick/261014-pj7-fix-c13-bounded-outbox-batches-and-durab/261014-pj7-SUMMARY.md) |
 | 260809-f8m | Optimize the UI-facing Workflow Start and Action envelope | 2026-08-09 | 9317013 | [260809-f8m-optimize-the-ui-facing-workflowstart-and](C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/quick/260809-f8m-optimize-the-ui-facing-workflowstart-and) |
 | 260809-lb6 | Create executable public Workflow API envelope scenario packs | 2026-08-09 | ceb3999 | [260809-lb6-create-executable-public-workflow-api-en](C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/quick/260809-lb6-create-executable-public-workflow-api-en) |
@@ -157,3 +158,15 @@ No active workflow closure is required. Schema/consumer deployment and opt-in
 settings remain operational steps; production was not touched. SMTP remains at
 least once; maximum retries/dead-letter decisions and other review items remain
 outside this change. No push performed.
+
+## Current C14 SLA batching correction - 2026-10-17
+
+User authorized SLA batching; archive decisions deferred near end of OPEN-ISSUES.
+Default100 pages with optional Sla:BatchSize, fresh batch contexts, stable paging
+past invalid rows and preserved caller connection/tracking behavior. No migration.
+Full core519 passed, then final focused39 passed after a caller-edit guard was added;
+API70 and both warning-as-error builds passed. Seed/sample/branch/demo gates passed.
+Counts overlap; see quick task261017-vqr SUMMARY for exact verification order.
+Review findings fixed; no remaining material findings. No active workflow closure,
+archive implementation, production operation or remote push. Measured query/index
+tuning and target lookup costs remain separate C14 follow-ups.

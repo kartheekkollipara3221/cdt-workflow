@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using WorkflowEngine.Application.Contracts;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Sla;
@@ -15,38 +16,107 @@ public sealed class RunSlaService(
     SlaScheduleCalculator scheduleCalculator) : IRunSlaService
 {
     private static readonly TimeSpan FixedUtcMinusFiveOffset = TimeSpan.FromHours(-5);
+    private readonly SlaProcessingOptions processingOptions = new();
+
+    public RunSlaService(WorkflowDbContext dbContext, SlaScheduleCalculator scheduleCalculator,
+        SlaProcessingOptions processingOptions) : this(dbContext, scheduleCalculator)
+    {
+        this.processingOptions = processingOptions ?? throw new ArgumentNullException(nameof(processingOptions));
+    }
 
     public async Task<RunSlaResult> RunAsync(RunSlaRequest request, CancellationToken cancellationToken)
     {
         var now = request.Now.ToUniversalTime();
-        var activeQuery =
-            from schedule in dbContext.WorkflowTaskSlaSchedules.AsNoTracking()
-            join task in dbContext.WorkflowTasks.AsNoTracking()
-                on schedule.WorkflowTaskId equals task.Id
-            join instance in dbContext.WorkflowInstances.AsNoTracking()
-                on task.WorkflowInstanceId equals instance.WorkflowInstanceId
-            where schedule.Status == "Active"
-                && schedule.NextReminderAtUtc != null
-                && task.Status == "Pending"
-                && instance.Status == "Active"
-            select new
+        var contextOptions = new DbContextOptionsBuilder<WorkflowDbContext>(
+                (DbContextOptions<WorkflowDbContext>)dbContext.GetService<IDbContextOptions>())
+            .UseSqlServer(dbContext.Database.GetDbConnection(), contextOwnsConnection: false)
+            .Options;
+        var pendingTasksWithSla = 0;
+        var alreadyQueued = 0;
+        var queued = new List<RunSlaQueuedNotification>();
+        var warnings = new List<string>();
+        DateTimeOffset? cursorTime = null;
+        long cursorId = 0;
+        long upperId = 0;
+        var firstPage = true;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // Reuse provider configuration and interceptors, never the caller's tracked entities.
+            await using var batchContext = new WorkflowDbContext(contextOptions);
+            batchContext.Database.SetCommandTimeout(dbContext.Database.GetCommandTimeout());
+            var activeQuery =
+                from schedule in batchContext.WorkflowTaskSlaSchedules.AsNoTracking()
+                join task in batchContext.WorkflowTasks.AsNoTracking()
+                    on schedule.WorkflowTaskId equals task.Id
+                join instance in batchContext.WorkflowInstances.AsNoTracking()
+                    on task.WorkflowInstanceId equals instance.WorkflowInstanceId
+                where schedule.Status == "Active"
+                    && schedule.NextReminderAtUtc != null
+                    && task.Status == "Pending"
+                    && instance.Status == "Active"
+                select new { Schedule = schedule, Task = task, Instance = instance };
+
+            if (firstPage)
             {
-                Schedule = schedule,
-                Task = task,
-                Instance = instance
-            };
+                pendingTasksWithSla = await activeQuery.CountAsync(cancellationToken);
+                // New schedules created during this run are left for the next invocation.
+                upperId = await activeQuery.MaxAsync(row => (long?)row.Schedule.Id, cancellationToken) ?? 0;
+                firstPage = false;
+            }
 
-        var pendingTasksWithSla = await activeQuery.CountAsync(cancellationToken);
-        var scanRows = await activeQuery
-            .Where(row => row.Schedule.NextReminderAtUtc <= now)
-            .OrderBy(row => row.Schedule.NextReminderAtUtc)
-            .ThenBy(row => row.Schedule.Id)
-            .Select(row => new SlaScanRow(
-                row.Schedule.Id,
-                row.Task.Id,
-                row.Instance.WorkflowInstanceId))
-            .ToListAsync(cancellationToken);
+            var scanRows = await activeQuery
+                .Where(row => row.Schedule.Id <= upperId && row.Schedule.NextReminderAtUtc <= now
+                    && (cursorTime == null || row.Schedule.NextReminderAtUtc > cursorTime
+                        || (row.Schedule.NextReminderAtUtc == cursorTime && row.Schedule.Id > cursorId)))
+                .OrderBy(row => row.Schedule.NextReminderAtUtc)
+                .ThenBy(row => row.Schedule.Id)
+                .Select(row => new SlaScanRow(row.Schedule.Id, row.Task.Id,
+                    row.Instance.WorkflowInstanceId, row.Schedule.NextReminderAtUtc!.Value))
+                .Take(processingOptions.BatchSize)
+                .ToListAsync(cancellationToken);
+            if (scanRows.Count == 0)
+                break;
 
+            // Advance from selection, including failed/skipped rows, rather than OFFSET over changing data.
+            cursorTime = scanRows[^1].NextReminderAtUtc;
+            cursorId = scanRows[^1].ScheduleId;
+            var batch = await new RunSlaService(batchContext, scheduleCalculator)
+                .ProcessBatchAsync(scanRows, now, cancellationToken);
+            // Existing integrations may inspect or complete a schedule through the caller's context
+            // after scanning. Refresh only its unchanged, already-tracked schedules (including rowversion).
+            // Never attach new entries or overwrite caller edits.
+            var batchIds = scanRows.Select(row => row.ScheduleId).ToHashSet();
+            if (!dbContext.ChangeTracker.AutoDetectChangesEnabled)
+                dbContext.ChangeTracker.DetectChanges();
+            var callerSchedules = dbContext.ChangeTracker.Entries<WorkflowTaskSlaSchedule>()
+                .Where(entry => entry.State == EntityState.Unchanged && batchIds.Contains(entry.Entity.Id))
+                .ToDictionary(entry => entry.Entity.Id);
+            if (callerSchedules.Count > 0)
+            {
+                var ids = callerSchedules.Keys.ToArray();
+                var refreshed = await batchContext.WorkflowTaskSlaSchedules.AsNoTracking()
+                    .Where(schedule => ids.Contains(schedule.Id)).ToListAsync(cancellationToken);
+                foreach (var schedule in refreshed)
+                {
+                    var entry = callerSchedules[schedule.Id];
+                    entry.CurrentValues.SetValues(schedule);
+                    entry.OriginalValues.SetValues(schedule);
+                    entry.State = EntityState.Unchanged;
+                }
+            }
+            alreadyQueued += batch.AlreadyQueued;
+            queued.AddRange(batch.QueuedNotifications);
+            warnings.AddRange(batch.Warnings);
+        }
+
+        return new RunSlaResult(now, pendingTasksWithSla, alreadyQueued, queued, warnings);
+    }
+
+    private async Task<RunSlaResult> ProcessBatchAsync(IReadOnlyList<SlaScanRow> scanRows,
+        DateTimeOffset now, CancellationToken cancellationToken)
+    {
         var alreadyQueued = 0;
         var queued = new List<RunSlaQueuedNotification>();
         var warnings = new List<string>();
@@ -224,7 +294,7 @@ public sealed class RunSlaService(
             }
         }
 
-        return new RunSlaResult(now, pendingTasksWithSla, alreadyQueued, queued, warnings);
+        return new RunSlaResult(now, 0, alreadyQueued, queued, warnings);
     }
 
     private SlaOccurrence ResolveOccurrence(WorkflowTaskSlaSchedule schedule, DateTimeOffset now)
@@ -462,7 +532,7 @@ public sealed class RunSlaService(
             && sqlException.Errors.Cast<SqlError>().Any(error => error.Number is 2601 or 2627);
     }
 
-    private sealed record SlaScanRow(long ScheduleId, long TaskId, string WorkflowInstanceId);
+    private sealed record SlaScanRow(long ScheduleId, long TaskId, string WorkflowInstanceId, DateTimeOffset NextReminderAtUtc);
 
     private sealed record SlaOccurrence(DateOnly Date, string Kind, DateTimeOffset EligibleAtUtc);
 }

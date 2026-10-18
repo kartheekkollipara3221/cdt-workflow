@@ -33,6 +33,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         ValidateNotificationSenderConfiguration(configuration);
         services.AddSingleton(OutboxProcessingOptions.FromConfiguration(configuration));
+        services.AddSingleton(SlaProcessingOptions.FromConfiguration(configuration));
 
         services.AddDbContext<WorkflowDbContext>(options => options.UseSqlServer(
             connectionString,

@@ -20,7 +20,7 @@ authorize fixes or establish that historical load measurements describe target c
 | L3 | Open: resolve Swashbuckle against the package policy. No package change authorized. |
 | L4 | Open: SQL unique-violation detection depends on message text. |
 | L5 | Open: console DI scope validation. |
-| L6 | Open: SLA scan change-tracker growth. |
+| L6 / C14 | SLA batching and isolated context lifetimes implemented and verified on 2026-10-17. Default 100 with optional Sla:BatchSize. Measured index tuning and target whole-table lookup costs remain follow-up work. [Behavior](SLA_BATCH_PROCESSING.md). |
 | L7 | Open: local SQL defaults and deployment configuration. |
 | L8 | Open: acceptance tool has no explicit solution entry (it remains a test project dependency). |
 | L9 | Known Pkcs vulnerability resolved on 2026-10-14: explicit 10.0.13 reference; core/API/tool vulnerability scans clear. Broader package-lifecycle review remains separate. [Verification](../.planning/quick/261014-p51-patch-vulnerable-pkcs-dependency-and-ver/261014-p51-SUMMARY.md). |
@@ -67,6 +67,16 @@ not treated as newly approved requirements:
 - Choose operational scheduling for SLA scans and notification processing; overlaps D02/D04.
 - Target authentication integration: target-owned under O1; preserve trusted-header compatibility.
 - Confirm target migration/deployment ownership. Use the current [DBA runbook](sqms/DBA-DEPLOYMENT.md); do not apply obsolete deployment advice automatically.
+
+## Deferred archive decision (after current engine fixes)
+
+User deferred archival on 2026-10-17. Same-database archive tables are the preferred
+direction, but schema, retention periods and historical access remain undecided.
+Before moving operational records, define eligibility for completed workflows,
+preserve idempotent response replay and notification-occurrence duplicate protection,
+verify copies and relationships, and agree on final purge policy. Active workflows
+and unresolved notifications stay operational. No archive tables, purge job or data
+movement are authorized by the current C14 SLA batching task.
 
 ## Historical evidence
 

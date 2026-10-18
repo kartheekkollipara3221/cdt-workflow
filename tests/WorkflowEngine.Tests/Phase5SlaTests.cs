@@ -1,6 +1,11 @@
 using System.Text.Json;
+using System.Data.Common;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using WorkflowEngine.Infrastructure.DependencyInjection;
 using WorkflowEngine.Application.Notifications;
 using WorkflowEngine.Application.Sla;
 using WorkflowEngine.Infrastructure.Persistence;
@@ -14,6 +19,163 @@ public sealed class Phase5SlaTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
     private const string RecipientSnapshot = """{"toEmailAddresses":["primary@example.test","secondary@example.test"],"ccEmailAddresses":["cc.one@example.test","cc.two@example.test"]}""";
+
+    [Fact]
+    public async Task C14DefaultScanUsesBoundedIndependentContextsAndProcessesAllPages()
+    {
+        using var setup = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(setup);
+        for (var i = 0; i < 103; i++)
+        {
+            var id = $"WF-C14-{i}";
+            AddInstance(setup, id, id, "Active", versionId);
+            AddTask(setup, id, "CheckerReviewTask", "Checker", Now.AddMinutes(-1));
+        }
+        setup.SaveChanges();
+        var probe = new C14TrackingProbe();
+        using var context = new WorkflowDbContext(new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(setup.Database.GetConnectionString()).AddInterceptors(probe).Options);
+        var result = await new RunSlaService(context, new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+        Assert.Equal(103, result.QueuedNotifications.Count);
+        Assert.Equal(103, result.PendingTasksWithSla);
+        Assert.Equal(2, probe.ContextIds.Count);
+        Assert.DoesNotContain(context.ContextId.InstanceId, probe.ContextIds);
+        Assert.InRange(probe.MaxTracked, 1, 400);
+        Assert.Empty(context.ChangeTracker.Entries());
+        var repeated = await new RunSlaService(context, new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+        Assert.Empty(repeated.QueuedNotifications);
+    }
+
+    private sealed class C14TrackingProbe : SaveChangesInterceptor
+    {
+        public HashSet<Guid> ContextIds { get; } = [];
+        public int MaxTracked { get; private set; }
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var context = eventData.Context!;
+            ContextIds.Add(context.ContextId.InstanceId);
+            MaxTracked = Math.Max(MaxTracked, context.ChangeTracker.Entries().Count());
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task C14BatchContextsPreserveRuntimeConnectionAndCallerOwnership(int connectionMode)
+    {
+        using var setup = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(setup);
+        for (var i = 0; i < 3; i++)
+        {
+            var id = $"WF-C14-CONNECTION-{i}";
+            AddInstance(setup, id, id, "Active", versionId);
+            AddTask(setup, id, "CheckerReviewTask", "Checker", Now.AddMinutes(-1));
+        }
+        setup.SaveChanges();
+        using var connection = new SqlConnection(setup.Database.GetConnectionString());
+        var probe = new C14CommandProbe();
+        var options = new DbContextOptionsBuilder<WorkflowDbContext>().AddInterceptors(probe);
+        if (connectionMode == 1)
+            options.UseSqlServer(connection, contextOwnsConnection: true);
+        else
+            options.UseSqlServer("Server=localhost,65530;Database=invalid;Integrated Security=true;Connect Timeout=1");
+        using var context = new WorkflowDbContext(options.Options);
+        if (connectionMode == 0)
+            context.Database.SetConnectionString(setup.Database.GetConnectionString());
+        else if (connectionMode == 2)
+            context.Database.SetDbConnection(connection);
+        context.Database.SetCommandTimeout(17);
+        var result = await new RunSlaService(context, new SlaScheduleCalculator(), new SlaProcessingOptions(1))
+            .RunAsync(new(Now), CancellationToken.None);
+        Assert.Equal(3, result.QueuedNotifications.Count);
+        Assert.Equal(3, await context.WorkflowTasks.CountAsync());
+        Assert.False(string.IsNullOrEmpty(context.Database.GetDbConnection().ConnectionString));
+        Assert.NotEmpty(probe.Timeouts);
+        Assert.All(probe.Timeouts, timeout => Assert.Equal(17, timeout));
+    }
+
+    private sealed class C14CommandProbe : DbCommandInterceptor
+    {
+        public List<int> Timeouts { get; } = [];
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            Timeouts.Add(command.CommandTimeout);
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    [Fact]
+    public async Task C14DoesNotOverwriteUndetectedCallerScheduleEdits()
+    {
+        using var setup = WorkflowExecutionValidationTests.CreateSeededContext();
+        AddInstance(setup, "WF-C14-EDIT", "C14-EDIT", "Active", PortfolioTradeVersionId(setup));
+        AddTask(setup, "WF-C14-EDIT", "CheckerReviewTask", "Checker", Now.AddMinutes(-1));
+        setup.SaveChanges();
+        using var context = new WorkflowDbContext(new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(setup.Database.GetConnectionString()).Options);
+        var schedule = context.WorkflowTaskSlaSchedules.Single();
+        context.ChangeTracker.AutoDetectChangesEnabled = false;
+        schedule.TimeZoneId = "caller-unsaved-zone";
+        Assert.Equal(EntityState.Unchanged, context.Entry(schedule).State);
+
+        var result = await new RunSlaService(context, new SlaScheduleCalculator()).RunAsync(new(Now), CancellationToken.None);
+
+        Assert.Single(result.QueuedNotifications);
+        Assert.Equal("caller-unsaved-zone", schedule.TimeZoneId);
+        Assert.Equal(EntityState.Modified, context.Entry(schedule).State);
+        Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
+        Assert.Null(setup.WorkflowTaskSlaSchedules.AsNoTracking().Single().TimeZoneId);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task C14ConfiguredPagesPassPoisonRowsPreserveOrderAndLeaveCallerChangesAlone(int batchSize)
+    {
+        using var setup = WorkflowExecutionValidationTests.CreateSeededContext();
+        var versionId = PortfolioTradeVersionId(setup);
+        for (var i = 0; i < 8; i++)
+        {
+            var id = $"WF-C14-FAIR-{i}";
+            AddInstance(setup, id, id, "Active", versionId);
+            AddTask(setup, id, "CheckerReviewTask", "Checker", i == 7 ? Now.AddHours(1) : Now.AddMinutes(-10 + i / 2),
+                notificationRecipientsJson: i == 0 ? "{" : RecipientSnapshot);
+        }
+        setup.SaveChanges();
+        var probe = new C14TrackingProbe();
+        using var context = new WorkflowDbContext(new DbContextOptionsBuilder<WorkflowDbContext>()
+            .UseSqlServer(setup.Database.GetConnectionString()).AddInterceptors(probe).Options);
+        var callerInstance = context.WorkflowInstances.Single(row => row.WorkflowInstanceId == "WF-C14-FAIR-7");
+        callerInstance.StartedByUserId = "unsaved-caller-change";
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:DefaultConnection"] = setup.Database.GetConnectionString(),
+            ["Sla:BatchSize"] = batchSize.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        }).Build();
+        using var provider = new ServiceCollection().AddWorkflowInfrastructure(configuration)
+            .AddSingleton(context).BuildServiceProvider();
+        var service = provider.GetRequiredService<IRunSlaService>();
+        var result = await service.RunAsync(new(Now), CancellationToken.None);
+        Assert.Equal(8, result.PendingTasksWithSla);
+        Assert.Single(result.Warnings);
+        Assert.Equal(Enumerable.Range(1, 6).Select(i => $"WF-C14-FAIR-{i}"),
+            result.QueuedNotifications.Select(row => row.WorkflowInstanceId));
+        Assert.InRange(probe.MaxTracked, 1, batchSize * 4);
+        Assert.DoesNotContain(context.ContextId.InstanceId, probe.ContextIds);
+        Assert.Same(callerInstance, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Equal(EntityState.Modified, context.Entry(callerInstance).State);
+        Assert.NotEqual("unsaved-caller-change", setup.WorkflowInstances.AsNoTracking()
+            .Single(row => row.WorkflowInstanceId == callerInstance.WorkflowInstanceId).StartedByUserId);
+        var retry = await service.RunAsync(new(Now), CancellationToken.None);
+        Assert.Single(retry.Warnings);
+        Assert.Empty(retry.QueuedNotifications);
+        Assert.Equal(6, setup.NotificationOutbox.Count(row => row.SlaReminderKind != null));
+    }
 
     [Theory]
     [InlineData("duration-metadata")]
