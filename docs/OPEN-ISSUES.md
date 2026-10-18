@@ -8,6 +8,7 @@ authorize fixes or establish that historical load measurements describe target c
 
 | Items | Status / remaining work |
 |---|---|
+| H01 | Fixed and verified on 2026-10-18: bounded outbox failures rotate behind already-waiting mail, including zero-delay retries. No new migration or workflow closure required. Deploy updated bounded workers. [Verification](../.planning/quick/261018-fur-fix-h01-bounded-outbox-retry-starvation/261018-fur-SUMMARY.md). |
 | D02 / F06 | Open: SMTP failure can return an error after state is saved. Review dispatch and retry behavior. [Tracking](../.planning/defects/D02-email-in-request-load.md). |
 | D03 | Understood: business failures return HTTP 500. Any changed status semantics require a new v2 endpoint. |
 | D04 / C13 | Optional batch limits and durable exponential backoff implemented and verified on 2026-10-14. Enable explicitly after coordinated schema/consumer deployment. SMTP remains at least once; maximum attempts/dead-letter policy remains an owner decision. [Rollout](OUTBOX_RETRY_ROLLOUT.md). |

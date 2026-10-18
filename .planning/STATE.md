@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 status: milestone_complete
-last_updated: "2026-10-14"
+last_updated: "2026-10-18"
 progress:
   total_phases: 6
   completed_phases: 6
@@ -78,6 +78,7 @@ Phase 6 is signed off. The v1 milestone is ready for milestone completion or rel
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 261018-fur | Fix H01 bounded outbox retry starvation | 2026-10-18 | See task commit | [261018-fur](quick/261018-fur-fix-h01-bounded-outbox-retry-starvation/261018-fur-SUMMARY.md) |
 | 261017-vqr | Bound SLA batches/context lifetime; defer archive decision | 2026-10-17 | See task commit | [261017-vqr](quick/261017-vqr-implement-c14-bounded-sla-batches-and-de/261017-vqr-SUMMARY.md) |
 | 261014-pj7 | Fix C13 bounded outbox batches and durable retry scheduling | 2026-10-14 | See task commit | [261014-pj7](quick/261014-pj7-fix-c13-bounded-outbox-batches-and-durab/261014-pj7-SUMMARY.md) |
 | 260809-f8m | Optimize the UI-facing Workflow Start and Action envelope | 2026-08-09 | 9317013 | [260809-f8m-optimize-the-ui-facing-workflowstart-and](C:/projects/cdt-workflow-archive/20261014-cleanup/snapshot/.planning/quick/260809-f8m-optimize-the-ui-facing-workflowstart-and) |
@@ -170,3 +171,12 @@ Counts overlap; see quick task261017-vqr SUMMARY for exact verification order.
 Review findings fixed; no remaining material findings. No active workflow closure,
 archive implementation, production operation or remote push. Measured query/index
 tuning and target lookup costs remain separate C14 follow-ups.
+
+## Current H01 correction - 2026-10-18
+
+Bounded outbox retry starvation is fixed. Core 527, API 70 and local SMTP 5
+passed; both warning-as-error builds passed with zero warnings/errors. SQL-backed
+red tests reproduced the defect before the fix. Independent review found no
+material issues. Seed/sample/branch/demo/fresh-clone gates passed. No migration
+or workflow closure required. No push or production deployment performed.
+See quick task 261018-fur SUMMARY and docs/OUTBOX_RETRY_ROLLOUT.md.

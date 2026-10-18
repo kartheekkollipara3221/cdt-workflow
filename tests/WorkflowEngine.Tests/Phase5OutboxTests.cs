@@ -21,6 +21,91 @@ public sealed class Phase5OutboxTests
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2030-01-15T16:00:00Z");
     private const string RecipientSnapshot = """{"toEmailAddresses":["first@example.test","second@example.test"],"ccEmailAddresses":["manager@example.test","operations@example.test"]}""";
 
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(100, 0)]
+    [InlineData(100, 60)]
+    public async Task BoundedBatchesReachHealthyMailAfterAllFailedRowsBecomeEligibleAgain(int batchSize, int delaySeconds)
+    {
+        using var setup = WorkflowExecutionValidationTests.CreateSeededContext();
+        for (var index = 0; index < batchSize; index++)
+            AddNotification(setup, $"WF-FAIR-FAIL-{index}", "Poison", Now.AddHours(-2)).NotificationRecipientsJson = "{";
+        var healthy = AddNotification(setup, "WF-FAIR-HEALTHY", "Healthy", Now.AddHours(-1));
+        setup.SaveChanges();
+        var options = new OutboxProcessingOptions(batchSize, delaySeconds, 3600);
+        var sender = new RecordingNotificationSender();
+        await using (var firstContext = CreateDbContext())
+        {
+            var first = await new ProcessNotificationOutboxService(firstContext, sender, new FixedTimeProvider(Now), options)
+                .ProcessAsync(CancellationToken.None);
+            Assert.Equal(batchSize, first.PendingCount);
+            Assert.Equal(batchSize, first.Failures.Count);
+            Assert.Empty(first.Processed);
+        }
+
+        // Recreate the processor/context and advance past every retry time.
+        // An immediate repoll with the same clock would miss the original defect.
+        await using var nextContext = CreateDbContext();
+        var next = await new ProcessNotificationOutboxService(nextContext, sender,
+                new FixedTimeProvider(Now.AddMinutes(61)), options)
+            .ProcessAsync(CancellationToken.None);
+        Assert.Equal(batchSize, next.PendingCount);
+        Assert.Equal(healthy.Id, Assert.Single(next.Processed).Id);
+        Assert.Equal("Healthy", Assert.Single(sender.SentRows).Subject);
+        Assert.Equal("Sent", nextContext.NotificationOutbox.AsNoTracking().Single(row => row.Id == healthy.Id).Status);
+    }
+
+    [Fact]
+    public async Task BoundedZeroDelayRotatesFailedSendAtTheSameClockInstant()
+    {
+        using var context = WorkflowExecutionValidationTests.CreateSeededContext();
+        var bad = AddNotification(context, "WF-TIE-BAD", "Poison", Now);
+        var healthy = AddNotification(context, "WF-TIE-GOOD", "Healthy", Now);
+        context.SaveChanges();
+        var sender = new RecordingNotificationSender(bad.Id);
+        var processor = new ProcessNotificationOutboxService(context, sender, new FixedTimeProvider(Now), new OutboxProcessingOptions(1));
+        Assert.Single((await processor.ProcessAsync(CancellationToken.None)).Failures);
+        var second = await processor.ProcessAsync(CancellationToken.None);
+        Assert.Equal(healthy.Id, Assert.Single(second.Processed).Id);
+        var failed = context.NotificationOutbox.AsNoTracking().Single(row => row.Id == bad.Id);
+        Assert.Equal(Now, failed.NextAttemptAtUtc);
+        Assert.Equal("Pending", failed.Status);
+        Assert.Equal(1, failed.RetryCount);
+        Assert.Equal(RecipientSnapshot, failed.NotificationRecipientsJson);
+        Assert.Single((await processor.ProcessAsync(CancellationToken.None)).Failures);
+    }
+
+    [Fact]
+    public async Task BoundedBatchAttemptsDueRetryBeforeMailCreatedAfterItsRetryTime()
+    {
+        using var context = WorkflowExecutionValidationTests.CreateSeededContext();
+        var retry = AddNotification(context, "WF-RETRY-PROGRESS", "Recovered", Now.AddHours(-2));
+        retry.RetryCount = 4;
+        retry.NextAttemptAtUtc = Now.AddMinutes(-1);
+        AddNotification(context, "WF-NEW-PROGRESS", "New", Now);
+        context.SaveChanges();
+        var result = await new ProcessNotificationOutboxService(context, new RecordingNotificationSender(),
+                new FixedTimeProvider(Now), new OutboxProcessingOptions(1, 60))
+            .ProcessAsync(CancellationToken.None);
+        Assert.Equal(retry.Id, Assert.Single(result.Processed).Id);
+        Assert.Single(context.NotificationOutbox.AsNoTracking().Where(row => row.Status == "Pending"));
+    }
+
+    [Fact]
+    public async Task UnboundedBatchesKeepCreationOrderEvenWhenRetryTimesDiffer()
+    {
+        using var context = WorkflowExecutionValidationTests.CreateSeededContext();
+        var old = AddNotification(context, "WF-LEGACY-OLD", "Old", Now.AddHours(-2));
+        old.RetryCount = 4;
+        old.NextAttemptAtUtc = Now;
+        AddNotification(context, "WF-LEGACY-NEW", "New", Now.AddHours(-1));
+        context.SaveChanges();
+        var sender = new RecordingNotificationSender();
+        await new ProcessNotificationOutboxService(context, sender, new FixedTimeProvider(Now))
+            .ProcessAsync(CancellationToken.None);
+        Assert.Equal(["Old", "New"], sender.SentRows.Select(row => row.Subject));
+    }
+
     [Fact]
     public async Task ConfiguredBatchLeavesRemainingRowsForTheNextRun()
     {
@@ -326,6 +411,7 @@ public sealed class Phase5OutboxTests
         Assert.Equal("Sent", dbContext.NotificationOutbox.Single(row => row.Subject == "First").Status);
         Assert.Equal("Pending", dbContext.NotificationOutbox.Single(row => row.Subject == "Second").Status);
         Assert.Equal(1, dbContext.NotificationOutbox.Single(row => row.Subject == "Second").RetryCount);
+        Assert.Null(dbContext.NotificationOutbox.Single(row => row.Subject == "Second").NextAttemptAtUtc);
         Assert.Contains("send failed", dbContext.NotificationOutbox.Single(row => row.Subject == "Second").LastError, StringComparison.Ordinal);
         Assert.Equal("Sent", dbContext.NotificationOutbox.Single(row => row.Subject == "Third").Status);
     }
@@ -411,8 +497,10 @@ public sealed class Phase5OutboxTests
         Assert.Equal(originalSnapshot, row.NotificationRecipientsJson);
     }
 
-    [Fact]
-    public async Task ConcurrentProcessorsClaimBeforeSendingSoOnlyOneSenderRuns()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(1)]
+    public async Task ConcurrentProcessorsClaimBeforeSendingSoOnlyOneSenderRuns(int? batchSize)
     {
         using var setupContext = WorkflowExecutionValidationTests.CreateSeededContext();
         AddNotification(setupContext, "WF-PT-1", "Only", Now);
@@ -421,13 +509,15 @@ public sealed class Phase5OutboxTests
         await using var secondContext = CreateDbContext();
         var firstSender = new BlockingNotificationSender();
         var secondSender = new RecordingNotificationSender();
-        var firstProcessor = new ProcessNotificationOutboxService(firstContext, firstSender, new FixedTimeProvider(Now));
-        var secondProcessor = new ProcessNotificationOutboxService(secondContext, secondSender, new FixedTimeProvider(Now));
+        var options = new OutboxProcessingOptions(batchSize);
+        var firstProcessor = new ProcessNotificationOutboxService(firstContext, firstSender, new FixedTimeProvider(Now), options);
+        var secondProcessor = new ProcessNotificationOutboxService(secondContext, secondSender, new FixedTimeProvider(Now), options);
 
         var firstTask = firstProcessor.ProcessAsync(CancellationToken.None);
         await firstSender.WaitForSendAsync();
-        var secondResult = await secondProcessor.ProcessAsync(CancellationToken.None);
-        firstSender.Release();
+        ProcessNotificationOutboxResult secondResult;
+        try { secondResult = await secondProcessor.ProcessAsync(CancellationToken.None); }
+        finally { firstSender.Release(); }
         var firstResult = await firstTask;
 
         Assert.Null(firstResult.Failure);

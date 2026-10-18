@@ -26,15 +26,22 @@ public sealed class ProcessNotificationOutboxService(
     {
         var now = timeProvider.GetUtcNow();
         var leaseCutoff = now.Subtract(ProcessingLease);
-        var pendingQuery = dbContext.NotificationOutbox
+        var eligibleRows = dbContext.NotificationOutbox
             .AsNoTracking()
             .Where(row =>
                 (row.Status == "Pending" && (row.NextAttemptAtUtc == null || row.NextAttemptAtUtc <= now))
                 || (row.Status == "Processing"
                     && row.ProcessingStartedAtUtc != null
-                    && row.ProcessingStartedAtUtc <= leaseCutoff))
-            .OrderBy(row => row.CreatedAtUtc)
-            .ThenBy(row => row.Id)
+                    && row.ProcessingStartedAtUtc <= leaseCutoff));
+        // A failed bounded candidate must yield to mail that was already waiting.
+        // Due retries still precede mail created after their eligibility time.
+        var orderedRows = options.BatchSize is null
+            ? eligibleRows.OrderBy(row => row.CreatedAtUtc).ThenBy(row => row.Id)
+            : eligibleRows.OrderBy(row => row.NextAttemptAtUtc ?? row.CreatedAtUtc)
+                .ThenBy(row => row.RetryCount)
+                .ThenBy(row => row.CreatedAtUtc)
+                .ThenBy(row => row.Id);
+        var pendingQuery = orderedRows
             .Select(row => new { row.Id, row.NotificationType, row.Subject, row.WorkflowInstanceId, row.NotificationOccurrenceKey });
         if (options.BatchSize is int batchSize)
             pendingQuery = pendingQuery.Take(batchSize);
@@ -254,7 +261,11 @@ public sealed class ProcessNotificationOutboxService(
         var retryCount = await ownedRow.Select(item => (int?)item.RetryCount).SingleOrDefaultAsync(CancellationToken.None);
         if (retryCount is null)
             return;
-        var nextAttempt = options.GetNextAttemptAtUtc(retryCount.Value, timeProvider.GetUtcNow());
+        var failedAtUtc = timeProvider.GetUtcNow();
+        var nextAttempt = options.GetNextAttemptAtUtc(retryCount.Value, failedAtUtc)
+            // Zero delay remains immediately eligible, but bounded runs need a
+            // durable time to rotate this failure behind already-waiting mail.
+            ?? (options.BatchSize is null ? (DateTimeOffset?)null : failedAtUtc);
         await dbContext.NotificationOutbox
             .Where(item => item.Id == id && item.Status == "Processing" && item.ProcessingToken == processingToken)
             .ExecuteUpdateAsync(setters => setters
