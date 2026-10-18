@@ -1,0 +1,353 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CDT v2 — Target JSON contract</title><style>
+*{box-sizing:border-box}body{margin:0;background:#eef3f7;color:#183047;font:16px/1.65 system-ui,Segoe UI,sans-serif}main{max-width:1120px;margin:auto;padding:44px;background:white}h1,h2,h3{line-height:1.25}h1{font-size:2.35rem}h2{font-size:1.65rem}h3{margin-top:28px}header{border-bottom:5px solid #176898;padding-bottom:22px}section{border-bottom:1px solid #d9e2e9;padding:26px 0;scroll-margin-top:15px}.note{background:#eaf5fb;border-left:4px solid #176898;padding:16px 20px}.important{background:#fff4db;border-left:4px solid #a76b00;padding:16px 20px}.small{font-size:.88rem;color:#526779}nav a{display:inline-block;margin:5px 16px 5px 0}nav{padding:22px 0}a{color:#145f90;overflow-wrap:anywhere}pre{background:#11283d;color:#eef6ff;padding:20px;border-radius:6px;overflow:auto;line-height:1.5;font-size:13px}code{font-family:Consolas,monospace;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;font-size:.92rem;margin:20px 0}th,td{border:1px solid #d4dfe7;text-align:left;vertical-align:top;padding:11px}th{background:#edf4f8}.scroll{overflow-x:auto}li{margin:7px 0}.pill{color:#17633f;font-weight:700}button{padding:7px 14px;border:1px solid #9ab3c6;background:#edf4f8;cursor:pointer}footer{padding:25px 0;color:#526779}@media(max-width:700px){main{padding:22px}h1{font-size:1.9rem}}@media print{body{background:white;font-size:10pt}main{padding:0;max-width:none}nav,button{display:none}pre{white-space:pre-wrap;background:#f3f6f8;color:#172b40;border:1px solid #bbb;font-size:8pt}h2,h3{break-after:avoid}tr,.note{break-inside:avoid}}
+</style></head><body><main><header><p class="small">TARGET TEAM HANDOFF · 18 OCTOBER 2026 · ENGINE COMMIT 362404d</p><h1>CDT PortfolioTrade v2<br>JSON contract and integration guide</h1><p class="pill">Existing JSON shape. New workflow metadata and recipient behavior.</p><p>This release does not add a new HTTP API version. Use the existing request fields. Version 2 is a workflow definition selected by the database. Existing v1 instances keep their saved version.</p><p class="small">Writing target: approximately 80% ASD-STE100 style. This is a style target, not a measured or certified compliance score. Technical identifiers retain their exact spelling.</p></header>
+<nav aria-label="Contents"><a href="#boundary">Integration boundary</a><a href="#changes">Required changes</a><a href="#fields">Fields</a><a href="#actions">Action matrix</a><a href="#examples">JSON examples</a><a href="#sla">SLA contract</a><a href="#responses">Responses and errors</a><a href="#adapter">In-process mapping</a><a href="#release">Release and acceptance</a><a href="#evidence">Evidence</a></nav>
+<section id="boundary"><h2>1. Use the correct integration boundary</h2>
+<p>The JSON examples below match the current standalone Workflow API DTOs in this repository. They are complete request bodies. The supplied target snapshot calls the engine services directly from its own form-save service. It does not need to add an HTTP hop.</p><div class="note"><strong>For the target adapter:</strong> keep the target form-save endpoint and its existing JSON. Map its values to the engine fields shown here. The target's outer form JSON and response wrapper are not redefined by this document. Confirm them against the current target build; the supplied snapshot is read-only evidence.</div>
+<div class="scroll"><table><thead><tr><th>Interface</th><th>Operation</th><th>Result</th></tr></thead><tbody><tr><td>Standalone API</td><td>POST <code>/v1/WorkflowStart</code></td><td>Create an instance, optionally with its first action.</td></tr><tr><td>Standalone API</td><td>POST <code>/v1/WorkflowAction</code></td><td>Execute an action, or synchronize an SLA date with no action.</td></tr><tr><td>Standalone API</td><td>GET <code>/v1/WorkflowContext?workflowInstanceId=WF-CDT-1050</code></td><td>Read current state, task, SLA and available actions for the actor.</td></tr><tr><td>Target in-process adapter</td><td><code>IStartWorkflowService</code>, <code>IWorkflowExecutionService</code>, <code>IWorkflowSlaSynchronizationService</code></td><td>Use the mapping in section 8. Preserve the target-owned transaction and response.</td></tr></tbody></table></div>
+<h3>Identity for the standalone API</h3><p>Send <code>Content-Type: application/json</code>. The trusted upstream server supplies <code>X-Workflow-UserId</code> and <code>X-Workflow-Roles</code>. <code>X-Workflow-DisplayName</code> is optional. Roles can be comma-separated. Do not let browser-supplied identity become trusted without target authentication. The in-process adapter obtains the actor from its authenticated context.</p><p>Use <code>Maker</code>, <code>Checker</code>, <code>TradingDesk</code>, or <code>BDRMClientService</code> for the action shown below. Desk assignment keys are separate from actor roles.</p>
+</section>
+<section id="changes"><h2>2. Required caller changes for v2</h2>
+<ol><li>Omit <code>notification.recipientInputs.selectedCcUsers</code> on <code>CheckerReturnToMaker</code>, <code>TradingReturnToMaker</code>, and <code>BdrmTradeFulfilled</code>. Do not send an empty array or null under that key. The v2 route does not declare the key.</li><li>Keep <code>selectedCcUsers</code> on submit, resubmit, Checker approval and Trading approval when Cc recipients are needed. Put the RM in that list.</li><li>Capture <code>originalMaker</code> once when the workflow starts. Do not send it again on later actions.</li><li>Save the Maker's revised desk and target date in the target application. Pass their current values when Checker approves and creates the new desk task.</li><li>Do not send ICG RA, Risk Team or desk membership as request recipients. Those To recipients come from versioned metadata.</li></ol><p>Omitting the three removed Cc inputs is also accepted by v1 because its rules are optional. However, the omitted users will no longer receive Cc on those actions. This is a recipient-behavior change for those requests, even though the request remains valid.</p><p>If the target maps a UI choice to <code>BdrmTradeFulfilled</code>, apply the final-approval rules to that effective action. Do not infer the engine action from the UI label. <code>BdrmTradeNotExecutedProperly</code> remains a separate engine rework action.</p>
+</section>
+<section id="fields"><h2>3. Request fields and ownership</h2>
+<div class="scroll"><table><thead><tr><th>Request / field</th><th>Type and requirement</th><th>Rule</th></tr></thead><tbody><tr><td>Start: <code>workflowKey</code></td><td>Required non-empty string</td><td>Use <code>PortfolioTrade</code>.</td></tr><tr><td>Start: <code>businessObjectId</code></td><td>Required non-empty string</td><td>Use a stable unique ID, for example <code>CDT-1050</code>. The engine derives <code>WF-CDT-1050</code>; still use the returned ID.</td></tr><tr><td>Start: <code>actionKey</code></td><td>Optional string</td><td>Omit to create Draft only. Use <code>SaveDraft</code> to start and save draft. A direct submit can use <code>SubmitForChecker</code> with its required notification data.</td></tr><tr><td>Action: <code>workflowInstanceId</code></td><td>Required non-empty string</td><td>Use the saved ID returned by Start.</td></tr><tr><td>Action: <code>actionKey</code></td><td>String; required for an action</td><td>Omit only for an SLA-only request that supplies <code>slaTargetDate</code>.</td></tr><tr><td>Action: <code>assignedRoleKey</code></td><td>Optional string; required for Checker approval into a desk task</td><td>Use <code>TradingDeskTaxable</code>, <code>TradingDeskTaxExempt</code>, or <code>TradingDeskEquity</code>.</td></tr><tr><td>Start or Action: <code>slaTargetDate</code></td><td>Optional ISO date string: YYYY-MM-DD</td><td>Required when creating an ApplicationTargetDate desk task. It is a local business date, not a UTC timestamp. Duration policies do not use it to set deadlines.</td></tr><tr><td>Start or Action: <code>notification</code></td><td>Optional object; contents depend on the action</td><td>Contains only <code>recipientInputs</code> and <code>templateData</code>.</td></tr><tr><td><code>recipientInputs</code></td><td>Object: key → array of recipient objects</td><td>Only keys declared for the operation are allowed. Each recipient has <code>userId</code>, <code>emailAddress</code>, <code>displayName</code>.</td></tr><tr><td>Recipient <code>emailAddress</code></td><td>String; supply a usable address</td><td>One address per object. User ID and display name can be omitted. The engine treats addresses as opaque and performs no directory lookup.</td></tr><tr><td><code>templateData</code></td><td>Object: key → string or null</td><td>Supply non-empty strings for tokens used by the selected templates. These values render text; they do not select recipients or control timing.</td></tr></tbody></table></div>
+<p>The public DTOs reject unknown members. Do not send <code>toState</code>, <code>workflowDefinitionVersion</code>, <code>actor</code>, <code>dataSave</code>, <code>workflow</code>, <code>actionReason</code>, <code>expectedInstanceVersion</code>, <code>idempotencyKey</code>, or final To/Cc arrays in these HTTP bodies. Some of these fields exist on the internal .NET envelope; that does not make them public HTTP fields.</p><p>Use exact action and recipient-key spelling. The engine combines the active route rules, removes duplicate addresses without case sensitivity, keeps the first value, and gives To precedence over Cc. Supply the complete current Cc list on each allowed action. The engine does not accumulate prior Cc inputs.</p><h3>Template data</h3><p>The complete examples include these existing template keys: <code>referenceNumber</code>, <code>submitterDisplayName</code>, <code>returnedByDisplayName</code>, <code>recipientDisplayName</code>, <code>traderDisplayName</code>, <code>confirmerDisplayName</code>, <code>deskName</code>, <code>securityType</code>, <code>accountShortName</code>, <code>accountDisplayName</code>, <code>submittedDate</code>, and <code>tradeLink</code>. Use current application values. Required tokens depend on the deployed route templates. Missing required values cause validation failure. The example link is illustrative; it does not define a target URL route.</p>
+</section>
+<section id="actions"><h2>4. Action and recipient matrix</h2>
+<div class="scroll"><table><thead><tr><th>Action / actor</th><th>Resulting state</th><th>To / Cc for the action email</th><th>Caller input</th></tr></thead><tbody><tr><td><code>SaveDraft</code> / Maker</td><td>Draft or ReturnedToMaker stays unchanged</td><td>No email</td><td>No recipient inputs after Start.</td></tr><tr><td><code>SubmitForChecker</code> / Maker</td><td>CheckerReview</td><td>ICG RAs + Risk / selected Cc</td><td>Optional selectedCcUsers.</td></tr><tr><td><code>CheckerReturnToMaker</code> / Checker</td><td>ReturnedToMaker</td><td>originalMaker / none</td><td>Omit selectedCcUsers.</td></tr><tr><td><code>ResubmitForChecker</code> / Maker</td><td>CheckerReview</td><td>ICG RAs + Risk / selected Cc</td><td>Optional selectedCcUsers.</td></tr><tr><td><code>CheckerSendToTradingDesk</code> / Checker</td><td>TradingDeskReview</td><td>ICG RAs + Risk + selected desk / selected Cc</td><td>assignedRoleKey + slaTargetDate; optional selectedCcUsers.</td></tr><tr><td><code>TradingReturnToMaker</code> / TradingDesk</td><td>ReturnedToMaker</td><td>originalMaker / none</td><td>Omit selectedCcUsers.</td></tr><tr><td><code>TradingTradeExecuted</code> / TradingDesk</td><td>BdrmClientServiceReview</td><td>originalMaker + Risk / selected Cc</td><td>Optional selectedCcUsers.</td></tr><tr><td><code>BdrmTradeFulfilled</code> / BDRMClientService</td><td>Completed</td><td>originalMaker + Risk / none</td><td>Omit selectedCcUsers.</td></tr></tbody></table></div>
+<p>The current task and available actions remain authoritative. Do not allow an action just because it is listed here. The copied TradingDeskRework path remains supported by existing metadata but is outside this CDT happy-path sequence. Do not remove or reinterpret it.</p>
+</section>
+<section id="examples"><h2>5. Complete JSON examples</h2>
+<p>Replace example IDs, people, dates and template values before use. These are copyable JSON bodies, not form payloads. Use future business dates for a live test. The January 2030 dates match the injected-clock demonstration. For the requested ten-step flow, use examples 1 and 3–11. Example 2 is an optional later draft save. Example 12 is a separate SLA-only operation.</p>
+<h3>1. Start and save draft</h3><p><strong>POST /v1/WorkflowStart</strong> · Actor role: <code>Maker</code>.</p><p>Capture the original Maker once. The target saves its form data through its own save operation. This engine request does not contain form data.</p><pre data-contract="start"><code>{
+  &quot;workflowKey&quot;: &quot;PortfolioTrade&quot;,
+  &quot;businessObjectId&quot;: &quot;CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;SaveDraft&quot;,
+  &quot;notification&quot;: {
+    &quot;recipientInputs&quot;: {
+      &quot;originalMaker&quot;: [
+        {
+          &quot;userId&quot;: &quot;maker1&quot;,
+          &quot;emailAddress&quot;: &quot;maker@example.test&quot;,
+          &quot;displayName&quot;: &quot;Maker One&quot;
+        }
+      ]
+    }
+  }
+}</code></pre>
+<h3>2. Save an existing draft</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>Maker</code>.</p><p>Optional. Do not call Start again to save an existing draft.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;SaveDraft&quot;
+}</code></pre>
+<h3>3. Submit to Checker</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>Maker</code>.</p><p>This creates a Checker task and its SLA schedule.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;SubmitForChecker&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Taxable&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    },
+    &quot;recipientInputs&quot;: {
+      &quot;selectedCcUsers&quot;: [
+        {
+          &quot;userId&quot;: &quot;rm1&quot;,
+          &quot;emailAddress&quot;: &quot;rm@example.test&quot;,
+          &quot;displayName&quot;: &quot;Relationship Manager&quot;
+        },
+        {
+          &quot;userId&quot;: &quot;watcher1&quot;,
+          &quot;emailAddress&quot;: &quot;watcher@example.test&quot;,
+          &quot;displayName&quot;: &quot;Watcher One&quot;
+        }
+      ]
+    }
+  }
+}</code></pre>
+<h3>4. Checker returns to Maker</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>Checker</code>.</p><p>The recipientInputs property is omitted. Do not include selectedCcUsers, even as an empty array.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;CheckerReturnToMaker&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Taxable&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    }
+  }
+}</code></pre>
+<h3>5. Maker resubmits after Checker return</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>Maker</code>.</p><p>This creates a new Checker task. The new task receives a new SLA schedule.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;ResubmitForChecker&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Taxable&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    },
+    &quot;recipientInputs&quot;: {
+      &quot;selectedCcUsers&quot;: [
+        {
+          &quot;userId&quot;: &quot;rm1&quot;,
+          &quot;emailAddress&quot;: &quot;rm@example.test&quot;,
+          &quot;displayName&quot;: &quot;Relationship Manager&quot;
+        },
+        {
+          &quot;userId&quot;: &quot;watcher1&quot;,
+          &quot;emailAddress&quot;: &quot;watcher@example.test&quot;,
+          &quot;displayName&quot;: &quot;Watcher One&quot;
+        }
+      ]
+    }
+  }
+}</code></pre>
+<h3>6. Checker approves: Taxable desk</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>Checker</code>.</p><p>Pass the selected desk and target date together.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;CheckerSendToTradingDesk&quot;,
+  &quot;assignedRoleKey&quot;: &quot;TradingDeskTaxable&quot;,
+  &quot;slaTargetDate&quot;: &quot;2030-01-15&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Taxable&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    },
+    &quot;recipientInputs&quot;: {
+      &quot;selectedCcUsers&quot;: [
+        {
+          &quot;userId&quot;: &quot;rm1&quot;,
+          &quot;emailAddress&quot;: &quot;rm@example.test&quot;,
+          &quot;displayName&quot;: &quot;Relationship Manager&quot;
+        },
+        {
+          &quot;userId&quot;: &quot;watcher1&quot;,
+          &quot;emailAddress&quot;: &quot;watcher@example.test&quot;,
+          &quot;displayName&quot;: &quot;Watcher One&quot;
+        }
+      ]
+    }
+  }
+}</code></pre>
+<h3>7. Trading Desk returns to Maker</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>TradingDesk</code>.</p><p>No selectedCcUsers. The engine returns the trade to Maker.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;TradingReturnToMaker&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Taxable&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    }
+  }
+}</code></pre>
+<h3>8. Maker resubmits with a revised selection</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>Maker</code>.</p><p>First save Equity and 2030-01-18 in the target form. This action creates a Checker task, not a desk task. The display value deskName is not assignment authority. Example 9 applies the stored selection.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;ResubmitForChecker&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Equity&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    },
+    &quot;recipientInputs&quot;: {
+      &quot;selectedCcUsers&quot;: [
+        {
+          &quot;userId&quot;: &quot;rm1&quot;,
+          &quot;emailAddress&quot;: &quot;rm@example.test&quot;,
+          &quot;displayName&quot;: &quot;Relationship Manager&quot;
+        },
+        {
+          &quot;userId&quot;: &quot;watcher1&quot;,
+          &quot;emailAddress&quot;: &quot;watcher@example.test&quot;,
+          &quot;displayName&quot;: &quot;Watcher One&quot;
+        }
+      ]
+    }
+  }
+}</code></pre>
+<h3>9. Checker approves: Equity and a new date</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>Checker</code>.</p><p>Read the current selection from the target record. Do not reuse the prior Taxable assignment or prior target date.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;CheckerSendToTradingDesk&quot;,
+  &quot;assignedRoleKey&quot;: &quot;TradingDeskEquity&quot;,
+  &quot;slaTargetDate&quot;: &quot;2030-01-18&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Equity&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    },
+    &quot;recipientInputs&quot;: {
+      &quot;selectedCcUsers&quot;: [
+        {
+          &quot;userId&quot;: &quot;rm1&quot;,
+          &quot;emailAddress&quot;: &quot;rm@example.test&quot;,
+          &quot;displayName&quot;: &quot;Relationship Manager&quot;
+        },
+        {
+          &quot;userId&quot;: &quot;watcher1&quot;,
+          &quot;emailAddress&quot;: &quot;watcher@example.test&quot;,
+          &quot;displayName&quot;: &quot;Watcher One&quot;
+        }
+      ]
+    }
+  }
+}</code></pre>
+<h3>10. Trading Desk approves execution</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>TradingDesk</code>.</p><p>Creates the BDRM / Client Service task. Keep the RM in selectedCcUsers when the RM must receive Cc.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;TradingTradeExecuted&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Equity&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    },
+    &quot;recipientInputs&quot;: {
+      &quot;selectedCcUsers&quot;: [
+        {
+          &quot;userId&quot;: &quot;rm1&quot;,
+          &quot;emailAddress&quot;: &quot;rm@example.test&quot;,
+          &quot;displayName&quot;: &quot;Relationship Manager&quot;
+        },
+        {
+          &quot;userId&quot;: &quot;watcher1&quot;,
+          &quot;emailAddress&quot;: &quot;watcher@example.test&quot;,
+          &quot;displayName&quot;: &quot;Watcher One&quot;
+        }
+      ]
+    }
+  }
+}</code></pre>
+<h3>11. BDRM / Client Service approves</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>BDRMClientService</code>.</p><p>Completes the workflow. No selectedCcUsers.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;actionKey&quot;: &quot;BdrmTradeFulfilled&quot;,
+  &quot;notification&quot;: {
+    &quot;templateData&quot;: {
+      &quot;referenceNumber&quot;: &quot;1050&quot;,
+      &quot;submitterDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;returnedByDisplayName&quot;: &quot;Checker One&quot;,
+      &quot;recipientDisplayName&quot;: &quot;Maker One&quot;,
+      &quot;traderDisplayName&quot;: &quot;Trader One&quot;,
+      &quot;confirmerDisplayName&quot;: &quot;Client Service One&quot;,
+      &quot;deskName&quot;: &quot;Equity&quot;,
+      &quot;securityType&quot;: &quot;Other&quot;,
+      &quot;accountShortName&quot;: &quot;DEMO&quot;,
+      &quot;accountDisplayName&quot;: &quot;CDT DEMO ACCOUNT&quot;,
+      &quot;submittedDate&quot;: &quot;01/15/2030&quot;,
+      &quot;tradeLink&quot;: &quot;https://atlas.example.test/CDT/1050&quot;
+    }
+  }
+}</code></pre>
+<h3>12. Change only the current SLA target date</h3><p><strong>POST /v1/WorkflowAction</strong> · Actor role: <code>TradingDesk</code>.</p><p>Separate example: use while an ApplicationTargetDate task is pending, before completion. Omit actionKey. This changes the schedule only. It does not change the desk, workflow state, or workflow instance version. The same date is a no-op.</p><pre data-contract="action"><code>{
+  &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+  &quot;slaTargetDate&quot;: &quot;2030-01-19&quot;
+}</code></pre>
+</section>
+<section id="sla"><h2>6. SLA and reminder contract</h2>
+<div class="scroll"><table><thead><tr><th>Task</th><th>Timing in America/New_York</th><th>Reminder recipients</th></tr></thead><tbody><tr><td>CheckerReviewTask</td><td>First Overdue 60 minutes after creation; repeat every 60 minutes.</td><td>Saved Checker task To/Cc: ICG RAs, Risk Team, selected Cc.</td></tr><tr><td>TradingDeskReviewTask</td><td>Due Today at 14:00 on target date. If calculated after 14:00, omit Due Today. Overdue from next date at 08:00, then daily, including weekends.</td><td>Selected desk only. No Cc. Saved separately when the task schedule starts.</td></tr><tr><td>BdrmClientServiceReviewTask</td><td>First Overdue next local date at 09:00; then daily at 09:00.</td><td>originalMaker only. No Cc.</td></tr><tr><td>Maker rework</td><td>No SLA policy.</td><td>No SLA reminder.</td></tr></tbody></table></div>
+<p>A scan on a later date follows overdue catch-up. It does not backfill all missed dates or send Overdue before its local time. A late scan on the target date can send Due Today only if the schedule contains that reminder.</p><p>The engine snapshots reminder recipients at task creation. Membership changes affect new tasks. Changing a target date supersedes the schedule and keeps its saved reminder audience. Closing a task completes its schedule and cancels undelivered reminder rows. A message already accepted by SMTP cannot be recalled.</p><p>The target must run both the SLA scanner and outbox processor. A browser request does not replace those jobs. No caller JSON sets reminder recipients, recurrence, timezone, due time, or overdue time. The new six database columns are internal persistence fields.</p>
+</section>
+<section id="responses"><h2>7. Responses, failures and retries</h2>
+<p>Standalone Start and Action responses use the same wrapper. The following is a <strong>partial illustration</strong>, not a complete response fixture. Additional result and context fields are present. Do not send this object as a request.</p>
+<pre data-contract="response-excerpt"><code>{
+  &quot;result&quot;: {
+    &quot;actionResult&quot;: {
+      &quot;success&quot;: true,
+      &quot;resultCode&quot;: &quot;Success&quot;,
+      &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;,
+      &quot;actionKey&quot;: &quot;CheckerSendToTradingDesk&quot;,
+      &quot;oldState&quot;: &quot;CheckerReview&quot;,
+      &quot;newState&quot;: &quot;TradingDeskReview&quot;
+    },
+    &quot;workflowContext&quot;: {
+      &quot;workflow&quot;: {
+        &quot;workflowInstanceId&quot;: &quot;WF-CDT-1050&quot;
+      }
+    }
+  }
+}</code></pre>
+<p>Read <code>result.actionResult.success</code>, <code>resultCode</code>, <code>message</code> and <code>diagnostics.validationErrors</code>. Use <code>result.workflowContext</code> to refresh the UI. It contains current workflow/task/SLA state and available actions. GET WorkflowContext returns <code>result.workflowContext</code> without an action result. Treat newly added response fields as additive.</p>
+<div class="scroll"><table><thead><tr><th>Standalone HTTP result</th><th>Meaning</th><th>Caller action</th></tr></thead><tbody><tr><td>200</td><td>The returned action result reports success. Start can also report AlreadyExists.</td><td>Use the returned instance ID and state. Do not assume AlreadyExists means a fresh instance.</td></tr><tr><td>400</td><td>Malformed/unknown JSON fields, required input errors, or mapped SLA-only validation errors.</td><td>Correct the input.</td></tr><tr><td>401 / 403</td><td>Missing trusted actor / missing actor roles.</td><td>Correct authenticated identity propagation.</td></tr><tr><td>500 with action result</td><td>Current controllers return 500 when actionResult.success is false, including engine business failures.</td><td>Inspect resultCode and diagnostics. Do not assume every 500 is transient.</td></tr><tr><td>NotificationDeliveryFailed</td><td>State can already be committed when synchronous email delivery fails.</td><td>Read current context before recovery. Avoid blindly repeating the action.</td></tr><tr><td>404 on context lookup</td><td>The workflow instance does not exist.</td><td>Check the stored identifier.</td></tr></tbody></table></div>
+<p>The public Action DTO has no caller-supplied idempotency key. Its service generates a new key per call. A repeated HTTP request is not guaranteed to replay the first result. Preserve the target adapter's supported idempotency and transaction strategy; do not add an unsupported JSON field.</p><p>An in-process call returns <code>WorkflowActionResultEnvelope</code>, whose top-level properties are <code>Result</code> and <code>WorkflowContext</code>. The target owns its outer HTTP wrapper and status mapping. Do not assume the standalone wrapper is the target form-save wrapper.</p>
+</section>
+<section id="adapter"><h2>8. Map fields in the existing target adapter</h2>
+<div class="scroll"><table><thead><tr><th>External value / source</th><th>Engine mapping</th><th>Required handling</th></tr></thead><tbody><tr><td>Target record ID</td><td>StartWorkflowRequest.BusinessObjectId</td><td>The supplied snapshot uses CDT- plus the target ID. Keep IDs stable.</td></tr><tr><td>Authenticated user and roles</td><td>StartedByUserId / StartedByRoles; WorkflowActionEnvelope.Actor</td><td>Target-owned identity.</td></tr><tr><td>Effective action</td><td>StartWorkflowRequest.InitialActionKey or WorkflowActionBlock.ActionKey</td><td>Apply recipient rules to the effective engine action after any UI mapping.</td></tr><tr><td>Selected desk</td><td>WorkflowActionBlock.AssignedRoleKey</td><td>Forward current persisted selection on CheckerSendToTradingDesk.</td></tr><tr><td>Target completion date</td><td>WorkflowActionBlock.SlaInput.TargetDate</td><td>Map to DateOnly. A date field in opaque form payload alone does not update the SLA.</td></tr><tr><td>notification.recipientInputs</td><td>WorkflowExecutionRequest.NotificationInput.RecipientInputs</td><td>Map each item to WorkflowRecipientInput. Capture originalMaker at Start only.</td></tr><tr><td>notification.templateData</td><td>WorkflowNotificationInput.TemplateData</td><td>Supply current text and links. Preserve NotificationContext mapping used by the adapter.</td></tr><tr><td>Form fields</td><td>Target business persistence</td><td>Do not replace the target form-save JSON with the standalone engine DTO.</td></tr><tr><td>Successful engine result</td><td>Target state projection and returned response</td><td>Check Success before projecting NewState. Coordinate rollback if the target owns the outer transaction.</td></tr><tr><td>Queued notification</td><td>Post-commit dispatcher / outbox worker</td><td>Do not send externally before an owning transaction commits.</td></tr></tbody></table></div>
+<p>The supplied CPCDTServices snapshot already calls StartWorkflowService and WorkflowExecutionService in-process. Its execution request sets <code>DeriveIdentityFromPersistence = true</code>, <code>PersistSectionData = false</code>, and <code>ValidateActionEcho = false</code>. Verify the deployed adapter before changing these settings. This document does not certify that snapshot as the deployed build.</p>
+</section>
+<section id="release"><h2>9. Release and target acceptance</h2>
+<ol><li>Deploy the caller omission of selectedCcUsers for the three v2 routes.</li><li>Apply the approved six-column schema upgrade and deploy the v2-capable engine to all hosts.</li><li>Create v2 inactive. Install approved group addresses. Use target change control for membership and route changes.</li><li>Run verification, then activate v2 for new workflows. Never run init-db against the target database.</li><li>Keep v2-capable software while v2 instances remain. Reactivating v1 changes new starts only.</li><li>Run the complete return-and-resubmit sequence using the target adapter. Verify both the response and persisted state at each step.</li><li>Confirm desk-only reminders after the new desk/date selection, one reminder per SLA-enabled task, and no new reminders after completion.</li></ol><p>Local evidence: the real in-process engine completed 10 actions, six SLA tasks, and 17 SMTP messages: nine action emails plus eight reminders. Ordered To/Cc and subjects matched the captured messages. The injected test clock advanced through January 2030. This was not a target HTTP or UI acceptance run.</p><p>Two reviewed edge cases are owner-accepted under target change controls: temporarily disabling/reactivating an explicit reminder route, and removing all members of a required group. This handoff preserves those decisions; it does not claim those cases were fixed.</p>
+</section>
+<section id="evidence"><h2>10. Contract sources and verification limits</h2>
+<p>Source baseline: commit <code>362404d</code>. Primary files:</p><ul><li>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs</li><li>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs</li><li>workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowNotificationRequest.cs</li><li>WorkflowStartController, WorkflowActionController, WorkflowContextController and their services</li><li>src/WorkflowEngine.Application/WorkflowStart/IStartWorkflowService.cs</li><li>src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedDataV2.cs</li><li>src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs</li><li>target-implementation-read-only/Service/Service/Application/CPCDTServices.txt</li><li>PROJECT.md and docs/CDT_V2_RELEASE.md</li></ul><p>Verification for this document: all complete request examples were checked by deserializing them into the actual public DTOs. Action keys, desk assignments and recipient-input declarations were also checked against the v2 metadata in the dedicated local happy-path database using read-only queries. These checks do not prove endpoint execution or deployed target compatibility. The response excerpt is illustrative. HTML structure and internal links were checked. Browser rendering was not tested.</p><p>Changed: this single HTML handoff and local handoff notes. Why: provide the target team with the implemented contract. No engine, SQL, seed or target source changes. No new seed verification or standalone sample execution for this documentation task. No commit, push or deployment. The prior happy-path evidence is reported separately above.</p>
+</section>
+<footer>This file is self-contained. No external script, stylesheet or image is required. All addresses and links in JSON examples are demonstration values.</footer></main></body></html>

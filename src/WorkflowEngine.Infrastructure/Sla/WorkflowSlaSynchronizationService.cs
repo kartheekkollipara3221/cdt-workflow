@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WorkflowEngine.Application.Sla;
+using WorkflowEngine.Infrastructure.Notifications;
 using WorkflowEngine.Infrastructure.Persistence;
 using WorkflowEngine.Infrastructure.Persistence.Entities;
 
@@ -8,8 +9,19 @@ namespace WorkflowEngine.Infrastructure.Sla;
 public sealed class WorkflowSlaSynchronizationService(
     WorkflowDbContext dbContext,
     TimeProvider timeProvider,
-    SlaScheduleCalculator calculator) : IWorkflowSlaSynchronizationService
+    SlaScheduleCalculator calculator,
+    NotificationRecipientResolver recipientResolver) : IWorkflowSlaSynchronizationService
 {
+    private readonly SlaReminderAudienceResolver audienceResolver = new(dbContext, recipientResolver);
+
+    public WorkflowSlaSynchronizationService(
+        WorkflowDbContext dbContext,
+        TimeProvider timeProvider,
+        SlaScheduleCalculator calculator)
+        : this(dbContext, timeProvider, calculator, new NotificationRecipientResolver(dbContext))
+    {
+    }
+
     public WorkflowSlaSynchronizationResult Synchronize(WorkflowSlaSynchronizationRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -62,6 +74,28 @@ public sealed class WorkflowSlaSynchronizationService(
                 .Max() is { } maximum ? maximum + 1 : 1
             : activeSchedule.ScheduleVersion + 1;
 
+        // The reminder audience is fixed when the task's first schedule is created.
+        // A superseding schedule (target date change) keeps the saved audience.
+        var dueRecipientsJson = activeSchedule?.DueRecipientsJson;
+        var overdueRecipientsJson = activeSchedule?.OverdueRecipientsJson;
+        if (activeSchedule is null)
+        {
+            var audience = audienceResolver.Resolve(
+                instance.WorkflowDefinitionVersionId,
+                instance.WorkflowInstanceId,
+                policy,
+                task.AssignedRoleKey);
+            if (audience.Errors.Count > 0)
+            {
+                throw new WorkflowSlaValidationException(
+                    "notification.slaReminderRoute",
+                    string.Join(" ", audience.Errors));
+            }
+
+            dueRecipientsJson = audience.DueRecipientsJson;
+            overdueRecipientsJson = audience.OverdueRecipientsJson;
+        }
+
         if (activeSchedule is not null)
         {
             activeSchedule.Status = "Superseded";
@@ -88,6 +122,9 @@ public sealed class WorkflowSlaSynchronizationService(
             RecurrenceIntervalDays = policy.RecurrenceIntervalDays,
             DueNotificationRouteKey = policy.DueNotificationRouteKey,
             OverdueNotificationRouteKey = policy.OverdueNotificationRouteKey,
+            DueReminderLocalTime = policy.DueReminderLocalTime,
+            DueRecipientsJson = dueRecipientsJson,
+            OverdueRecipientsJson = overdueRecipientsJson,
             Status = "Active",
             CreatedAtUtc = now,
             CreatedByUserId = request.ActorUserId,
@@ -148,16 +185,24 @@ public sealed class WorkflowSlaSynchronizationService(
     {
         if (policy.CalculationMode == "DurationFromTaskCreation")
         {
-            return calculator.CalculateDuration(taskCreatedAtUtc, policy.DurationMinutes!.Value, now);
+            return policy.OverdueStartsNextLocalDay
+                ? calculator.CalculateNextLocalDay(
+                    taskCreatedAtUtc,
+                    policy.ReminderLocalTime!.Value,
+                    policy.TimeZoneId!,
+                    now)
+                : calculator.CalculateDuration(taskCreatedAtUtc, policy.DurationMinutes!.Value, now);
         }
 
         var calculated = calculator.CalculateApplicationDate(
             targetDate!.Value,
             policy.ReminderLocalTime!.Value,
+            policy.DueReminderLocalTime ?? policy.ReminderLocalTime!.Value,
             policy.TimeZoneId!,
             policy.OverdueStartOffsetDays,
             policy.RecurrenceIntervalDays!.Value,
-            now);
+            now,
+            policy.SkipMissedDueReminder);
         if (policy.SendDueDateReminder)
         {
             return calculated;
@@ -216,7 +261,10 @@ public sealed class WorkflowSlaSynchronizationService(
                     && (policy.ReminderLocalTime is not null
                         || policy.TimeZoneId is not null))
                 || policy.DueNotificationRouteKey is not null
-                || string.IsNullOrWhiteSpace(policy.OverdueNotificationRouteKey))
+                || string.IsNullOrWhiteSpace(policy.OverdueNotificationRouteKey)
+                || policy.DueReminderLocalTime is not null
+                || policy.SkipMissedDueReminder
+                || (policy.OverdueStartsNextLocalDay && !hasDayRecurrence))
             {
                 throw new InvalidOperationException(
                     $"SLA policy '{policy.SlaPolicyKey}' has invalid duration-mode metadata.");
@@ -233,7 +281,10 @@ public sealed class WorkflowSlaSynchronizationService(
             || policy.OverdueStartOffsetDays < 0
             || policy.RecurrenceIntervalDays is null or <= 0
             || string.IsNullOrWhiteSpace(policy.OverdueNotificationRouteKey)
-            || (policy.SendDueDateReminder && string.IsNullOrWhiteSpace(policy.DueNotificationRouteKey)))
+            || (policy.SendDueDateReminder && string.IsNullOrWhiteSpace(policy.DueNotificationRouteKey))
+            || policy.OverdueStartsNextLocalDay
+            || (!policy.SendDueDateReminder
+                && (policy.DueReminderLocalTime is not null || policy.SkipMissedDueReminder)))
         {
             throw new InvalidOperationException(
                 $"SLA policy '{policy.SlaPolicyKey}' has invalid calculation metadata.");

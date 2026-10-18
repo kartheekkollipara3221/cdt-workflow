@@ -187,6 +187,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.TimeZoneId).HasMaxLength(100);
             entity.Property(row => row.DueNotificationRouteKey).HasMaxLength(100);
             entity.Property(row => row.OverdueNotificationRouteKey).HasMaxLength(100);
+            entity.Property(row => row.DueReminderLocalTime).HasColumnType("time");
             entity.HasIndex(row => new { row.WorkflowDefinitionVersionId, row.SlaPolicyKey }).IsUnique();
             entity.ToTable(table =>
             {
@@ -341,6 +342,7 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
             entity.Property(row => row.ReminderLocalTime).HasColumnType("time");
             entity.Property(row => row.DueNotificationRouteKey).HasMaxLength(100);
             entity.Property(row => row.OverdueNotificationRouteKey).HasMaxLength(100);
+            entity.Property(row => row.DueReminderLocalTime).HasColumnType("time");
             entity.Property(row => row.Status).HasMaxLength(30).IsRequired();
             entity.Property(row => row.CreatedByUserId).HasMaxLength(200).IsRequired();
             entity.Property(row => row.CorrelationId).HasMaxLength(150).IsRequired();

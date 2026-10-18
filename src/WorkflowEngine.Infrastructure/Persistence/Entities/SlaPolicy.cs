@@ -15,6 +15,9 @@ public sealed class SlaPolicy
     public int? RecurrenceIntervalDays { get; set; }
     public string? DueNotificationRouteKey { get; set; }
     public string? OverdueNotificationRouteKey { get; set; }
+    public TimeOnly? DueReminderLocalTime { get; set; }
+    public bool SkipMissedDueReminder { get; set; }
+    public bool OverdueStartsNextLocalDay { get; set; }
     public bool IsActive { get; set; }
 }
 

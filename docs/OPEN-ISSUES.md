@@ -40,6 +40,15 @@ The [paused engine work packages](../.planning/paused/engine-defect-fixes/.conti
 preserve the implementation order and unanswered decisions. No work package is
 started by this cleanup.
 
+## CDT PortfolioTrade v2 (2026-10-18)
+
+Implemented locally, not deployed: PortfolioTrade version 2 with the agreed CDT recipients and SLA timing, additive engine
+support (own-rules SLA reminder routes with a saved audience, separate Due Today time and skip, next-local-day first overdue)
+and the release scripts `sql/upgrades/20261019_*`. Release steps, target-team requirement and rollback:
+[CDT_V2_RELEASE.md](CDT_V2_RELEASE.md). Open: target deployment and real group addresses; the reported "new desk/new date
+after a return" case did not reproduce in the engine (regression tests on v1 and v2 pass) and stays open for the user's
+end-to-end test.
+
 ## Other paused topics
 
 Cleanup verification on 2026-10-14: 550 of 552 tests passed. Two fresh-clone

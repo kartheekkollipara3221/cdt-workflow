@@ -29,47 +29,69 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             return new SeedVerificationResult(["Missing PortfolioTrade workflow definition version 1."]);
         }
 
+        VerifyVersion(errors, version.Id, PortfolioTradeSeedData.Definition);
+
+        var version2 = dbContext.WorkflowDefinitionVersions.SingleOrDefault(row =>
+            row.WorkflowDefinitionId == definition.Id && row.VersionNumber == PortfolioTradeSeedDataV2.VersionNumber);
+        if (version2 is not null)
+        {
+            var version2Errors = new List<string>();
+            VerifyVersion(version2Errors, version2.Id, PortfolioTradeSeedDataV2.Definition);
+            errors.AddRange(version2Errors.Select(error => $"Version 2: {error}"));
+        }
+
+        var activeVersions = dbContext.WorkflowDefinitionVersions.Count(row =>
+            row.WorkflowDefinitionId == definition.Id && row.IsActive);
+        if (activeVersions != 1)
+        {
+            errors.Add($"PortfolioTrade must have exactly one active workflow definition version; found {activeVersions}.");
+        }
+
+        return new SeedVerificationResult(errors);
+    }
+
+    private void VerifyVersion(List<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
+    {
         VerifyKeySet(
             errors,
             "state",
-            PortfolioTradeSeedData.States.Select(row => row.Key),
+            seedSet.States.Select(row => row.Key),
             dbContext.WorkflowStateDefinitions
-                .Where(row => row.WorkflowDefinitionVersionId == version.Id)
+                .Where(row => row.WorkflowDefinitionVersionId == versionId)
                 .Select(row => row.StateKey));
         VerifyKeySet(
             errors,
             "role",
-            PortfolioTradeSeedData.Roles.Select(row => row.Key),
+            seedSet.Roles.Select(row => row.Key),
             dbContext.WorkflowRoleDefinitions
-                .Where(row => row.WorkflowDefinitionVersionId == version.Id)
+                .Where(row => row.WorkflowDefinitionVersionId == versionId)
                 .Select(row => row.RoleKey));
         VerifyKeySet(
             errors,
             "action",
-            PortfolioTradeSeedData.Actions.Select(row => row.Key),
+            seedSet.Actions.Select(row => row.Key),
             dbContext.WorkflowActionDefinitions
-                .Where(row => row.WorkflowDefinitionVersionId == version.Id)
+                .Where(row => row.WorkflowDefinitionVersionId == versionId)
                 .Select(row => row.ActionKey));
         VerifyKeySet(
             errors,
             "task definition",
-            PortfolioTradeSeedData.Tasks.Select(row => row.Key),
+            seedSet.Tasks.Select(row => row.Key),
             dbContext.WorkflowTaskDefinitions
-                .Where(row => row.WorkflowDefinitionVersionId == version.Id)
+                .Where(row => row.WorkflowDefinitionVersionId == versionId)
                 .Select(row => row.TaskKey));
 
-        VerifyNoAdminDemoOverride(errors, version.Id);
-        VerifyParticipantDefinitions(errors, version.Id);
-        VerifyActionHints(errors, version.Id);
-        VerifyTaskReferences(errors, version.Id);
-        VerifySlaPolicies(errors, version.Id);
-        VerifyTaskAssignmentRoles(errors, version.Id);
-        VerifyNotificationRoutes(errors, version.Id);
-        VerifyNotificationRecipientRules(errors, version.Id);
-        VerifyTransitions(errors, version.Id);
-        VerifyNoDuplicateTransitions(errors, version.Id);
-
-        return new SeedVerificationResult(errors);
+        VerifyNoAdminDemoOverride(errors, versionId);
+        VerifyParticipantDefinitions(errors, versionId, seedSet);
+        VerifyActionHints(errors, versionId, seedSet);
+        VerifyTaskReferences(errors, versionId);
+        VerifySlaPolicies(errors, versionId, seedSet);
+        VerifySlaReminderRoutes(errors, versionId);
+        VerifyTaskAssignmentRoles(errors, versionId, seedSet);
+        VerifyNotificationRoutes(errors, versionId, seedSet);
+        VerifyNotificationRecipientRules(errors, versionId, seedSet);
+        VerifyTransitions(errors, versionId, seedSet);
+        VerifyNoDuplicateTransitions(errors, versionId);
     }
 
     private static void VerifyKeySet(
@@ -107,7 +129,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 
-    private void VerifyParticipantDefinitions(ICollection<string> errors, long versionId)
+    private void VerifyParticipantDefinitions(ICollection<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
     {
         var definitions = dbContext.WorkflowParticipantDefinitions
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
@@ -115,10 +137,10 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         VerifyKeySet(
             errors,
             "participant definition",
-            PortfolioTradeSeedData.ParticipantDefinitions.Select(row => row.ParticipantKey),
+            seedSet.ParticipantDefinitions.Select(row => row.ParticipantKey),
             definitions.Keys);
 
-        foreach (var seed in PortfolioTradeSeedData.ParticipantDefinitions)
+        foreach (var seed in seedSet.ParticipantDefinitions)
         {
             if (!definitions.TryGetValue(seed.ParticipantKey, out var row))
             {
@@ -136,13 +158,13 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 
-    private void VerifyActionHints(ICollection<string> errors, long versionId)
+    private void VerifyActionHints(ICollection<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
     {
         var actions = dbContext.WorkflowActionDefinitions
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
             .ToDictionary(row => row.ActionKey, StringComparer.Ordinal);
 
-        foreach (var action in PortfolioTradeSeedData.Actions)
+        foreach (var action in seedSet.Actions)
         {
             if (!actions.TryGetValue(action.Key, out var row))
             {
@@ -200,7 +222,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 
-    private void VerifyTaskAssignmentRoles(ICollection<string> errors, long versionId)
+    private void VerifyTaskAssignmentRoles(ICollection<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
     {
         var roleKeys = dbContext.WorkflowRoleDefinitions
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
@@ -211,7 +233,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             .Select(row => row.TaskKey)
             .ToHashSet(StringComparer.Ordinal);
 
-        var expected = PortfolioTradeSeedData.TaskAssignmentRoles
+        var expected = seedSet.TaskAssignmentRoles
             .Select(row => $"{row.TaskKey}/{row.RoleKey}");
         var actual = dbContext.WorkflowTaskAssignmentRoleDefinitions
             .Where(row => row.WorkflowDefinitionVersionId == versionId && row.IsActive)
@@ -234,7 +256,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 
-    private void VerifySlaPolicies(ICollection<string> errors, long versionId)
+    private void VerifySlaPolicies(ICollection<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
     {
         var policies = dbContext.SlaPolicies
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
@@ -242,7 +264,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         VerifyKeySet(
             errors,
             "SLA policy",
-            PortfolioTradeSeedData.SlaPolicies.Select(row => row.Key),
+            seedSet.SlaPolicies.Select(row => row.Key),
             policies.Select(row => row.SlaPolicyKey));
 
         var routeKeys = dbContext.NotificationRoutes
@@ -269,7 +291,10 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
                         && (policy.ReminderLocalTime is not null
                             || policy.TimeZoneId is not null))
                     || policy.DueNotificationRouteKey is not null
-                    || string.IsNullOrWhiteSpace(policy.OverdueNotificationRouteKey))
+                    || string.IsNullOrWhiteSpace(policy.OverdueNotificationRouteKey)
+                    || policy.DueReminderLocalTime is not null
+                    || policy.SkipMissedDueReminder
+                    || (policy.OverdueStartsNextLocalDay && !hasDayRecurrence))
                 {
                     errors.Add($"SLA policy '{policy.SlaPolicyKey}' has invalid duration-mode metadata.");
                 }
@@ -282,7 +307,8 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
                     || policy.ReminderLocalTime is null
                     || string.IsNullOrWhiteSpace(policy.TimeZoneId)
                     || policy.OverdueStartOffsetDays < 0
-                    || policy.RecurrenceIntervalDays is null or <= 0)
+                    || policy.RecurrenceIntervalDays is null or <= 0
+                    || policy.OverdueStartsNextLocalDay)
                 {
                     errors.Add($"SLA policy '{policy.SlaPolicyKey}' has invalid application-target-date metadata.");
                 }
@@ -306,14 +332,81 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 
-    private void VerifyNotificationRoutes(ICollection<string> errors, long versionId)
+    // A reminder route with any rule row owns its recipients. It must not use
+    // RequestInput rules and needs an active To rule for every allowed desk role.
+    private void VerifySlaReminderRoutes(ICollection<string> errors, long versionId)
     {
         var routes = dbContext.NotificationRoutes
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
             .ToDictionary(row => row.RouteKey, StringComparer.Ordinal);
-        VerifyKeySet(errors, "notification route", PortfolioTradeSeedData.NotificationRoutes.Select(row => row.Key), routes.Keys);
+        var tasks = dbContext.WorkflowTaskDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.IsActive && row.SlaPolicyKey != null)
+            .ToList();
+        var assignmentRoles = dbContext.WorkflowTaskAssignmentRoleDefinitions
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.IsActive)
+            .ToList();
+        var policies = dbContext.SlaPolicies
+            .Where(row => row.WorkflowDefinitionVersionId == versionId && row.IsActive)
+            .ToList();
 
-        foreach (var seed in PortfolioTradeSeedData.NotificationRoutes)
+        foreach (var policy in policies)
+        {
+            var reminderRouteKeys = new[]
+            {
+                policy.SendDueDateReminder ? policy.DueNotificationRouteKey : null,
+                policy.OverdueNotificationRouteKey
+            };
+            foreach (var routeKey in reminderRouteKeys.OfType<string>().Distinct(StringComparer.Ordinal))
+            {
+                if (!routes.TryGetValue(routeKey, out var route))
+                {
+                    continue;
+                }
+
+                var rules = dbContext.NotificationRecipientRules
+                    .Where(row => row.NotificationRouteId == route.Id)
+                    .ToList();
+                if (rules.Count == 0)
+                {
+                    continue;
+                }
+
+                if (rules.Any(row => row.IsActive && row.SourceType == "RequestInput"))
+                {
+                    errors.Add($"SLA reminder route '{routeKey}' must not use RequestInput recipient rules.");
+                }
+
+                foreach (var task in tasks.Where(row => row.SlaPolicyKey == policy.SlaPolicyKey))
+                {
+                    var allowedRoles = assignmentRoles
+                        .Where(row => row.TaskKey == task.TaskKey)
+                        .Select(row => (string?)row.RoleKey)
+                        .DefaultIfEmpty(null);
+                    foreach (var roleKey in allowedRoles)
+                    {
+                        if (!rules.Any(row =>
+                                row.IsActive
+                                && row.RecipientKind == "To"
+                                && (row.AssignedRoleKey == null || row.AssignedRoleKey == roleKey)))
+                        {
+                            errors.Add(roleKey is null
+                                ? $"SLA reminder route '{routeKey}' must have an active To recipient rule."
+                                : $"SLA reminder route '{routeKey}' must have an active To recipient rule for assigned role '{roleKey}'.");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void VerifyNotificationRoutes(ICollection<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
+    {
+        var routes = dbContext.NotificationRoutes
+            .Where(row => row.WorkflowDefinitionVersionId == versionId)
+            .ToDictionary(row => row.RouteKey, StringComparer.Ordinal);
+        VerifyKeySet(errors, "notification route", seedSet.NotificationRoutes.Select(row => row.Key), routes.Keys);
+
+        foreach (var seed in seedSet.NotificationRoutes)
         {
             if (!routes.TryGetValue(seed.Key, out var row))
             {
@@ -331,7 +424,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 
-    private void VerifyNotificationRecipientRules(ICollection<string> errors, long versionId)
+    private void VerifyNotificationRecipientRules(ICollection<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
     {
         var routes = dbContext.NotificationRoutes
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
@@ -341,8 +434,11 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             .Where(row => routeKeysById.Keys.Contains(row.NotificationRouteId))
             .ToList();
 
-        var actualKeys = rules.Select(row => $"{routeKeysById[row.NotificationRouteId]}/{row.SortOrder}");
-        var expectedKeys = PortfolioTradeSeedData.NotificationRecipientRules
+        // Deactivated rows are kept for history and are not part of the seeded set.
+        var actualKeys = rules
+            .Where(row => row.IsActive)
+            .Select(row => $"{routeKeysById[row.NotificationRouteId]}/{row.SortOrder}");
+        var expectedKeys = seedSet.NotificationRecipientRules
             .Select(row => $"{row.RouteKey}/{row.SortOrder}");
         VerifyKeySet(errors, "notification recipient rule", expectedKeys, actualKeys);
 
@@ -351,7 +447,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             .Select(row => row.ParticipantKey)
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var seed in PortfolioTradeSeedData.NotificationRecipientRules)
+        foreach (var seed in seedSet.NotificationRecipientRules)
         {
             if (!routes.TryGetValue(seed.RouteKey, out var route))
             {
@@ -452,7 +548,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
         }
     }
 
-    private void VerifyTransitions(ICollection<string> errors, long versionId)
+    private void VerifyTransitions(ICollection<string> errors, long versionId, PortfolioTradeSeedDefinition seedSet)
     {
         var states = dbContext.WorkflowStateDefinitions
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
@@ -478,7 +574,7 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             .Where(row => row.WorkflowDefinitionVersionId == versionId)
             .ToList();
 
-        foreach (var seed in PortfolioTradeSeedData.Transitions)
+        foreach (var seed in seedSet.Transitions)
         {
             var row = transitions.SingleOrDefault(item =>
                 item.FromStateKey == seed.FromStateKey
@@ -537,9 +633,9 @@ public sealed class SeedVerificationService(WorkflowDbContext dbContext) : ISeed
             }
         }
 
-        if (transitions.Count != PortfolioTradeSeedData.Transitions.Length)
+        if (transitions.Count != seedSet.Transitions.Length)
         {
-            errors.Add($"Portfolio Trade transition count is {transitions.Count}; expected {PortfolioTradeSeedData.Transitions.Length}.");
+            errors.Add($"Portfolio Trade transition count is {transitions.Count}; expected {seedSet.Transitions.Length}.");
         }
     }
 

@@ -218,6 +218,20 @@ internal static class PortfolioTradeSeedData
         new("BdrmClientServiceReview", "BdrmTradeFulfilled", "BDRMClientService", "Completed", "BdrmClientServiceReviewTask", null, "RouteWorkflowCompleted", "BDRM fulfilled trade"),
         new("BdrmClientServiceReview", "BdrmTradeNotExecutedProperly", "BDRMClientService", "TradingDeskRework", "BdrmClientServiceReviewTask", "TradingDeskReworkTask", "RouteTradingDeskReworkAssigned", "BDRM returned to Trading Desk")
     ];
+
+    // Declared last: static fields initialize in textual order.
+    public static readonly PortfolioTradeSeedDefinition Definition = new(
+        VersionNumber,
+        ParticipantDefinitions,
+        States,
+        Roles,
+        Actions,
+        SlaPolicies,
+        Tasks,
+        NotificationRoutes,
+        NotificationRecipientRules,
+        TaskAssignmentRoles,
+        Transitions);
 }
 
 internal sealed record StateSeed(string Key, string DisplayName, bool IsTerminal);
@@ -252,7 +266,10 @@ internal sealed record SlaPolicySeed(
     int? RecurrenceIntervalMinutes,
     int? RecurrenceIntervalDays,
     string? DueNotificationRouteKey,
-    string? OverdueNotificationRouteKey);
+    string? OverdueNotificationRouteKey,
+    TimeOnly? DueReminderLocalTime = null,
+    bool SkipMissedDueReminder = false,
+    bool OverdueStartsNextLocalDay = false);
 
 internal sealed record TaskSeed(string Key, string DisplayName, string OwnerRoleKey, string? SlaPolicyKey);
 

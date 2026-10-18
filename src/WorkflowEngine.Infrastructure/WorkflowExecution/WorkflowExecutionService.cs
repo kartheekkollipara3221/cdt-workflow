@@ -45,7 +45,8 @@ public sealed class WorkflowExecutionService(
             new WorkflowSlaSynchronizationService(
                 dbContext,
                 timeProvider,
-                new SlaScheduleCalculator()))
+                new SlaScheduleCalculator(),
+                new NotificationRecipientResolver(dbContext)))
     {
     }
 
@@ -223,6 +224,12 @@ public sealed class WorkflowExecutionService(
             return slaInputValidation;
         }
 
+        var reminderAudienceValidation = ValidateSlaReminderAudience(normalized, instance, transition);
+        if (reminderAudienceValidation is not null)
+        {
+            return reminderAudienceValidation;
+        }
+
         var notificationRecipients = workflow.NotificationRecipients ?? new NotificationRecipients();
         if (request.NotificationInput is not null)
         {
@@ -340,6 +347,61 @@ public sealed class WorkflowExecutionService(
                 "slaInput.targetDate",
                 $"slaInput.targetDate is required for task '{effectiveTaskKey}'.")
         ]);
+    }
+
+    // A task whose SLA reminder routes own their recipients must resolve them
+    // when the task is created. A failure rejects the action before any change.
+    private WorkflowActionResultEnvelope? ValidateSlaReminderAudience(
+        NormalizedWorkflowAction normalized,
+        WorkflowInstance instance,
+        WorkflowTransitionDefinition transition)
+    {
+        if (string.IsNullOrWhiteSpace(transition.TaskToCreateKey))
+        {
+            return null;
+        }
+
+        var taskDefinition = dbContext.WorkflowTaskDefinitions
+            .AsNoTracking()
+            .SingleOrDefault(row =>
+                row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                && row.TaskKey == transition.TaskToCreateKey
+                && row.IsActive);
+        if (taskDefinition is null || string.IsNullOrWhiteSpace(taskDefinition.SlaPolicyKey))
+        {
+            return null;
+        }
+
+        var policy = dbContext.SlaPolicies
+            .AsNoTracking()
+            .SingleOrDefault(row =>
+                row.WorkflowDefinitionVersionId == instance.WorkflowDefinitionVersionId
+                && row.SlaPolicyKey == taskDefinition.SlaPolicyKey
+                && row.IsActive);
+        if (policy is null)
+        {
+            return null;
+        }
+
+        var assignedRoleKey = ResolveCreatedTaskAssignedRole(
+            instance.WorkflowDefinitionVersionId,
+            taskDefinition,
+            normalized.Envelope.Workflow?.AssignedRoleKey);
+        var audience = new SlaReminderAudienceResolver(dbContext, notificationRecipientResolver).Resolve(
+            instance.WorkflowDefinitionVersionId,
+            instance.WorkflowInstanceId,
+            policy,
+            assignedRoleKey);
+        if (audience.Errors.Count == 0)
+        {
+            return null;
+        }
+
+        return resultBuilder.BuildValidationFailed(
+            normalized,
+            audience.Errors
+                .Select(error => new WorkflowValidationError("notification.slaReminderRoute", error))
+                .ToArray());
     }
 
     private WorkflowActionResultEnvelope? ValidateEnvelopeIdentity(

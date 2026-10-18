@@ -70,6 +70,19 @@ public sealed class CommandRegistry
 
     public bool IsKnown(string commandName) => knownCommands.Contains(commandName);
 
+    private static int FindOption(IReadOnlyList<string> args, string option)
+    {
+        for (var index = 1; index < args.Count; index++)
+        {
+            if (string.Equals(args[index], option, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
     public CommandResult Dispatch(IReadOnlyList<string> args)
     {
         if (args.Count == 0)
@@ -92,7 +105,25 @@ public sealed class CommandRegistry
                 return CommandResult.Failure("Command 'init-db' requires database services that are not registered.");
             }
 
-            return CommandResult.Success(databaseInitializer.Initialize());
+            var versionIndex = FindOption(args, "--portfolio-trade-version");
+            if (versionIndex < 0)
+            {
+                return CommandResult.Success(databaseInitializer.Initialize());
+            }
+
+            if (versionIndex + 1 >= args.Count
+                || !int.TryParse(args[versionIndex + 1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var portfolioTradeVersion)
+                || portfolioTradeVersion is not (1 or 2))
+            {
+                return CommandResult.Failure("Usage: init-db [--portfolio-trade-version 1|2]");
+            }
+
+            if (databaseInitializer is not IPortfolioTradeVersionInitializer versionInitializer)
+            {
+                return CommandResult.Failure("Command 'init-db --portfolio-trade-version' requires a version-aware database initializer.");
+            }
+
+            return CommandResult.Success(versionInitializer.Initialize(portfolioTradeVersion));
         }
 
         if (string.Equals(commandName, "verify-seed", StringComparison.OrdinalIgnoreCase))

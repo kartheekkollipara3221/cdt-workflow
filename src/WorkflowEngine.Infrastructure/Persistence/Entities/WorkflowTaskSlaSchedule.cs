@@ -18,6 +18,9 @@ public sealed class WorkflowTaskSlaSchedule
     public int? RecurrenceIntervalDays { get; set; }
     public string? DueNotificationRouteKey { get; set; }
     public string? OverdueNotificationRouteKey { get; set; }
+    public TimeOnly? DueReminderLocalTime { get; set; }
+    public string? DueRecipientsJson { get; set; }
+    public string? OverdueRecipientsJson { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTimeOffset CreatedAtUtc { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;

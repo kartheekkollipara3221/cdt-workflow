@@ -1383,11 +1383,11 @@ Seed these ordered recipient rules. `.example.test` values are sample metadata, 
 
 `Any` above is stored as null. A non-null `NotificationRecipientRule.AssignedRoleKey` is an applicability filter over the already-validated dynamic task assignment; it is not an address lookup and it never changes task assignment or workflow state. `CheckerSendToTradingDesk` supplies the selected role through the existing public `assignedRoleKey`. `notification.templateData.deskName` remains display-only. Multiple matching To rows produce one message with all matching addresses. The common `RouteTradingDeskReworkAssigned` recipient remains unchanged in v1.
 
-SLA routes have no recipient rules because `run-sla` copies the saved task snapshot unchanged. `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are removed from the active schema; there is no legacy role or user fallback.
+Version 1 SLA routes have no recipient rules because `run-sla` copies the saved task snapshot unchanged. From PortfolioTrade version 2, an SLA reminder route with any rule row (active or inactive) owns its recipients; see section 13, "PortfolioTrade version 2 additions". `NotificationRoute.RecipientRoleKey` and `RecipientUserId` are removed from the active schema; there is no legacy role or user fallback.
 
 `selectedCcUsers` is the caller-owned complete cumulative audience snapshot for the current notification-producing action, not a delta from the previous action. The calling application includes the acting Checker, Trader, or BDRM/Client Service user and anyone added along the way when they must remain copied. It supplies ready-to-send opaque email addresses; the engine does not perform directory lookup or accumulate prior request inputs. Assignment routes keep the current metadata task owner as `To`, resolve the immutable `originalMaker` as required `Cc`, and append `selectedCcUsers`. Return and completion routes place `originalMaker` in `To` and append `selectedCcUsers` in `Cc`. Normal route ordering, case-insensitive deduplication, first opaque value retention, and `To` precedence still apply.
 
-Each action resolves and persists a new task/outbox recipient snapshot without modifying historical rows. SLA due-today and overdue notifications copy the applicable task snapshot unchanged.
+Each action resolves and persists a new task/outbox recipient snapshot without modifying historical rows. SLA due-today and overdue notifications copy the applicable task snapshot unchanged, except for own-rules reminder routes, whose audience is resolved and saved on the schedule when the task is created (version 2).
 
 ### `verify-seed` validations
 
@@ -2018,6 +2018,17 @@ Sent occurrences are immutable history. A revised schedule has a new identity an
 The configured time is an eligibility boundary, not an in-process scheduler. An external scheduler invokes `run-sla` regularly. Local tests use `run-sla --now` to fast-forward the real seeded calendar policy and finish multi-day scenarios in minutes; SIT/UAT omit `--now` and use wall-clock time.
 
 This feature targets a clean latest-schema database. The migration deliberately does not backfill legacy active SLA tasks or legacy SLA outbox rows. Existing active schedules retain their snapshotted cadence; metadata changes apply only to newly created tasks. The migration `Down` path is not data-preserving after multiple same-day occurrences exist because the prior date-only unique key cannot represent that history; archive or otherwise resolve such rows before an intentional rollback. Do not silently delete/recreate an existing application database; obtain explicit approval before destructive recreation.
+
+### PortfolioTrade version 2 additions (CDT, 2026-10-18)
+
+Approved by the user on 2026-10-18. Plan: `.planning/quick/261018-cdt-portfolio-trade-v2-notification-routes/261018-cdt-PLAN.md`. Version 1 behavior is unchanged; all additions are inert for version 1 metadata.
+
+- **Own-rules reminder routes.** An SLA due or overdue route that has any `NotificationRecipientRule` row, active or inactive, owns its recipients. When the task's first schedule is created, the engine resolves the active rules (static and participant sources, filtered by the task's assignment role) and saves them in `WorkflowTaskSlaSchedule.DueRecipientsJson` and `OverdueRecipientsJson`. `run-sla` uses the saved audience for the reminder kind, or the task snapshot when the value is null. A resolution error (no To, or a `RequestInput` rule on the route) rejects the action with `ValidationFailed` before any change. A superseding schedule keeps the saved audience. Rule rows are deactivated, never deleted.
+- **Separate Due Today time.** `SlaPolicy.DueReminderLocalTime` (null = `ReminderLocalTime`) is snapshotted to the schedule and sets the Due Today occurrence time. `ReminderLocalTime` keeps setting the overdue start and the daily repeat.
+- **Skip of a missed Due Today reminder.** With `SlaPolicy.SkipMissedDueReminder = 1`, a schedule calculated after the target date's Due Today time has no Due Today reminder; the first reminder is the overdue start. A late SLA scan does not cause a skip.
+- **First overdue on the next local day.** With `SlaPolicy.OverdueStartsNextLocalDay = 1` (duration mode with daily recurrence), the first overdue is on the local day after task creation at `ReminderLocalTime`. `DurationMinutes` stays positive so older engines accept the policy.
+- **Late scans** keep the existing catch-up rule: a late scan on the target date sends Due Today once; a scan on a later date sends only the current eligible Overdue occurrence and never before its local time; no backfill.
+- **Version activation.** Exactly one PortfolioTrade version is active. `init-db` keeps version 1 active; `init-db --portfolio-trade-version 1|2` seeds both versions and activates the chosen one. Target databases use the scripts in `sql/upgrades/20261019_*`; never run `init-db` against a target. See `docs/CDT_V2_RELEASE.md`.
 
 ## 14. Notification behavior
 

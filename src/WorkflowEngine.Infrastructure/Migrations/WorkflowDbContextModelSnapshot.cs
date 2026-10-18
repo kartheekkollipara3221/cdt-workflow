@@ -377,6 +377,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<TimeOnly?>("DueReminderLocalTime")
+                        .HasColumnType("time");
+
                     b.Property<int?>("DurationMinutes")
                         .HasColumnType("int");
 
@@ -390,6 +393,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<int>("OverdueStartOffsetDays")
                         .HasColumnType("int");
 
+                    b.Property<bool>("OverdueStartsNextLocalDay")
+                        .HasColumnType("bit");
+
                     b.Property<int?>("RecurrenceIntervalDays")
                         .HasColumnType("int");
 
@@ -400,6 +406,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasColumnType("time");
 
                     b.Property<bool>("SendDueDateReminder")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("SkipMissedDueReminder")
                         .HasColumnType("bit");
 
                     b.Property<string>("SlaPolicyKey")
@@ -1027,8 +1036,14 @@ namespace WorkflowEngine.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("DueRecipientsJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTimeOffset?>("DueReminderAtUtc")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<TimeOnly?>("DueReminderLocalTime")
+                        .HasColumnType("time");
 
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
@@ -1044,6 +1059,9 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<string>("OverdueNotificationRouteKey")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OverdueRecipientsJson")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("OverdueStartOffsetDays")
                         .HasColumnType("int");

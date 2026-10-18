@@ -169,7 +169,13 @@ public sealed class RunSlaService(
                     continue;
                 }
 
-                if (!TryValidateNotificationRecipientsSnapshot(task, out var recipientsWarning))
+                // A reminder route with its own rules saved its audience on the schedule
+                // when the task was created. Other routes reuse the task snapshot.
+                var recipientsJson = (occurrence.Kind == "DueToday"
+                        ? schedule.DueRecipientsJson
+                        : schedule.OverdueRecipientsJson)
+                    ?? task.NotificationRecipientsJson;
+                if (!TryValidateNotificationRecipientsSnapshot(task, recipientsJson, out var recipientsWarning))
                 {
                     await transaction.RollbackAsync(CancellationToken.None);
                     warnings.Add(recipientsWarning);
@@ -244,7 +250,7 @@ public sealed class RunSlaService(
                     BusinessObjectType = instance.BusinessObjectType,
                     BusinessObjectId = instance.BusinessObjectId,
                     NotificationType = route.NotificationType,
-                    NotificationRecipientsJson = task.NotificationRecipientsJson,
+                    NotificationRecipientsJson = recipientsJson,
                     Subject = subject,
                     Body = primaryEmail.Body,
                     HtmlBody = primaryEmail.HtmlBody,
@@ -358,9 +364,12 @@ public sealed class RunSlaService(
         var currentLocalDate = DateOnly.FromDateTime(localNow.DateTime);
         var overdueStartDate = schedule.TargetDate.Value.AddDays(schedule.OverdueStartOffsetDays);
         var kind = currentLocalDate >= overdueStartDate ? "Overdue" : "DueToday";
+        var occurrenceLocalTime = kind == "DueToday"
+            ? schedule.DueReminderLocalTime ?? schedule.ReminderLocalTime.Value
+            : schedule.ReminderLocalTime.Value;
         var eligibleAtUtc = scheduleCalculator.CalculateCalendarOccurrence(
             currentLocalDate,
-            schedule.ReminderLocalTime.Value,
+            occurrenceLocalTime,
             schedule.TimeZoneId);
         return new SlaOccurrence(currentLocalDate, kind, eligibleAtUtc);
     }
@@ -414,9 +423,10 @@ public sealed class RunSlaService(
 
     private static bool TryValidateNotificationRecipientsSnapshot(
         WorkflowTask task,
+        string recipientsJson,
         out string warning)
     {
-        if (string.IsNullOrWhiteSpace(task.NotificationRecipientsJson))
+        if (string.IsNullOrWhiteSpace(recipientsJson))
         {
             warning = $"task {task.Id} overdue notification recipients snapshot missing";
             return false;
@@ -425,7 +435,7 @@ public sealed class RunSlaService(
         try
         {
             var recipients = JsonSerializer.Deserialize<NotificationRecipients>(
-                task.NotificationRecipientsJson,
+                recipientsJson,
                 WorkflowJson.Options);
             if (recipients is null
                 || recipients.ToEmailAddresses is null
