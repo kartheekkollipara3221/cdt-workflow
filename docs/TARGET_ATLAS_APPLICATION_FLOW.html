@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Atlas Application Flow</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--bluebg:#edf5fb;--greenbg:#eaf7ef;--green:#176245;--amberbg:#fff7e6;--amber:#8a5a00;--violetbg:#f3f0fb}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1120px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.12rem;margin:26px 0 8px}h4{margin:18px 0 6px;font-size:1rem}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.87em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;padding:16px;overflow:auto;line-height:1.5;font-size:14px;border-radius:6px}
+pre code{background:none;padding:0}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.warn{border-left-color:var(--amber);background:var(--amberbg)}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:12px 0}
+th,td{padding:9px 12px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+li{margin:6px 0}
+nav.toc{columns:2;column-gap:32px;margin-top:18px;font-size:.92rem}
+nav.toc a{display:block;padding:2px 0}
+a{color:#075889;text-underline-offset:3px}
+.arch{display:grid;grid-template-columns:1fr;gap:10px;margin:18px 0}
+.tier{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fafcfd}
+.tier>strong{display:block;color:var(--navy);margin-bottom:8px;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{flex:1;min-width:150px;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:#fff;font-size:.88rem}
+.chip b{display:block;color:var(--ink)}
+.engine{background:var(--greenbg);border-color:#b9dcc8}
+.ext{background:var(--violetbg);border-color:#d8d0ee}
+.down{text-align:center;color:var(--muted);font-size:.85rem;margin:-4px 0}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}nav.toc{columns:1}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Target system · read-only analysis · 2026-10-24</div>
+<h1>CP Atlas application flow</h1>
+<p class="lead">This document shows how the CP Atlas application operates from end to end. It covers the framework, the security model, the business applications, the data stores and the workflow engine integration.</p>
+<div class="note small">
+<p><strong>Language.</strong> This document uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, table names, JSON keys and business labels stay as they are in the source.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. The files are copies with a <code>.txt</code> suffix. Some copies have copy errors. <code>WebUi/WebUi/Source</code> is the newer UI copy. <code>Atlasapp/Atlasapp/Config/*.json</code> is the newer config copy. <code>Config/Config</code> and <code>Atlasapp/Atlasapp/Config/Config</code> are older copies.</p>
+<p><strong>Issues.</strong> See <a href="TARGET_ATLAS_ISSUES_BY_SEVERITY.html">TARGET_ATLAS_ISSUES_BY_SEVERITY.html</a>.</p>
+</div>
+<nav class="toc">
+<a href="#what">1. What CP Atlas is</a>
+<a href="#arch">2. Architecture</a>
+<a href="#framework">3. Metadata-driven framework</a>
+<a href="#security">4. Security model</a>
+<a href="#lifecycle">5. Request flows</a>
+<a href="#engine">6. Workflow engine integration</a>
+<a href="#cdt">7. CDT: Client Directed Trades</a>
+<a href="#sqms">8. SQMS: Opportunity and Bid</a>
+<a href="#ttd">9. TTD: Tax Time Database</a>
+<a href="#ain">10. AIN: Account Inventory</a>
+<a href="#data">11. Data stores</a>
+<a href="#deploy">12. Configuration and deployment</a>
+</nav>
+
+<!-- 1 -->
+<section id="what">
+<h2>1. What CP Atlas is</h2>
+<p>CP Atlas is an internal web portal with many business modules. The database name (<code>cp_sharepoint</code>) and the old column names show that the modules replace earlier SharePoint lists. All modules use one framework. A JSON file for each module gives the screen layout, the rules and the workflow settings.</p>
+<div class="table-wrap"><table>
+<tr><th>Code</th><th>Module</th><th>Business purpose</th><th>Page type</th><th>Uses the workflow engine</th></tr>
+<tr><td><code>CDT</code></td><td>Client Directed Trades</td><td>Record a client trade instruction. Send it through Checker review, Trading Desk execution and BDRM confirmation.</td><td>Stepper (4 steps)</td><td>Yes: <code>PortfolioTrade</code></td></tr>
+<tr><td><code>SQMSO</code></td><td>SQMS Opportunity</td><td>A seller RM lists a client holding in a private fund for sale on the secondary market.</td><td>Section</td><td>Yes: <code>SqmsOpportunity</code></td></tr>
+<tr><td><code>SQMSB</code></td><td>SQMS Bid</td><td>A buyer RM makes a bid on an open opportunity. The seller accepts or rejects the bid.</td><td>Section</td><td>Yes: <code>SqmsBid</code></td></tr>
+<tr><td><code>TTD</code></td><td>Tax Time Database</td><td>Tax preparers record weekly time for each account and tax year.</td><td>Section</td><td>No</td></tr>
+<tr><td><code>AIN</code></td><td>IM Account Inventory</td><td>Keep one master record for each investment-management account.</td><td>Section</td><td>No</td></tr>
+</table></div>
+<p class="small">The enum <code>CPApplicationCode</code> has more codes (for example <code>TD</code>, <code>PBSP</code>, <code>CIO</code>). This copy has no service for these codes.</p>
+</section>
+
+<!-- 2 -->
+<section id="arch">
+<h2>2. Architecture</h2>
+<div class="arch">
+<div class="tier"><strong>Browser</strong>
+<div class="row">
+<div class="chip"><b>Angular 21 UI</b>ag-grid Enterprise, PrimeNG, ng-bootstrap, Tailwind, in-house <code>@pbdev/pbdev-core</code></div>
+<div class="chip"><b>Windows sign-in</b>All calls use <code>withCredentials</code></div>
+</div></div>
+<div class="down">HTTPS · <code>/v1/*</code> · JSON and multipart</div>
+<div class="tier"><strong>BBH.CP.Atlas.App (ASP.NET, .NET 9)</strong>
+<div class="row">
+<div class="chip"><b>CPAtlasController</b>Application, Dashboard, Step, StepPage, SectionPage, ManagePage, RemovePage, RemoveAttachment, Download, AuditLog, GetAuditLog, Execute</div>
+<div class="chip"><b>CPSecurityController</b><code>authorize</code>: AD look-up and roles</div>
+<div class="chip"><b>CPAtlasExternalController</b><code>Account</code> (IMDS), <code>PBAccounts</code> (Oracle)</div>
+</div></div>
+<div class="down">new <code>CPAtlasService</code> for each request → selects a module service by code</div>
+<div class="tier"><strong>BBH.CP.Atlas.Service</strong>
+<div class="row">
+<div class="chip"><b>CPApplicationService</b>Base class: map, bind, rules, dashboard, audit, workflow helpers</div>
+<div class="chip"><b>Module services</b><code>CPCDTService</code>, <code>CPSQMSOService</code>, <code>CPSQMSBService</code>, <code>CPTTDService</code>, <code>CPAINService</code></div>
+<div class="chip"><b>CPAtlasExternalService</b>IMDS API client, PB account cache</div>
+</div></div>
+<div class="down">EF Core · stored procedures · engine services</div>
+<div class="tier"><strong>Data and services</strong>
+<div class="row">
+<div class="chip"><b>SQL Server <code>cp_sharepoint</code></b>Module tables, users, roles, audit logs</div>
+<div class="chip engine"><b>Workflow engine</b>Same database, own <code>WorkflowDbContext</code>. Definitions, instances, tasks, audit, outbox, SLA.</div>
+<div class="chip ext"><b>Oracle PBDW</b>Account views (read only)</div>
+<div class="chip ext"><b>IMDS API</b>Account data by RM code (OAuth client credentials)</div>
+<div class="chip ext"><b>TPAM</b>Database passwords</div>
+<div class="chip ext"><b>Active Directory</b>User profile and group</div>
+<div class="chip ext"><b>SMTP</b>Engine email sender</div>
+</div></div>
+</div>
+<div class="table-wrap"><table>
+<tr><th>Project</th><th>Function</th></tr>
+<tr><td><code>BBH.CP.Atlas.App</code></td><td>Host, controllers, DI set-up, module JSON files, log4net.</td></tr>
+<tr><td><code>BBH.CP.Atlas.Service</code></td><td>Business logic. One service class for each module.</td></tr>
+<tr><td><code>BBH.CP.Atlas.Data</code></td><td>EF models, <code>CPSharepointContext</code> (SQL Server), <code>CPPBContext</code> (Oracle), config DTOs, rules engine, extensions.</td></tr>
+<tr><td><code>BBH.CP.Atlas.Infra</code></td><td><code>TPAMAPIAccess</code>: gets the database password from TPAM.</td></tr>
+<tr><td><code>BBH.CP.Atlas.Workflow/src/*</code></td><td>Workflow engine source: Application, Domain, Infrastructure, Sqms. Atlas uses project references.</td></tr>
+<tr><td><code>WebUi</code></td><td>Angular front end.</td></tr>
+</table></div>
+</section>
+
+<!-- 3 -->
+<section id="framework">
+<h2>3. Metadata-driven framework</h2>
+<p>The framework has three parts: module JSON, the rules engine and reflection-based data mapping. A new module needs a JSON file, a service class, EF models, stored procedures and some UI routing code.</p>
+
+<h3>3.1 Module JSON (<code>CPAtlasApplicationConfig</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Element</th><th>Contents</th></tr>
+<tr><td>Root</td><td><code>Name</code>, <code>Code</code>, <code>Type</code> (<code>STEPPER</code> or <code>SECTION</code>), <code>Steps</code> or <code>Section</code>, <code>Options</code> (look-up maps, for example <code>Status</code> and <code>Departments</code>).</td></tr>
+<tr><td>Step (stepper)</td><td><code>ID</code>, <code>Label</code>, <code>States</code>, <code>Roles</code>, <code>Count</code>, <code>Controls</code>, <code>Buttons</code>, <code>SkipValidations</code>, <code>Rules</code>, <code>Workflow</code>.</td></tr>
+<tr><td>Section</td><td><code>Name</code>, <code>Description</code>, <code>Controls</code> (of type <code>section</code> with <code>ChildControls</code>), <code>Buttons</code>, <code>Workflow</code>.</td></tr>
+<tr><td>Control</td><td><code>Name</code>, <code>Field</code> (entity property), <code>Label</code>, <code>Type</code>, <code>Options</code>, <code>ChildOptions</code>, <code>Value</code>, <code>Disabled</code>, <code>Visible</code>, <code>Validator</code>, <code>Grid</code>, <code>Files</code>, <code>Rules</code>, <code>Multiple</code>, layout classes.</td></tr>
+<tr><td>Workflow</td><td><code>Key</code>, <code>Roles</code>, <code>Actions</code>, <code>AssignRoles</code>, <code>Notifications</code>, <code>AdditionalInfo</code>. See section 6.3.</td></tr>
+</table></div>
+
+<h4>Control types</h4>
+<div class="table-wrap"><table>
+<tr><th>Type</th><th>UI element</th><th>Value sent to the server</th></tr>
+<tr><td><code>text</code>, <code>textarea</code>, <code>datetimepicker</code>, <code>select</code></td><td>pbdev controls</td><td>The value</td></tr>
+<tr><td><code>ngselect</code></td><td>ng-select (single or multiple)</td><td>Multiple values joined with <code>#$#</code></td></tr>
+<tr><td><code>check</code></td><td>Check box</td><td><code>true</code> or <code>false</code></td></tr>
+<tr><td><code>option</code></td><td>Radio buttons (section pages)</td><td>The value</td></tr>
+<tr><td><code>currency</code>, <code>percent</code></td><td>Masked input (section pages)</td><td>The value</td></tr>
+<tr><td><code>filepicker</code></td><td>File input (step pages)</td><td>Multipart file named <code>&lt;Control&gt;#$#&lt;FileName&gt;</code></td></tr>
+<tr><td><code>grid</code></td><td>ag-grid with cell editors (CDT <code>SecurityIdentifier</code>)</td><td>JSON array of rows</td></tr>
+<tr><td><code>section</code></td><td>Group or read-only text</td><td>Nothing</td></tr>
+</table></div>
+<p>Validators: <code>Required</code>, <code>Email</code>, <code>MinLength</code>, <code>MaxLength</code>, <code>Pattern</code>. The UI applies the validators. The server does not validate again.</p>
+
+<h3>3.2 Rules engine (<code>CPRule</code>)</h3>
+<p>A rule has match criteria and effects.</p>
+<ul>
+<li><strong>Criteria:</strong> <code>Roles</code>, <code>States</code>, <code>IsOwner</code>. An empty criterion always agrees. Roles and states agree when one value is the same (case is ignored).</li>
+<li><strong>Effects:</strong> <code>Visible</code>, <code>Disabled</code>, <code>EnableControls</code>, <code>DisableControls</code>, <code>ShowControls</code>, <code>HideControls</code>.</li>
+<li>The first rule that agrees is used.</li>
+<li><code>ApplyRules</code> sets controls. <code>ApplyButtonRules</code> sets buttons. <code>ApplyTabRules</code> and <code>ApplyMenuRules</code> set dashboard tabs and row menus.</li>
+<li>The server applies the rules when it builds the response. The rules change only the <code>Visible</code> and <code>Disabled</code> flags in the response.</li>
+</ul>
+<p>CDT also uses step <code>States</code> and step <code>Roles</code>. If the record state is not in the step <code>States</code>, or the user does not have a step role, the server disables all controls on that step.</p>
+
+<h3>3.3 Data mapping</h3>
+<ol>
+<li>The UI sends <code>Outputs</code> as a list of <code>{Name, Value}</code>.</li>
+<li><code>MapData</code> finds the entity property with the same name (case is ignored). It converts the value to the property type and sets it.</li>
+<li><code>MapData</code> also returns the list of changed values. The service puts this list in the response.</li>
+<li>On load, <code>BindData</code> copies each entity property to the controls with the same <code>Field</code>.</li>
+</ol>
+
+<h3>3.4 Dashboard JSON (<code>CPAtlasDashboardConfig.json</code>)</h3>
+<p>Each module has a dashboard with <code>Tabs</code> and <code>Buttons</code>. A tab has a stored procedure, parameters (the value <code>LANID</code> becomes the user LAN ID), <code>Menus</code> (Edit, Delete, History), <code>Rules</code> and grid settings (<code>Groups</code>, <code>Sums</code>, <code>ColumnTypes</code>). The server returns the rows as <code>KeyValues</code> and the column widths as <code>KeyLength</code>.</p>
+</section>
+
+<!-- 4 -->
+<section id="security">
+<h2>4. Security model</h2>
+<ol>
+<li><strong>Authentication.</strong> IIS uses Windows authentication. The UI sends credentials with each call. The host also registers JWT bearer as the default scheme, but the UI does not send a token.</li>
+<li><strong>Portal access.</strong> <code>GET v1/authorize</code> finds the user in Active Directory. It checks that the user is in a group from <code>AppSettings:ADGroup</code>. If not, it returns no user, and the UI shows <code>/unauthorized-access</code>.</li>
+<li><strong>Module access.</strong> <code>dbo.Get_Application</code> returns the modules for the LAN ID. The UI shows these modules in the side menu.</li>
+<li><strong>Module roles.</strong> The tables <code>CP_Atlas_User</code>, <code>CP_Atlas_UserEntitlement</code> and <code>CP_Atlas_Entitlement</code> give roles for each module. Examples: CDT "Directed Trades Checker", SQMS "MFO" and "IPG", AIN "Admin", "Write" and "Read".</li>
+<li><strong>Enforcement.</strong> The server uses the roles to set visible and disabled flags on tabs, menus, buttons and controls. The save, delete and download endpoints do not check roles again.</li>
+<li><strong>Workflow roles.</strong> The engine checks the actor roles for each action. CDT sends the roles from the step config. SQMS sends the user roles from the entitlement tables.</li>
+</ol>
+</section>
+
+<!-- 5 -->
+<section id="lifecycle">
+<h2>5. Request flows</h2>
+
+<h3>5.1 Start-up (<code>program.cs</code>)</h3>
+<ol>
+<li>The host reads <code>appsettings.json</code> from the application folder into a separate configuration object.</li>
+<li>The host registers <code>CPSharepointContext</code> and <code>CPPBContext</code>. <code>TPAMAPIAccess</code> adds the password to each connection string.</li>
+<li>The host registers <code>TimeProvider.System</code> and the engine helpers (normalizer, hasher, result builder, serializer).</li>
+<li>The host calls <code>AddWorkflowInfrastructure</code> and <code>AddSqmsWorkflowIntegration</code>.</li>
+<li>The host adds log4net, Swagger (development only), JWT bearer, CORS, controllers, static files and the <code>index.html</code> fallback.</li>
+</ol>
+
+<h3>5.2 Sign-in and menu</h3>
+<ol>
+<li>The UI calls <code>GET v1/authorize</code> and keeps the user (profile, groups, roles).</li>
+<li>The UI calls <code>GET v1/Application</code> and builds the side menu with links to <code>dashboard/&lt;Code&gt;</code>.</li>
+</ol>
+
+<h3>5.3 Dashboard</h3>
+<ol>
+<li>The UI calls <code>GET v1/Dashboard?code=&lt;Code&gt;</code>.</li>
+<li>The module service reads the user roles for the module.</li>
+<li>For each tab, the service runs the stored procedure and gets the rows.</li>
+<li>The service applies the menu, button and tab rules.</li>
+<li>The UI shows each visible tab as an ag-grid with a quick search, groups and totals.</li>
+<li>The row menu gives Edit, Delete and History. The header buttons open a new record.</li>
+</ol>
+
+<h3>5.4 Open a record</h3>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Stepper module (CDT)</th><th>Section modules (SQMSO, SQMSB, TTD, AIN)</th></tr>
+<tr><td>1</td><td><code>GET v1/Step</code> gives the step list and the header (request type, account, state).</td><td>—</td></tr>
+<tr><td>2</td><td><code>GET v1/StepPage</code> gives one step.</td><td><code>GET v1/SectionPage</code> gives the full form.</td></tr>
+<tr><td>3</td><td colspan="2">The service loads the entity and child rows. It fills look-up lists (users, accounts, opportunities, dates). It binds the values to the controls.</td></tr>
+<tr><td>4</td><td>The service compares the state with the step <code>States</code> and checks the step <code>Roles</code>.</td><td>The service applies <code>ApplyRules</code> with roles, status and owner. SQMS also reads the engine context and adds the available-action buttons.</td></tr>
+<tr><td>5</td><td colspan="2">The UI makes one form control for each config control, applies the validators and shows the page. Field-change code fills related fields (for example Account → Account Information).</td></tr>
+</table></div>
+
+<h3>5.5 Save a record</h3>
+<ol>
+<li>The user clicks Save (or a workflow button on a section page). The UI validates the form.</li>
+<li>The UI sends <code>POST v1/ManagePage</code> as multipart data: <code>input</code> = <code>{Code, Step, ID, Outputs}</code>, and the files.</li>
+<li>The module service starts a transaction on <code>CPSharepointContext</code>.</li>
+<li>The service maps <code>Outputs</code> to the entity and adds the audit stamps.</li>
+<li>For a workflow module, the service calls the engine (section 6).</li>
+<li>The service saves child rows and attachments, then commits.</li>
+<li>The UI shows "Record saved successfully" and goes back to the dashboard.</li>
+<li>The UI interceptor sends the response (the changed values) to <code>POST v1/AuditLog</code>.</li>
+</ol>
+
+<h3>5.6 Other functions</h3>
+<ul>
+<li><strong>Delete:</strong> <code>POST v1/RemovePage</code> sets <code>IsDeleted = true</code>.</li>
+<li><strong>Attachments:</strong> the service keeps file bytes as GZip in <code>CDT_Attachment</code>. On load, it writes the file to a folder and gives a <code>v1/Download</code> link. <code>POST v1/RemoveAttachment</code> sets <code>IsDeleted</code>.</li>
+<li><strong>History:</strong> <code>GET v1/GetAuditLog</code> reads <code>&lt;Code&gt;AuditLog</code>. The modal shows the date, the user and the changed values.</li>
+<li><strong>Account look-up:</strong> <code>GET v1/Account?rmcode=</code> gets an IMDS token and calls <code>AccountInfo</code>.</li>
+<li><strong>PB accounts:</strong> <code>GET v1/PBAccounts</code> and the SQMS and TTD pages read the Oracle views. A static cache keeps the list for 24 hours.</li>
+<li><strong>Make a Bid:</strong> <code>GET v1/Execute?action=MakeBid</code> makes a new bid page with opportunity values.</li>
+</ul>
+</section>
+
+<!-- 6 -->
+<section id="engine">
+<h2>6. Workflow engine integration</h2>
+<p>The workflow engine is a separate, reusable code base. It knows only generic concepts: definition, version, instance, state, action, transition, role, task, SLA policy, notification outbox and audit. It does not know CP Atlas form fields. CP Atlas adds workflow functions to its modules through the engine.</p>
+
+<h3>6.1 Division of responsibility</h3>
+<div class="table-wrap"><table>
+<tr><th>CP Atlas does this</th><th>The engine does this</th></tr>
+<tr><td>Show the form and keep the business data (<code>CDT_General</code>, <code>SQMS.*</code>).</td><td>Keep the workflow definition and version (states, actions, transitions, roles).</td></tr>
+<tr><td>Select the action key from the form values (config <code>Actions</code>).</td><td>Check that the action is valid for the current state and the actor roles.</td></tr>
+<tr><td>Select the assigned role (config <code>AssignRoles</code>).</td><td>Move the state. Close and open tasks. Record participants.</td></tr>
+<tr><td>Collect recipients and template values.</td><td>Make the recipient snapshot, render the template and queue the email in <code>NotificationOutbox</code>.</td></tr>
+<tr><td>Send the target date (<code>SlaInput</code>).</td><td>Make the SLA schedule and the reminders.</td></tr>
+<tr><td>Copy the new state to its own <code>WorkflowState</code> column.</td><td>Keep the audit history (<code>WorkflowAudit</code>) and idempotency records.</td></tr>
+<tr><td>Show buttons from the available actions (SQMS).</td><td>Return the workflow context (state, tasks, available actions).</td></tr>
+</table></div>
+
+<h3>6.2 Registration</h3>
+<ul>
+<li><code>AddWorkflowInfrastructure(configuration)</code> registers <code>WorkflowDbContext</code> with the connection string <code>DefaultConnection</code>, the engine services and the email sender (<code>Notifications:Sender</code> = <code>Smtp</code>).</li>
+<li><code>AddSqmsWorkflowIntegration(configuration)</code> adds the SQMS workflow parts.</li>
+<li>The engine tables are in <code>cp_sharepoint</code>, schema <code>dbo</code>. The engine uses its own <code>DbContext</code> and its own transactions.</li>
+</ul>
+
+<h3>6.3 The <code>Workflow</code> block in module JSON</h3>
+<pre><code>"Workflow": {
+  "Key": "PortfolioTrade",                 // engine workflow key
+  "Roles": ["Checker"],                    // actor roles (CDT)
+  "Actions": {                             // action key → conditions on entity fields
+    "CheckerSendToTradingDesk": [{ "Name": "CheckerStatus", "Value": "Approve" }]
+  },
+  "AssignRoles": {                         // assigned role key → conditions
+    "TradingDeskTaxable": [{ "Name": "CheckerStatus", "Value": "Approve" },
+                           { "Name": "TradingDesk",   "Value": "Taxable" }]
+  },
+  "Notifications": {                       // config action key → engine call settings
+    "CheckerSendToTradingDesk": {
+      "ActionKey": "CheckerSendToTradingDesk",   // key sent to the engine
+      "IsSLA": true,                             // send TargetCompletionDate as SlaInput
+      "IsExecuteInvoke": true,                   // false = do not call the engine
+      "Request": {
+        "recipientInputs": { "selectedCcUsers": [] },
+        "templateData": { "deskName": "TradingDesk", "tradeLink": "URL/stepmaster/CDT/ID" }
+      }
+    }
+  },
+  "AdditionalInfo": { "CheckerReturnToMaker": ["CHECKERREMARKHISTORY"] }
+}</code></pre>
+<p>The service examines each <code>Actions</code> entry. All conditions in an entry must agree. If two or more entries agree, the last entry is used.</p>
+
+<h3>6.4 Engine calls</h3>
+<div class="table-wrap"><table>
+<tr><th>Engine service</th><th>When CP Atlas calls it</th></tr>
+<tr><td><code>IStartWorkflowService.Start</code></td><td>First save of a record. Business object ID is <code>CDT-{id}</code>, <code>SQMS-OPP-{id}</code> or <code>SQMS-BID-{id}</code>. The engine makes the instance <code>WF-&lt;business object ID&gt;</code> and runs the initial action.</td></tr>
+<tr><td><code>IWorkflowExecutionService.Execute</code></td><td>Each later save that has an action. CP Atlas builds a <code>WorkflowActionEnvelope</code>, normalizes it and makes the request hash. It sets <code>DeriveIdentityFromPersistence = true</code>, <code>PersistSectionData = false</code> and <code>ValidateActionEcho = false</code>.</td></tr>
+<tr><td><code>IWorkflowActionNotificationDispatcher.DispatchCreatedNotifications</code></td><td>After Start or Execute, when the result has a queued notification. The email goes in the same HTTP request.</td></tr>
+<tr><td><code>IWorkflowSlaSynchronizationService.Synchronize</code></td><td>When a save has no action key: change the SLA date only.</td></tr>
+<tr><td><code>IWorkflowContextReader.Read</code></td><td>SQMS page load: get the available actions for the buttons.</td></tr>
+</table></div>
+<pre><code>WorkflowActionEnvelope {
+  Request  { CommandType "ExecuteWorkflowAction", CommandVersion 1,
+             ClientActionId = CorrelationId = new GUID, SourceSystem "BBH.CP.Atlas.Service.&lt;Service&gt;" }
+  Actor    { UserId = LAN ID, DisplayName, Roles }
+  Workflow { WorkflowInstanceId, ActionKey, AssignedRoleKey, SlaInput,
+             NotificationContext = templateData, IdempotencyKey = same GUID }
+}</code></pre>
+
+<h3>6.5 Background processing</h3>
+<p>CP Atlas sends action emails in the request. SLA reminders and outbox retries need the engine console commands <code>run-sla</code> and <code>process-notification-outbox</code>. CP Atlas does not register a background worker. A scheduled job must start these commands.</p>
+</section>
+
+<!-- 7 -->
+<section id="cdt">
+<h2>7. CDT: Client Directed Trades</h2>
+<p>CDT records a client trade instruction. Four teams handle it in sequence. The engine workflow key is <code>PortfolioTrade</code>.</p>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Team (Atlas roles)</th><th>States</th><th>Main fields</th><th>Engine actor role</th></tr>
+<tr><td>1 <code>BDRMCLIENT1</code></td><td>Domestic BDRM, International BDRM, Client Service, BDRM Support</td><td>Draft, ReturnedToMaker</td><td>Relationship Manager, Account (IMDS), request type and date, communication format, instruction (text, file or security grid), security type, Trading Desk, target date, notification group, watchers, confirm check box</td><td>Maker</td></tr>
+<tr><td>2 <code>CheckerReview</code></td><td>Directed Trades Checker</td><td>CheckerReview</td><td>Approve or Reject, comment, remark history</td><td>Checker</td></tr>
+<tr><td>3 <code>TradeConfirmation</code></td><td>Taxable, Tax Exempt, Equity</td><td>TradingDeskReview, TradingDeskRework</td><td>Trade executed (Yes or No), comment, attachments</td><td>TradingDesk</td></tr>
+<tr><td>4 <code>BDRMCLIENT4</code></td><td>BDRM and Client Service roles</td><td>BdrmClientServiceReview</td><td>Trade confirmed (Yes or No), final comment</td><td>BDRMClientService</td></tr>
+</table></div>
+<p>The role "CDT Admin" has access to all steps.</p>
+
+<h3>7.1 Action selection</h3>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Condition</th><th>Engine action</th><th>Result state</th></tr>
+<tr><td>1 (new record)</td><td>Confirm = false</td><td>Start + SaveDraft</td><td>Draft</td></tr>
+<tr><td>1 (new record)</td><td>Confirm = true</td><td>Start + SubmitForChecker</td><td>CheckerReview</td></tr>
+<tr><td>1 (saved draft)</td><td>Confirm = false</td><td>No engine call</td><td>No change</td></tr>
+<tr><td>1</td><td>Confirm = true, state Draft</td><td>SubmitForChecker</td><td>CheckerReview</td></tr>
+<tr><td>1</td><td>Confirm = true, state ReturnedToMaker</td><td>ResubmitForChecker</td><td>CheckerReview</td></tr>
+<tr><td>2</td><td>Approve</td><td>CheckerSendToTradingDesk + desk role + SLA</td><td>TradingDeskReview</td></tr>
+<tr><td>2</td><td>Reject</td><td>CheckerReturnToMaker</td><td>ReturnedToMaker</td></tr>
+<tr><td>3</td><td>Executed = Yes</td><td>TradingTradeExecuted</td><td>BdrmClientServiceReview</td></tr>
+<tr><td>3</td><td>Executed = No (from TradingDeskReview)</td><td>TradingReturnToMaker</td><td>ReturnedToMaker</td></tr>
+<tr><td>4</td><td>Confirmed = Yes</td><td>BdrmTradeFulfilled</td><td>Completed</td></tr>
+<tr><td>4</td><td>Confirmed = No</td><td>BdrmTradeFulfilled (business requirement)</td><td>Completed</td></tr>
+</table></div>
+
+<h3>7.2 Recipients and status</h3>
+<ul>
+<li><code>originalMaker</code>: the user whose display name is in <code>CreatedBy</code>.</li>
+<li><code>selectedCcUsers</code>: the emails in <code>InitiatorNotificationGroup</code> and the users in <code>InitialAdditionalWatcher</code>. The default group holds users with the roles IM Risk, Client Service and BDRM Support, plus the Relationship Manager.</li>
+<li>Template values: <code>referenceNumber</code> (<code>CDT-{id}</code>), <code>tradeLink</code>, desk, security type, account, submitter, and the user who returned the trade.</li>
+<li>The local column <code>Status</code> is "Trade Request" until the state is <code>Completed</code>. Then it is "Trade Settled". The dashboard tabs "Pending Trades" and "Completed Trades" use this column.</li>
+</ul>
+</section>
+
+<!-- 8 -->
+<section id="sqms">
+<h2>8. SQMS: Opportunity and Bid</h2>
+<p>SQMS is a secondary market for client holdings in private funds. Roles: MFO (relationship managers), IPG (investment team), ADMIN, and "Seller" (given at run time).</p>
+
+<h3>8.1 Opportunity (SQMSO, workflow <code>SqmsOpportunity</code>)</h3>
+<ol>
+<li>An MFO RM (the seller) makes an opportunity: account (PB accounts), fund, vehicle, full or partial commitment, sale amount, rationale. The effective date is the start of the next quarter.</li>
+<li>The service starts the workflow with <code>SubmitOpportunity</code>.</li>
+<li>IPG adds valuation data: management fee, minimum bid, latest valuation, contributions, distributions, estimated fair value, remaining commitment.</li>
+<li>The page shows one button for each engine available action. The button sets <code>Status</code>, and the save runs the action.</li>
+<li>Statuses: DRAFT, SUBMITTED, PENDING, OPEN TO BIDDING, PENDING SELLER APPROVAL, AWAITING ALLOCATION, PARTIALLY ALLOCATED, NOT FULFILLED, COMPLETED.</li>
+</ol>
+
+<h3>8.2 Bid (SQMSB, workflow <code>SqmsBid</code>)</h3>
+<ol>
+<li>An MFO user who does not own the opportunity clicks "Make a Bid" on an opportunity that is OPEN TO BIDDING.</li>
+<li>The bid page gets the fund, vehicle, amounts and fair value from the opportunity.</li>
+<li>The buyer enters the buyer RM team, the buyer account (PB accounts for the user branch), full commitment Yes or No, the amount and the percent of fair value.</li>
+<li>The service starts the workflow with <code>SubmitBid</code>.</li>
+<li>The rule <code>CHECKSELLER</code> gives the role "Seller" to the opportunity owner or a member of its seller RM team. The seller accepts, partially accepts or rejects the bid.</li>
+<li>After each bid save, the service writes the total, largest and lowest bid to the opportunity.</li>
+<li>Statuses: SUBMITTED, UNDER REVIEW BY SELLER, ACCEPTED, PARTIALLY ACCEPTED, NOT ACCEPTED.</li>
+</ol>
+
+<h3>8.3 Dashboard tabs</h3>
+<p>My Opportunities, My Bids, IPG Opportunities, IPG Bids, Open To Bidding, Pending Seller Approval (MFO). "My" means rows that the user made or rows where the user name is in the RM team.</p>
+<p>Recipients: <code>sellerRmTeam</code> or <code>buyerRmTeam</code>, and <code>relationshipManager</code>. SQMS does not send SLA input or an assigned role.</p>
+</section>
+
+<!-- 9 -->
+<section id="ttd">
+<h2>9. TTD: Tax Time Database</h2>
+<p>TTD does not use the workflow engine.</p>
+<ul>
+<li>A tax preparer records one week of time: account (PB accounts), tax year, category (OTHER, STMT_N, TAX_N), description, preparer and week-ending Sunday.</li>
+<li>A grid has minutes for each day (Monday to Sunday) and a weekly total. The UI calculates the total.</li>
+<li>Dashboard tabs: Current Tax Timesheet (my rows), Tax Time All Report, Tax Time Report (rows where I am the preparer).</li>
+</ul>
+</section>
+
+<!-- 10 -->
+<section id="ain">
+<h2>10. AIN: Account Inventory</h2>
+<p>AIN does not use the workflow engine.</p>
+<ul>
+<li>One master record for each investment-management account: client family, custodian, reporting lead, KYC, close date, mailing status, portfolio managers, strategy, security identifiers, market-data licence and AUM.</li>
+<li>Roles: Admin can edit all fields. Write can edit 12 fields. Read can only view.</li>
+<li>The dashboard runs <code>AIN.Get_AccountInventory</code>.</li>
+</ul>
+</section>
+
+<!-- 11 -->
+<section id="data">
+<h2>11. Data stores</h2>
+<div class="table-wrap"><table>
+<tr><th>Store</th><th>Owner</th><th>Contents</th></tr>
+<tr><td><code>dbo.CP_Atlas_Application</code>, <code>_User</code>, <code>_Entitlement</code>, <code>_UserEntitlement</code></td><td>Atlas</td><td>Modules (with parent), users (LAN ID, email, display name), roles and role assignments</td></tr>
+<tr><td><code>dbo.CDT_General</code>, <code>CDT_Attachment</code>, <code>CDT_SecurityIdentifier</code>, <code>CDT_AuditLog</code></td><td>Atlas</td><td>CDT request, files (GZip), securities, change history</td></tr>
+<tr><td><code>SQMS.Opportunity</code>, <code>SQMS.Bid</code>, <code>SQMS.AuditLog</code></td><td>Atlas</td><td>SQMS data</td></tr>
+<tr><td><code>TTD.General</code>, <code>TTD.AuditLog</code></td><td>Atlas</td><td>Timesheets</td></tr>
+<tr><td><code>AIN.AccountInventory</code>, <code>AIN.AuditLog</code></td><td>Atlas</td><td>Account inventory</td></tr>
+<tr><td><code>dbo.Workflow*</code>, <code>NotificationOutbox</code>, <code>NotificationRoute</code>, <code>NotificationRecipientRule</code>, <code>SlaPolicy</code>, <code>WorkflowTaskSlaSchedule</code>, <code>IdempotencyRecord</code></td><td>Engine</td><td>Workflow definitions and run-time data</td></tr>
+<tr><td>Oracle PBDW views <code>VWAccountDetail</code>, <code>VWAccountUser</code></td><td>External</td><td>PB accounts, branches, relationship managers</td></tr>
+</table></div>
+<p>The Atlas data project also has EF classes for the engine tables, because a database-first scaffold included them. Atlas code does not use these classes.</p>
+<h4>Main stored procedures</h4>
+<div class="table-wrap"><table>
+<tr><th>Procedure</th><th>Function</th></tr>
+<tr><td><code>dbo.Get_Application</code></td><td>Modules and roles for a LAN ID (side menu)</td></tr>
+<tr><td><code>dbo.Get_CDT_Dashboard</code></td><td>CDT rows by <code>Status</code></td></tr>
+<tr><td><code>SQMS.Get_SQMSO_Opportunity</code>, <code>Get_SQMSO_IPGOpportunity</code>, <code>Get_SQMSO_OpenToBidding</code></td><td>Opportunity tabs</td></tr>
+<tr><td><code>SQMS.Get_SQMSB_Bid</code>, <code>Get_SQMSB_IPGBid</code>, <code>Get_SQMSB_PendingSellerApprovalMFO</code></td><td>Bid tabs</td></tr>
+<tr><td><code>TTD.Get_TTD_CurrentTaxTimesheet</code>, <code>Get_TTD_TaxTimeAllReport</code>, <code>Get_TTD_TaxTimeReport</code></td><td>TTD tabs</td></tr>
+<tr><td><code>AIN.Get_AccountInventory</code></td><td>AIN tab</td></tr>
+<tr><td><code>Insert_CDT_*</code>, <code>Insert/Update_CP_Atlas_User</code>, <code>Insert_CP_AuditLog</code>, <code>Get_CDT_Detail</code></td><td>Older procedures. The code uses EF for these functions.</td></tr>
+</table></div>
+</section>
+
+<!-- 12 -->
+<section id="deploy">
+<h2>12. Configuration and deployment</h2>
+<div class="table-wrap"><table>
+<tr><th>Setting</th><th>Use</th></tr>
+<tr><td><code>ConnectionStrings:DBConnection</code>, <code>PBDWConnection</code></td><td>SQL Server and Oracle. TPAM adds the password.</td></tr>
+<tr><td><code>ConnectionStrings:DefaultConnection</code></td><td>Engine database. Not in the supplied copy.</td></tr>
+<tr><td><code>AppSettings:&lt;Code&gt;ConfigPath</code>, <code>DashboardConfigPath</code></td><td>Full paths to the module JSON files. The services read them on each request.</td></tr>
+<tr><td><code>AppSettings:ADGroup</code>, <code>HostedURL</code>, <code>HostedClientURL</code>, <code>TpamServiceURL</code>, <code>CDTAttachmentFolderName</code></td><td>Portal access group, links, TPAM, attachment folder.</td></tr>
+<tr><td><code>IMDSAPI:*</code></td><td>IMDS API address and OAuth client.</td></tr>
+<tr><td><code>Notifications:Sender</code>, <code>Smtp:*</code></td><td>Engine email sender. The engine no longer reads <code>Smtp:RoleEmailMap</code>.</td></tr>
+<tr><td><code>Jwt:*</code></td><td>JWT settings. The key is empty in the copy.</td></tr>
+</table></div>
+<ul>
+<li>log4net writes rolling files to <code>D:\CPAtlasLogs</code>.</li>
+<li>The UI build writes to the Jenkins deploy folder (<code>package.json</code>). The production API base URL is <code>/v1/</code>, so the UI and the API use the same site or a reverse proxy.</li>
+<li>Atlas projects target <code>net9.0</code>. The engine projects in this repository target <code>net10.0</code>.</li>
+<li>Engine database changes are delivered as SQL scripts. The target database must have all engine migrations.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

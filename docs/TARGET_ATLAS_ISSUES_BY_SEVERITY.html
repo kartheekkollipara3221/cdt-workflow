@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Atlas Issues</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+td:first-child{white-space:nowrap;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-info{background:var(--greybg);color:var(--grey)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Target system · read-only analysis · 2026-10-24</div>
+<h1>CP Atlas issues by severity</h1>
+<p class="lead">This document lists the issues in the CP Atlas application. It covers the framework, security, the business modules, the UI, the configuration and the workflow engine integration.</p>
+<div class="note small">
+<p><strong>Language.</strong> This document uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, table names and JSON keys stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. Each issue is a finding for that team. No issue in this list needs a change to the workflow engine.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies. Some copies have copy errors. Sections 4 and 5 list the items that are not issues. An item marked <span class="confirm">Confirm</span> depends on files that are not in the copy (for example the live database or a deployed configuration file).</p>
+<p>See <a href="TARGET_ATLAS_APPLICATION_FLOW.html">TARGET_ATLAS_APPLICATION_FLOW.html</a> for the application flow.</p>
+</div>
+
+<div class="table-wrap"><table>
+<tr><th>Severity</th><th>Meaning</th><th>Count</th></tr>
+<tr><td><span class="badge b-high">High</span></td><td>A security hole, incorrect data, or a module that cannot operate.</td><td>13</td></tr>
+<tr><td><span class="badge b-med">Medium</span></td><td>A function gives an incorrect result, or a control is weak. The main data stays correct.</td><td>26</td></tr>
+<tr><td><span class="badge b-low">Low</span></td><td>A risk for maintenance, performance or a rare condition.</td><td>18</td></tr>
+<tr><td><span class="badge b-info">Info</span></td><td>Not an issue. Recorded for clarity.</td><td>3</td></tr>
+</table></div>
+<p class="small">Areas: Security, Workflow, Framework, Module (CDT, SQMS, TTD, AIN), UI, Config, Deployment.</p>
+
+<!-- HIGH -->
+<section id="high">
+<h2>1. High</h2>
+
+<div class="issue">
+<h3><span class="badge b-high">H1</span>A user can download any file from the server <span class="area">Security</span></h3>
+<p><code>v1/Download</code> joins the <code>id</code> and <code>name</code> parameters to the attachment folder path. It does not check the parameters.</p>
+<dl>
+<dt>Location</dt><dd><code>Atlasapp/Atlasapp/Controllers/V1/CPAtlasController.cs.txt:73-90</code></dd>
+<dt>Example</dt><dd>A user sends <code>id=..\..</code> and <code>name=appsettings.json</code>. The server returns the configuration file.</dd>
+<dt>Recommendation</dt><dd>Find the attachment by its database ID. Check the user access. Read only from the attachment folder.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H2</span>A file name from the client can write outside the upload folder <span class="area">Security</span></h3>
+<p><code>MapData</code> uses the second part of <code>file.FileName</code> (after <code>#$#</code>) as the file path in the temporary folder.</p>
+<dl>
+<dt>Location</dt><dd><code>Service/CPApplicationService.cs.txt:109-121</code></dd>
+<dt>Example</dt><dd>A file part has the name <code>General#$#..\..\x.aspx</code>. The server writes the file two folders higher. The clean-up does not remove it.</dd>
+<dt>Recommendation</dt><dd>Use <code>Path.GetFileName</code> on the name. Write to a new random file name.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H3</span>A request can set any entity field <span class="area">Security</span></h3>
+<p><code>MapData</code> sets each public property whose name is in <code>Outputs</code>. It does not use the list of controls on the page.</p>
+<dl>
+<dt>Location</dt><dd><code>Service/CPApplicationService.cs.txt:83-107</code>; used by all modules (for example <code>CPCDTServices.txt:161, 204</code>)</dd>
+<dt>Example</dt><dd>A user adds <code>{Name:"WorkflowState", Value:"Completed"}</code> or <code>{Name:"IsDeleted", Value:"true"}</code>. The service saves the value. The CDT action conditions also read <code>WorkflowState</code>, so the request can change the selected action.</dd>
+<dt>Recommendation</dt><dd>Map only the fields of the enabled controls on the current step or section.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H4</span>The server does not check access on save, delete and attachment removal <span class="area">Security</span></h3>
+<p>The roles, states and owner rules only set the flags in the page response. <code>ManagePage</code>, <code>RemovePage</code> and <code>RemoveAttachment</code> do not check them again. CDT sends the step roles from the config (for example <code>Checker</code>) as the engine actor roles. The engine role check therefore always agrees for CDT.</p>
+<dl>
+<dt>Location</dt><dd><code>CPCDTServices.txt:151, 332-354, 704</code>; <code>CPSQMSOService.txt:158</code>; <code>CPTTDService.cs.txt:125</code>; <code>CPAINService.cs.txt:68</code></dd>
+<dt>Example</dt><dd>A user with only a BDRM role sends a save for the <code>CheckerReview</code> step. The engine gets actor role <code>Checker</code> and approves the trade.</dd>
+<dt>Recommendation</dt><dd>On each write, check the user module roles against the step or rule roles. Send the real user roles (mapped to engine roles) as the actor roles.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H5</span>The dashboard can run script from stored data <span class="area">UI</span><span class="area">Security</span></h3>
+<p>The ag-grid renderer for <code>AccountInformation</code> builds HTML from <code>params.value</code>. It does not encode the value. The group renderer has the same pattern.</p>
+<dl>
+<dt>Location</dt><dd><code>WebUi/.../cp-atlas-dashboard.ts.txt:225-228, 158-160</code></dd>
+<dt>Example</dt><dd>A user saves an account information value that contains <code>&lt;img src=x onerror=...&gt;</code>. The script runs for each user who opens the CDT dashboard.</dd>
+<dt>Recommendation</dt><dd>Make the link with DOM methods, or encode the value before it goes into the HTML.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H6</span>Engine state and Atlas data can become different <span class="area">Workflow</span></h3>
+<p>The service calls <code>Start</code> or <code>Execute</code> inside the Atlas transaction. The engine uses a different <code>DbContext</code> and commits its own transaction. If a later step fails, the Atlas data rolls back, but the engine state and the queued emails stay.</p>
+<dl>
+<dt>Location</dt><dd><code>CPCDTServices.txt:156-328</code>; <code>CPSQMSOService.txt:178-237</code>; <code>CPSQMSBService.cs.txt:222-280</code></dd>
+<dt>Example</dt><dd>The Checker approves. The engine moves to <code>TradingDeskReview</code> and sends the email. The security-identifier save then fails. <code>CDT_General.WorkflowState</code> stays <code>CheckerReview</code>.</dd>
+<dt>Recommendation</dt><dd>Do all Atlas writes first. Call the engine last, immediately before the commit. Alternatively, share one connection and transaction.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H7</span>Save errors are hidden, and some modules report success after a rollback <span class="area">Framework</span></h3>
+<p><code>SavePage</code> catches all exceptions. It does not write a log. CDT returns <code>null</code>. SQMSO, SQMSB, TTD and AIN return the result object with the new ID, but the row does not exist.</p>
+<dl>
+<dt>Location</dt><dd><code>CPCDTServices.txt:324-328</code>; <code>CPSQMSOService.txt:232-236</code>; <code>CPSQMSBService.cs.txt:275-279</code>; <code>CPTTDService.cs.txt:118-121</code>; <code>CPAINService.cs.txt:128-131</code></dd>
+<dt>Example</dt><dd>A database error occurs during a TTD save. The UI shows "Record saved successfully". The timesheet is not saved.</dd>
+<dt>Recommendation</dt><dd>Write the exception to the log. Return an error status to the UI.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H8</span>The service does not check the engine result <span class="area">Workflow</span></h3>
+<p>The service reads only <code>NewState</code>. It does not read <code>Success</code> or <code>ResultCode</code>. <code>MarkNotificationDeliveryFailed</code> changes the result, but no code reads it after this change.</p>
+<dl>
+<dt>Location</dt><dd><code>CPCDTServices.txt:633-634, 762-773, 797-858</code>; <code>CPSQMSOService.txt:476-556</code></dd>
+<dt>Example</dt><dd>The engine rejects an action. The form data is saved, the state does not change, and the user sees "saved".</dd>
+<dt>Recommendation</dt><dd>If <code>Success</code> is false, roll back. Return <code>ResultCode</code> and <code>Message</code> to the UI.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H9</span>The target database does not have the latest engine migrations <span class="area">Deployment</span></h3>
+<p>The database script (2026-10-06) does not have <code>NotificationOutbox.NextAttemptAtUtc</code>. The migrations <code>20261014222530_AddOutboxRetryScheduling</code> and <code>20261018214009_AddCdtV2SlaReminderControls</code> are not in the script.</p>
+<dl>
+<dt>Location</dt><dd><code>CP_Sharepoint.txt:486-517</code></dd>
+<dt>Example</dt><dd>The current engine reads <code>NextAttemptAtUtc</code>. SQL Server returns "Invalid column name". Outbox and SLA processing stop.</dd>
+<dt>Recommendation</dt><dd>Give the target team the DDL scripts for the two migrations. Apply them before the new engine build.</dd>
+<dt>Status (2026-10-24)</dt><dd>The scripts are available: <code>sql/upgrades/20261014_outbox_retry_scheduling.sql</code> (migration 20261014222530) and <code>sql/upgrades/20261019_01_cdt_v2_schema_ddl.sql</code> (migration 20261018214009). Each script is additive, uses one transaction, checks the column shapes and is safe to run again. On 2026-10-19 the user reported that both scripts ran successfully in the TEST database. The database script in the copy is older (2026-10-06). Apply the same two scripts, in this order, to each other environment before you deploy the new engine build.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H10</span>The engine connection string is not in the configuration <span class="area">Deployment</span><span class="confirm">Confirm</span></h3>
+<p><code>AddWorkflowInfrastructure</code> needs <code>ConnectionStrings:DefaultConnection</code>. If it is empty, start-up stops. The copy has <code>DBConnection</code>, <code>AuditDBConnection</code> and <code>PBDWConnection</code> only.</p>
+<dl>
+<dt>Location</dt><dd><code>Atlasapp/Atlasapp/appsettings.json.txt:8-13</code>; <code>program.cs.txt:34</code></dd>
+<dt>Recommendation</dt><dd>Confirm the deployed file. If the key is not there, add it with the <code>cp_sharepoint</code> connection.</dd>
+<dt>Status (2026-10-24)</dt><dd>Probably resolved in TEST. On 2026-10-19 the user reported that the updated API started and the v1 CDT form loaded. Start-up stops if the key is empty, so the deployed TEST file probably has the key. Confirm the key in each other environment.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H11</span>The Atlas projects target an older .NET version than the engine <span class="area">Deployment</span><span class="confirm">Confirm</span></h3>
+<p>The Atlas projects target <code>net9.0</code>. The engine projects in this repository target <code>net10.0</code>. A <code>net9.0</code> project cannot reference a <code>net10.0</code> project.</p>
+<dl>
+<dt>Location</dt><dd><code>Atlasapp/Atlasapp/BBH.CP.Atlas.App.csproj.txt:4</code>; <code>Service/BBH.CP.Atlas.Service.csproj.txt:4</code></dd>
+<dt>Recommendation</dt><dd>Confirm the target framework of the engine copy in <code>BBH.CP.Atlas.Workflow</code>. Change the Atlas projects to <code>net10.0</code>.</dd>
+<dt>Status (2026-10-24)</dt><dd>Probably resolved in the live code. On 2026-10-19 the user reported a successful target build with the engine files. A <code>net9.0</code> project that references a <code>net10.0</code> project does not build, so the live projects probably target <code>net10.0</code>, or the copy is old. Confirm the <code>TargetFramework</code> values in the live project files.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H12</span>The AIN dashboard sends a parameter that the procedure does not accept <span class="area">Module: AIN</span><span class="confirm">Confirm</span></h3>
+<p>The newer dashboard config sends <code>@ReportType</code> to <code>AIN.Get_AccountInventory</code>. In the database script, the procedure has no parameters.</p>
+<dl>
+<dt>Location</dt><dd><code>Atlasapp/Atlasapp/Config/CPAtlasDashboardConfig.json.txt:313, 342, 371</code>; <code>CP_Sharepoint.txt:1465</code></dd>
+<dt>Example</dt><dd>SQL Server returns "has no parameters and arguments were supplied". All AIN tabs fail.</dd>
+<dt>Recommendation</dt><dd>Release the procedure change together with the config change.</dd>
+<dt>Status (2026-10-24)</dt><dd>Still open. The copy agrees with the finding: the config sends <code>ReportType</code> on three tabs, and <code>CREATE PROCEDURE [AIN].[Get_AccountInventory] AS</code> has no parameters. Ask the target team for the live procedure definition (<code>sp_helptext 'AIN.Get_AccountInventory'</code>).</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H13</span>The bid page fails for users whose department is not in the map <span class="area">Module: SQMS</span></h3>
+<p>The service reads <code>Options["Departments"][User.Department.ToUpper()]</code>. If the department is not a key, or is empty, an exception occurs.</p>
+<dl>
+<dt>Location</dt><dd><code>CPSQMSBService.cs.txt:333</code></dd>
+<dt>Example</dt><dd>An IPG user opens a bid. The page does not load. "Make a Bid" fails in the same way.</dd>
+<dt>Recommendation</dt><dd>Use <code>TryGetValue</code>. If there is no branch, show all accounts or an empty list.</dd>
+</dl>
+</div>
+</section>
+
+<!-- MEDIUM -->
+<section id="medium">
+<h2>2. Medium</h2>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th>Area</th><th>Issue</th><th>Location</th><th>Recommendation</th></tr>
+<tr><td>M1</td><td>Workflow</td><td>The email shows <code>CDT-{id}</code> as the account name. The code sets <code>accountShortName</code> to the reference number and does not use the config field.</td><td><code>CPApplicationService.cs.txt:374-378, 443-447</code></td><td>Remove the special case for <code>accountShortName</code>.</td></tr>
+<tr><td>M2</td><td>Workflow</td><td>The Trading Desk users are not added to the CC group. The config has <code>TRADINGDESKNOTIFICATION</code>. The code compares with <code>TRADINGDESKTONOTIFICATION</code>.</td><td><code>CPCDTServices.txt:234</code>; <code>CDT.json</code></td><td>Use the same value. Then do a test on L1.</td></tr>
+<tr><td>M3</td><td>Workflow</td><td>The SLA-only path never runs in CDT and SQMSB. The code checks <code>actionKey is null</code>, but the value is <code>""</code>. A save with no action calls <code>Execute</code> with an empty key.</td><td><code>CPCDTServices.txt:720</code>; <code>CPSQMSBService.cs.txt:532</code></td><td>Use <code>string.IsNullOrEmpty</code>.</td></tr>
+<tr><td>M4</td><td>Workflow</td><td>The SLA path catches the validation exception, then reads <code>synchronization!.Changed</code>. A null reference occurs. In SQMS the target date is always null.</td><td><code>CPSQMSOService.txt:399, 436-460</code>; same pattern in SQMSB and CDT</td><td>Return an error when SLA validation fails.</td></tr>
+<tr><td>M5</td><td>Workflow</td><td>The SQMS Relationship Manager gets no email. The code reads the team field for <code>relationshipManager</code>.</td><td><code>CPSQMSOService.txt:337-338</code>; <code>CPSQMSBService.cs.txt:418-419</code></td><td>Read the Relationship Manager field.</td></tr>
+<tr><td>M6</td><td>Workflow</td><td>In <code>TradingDeskRework</code> the trader can select "No". The engine allows only <code>TradingTradeExecuted</code> from this state. The engine rejects the action, and H8 hides it.</td><td><code>CDT.json</code> step <code>TradeConfirmation</code>; engine <code>PortfolioTradeSeedData.cs</code></td><td>Ask the business owner. Hide "No" in this state, or ask for a versioned engine change.</td></tr>
+<tr><td>M7</td><td>Workflow</td><td>Delete sets <code>IsDeleted</code> only. The engine instance and the SLA reminders continue.</td><td><code>CPCDTServices.txt:332-345</code>; <code>CPSQMSOService.txt:158-175</code>; SQMSB <code>RemovePage</code></td><td>Cancel the workflow, or stop its tasks and reminders, when a record is deleted.</td></tr>
+<tr><td>M8</td><td>Workflow</td><td>No background worker runs <code>run-sla</code> or <code>process-notification-outbox</code>. SLA reminders and email retries do not occur without a scheduled job.</td><td><code>program.cs.txt</code></td><td>Make sure that a scheduled job runs the two commands.</td></tr>
+<tr><td>M9</td><td>Security</td><td>The browser writes the audit log. A user can skip it or send false entries. Delete and attachment removal are never audited, because their request body is <code>null</code>.</td><td><code>postrequestinterceptor.ts.txt:20-25</code>; <code>cp-atlas-service.ts.txt:168, 177</code>; <code>CPAtlasService.cs.txt:105-109</code></td><td>Write the audit entry on the server in the same transaction as the change.</td></tr>
+<tr><td>M10</td><td>Security</td><td>Hidden dashboard tabs still send their rows. The service runs all tab procedures, then sets <code>Visible = false</code>. MFO users get all IPG rows in the response.</td><td><code>CPApplicationService.cs.txt:544-583</code></td><td>Run the procedure only for visible tabs.</td></tr>
+<tr><td>M11</td><td>Security</td><td><code>dbo.Insert_CP_AuditLog</code> builds SQL from <code>@CreatedBy</code> and <code>@LogMessage</code> with string joins. A quote in the text can run SQL. No code calls it today.</td><td><code>CP_Sharepoint.txt:1930-1952</code></td><td>Remove the procedure, or use parameters in <code>sp_executesql</code>.</td></tr>
+<tr><td>M12</td><td>Security</td><td>Role queries do not filter <code>IsDeleted</code>, so a removed user keeps access. CDT and SQMSO read roles from all modules, so a role with the same name in a different module gives access.</td><td><code>CPSecurityController.cs.txt:45-49</code>; <code>CPCDTServices.txt:136-140</code>; <code>CPSQMSOService.txt:88-92</code>; <code>dbo.Get_Application</code></td><td>Filter deleted users and entitlements. Filter roles by module.</td></tr>
+<tr><td>M13</td><td>Security</td><td>AIN sets <code>isOwner</code> to true when the user does not have the role "Read". A user with no AIN role is an owner.</td><td><code>CPAINService.cs.txt:60</code></td><td>Set owner from Admin or Write roles only.</td></tr>
+<tr><td>M14</td><td>Framework</td><td><code>ApplyMenuRules</code> does not reset <code>roleCondition</code> for each menu. After one menu agrees, all later menus agree. A menu with no <code>Rule</code> causes a null reference.</td><td><code>Data/Data/DTO/CPAtlasDashboardConfig.cs.txt:63-80</code></td><td>Set <code>roleCondition = false</code> at the start of each loop. Check for a null rule.</td></tr>
+<tr><td>M15</td><td>Config</td><td>Two configuration sources. A separate <code>ConfigurationBuilder</code> reads only <code>appsettings.json</code> and replaces <code>IConfiguration</code>. Environment files and variables do not change the database, engine, IMDS or path settings.</td><td><code>program.cs.txt:18-27</code></td><td>Use <code>builder.Configuration</code> only.</td></tr>
+<tr><td>M16</td><td>Config</td><td>The TPAM password cache is a static <code>Dictionary</code> with no lock. Two first requests at the same time can cause "duplicate key". A changed password is not read until restart. The call blocks with <code>.Result</code>.</td><td><code>Infra/Infra/TPAMAPIAccess.cs.txt:13, 37-51</code></td><td>Use <code>ConcurrentDictionary</code> or <code>IMemoryCache</code> with expiry. Read the password at start-up.</td></tr>
+<tr><td>M17</td><td>Config <span class="confirm">Confirm</span></td><td>JWT bearer is the default scheme, and <code>Jwt:Key</code> is empty. A zero-length signing key causes an exception when the handler runs.</td><td><code>program.cs.txt:55-69</code>; <code>appsettings.json.txt:18</code></td><td>Make Windows (Negotiate) the default scheme, or supply a key.</td></tr>
+<tr><td>M18</td><td>SQMS</td><td>The bid totals are incorrect. The roll-up counts only <code>SUBMITTED</code> bids and includes deleted bids. A delete does not recalculate. <code>Convert.ToInt16</code> fails above 32767. Errors are caught with no log.</td><td><code>CPSQMSBService.cs.txt:273, 355-384</code></td><td>Count all active bids that are not deleted. Recalculate on delete. Use <code>int</code>. Log errors.</td></tr>
+<tr><td>M19</td><td>SQMS</td><td>The seller RM list uses the symmetric difference of two user lists. A user who is MFO in SQMSO and in SQMS is removed from the list.</td><td><code>CPSQMSOService.txt:288-290</code></td><td>Use <code>Union</code>, if this is the business intent.</td></tr>
+<tr><td>M20</td><td>SQMS</td><td>Spelling error in the branch map: <code>"MFO PHILADELPHIA": "PB PHILADELPHIAS"</code>. Philadelphia buyers get an empty account list.</td><td><code>Config/SQMSB.json.txt:14</code></td><td>Change the value to <code>PB PHILADELPHIA</code>.</td></tr>
+<tr><td>M21</td><td>SQMS</td><td>Deleted opportunities stay in the lists. Two procedures and the bid opportunity list do not filter <code>IsDeleted</code>.</td><td><code>CP_Sharepoint.txt</code> <code>Get_SQMSO_OpenToBidding</code>, <code>Get_SQMSB_PendingSellerApprovalMFO</code>; <code>CPSQMSBService.cs.txt:296</code></td><td>Add the <code>IsDeleted</code> filter.</td></tr>
+<tr><td>M22</td><td>TTD</td><td>The week-ending list shows the same date three times. The loop adds <code>nextSunday.AddDays(7)</code> three times.</td><td><code>CPTTDService.cs.txt:302-303</code></td><td>Use <code>AddDays(7 * (i + 1))</code>.</td></tr>
+<tr><td>M23</td><td>TTD</td><td>The "Tax Time All Report" procedure has no Saturday and Sunday columns, but the config sums them. The column "Name Of Tax Preparer" does not agree with the config name.</td><td><code>CP_Sharepoint.txt</code> <code>TTD.Get_TTD_TaxTimeAllReport</code></td><td>Add the columns. Use the same column name.</td></tr>
+<tr><td>M24</td><td>AIN <span class="confirm">Confirm</span></td><td>The AIN model and the table in the database script have different columns (for example <code>DiscretionaryOrNondiscretionary</code> and <code>DiscretionaryOrCustody</code>). EF queries fail if the live table agrees with the script.</td><td><code>Data/Data/Models/AccountInventory.cs.txt</code>; <code>CP_Sharepoint.txt:133</code></td><td>Compare the live table with the model.</td></tr>
+<tr><td>M25</td><td>UI</td><td>The file output is incorrect. The name string starts as <code>undefined</code> (result <code>"undefined#$#a.pdf"</code>). A second output with the same key is added.</td><td><code>cp-atlas-steppage.ts.txt:388-401</code></td><td>Start with an empty array and use <code>join('#$#')</code>. Add one output.</td></tr>
+<tr><td>M26</td><td>UI</td><td>The step page makes form controls for hidden controls. A hidden required field stops the save, and the user cannot see the field. Some field code uses <code>getElementById(...).style</code> with no null check.</td><td><code>cp-atlas-steppage.ts.txt:128-175, 263-298</code></td><td>Do not make controls for hidden fields, as the section page does. Check for null.</td></tr>
+</table></div>
+</section>
+
+<!-- LOW -->
+<section id="low">
+<h2>3. Low</h2>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th>Area</th><th>Issue</th><th>Location</th><th>Recommendation</th></tr>
+<tr><td>L1</td><td>CDT</td><td>The Relationship Manager change removes the last email in the group. Other code can add emails after it.</td><td><code>CPCDTServices.txt:206-224</code></td><td>Keep the RM email in a separate field, or remove it by value.</td></tr>
+<tr><td>L2</td><td>Framework</td><td>The code uses <code>DateTime.Now</code> (local time). Some time stamps are kept as text. The engine uses UTC.</td><td><code>CPCDTServices.txt:185, 262, 518-540</code>; <code>CPApplicationService.cs.txt:381, 450, 611</code></td><td>Use <code>TimeProvider</code> and date columns.</td></tr>
+<tr><td>L3</td><td>Framework</td><td>Users are found by display name. Two users can have the same name. <code>CPAtlasUsers.ToList()</code> runs many times for each save and each page load.</td><td><code>CPCDTServices.txt:400, 580-615, 644-687</code>; <code>CPAINService.cs.txt:138</code></td><td>Keep the LAN ID. Load users one time for each request.</td></tr>
+<tr><td>L4</td><td>SQMS</td><td>The initial action and the start roles (<code>["MFO"]</code>) are in the code. CDT reads them from the JSON.</td><td><code>CPSQMSOService.txt:302-323</code>; <code>CPSQMSBService.cs.txt:386-407</code></td><td>Read them from the module JSON.</td></tr>
+<tr><td>L5</td><td>Framework</td><td>The temporary upload folder name comes from <code>new Random().Next()</code>. Two uploads can get the same folder, and the code deletes the folder.</td><td><code>CPCDTServices.txt:278-282</code>; <code>CPApplicationService.cs.txt:109-113</code></td><td>Use <code>Guid.NewGuid()</code>.</td></tr>
+<tr><td>L6</td><td>UI, Framework</td><td>Module codes and role names are in the code: UI routes for CDT, SQMSO, SQMSB, TTD and AIN; roles "mfo" and "ipfg"; CDT roles "IM Risk", "Client Service" and "BDRM Support"; TTD roles "Prepare" and "Owner". A new module or role needs a code change.</td><td><code>cp-atlas-dashboard.ts.txt:109-125, 316-329</code>; <code>cp-atlas-sectionmaster.ts.txt:347-367</code>; <code>CPCDTServices.txt:369</code></td><td>Move these values to the module JSON.</td></tr>
+<tr><td>L7</td><td>Framework</td><td>The PB account list is in a static cache for 24 hours with <code>NotRemovable</code>. New accounts do not show for one day. <code>[OutputCache]</code> on <code>PBAccounts</code> has no effect for signed-in users.</td><td><code>CPAtlasExternalService.cs.txt:91-115</code>; <code>CPAtlasExternalController.cs.txt:40</code></td><td>Use a shorter expiry and a refresh function.</td></tr>
+<tr><td>L8</td><td>Framework</td><td>The IMDS client makes a new <code>HttpClient</code> for each call and blocks with <code>.Result</code>. The token check is always true. A failed token gives a null bearer header.</td><td><code>CPAtlasExternalService.cs.txt:42-80</code>; <code>CPCDTServices.txt:451</code></td><td>Use <code>IHttpClientFactory</code> and <code>async</code>. Stop when there is no token.</td></tr>
+<tr><td>L9</td><td>Security</td><td>The AD group check uses <code>Contains</code>. The group "IM_TACO" also agrees with "IM_TACO_X".</td><td><code>CPSecurityController.cs.txt:60</code></td><td>Compare the full group name.</td></tr>
+<tr><td>L10</td><td>Security</td><td>Owner checks use part of the display name (<code>Contains</code> and <code>LIKE '%name%'</code>). "Ann Lee" agrees with "Joann Leeds".</td><td><code>CPSQMSOService.txt:94-95</code>; <code>CPSQMSBService.cs.txt:119-120, 142</code>; SQMS procedures</td><td>Keep and compare LAN IDs.</td></tr>
+<tr><td>L11</td><td>Framework</td><td><code>FindControlByName</code> for a step compares the name with <code>Field</code>, not <code>Name</code>. The section <code>ApplyRules</code> fails when a control has no <code>ChildControls</code>.</td><td><code>CPAtlasApplicationConfig.cs.txt:195, 421</code></td><td>Compare with <code>Name</code>. Check for null.</td></tr>
+<tr><td>L12</td><td>Framework</td><td><code>ExecuteDataReader</code> uses the EF connection and closes it. It does not use the EF transaction. <code>ExecuteNonQuery</code> disposes the EF connection (not used today).</td><td><code>Data/Data/DatabaseExtension.cs.txt</code></td><td>Use a separate connection, or EF raw SQL.</td></tr>
+<tr><td>L13</td><td>Framework</td><td>The Atlas data project has scaffolded EF classes for the engine tables. No code uses them. They will become different from the engine model.</td><td><code>Data/Data/Models/Workflow*.cs.txt</code>, <code>NotificationOutbox.cs.txt</code> and others</td><td>Remove them. Use the engine services only.</td></tr>
+<tr><td>L14</td><td>Config</td><td><code>Smtp:RoleEmailMap</code> has real email addresses. The engine no longer reads these keys.</td><td><code>appsettings.json.txt:44-50</code></td><td>Remove the keys.</td></tr>
+<tr><td>L15</td><td>UI</td><td>Maintenance items: the AG Grid licence key is in the source; six CKEditor packages are not used; a <code>debugger;</code> statement; observables are not unsubscribed; the dashboard user check uses <code>await</code> on an Observable and never runs.</td><td><code>main.ts.txt:7-17</code>; <code>package.json.txt:23-28</code>; <code>cp-atlas-dashboard.ts.txt:64, 280</code></td><td>Clean up in the next UI release.</td></tr>
+<tr><td>L16</td><td>UI</td><td>Changes on an earlier step are lost if the user clicks Next before Save. An attachment is deleted on the server before the user saves the form.</td><td><code>cp-atlas-stepmaster.ts.txt:77-98</code>; <code>cp-atlas-steppage.ts.txt:463</code></td><td>Warn about unsaved changes. Delete attachments on save.</td></tr>
+<tr><td>L17</td><td>SQMS</td><td><code>Get_SQMSO_Opportunity</code> sorts by <code>Status</code>, not by the status order number.</td><td><code>CP_Sharepoint.txt</code> (about line 2355)</td><td>Sort by <code>OrderNo</code>.</td></tr>
+<tr><td>L18</td><td>SQMS</td><td>A rule shows the bid totals to other buyers and hides them from the owner. Confirm that this is the business intent.</td><td><code>Config/SQMSO.json.txt</code> section <code>BiddingInformation</code></td><td>Ask the business owner.</td></tr>
+</table></div>
+</section>
+
+<!-- INFO -->
+<section id="info">
+<h2>4. Info (not issues)</h2>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th>Item</th></tr>
+<tr><td>I1</td><td>BDRM "No" sends <code>BdrmTradeFulfilled</code>, and the request goes to <code>Completed</code>. This is a business requirement (F01). It is correct.</td></tr>
+<tr><td>I2</td><td>All CDT action keys and assigned-role keys in <code>CDT.json</code> are in the engine metadata. The instance ID <code>WF-CDT-{id}</code> agrees with the ID that the engine makes.</td></tr>
+<tr><td>I3</td><td><code>Atlasapp/Atlasapp/Config/*.json</code> is the newer config copy. It fixes the AIN field <code>ClientFamilyDesc</code>, adds AIN fields and tabs, and adds TTD totals. <code>Config/Config</code> has some text corrections that the newer copy does not have.</td></tr>
+</table></div>
+</section>
+
+<section id="noise">
+<h2>5. Copy errors (not included as issues)</h2>
+<p>Some copied files have errors that the real code cannot have, because the code would not compile. This document does not include them as issues:</p>
+<ul>
+<li><code>CPSQMSBService.cs.txt</code> uses <code>OppportunityId</code>. The model property is <code>OpportunityId</code>.</li>
+<li>The controllers ask for <code>CPBBContext</code>. The host registers <code>CPPBContext</code>.</li>
+<li><code>app.routes.ts.txt</code> and <code>cp-atlas-sectionmaster.ts.txt</code> are not complete. <code>stepmaster.ts</code> uses <code>toastr</code> but does not inject it.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

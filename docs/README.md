@@ -2,6 +2,9 @@
 
 Current documentation kept in this repo:
 
+- [Target API workflow integration evidence](target-api-workflow-integration-evidence.html): source-backed Atlas call paths, adapter differences, transaction boundaries, and unresolved deployment questions. Includes line-numbered evidence; no target runtime verification.
+- [CP Atlas application flow](TARGET_ATLAS_APPLICATION_FLOW.html): read-only explanation of the whole target CP Atlas application (framework, security, modules, data, deployment) and where the workflow engine fits. Based on the copies in `target-implementation-read-only/`.
+- [CP Atlas issues by severity](TARGET_ATLAS_ISSUES_BY_SEVERITY.html): High/Medium/Low findings in the target application, for the target team. "Confirm" items depend on files not in the copy.
 - [Open issues and paused work](OPEN-ISSUES.md): the current index of unresolved findings and preserved owner decisions.
 - [SQMS target integration](sqms/TARGET-API-INTEGRATION.md) and [DBA deployment](sqms/DBA-DEPLOYMENT.md): current integration and deployment guidance.
 - [SQMS scenario packs](sqms/target-api-scenarios/README.md): executable examples verified by the regression suite. Keep these files.
