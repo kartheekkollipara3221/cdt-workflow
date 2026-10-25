@@ -1,3 +1,62 @@
+# RESUME HERE - atlas-platform review Wave 2 IN PROGRESS: 7 of 18 committed (7cfc8bf..4c2bca3), SV-07 half done (uncommitted file), not pushed - 2026-10-25
+
+## Instruction from the user (still active)
+"start with wave 2, one commit per defect" (review docs/atlas-platform/13-architecture-review.md, section 10).
+Same rules as Wave 1: one commit for each finding; a row in atlas-platform/INTEGRATION.md section 6 (next: B36);
+tests + build green before each commit; do not push.
+
+## Wave 2 status
+Done (commit, INTEGRATION row):
+- HO-07 7cfc8bf B29 (manifest snapshot, AppSettings:ConfigRefreshSeconds default 2)
+- HO-02 a27adc6 B30 (bad manifest file isolated, last good kept, Atlas.ConfigInvalid 41021, IAtlasConfigStore.ConfigErrors)
+- HO-05 c0605d3 B31 (tables loaded for all registered manifests; resolver 404 + Atlas.AppNotAvailable 41022 if table not loaded)
+- NG-03 07634a6 B32 (client: containerOf/isShown/shownInvalid; hidden fields not validated or sent)
+- NG-04 dae24ea B33 (check/option renderers, AtlasUnsupportedRenderer, AtlasRendererBase, provideAtlasRenderers, server warning)
+- SV-03 01fe65f B34 (AtlasFormField.HiddenByRule; Show cannot reveal rule-hidden field)
+- SV-04 4c2bca3 B35 (server Enable/Disable/Set/Clear + DisabledByRule; Platform/Sections/AtlasFieldValidator; client
+  validators rewritten; shared cases WebUi/src/app/platform/form/atlas-validator-cases.ts read by ValidatorParityTests)
+
+IN PROGRESS - SV-07 (config contract typo-safety), NOT built, NOT committed:
+- Written: atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs (CheckUnknownProperties(path, type, warning)
+  walks JSON vs DTO properties -> warnings with JSON path; CheckForm(manifest, form, error, warning): duplicate control
+  names, effect/rule/Defaults names, default tokens, Pattern compiles, button Action.Type (Execute/Navigate = warning),
+  SchemaVersion > 1 = error).
+- Still to do: (1) add `public int? SchemaVersion { get; set; }` to AtlasAppManifest; (2) call from AtlasStartupCheck.Run
+  for enabled+registered manifests: CheckUnknownProperties(manifest.SourceFile, typeof(AtlasAppManifest)),
+  form file Path.Combine(configStore.ConfigFolder, manifest.Form) as CPAtlasApplicationConfig, dashboard file as
+  CPAtlasDashboard; CheckForm(manifest, form, Error, Warning); (3) dotnet build (fix compile errors; warnings = errors);
+  (4) make sure the real TTDV2 files still give 0 errors (The_TTDV2_files_pass_with_exit_code_0) - if the walker
+  reports false unknowns (e.g. lowercase grid props, dictionaries), fix the walker, not the JSON; (5) tests in
+  tests/.../Api/AtlasCheckTests.cs: "Requried" -> warning with path; unknown effect target -> error; "{Todya}" -> error;
+  bad pattern -> error; (6) row B36, commit "fix(atlas-platform): SV-07 ...". JSON Schema file is optional (note it).
+
+Remaining Wave 2 after SV-07 (in order): DA-04 (SoftDelete.Field must be IsDeleted/bit - start-up error), DA-05
+(DB default constraints: read default_object_id, HasDefaultValueSql for nullable/reference cols, warning otherwise),
+DA-02 (Version required on update when table has rowversion; find rowversion column by IsRowVersion), DA-03 (audit read
+filter RefType when audit table shared/Parent; optional AuditRefTypes), DA-06 (SameValue/Changes compare normalized
+typed values), SV-05 (foreign dashboard tab: app enabled + View check), NG-07 (dashboard History/Delete use tab code),
+SV-06 (OnAfterSave try/catch, Atlas.AfterSaveFailed), SV-08 (split ConfigSectionService into Platform/Sections steps;
+AtlasFieldValidator already done), NG-09 (TestBed component tests, one with provideZoneChangeDetection).
+Then: update review section 12 (Wave 2 table), INTEGRATION status line test counts, regenerate review HTML with
+docs/atlas-platform/tools/md2report.py (then fix the Ownership/Source note lines as in Wave 1), handoff, restart API+UI,
+browser smoke test.
+
+## Working notes
+- Stop the API (port 5080) before dotnet test; it is STOPPED now. UI dev server (4200) may still run.
+  Restart: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; cd atlas-platform/WebUi; npm start
+- Tests now: 201 .NET (dotnet test atlas-platform/AtlasPlatform.slnx) + 40 Angular (cd atlas-platform/WebUi; npx ng test --watch=false).
+- Helpers in the session scratchpad (lost with the session): addrow.py (append INTEGRATION row after a given B id),
+  insert.py (insert snippet before an anchor). Recreate if needed; beware bash/python escaping of C# raw strings
+  (use the Edit tool or files for snippets with \d or triple quotes).
+- SectionHarness(database, mode, configFolder) + SectionHarness.ConfigCopy((file, text) => ...) make a changed copy of
+  the real Config for a test.
+- Local route is /dashboard/:code. @pbdev inventory: atlas-platform/PBDEV.md.
+
+## Next-session prompt
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Continue review Wave 2 from SV-07, one commit per defect."
+
+---
+
 # RESUME HERE - atlas-platform: review Wave 1 (11 findings) FIXED, one commit each (4863984..e40f9cb), not pushed; Wave 2/3 open - 2026-10-25
 
 ## Status
