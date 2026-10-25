@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs: module 12 draft 2 = TTDV2 pilot, ALL Q1-Q6 answered, NOT committed; coding plan written (12 section 11, phases C0-C10, hand-written stand-ins); NEXT = start phase C0 when the user says; module 11 committed 5446337 - 2026-10-25
+# RESUME HERE - atlas-platform phase C0 DONE (skeleton + .NET stand-ins, build 0 warnings, 2 smoke tests pass, host /health ok), NOT committed; NEXT = C1 Data when the user says. Spec: docs/atlas-platform/12-ttd-pilot-build.md section 11 (TTDV2 pilot, all Qs answered, committed 364b116) - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps

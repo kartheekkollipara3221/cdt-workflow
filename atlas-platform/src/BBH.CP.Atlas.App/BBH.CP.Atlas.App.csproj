@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Local copy of the target project BBH.CP.Atlas.App (local demo host).
+       Copy to the target: Platform/ and Config/TTDV2.*.json. Do not copy StandIn/, appsettings*.json or this file. -->
+  <PropertyGroup>
+    <RootNamespace>BBH.CP.Atlas.App</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BBH.CP.Atlas.Infra\BBH.CP.Atlas.Infra.csproj" />
+    <ProjectReference Include="..\BBH.CP.Atlas.Data\BBH.CP.Atlas.Data.csproj" />
+    <ProjectReference Include="..\BBH.CP.Atlas.Service\BBH.CP.Atlas.Service.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="Config\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

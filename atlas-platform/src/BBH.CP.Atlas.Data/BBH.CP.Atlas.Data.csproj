@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Local copy of the target project BBH.CP.Atlas.Data.
+       Copy to the target: Platform/ only. Do not copy StandIn/ or this file. -->
+  <PropertyGroup>
+    <RootNamespace>BBH.CP.Atlas.Data</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.7" />
+    <!-- Transitive version pin (vulnerability advisories), the same pin as the workflow engine projects. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BBH.CP.Atlas.Infra\BBH.CP.Atlas.Infra.csproj" />
+  </ItemGroup>
+</Project>

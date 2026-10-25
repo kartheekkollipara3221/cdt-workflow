@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Local copy of the target project BBH.CP.Atlas.Service.
+       Copy to the target: Platform/ and the new files in Application/. Do not copy StandIn/ or this file. -->
+  <PropertyGroup>
+    <RootNamespace>BBH.CP.Atlas.Service</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- IFormFileCollection and HTTP types. The target uses the old Microsoft.AspNetCore.Http package (finding DM-10). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BBH.CP.Atlas.Data\BBH.CP.Atlas.Data.csproj" />
+  </ItemGroup>
+</Project>

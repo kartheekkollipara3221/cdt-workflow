@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BBH.CP.Atlas.Infra/BBH.CP.Atlas.Infra.csproj" />
+    <Project Path="src/BBH.CP.Atlas.Data/BBH.CP.Atlas.Data.csproj" />
+    <Project Path="src/BBH.CP.Atlas.Service/BBH.CP.Atlas.Service.csproj" />
+    <Project Path="src/BBH.CP.Atlas.App/BBH.CP.Atlas.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BBH.CP.Atlas.Platform.Tests/BBH.CP.Atlas.Platform.Tests.csproj" />
+  </Folder>
+</Solution>

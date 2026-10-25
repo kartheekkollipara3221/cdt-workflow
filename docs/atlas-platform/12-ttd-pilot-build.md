@@ -243,14 +243,36 @@ Each phase ends with `dotnet build` (no warnings) and `dotnet test` green. Stop 
 
 | Phase | Content | Tests |
 |---|---|---|
-| C0 | Solution skeleton, `Directory.Build.props`, stand-ins, empty `Platform/` folders, `INTEGRATION.md` outline | Build only |
+| C0 | .NET solution skeleton, `Directory.Build.props`, .NET stand-ins, empty `Platform/` folders, `INTEGRATION.md` and `local/README.md` outlines | Build; one smoke test |
 | C1 | Data: `AtlasPlatformContext` (shared-type), `sys.columns` reader, value converter (6.4), load by key | Conversion unit tests; SQL tests on a test database made by `12-ttdv2-app.sql` |
 | C2 | Config: manifest model, tolerant JSON loader, cache with copy, `AddAtlasPlatform`, `AddAtlasModule`, resolver, string app code | Loader parity test with all current JSON files; resolver 404/400 |
 | C3 | Security: `IAtlasUserContext`, active roles (view), role flags, `IAtlasAccessService`, `Permissions`, `LogOnly`/`Enforce`, `Atlas.AccessDenied` log | Access matrix (module 1, 10.5) |
 | C4 | Rules: `IAtlasRuleEngine` (`FirstMatch`, `MostPermissive`, `RuleDefault`, `OwnerFields`) | Rule matrix; `FirstMatch` gives the current results |
 | C5 | Section: `ConfigSectionService` load (providers, tokens, `KeepSavedValue`, grid `SingleRowFields`, header) and save pipeline (allow list, validators, `Computed`, version, system fields, audit, `Errors`); `CPTTDV2Service`, `TaxYears`, `WeekEndings` | Section 5 load, save, concurrency and audit tests |
-| C6 | API: resolver hook in `CPAtlasService` stand-in, string `code`, `v1/Application` `FormType`/`HasDashboard`, `GetAuditLog` | Endpoint tests with a test host |
+| C6 | Local database script and demo host (11.3). API: resolver hook in `CPAtlasService` stand-in, string `code`, `v1/Application` `FormType`/`HasDashboard`, `GetAuditLog` | Endpoint tests with a test host |
 | C7 | Dashboard: TTDV2 dashboard file, rules before load, `Source: Table` query builder, `Any`, `Type: "user"`, `Permissions` menus | Query builder tests (names only from metadata, values only as parameters); 3 TTDV2 tabs |
 | C8 | Start-up check (all modules) and `--atlas-check` | Exit code 0 / 1 cases |
-| C9 | WebUi: route `form/:code/:id`, form component, renderer registry, `Effects`, `Validator`, dashboard navigation by `FormType` and `Target` | Angular unit tests |
+| C9 | WebUi skeleton and `@pbdev` stand-in (11.4). Route `form/:code/:id`, form component, renderer registry, `Effects`, `Validator`, dashboard navigation by `FormType` and `Target` | Angular unit tests |
 | C10 | Release package: `sql/release-p1/`, `INTEGRATION.md` complete, acceptance list (section 8) | Full test run; copy-script test on a copy of TTD sample data |
+
+### 11.3 Local working copy
+
+Decision 2026-10-25: the user runs TTDV2 on the local computer (.NET 10, Node, Angular CLI 21, SQL Server 2022 with Windows authentication) before the integration.
+
+- Database: `atlas-platform/local/setup-local-db.sql` makes the database `CPAtlasPlatformDev` with the `dbo.CP_Atlas_*` tables (target shape), runs `sql/release-p1/` 020-040, and adds test users (the local Windows login and one user for each role `Read`, `Prepare`, `Owner`).
+- API: the stand-in host runs on Kestrel with Windows authentication (`AddNegotiate`), with Swagger for the TTDV2 endpoints.
+- UI: `ng serve` shows the dashboard and the form `form/TTDV2/{id}`.
+- Stand-ins for internal services: PB accounts (Oracle) = sample accounts; Active Directory = the Windows login + a settings file for the test users; TPAM = a local connection string.
+- Development-only user switch: a setting lets the local user act as each test user, to test the access table (module 1, 10.5). It is off outside `Development`.
+- Demo points: after C6, the API with Swagger; after C9, the full app in the browser.
+- `atlas-platform/local/README.md`: the steps to run it.
+
+### 11.4 `@pbdev/pbdev-core` stand-in
+
+The internal library is not available on this computer. Decision 2026-10-25:
+
+- A local package `@pbdev/pbdev-core` in `WebUi/src/app/stand-in/pbdev-core/`, with the same selectors, inputs, outputs and export names. The form controls implement `ControlValueAccessor`, so `formControlName` works as with the real library. Plain HTML and simple CSS; the same style file names.
+- One switch point: a `tsconfig` path maps `@pbdev/pbdev-core` to the stand-in. At the target, do not copy the mapping or the folder; the same import goes to the real package. The new component code does not change.
+- The new component uses only the elements and inputs that the current `cp-atlas-sectionmaster.html` uses with the real library (`pbdev-input` `inputType`, `pbdev-select` `[options]`, `pbdev-textarea` `[rows]`, `pbdev-date-picker`, `pbdev-checkbox`, `pbdev-section`, `pbdev-section-label` `[label]`, `pbdev-loader`, `pbdev-dialog`). No stepper and no file picker in P1.
+- `INTEGRATION.md` lists each item to check at the target (look and feel, masks).
+- The WebUi skeleton and the stand-in package are made in C9 (C0 makes the .NET skeleton only).

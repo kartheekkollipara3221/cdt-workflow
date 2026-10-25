@@ -313,18 +313,38 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p>Each phase ends with <code>dotnet build</code> (no warnings) and <code>dotnet test</code> green. Stop after each phase for a review.</p>
 <div class="table-wrap"><table>
 <tr><th>Phase</th><th>Content</th><th>Tests</th></tr>
-<tr><td>C0</td><td>Solution skeleton, <code>Directory.Build.props</code>, stand-ins, empty <code>Platform/</code> folders, <code>INTEGRATION.md</code> outline</td><td>Build only</td></tr>
+<tr><td>C0</td><td>.NET solution skeleton, <code>Directory.Build.props</code>, .NET stand-ins, empty <code>Platform/</code> folders, <code>INTEGRATION.md</code> and <code>local/README.md</code> outlines</td><td>Build; one smoke test</td></tr>
 <tr><td>C1</td><td>Data: <code>AtlasPlatformContext</code> (shared-type), <code>sys.columns</code> reader, value converter (6.4), load by key</td><td>Conversion unit tests; SQL tests on a test database made by <code>12-ttdv2-app.sql</code></td></tr>
 <tr><td>C2</td><td>Config: manifest model, tolerant JSON loader, cache with copy, <code>AddAtlasPlatform</code>, <code>AddAtlasModule</code>, resolver, string app code</td><td>Loader parity test with all current JSON files; resolver 404/400</td></tr>
 <tr><td>C3</td><td>Security: <code>IAtlasUserContext</code>, active roles (view), role flags, <code>IAtlasAccessService</code>, <code>Permissions</code>, <code>LogOnly</code>/<code>Enforce</code>, <code>Atlas.AccessDenied</code> log</td><td>Access matrix (module 1, 10.5)</td></tr>
 <tr><td>C4</td><td>Rules: <code>IAtlasRuleEngine</code> (<code>FirstMatch</code>, <code>MostPermissive</code>, <code>RuleDefault</code>, <code>OwnerFields</code>)</td><td>Rule matrix; <code>FirstMatch</code> gives the current results</td></tr>
 <tr><td>C5</td><td>Section: <code>ConfigSectionService</code> load (providers, tokens, <code>KeepSavedValue</code>, grid <code>SingleRowFields</code>, header) and save pipeline (allow list, validators, <code>Computed</code>, version, system fields, audit, <code>Errors</code>); <code>CPTTDV2Service</code>, <code>TaxYears</code>, <code>WeekEndings</code></td><td>Section 5 load, save, concurrency and audit tests</td></tr>
-<tr><td>C6</td><td>API: resolver hook in <code>CPAtlasService</code> stand-in, string <code>code</code>, <code>v1/Application</code> <code>FormType</code>/<code>HasDashboard</code>, <code>GetAuditLog</code></td><td>Endpoint tests with a test host</td></tr>
+<tr><td>C6</td><td>Local database script and demo host (11.3). API: resolver hook in <code>CPAtlasService</code> stand-in, string <code>code</code>, <code>v1/Application</code> <code>FormType</code>/<code>HasDashboard</code>, <code>GetAuditLog</code></td><td>Endpoint tests with a test host</td></tr>
 <tr><td>C7</td><td>Dashboard: TTDV2 dashboard file, rules before load, <code>Source: Table</code> query builder, <code>Any</code>, <code>Type: "user"</code>, <code>Permissions</code> menus</td><td>Query builder tests (names only from metadata, values only as parameters); 3 TTDV2 tabs</td></tr>
 <tr><td>C8</td><td>Start-up check (all modules) and <code>--atlas-check</code></td><td>Exit code 0 / 1 cases</td></tr>
-<tr><td>C9</td><td>WebUi: route <code>form/:code/:id</code>, form component, renderer registry, <code>Effects</code>, <code>Validator</code>, dashboard navigation by <code>FormType</code> and <code>Target</code></td><td>Angular unit tests</td></tr>
+<tr><td>C9</td><td>WebUi skeleton and <code>@pbdev</code> stand-in (11.4). Route <code>form/:code/:id</code>, form component, renderer registry, <code>Effects</code>, <code>Validator</code>, dashboard navigation by <code>FormType</code> and <code>Target</code></td><td>Angular unit tests</td></tr>
 <tr><td>C10</td><td>Release package: <code>sql/release-p1/</code>, <code>INTEGRATION.md</code> complete, acceptance list (section 8)</td><td>Full test run; copy-script test on a copy of TTD sample data</td></tr>
 </table></div>
+<h3>11.3 Local working copy</h3>
+<p>Decision 2026-10-25: the user runs TTDV2 on the local computer (.NET 10, Node, Angular CLI 21, SQL Server 2022 with Windows authentication) before the integration.</p>
+<ul>
+<li>Database: <code>atlas-platform/local/setup-local-db.sql</code> makes the database <code>CPAtlasPlatformDev</code> with the <code>dbo.CP_Atlas_*</code> tables (target shape), runs <code>sql/release-p1/</code> 020-040, and adds test users (the local Windows login and one user for each role <code>Read</code>, <code>Prepare</code>, <code>Owner</code>).</li>
+<li>API: the stand-in host runs on Kestrel with Windows authentication (<code>AddNegotiate</code>), with Swagger for the TTDV2 endpoints.</li>
+<li>UI: <code>ng serve</code> shows the dashboard and the form <code>form/TTDV2/{id}</code>.</li>
+<li>Stand-ins for internal services: PB accounts (Oracle) = sample accounts; Active Directory = the Windows login + a settings file for the test users; TPAM = a local connection string.</li>
+<li>Development-only user switch: a setting lets the local user act as each test user, to test the access table (module 1, 10.5). It is off outside <code>Development</code>.</li>
+<li>Demo points: after C6, the API with Swagger; after C9, the full app in the browser.</li>
+<li><code>atlas-platform/local/README.md</code>: the steps to run it.</li>
+</ul>
+<h3>11.4 <code>@pbdev/pbdev-core</code> stand-in</h3>
+<p>The internal library is not available on this computer. Decision 2026-10-25:</p>
+<ul>
+<li>A local package <code>@pbdev/pbdev-core</code> in <code>WebUi/src/app/stand-in/pbdev-core/</code>, with the same selectors, inputs, outputs and export names. The form controls implement <code>ControlValueAccessor</code>, so <code>formControlName</code> works as with the real library. Plain HTML and simple CSS; the same style file names.</li>
+<li>One switch point: a <code>tsconfig</code> path maps <code>@pbdev/pbdev-core</code> to the stand-in. At the target, do not copy the mapping or the folder; the same import goes to the real package. The new component code does not change.</li>
+<li>The new component uses only the elements and inputs that the current <code>cp-atlas-sectionmaster.html</code> uses with the real library (<code>pbdev-input</code> <code>inputType</code>, <code>pbdev-select</code> <code>[options]</code>, <code>pbdev-textarea</code> <code>[rows]</code>, <code>pbdev-date-picker</code>, <code>pbdev-checkbox</code>, <code>pbdev-section</code>, <code>pbdev-section-label</code> <code>[label]</code>, <code>pbdev-loader</code>, <code>pbdev-dialog</code>). No stepper and no file picker in P1.</li>
+<li><code>INTEGRATION.md</code> lists each item to check at the target (look and feel, masks).</li>
+<li>The WebUi skeleton and the stand-in package are made in C9 (C0 makes the .NET skeleton only).</li>
+</ul>
 </section>
 </main>
 </body>
