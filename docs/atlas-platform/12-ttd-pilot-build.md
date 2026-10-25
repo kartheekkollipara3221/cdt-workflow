@@ -1,6 +1,8 @@
 # Module 12: TTDV2 pilot build (release P1)
 
-Status: Draft 2, 2026-10-25. All open questions answered (section 10). Design only. This spec is the coding plan for `atlas-platform/`.
+Status: Draft 2, 2026-10-25. All open questions answered (section 10). This spec is the coding plan for `atlas-platform/`.
+
+Build status (2026-10-25): C0-C10 done in `atlas-platform/`. Findings B1-B16 and the integration steps: `atlas-platform/INTEGRATION.md`. Local run: `atlas-platform/local/README.md`.
 
 ## 1. Purpose
 

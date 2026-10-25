@@ -1,3 +1,45 @@
+# RESUME HERE - atlas-platform build: C0-C10 DONE and committed; TTDV2 runs locally; WAITING for the user's browser review feedback - 2026-10-25
+
+## Status
+- All build phases done (spec docs/atlas-platform/12-ttd-pilot-build.md, section 11). Commits: C5 0ee9027, C6 253f467,
+  C7 405d78b, C8 a72ee38, C9 3c4eec4, C10 (this entry). Earlier: C0 4c17e94 .. C4 33994b8.
+- Tests: 144 .NET (dotnet test atlas-platform/AtlasPlatform.slnx; SQL tests make throw-away DBs on localhost) + 13 Angular
+  (cd atlas-platform/WebUi; npx ng test --watch=false). Build 0 warnings. --atlas-check exit 0.
+- Local review DB: CPAtlasPlatformDev (atlas-platform/local/setup-local-db.ps1 [-Recreate]). API http://localhost:5080
+  (swagger), UI http://localhost:4200. Steps: atlas-platform/local/README.md. Act-as switch in the UI header.
+- Integration guide complete: atlas-platform/INTEGRATION.md (files to copy, target file changes, SQL, settings,
+  acceptance with line counts, findings B1-B16 for review).
+
+## What was built (C5-C10)
+- C5 Service: Application/ConfigSectionService (load: values, options, KeepSavedValue, defaults tokens, user labels,
+  OnLoad, rules, header, Version, UserPermissions, Computed map; save: access, rules, allow list B7, effects, validators,
+  version + EF concurrency, conversion, SetFromOption from Data B10, defaults, Computed, system fields UTC/LAN ID, hooks,
+  save+audit in one transaction, Errors with HTTP 200; RemovePage soft delete; GetAuditLog). Platform/Options (PBAccounts,
+  UsersInRoles), Platform/Audit/AtlasAuditWriter, Platform/Sections (AtlasFormFields, AtlasModuleServices bundle).
+  CPTTDV2Service + TTDV2/ providers. Config/TTDV2.json.
+- C6 local DB script + seed, stand-in host (Fixed or Negotiate auth, act-as header, CORS, Swagger), stand-in controllers
+  with string code, CPAtlasService stand-in with PLATFORM lines, AtlasApplicationMenu (FormType/HasDashboard),
+  AtlasAppCode.FromRequest. Fixed QUOTED_IDENTIFIER in 12-ttdv2-app.sql and 05 template (B12).
+- C7 Platform/Dashboard: AtlasTabQueryBuilder (Source: Table, Any group, params only), AtlasDashboardService (View check,
+  rules before load, user columns, Permissions menus/button). Config/TTDV2.Dashboard.json.
+- C8 App/Platform/AtlasStartupCheck + AtlasPlatformStartup (StartAtlasPlatformAsync, RunAtlasCheckAsync); --atlas-check.
+- C9 WebUi (Angular 21, zoneless, Vitest): platform/ (form component, renderer registry, effects, validators, form model,
+  dashboard with ag-grid-community 33, history dialog, navigation by FormType/Target); stand-in/ (@pbdev stand-in via
+  tsconfig path, shell, interceptor). ng-select used for "ngselect" (target already has it).
+- C10 sql/release-p1 020-050 (+ parity test), copy-script test on TTD sample data (local/sql/010-local-ttd-sample.sql),
+  docs.
+
+## Open points for the user's review (also INTEGRATION.md section 6)
+- B3/B4/B7/B9/B10/B14/B15 are design choices made without asking (user said do not wait). Confirm or change.
+- Grid column dates follow WeekEnding only on load (TTD did the same); not updated when the user changes WeekEnding.
+- Select values are not checked against the options on save (e.g. TaxPreparer can be any LAN ID).
+- Script 010 (engine migrations) is made by the target team.
+
+## Next-session prompt
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. I reviewed TTDV2 in the browser; here is my feedback: ..."
+
+---
+
 # RESUME HERE - atlas-platform build: C0-C4 DONE and committed; C5 (section service) NOT started in code; user wants C5-C10 done autonomously, commit each phase, then review TTDV2 in the browser - 2026-10-25
 
 ## Instruction from the user (still active)

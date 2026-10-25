@@ -1,6 +1,7 @@
-# Integration at the target (outline)
+# Integration at the target
 
-Status: outline (C0). Each phase adds its steps. C10 completes this guide.
+Status: complete for release P1 (C10, 2026-10-25). Build: 0 warnings. Tests: 140 .NET (xUnit, SQL Server) + 13 Angular (Vitest).
+Local review: `local/README.md`.
 
 ## 1. Files to copy
 
@@ -8,12 +9,13 @@ Status: outline (C0). Each phase adds its steps. C10 completes this guide.
 |---|---|
 | `src/BBH.CP.Atlas.Data/Platform/` | `BBH.CP.Atlas.Data/Platform/` |
 | `src/BBH.CP.Atlas.Service/Platform/` | `BBH.CP.Atlas.Service/Platform/` |
-| `src/BBH.CP.Atlas.Service/Application/` (new files only) | `BBH.CP.Atlas.Service/Application/` |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs`, `CPTTDV2Service.cs`, `TTDV2/` | `BBH.CP.Atlas.Service/Application/` |
 | `src/BBH.CP.Atlas.App/Platform/` | `BBH.CP.Atlas.App/Platform/` |
-| `src/BBH.CP.Atlas.App/Config/TTDV2.*.json` | `BBH.CP.Atlas.App/Config/` |
-| `WebUi/src/app/platform/` (C9) | `WebUi/Source/App/platform/` |
+| `src/BBH.CP.Atlas.App/Config/TTDV2.app.json`, `TTDV2.json`, `TTDV2.Dashboard.json` | `BBH.CP.Atlas.App/Config/` (Copy to Output: PreserveNewest) |
+| `WebUi/src/app/platform/` | `WebUi/Source/App/platform/` (the `dashboard/` folder is a reference: see section 2) |
+| `sql/release-p1/` | the DBA release folder (section 3) |
 
-Do not copy: `StandIn/` folders, `BBH.CP.Atlas.Infra`, `*.csproj`, `appsettings*.json`, `tests/`, `local/`, the `@pbdev` stand-in and its `tsconfig` path.
+Do not copy: `StandIn/` folders, `WebUi/src/app/stand-in/`, `WebUi/src/app/app.*`, `WebUi/src/environments/`, `BBH.CP.Atlas.Infra`, `*.csproj`, `appsettings*.json`, `tests/`, `local/`, the `@pbdev` stand-in and its `tsconfig` path.
 
 ## 2. Changes to existing target files
 
@@ -25,15 +27,35 @@ Do not copy: `StandIn/` folders, `BBH.CP.Atlas.Infra`, `*.csproj`, `appsettings*
 | `program.cs` | `builder.Services.AddAtlasPlatform(configuration);` and `builder.Services.AddAtlasModule<CPTTDV2Service>("TTDV2");` before `Build()`; `await app.Services.StartAtlasPlatformAsync();` after `Build()` (loads the table metadata and runs the start-up check; an error stops the start-up). `--atlas-check`: remove the switch from `args` before `CreateBuilder`, and after `Build()` add `if (check) return await app.Services.RunAtlasCheckAsync(Console.Out);` (see `StandIn/Program.cs`; exit code 0/1, no web server). | Modules 7, 11 |
 | `CPAtlasService.cs` | Add the optional constructor parameters `IAtlasModuleResolver? resolver = null, IAtlasConfigStore? configStore = null` at the end. At the start of `GetApplication` (after the procedure call), `LoadDashboard`, `LoadSectionPage`, `ManagePage`, `RemovePage`, `AuditLog`, `GetAuditLog`: copy the lines marked `PLATFORM` from `Service/StandIn/CPAtlasService.cs`. The `if` chains stay for the current codes. `ManagePage`/`AuditLog` keep `JsonConvert` (Newtonsoft reads the new optional properties). | Module 7, 4.3 |
 | `Controllers/V1/CPAtlasController.cs` | `LoadDashboard(string code)`, `RemovePage(string code, int id)`; `Download`/`RemoveAttachment` stay. Inject `IAtlasModuleResolver` and `IAtlasConfigStore` and pass them to `new CPAtlasService(...)`. The current callers send `code=TTD` (binds the same); a number value maps to the enum name (`AtlasAppCode.FromRequest`). Inside the `if` chains use `Enum.Parse<CPApplicationCode>(AtlasAppCode.FromRequest(code), true)`. | Module 7, 4.4 |
-| `app.routes.ts`, dashboard component | (C9) route `form/:code/:id`, `FormType` navigation | Module 12, question 5 |
+| `app.routes.ts` | Add `...atlasPlatformRoutes` (route `form/:code/:id`, `platform/atlas-platform.routes.ts`). The current routes stay. | Module 12, question 5 |
+| `cp-atlas-dashboard.ts` | In `onClick` and `editRow`: first `const route = formRoute(formTypeOf(apps, code), code, id); if (route) { this.router.navigate(route); return; }` (`platform/atlas-navigation.ts`; `apps` = the `v1/Application` rows), then the current `if` chain. The add button uses `button.Target` when it is there. For a tab with `Columns`, use `columnDefs()` and `sumsRow()` from `platform/dashboard/atlas-dashboard-columns.ts`. | Module 3, 4.5-4.6 |
+| `package.json` | No new package: the platform uses `ag-grid-community`/`ag-grid-angular` 33, `@ng-select/ng-select` 21 and `@pbdev/pbdev-core` (all already at the target). | Spec 12, 11.1 |
+| Menu (app component) | Show an app only when `HasDashboard` is not `false`. | Module 7, 4.6 |
 
 ## 3. SQL
 
-Run `sql/release-p1/` in number order (DBA in QC and production). See spec 12, section 4.
+Run `sql/release-p1/` in number order (DBA in QC and production). See `sql/release-p1/README.md` and spec 12, section 4.
+`050` runs only on the change-over day. Before: part 1 of `050` is read only and lists each value that cannot be converted.
 
 ## 4. Settings
 
-(C2, C6) `AppSettings:ConfigFolder`, `AppSettings:Modules:TTDV2:*` in `appsettings.<Env>.json`.
+| Key | Value | Note |
+|---|---|---|
+| `AppSettings:ConfigFolder` | `Config` (default) | Folder of the manifests and JSON files, relative to the content root |
+| `AppSettings:Modules:TTDV2:Enabled` | `false` in production until the business approves | Rollback switch (spec 12, section 7) |
+| `AppSettings:Modules:TTDV2:AccessMode` | `LogOnly` (P1) | `Enforce` after one release of log review |
+| Log events | `Atlas.AccessDenied` (41001), `Atlas.FieldIgnored` (41010), `Atlas.SaveFailed` (41011), `Atlas.StartupCheck` (41020) | Search the log for these names |
+
+Release check: `BBH.CP.Atlas.App.exe --atlas-check --environment QC` returns 0 (no errors) or 1.
+
+## 4.1 Acceptance (spec 12, section 8)
+
+| Item | Result |
+|---|---|
+| Section 5 tests | Pass: load defaults and saved values; refusals (extra name, disabled field, `1.5`, `1:30`, `-5`, `1441`); `WeeklyTotal` calculated again; conflict; audit `Create`/`Update`/`Delete`, no entry for no change; access matrix in `Enforce`; `Atlas.AccessDenied` in `LogOnly`; copy script on TTD sample data. |
+| `--atlas-check` | 0 for TTDV2; 1 for a manifest with no registration line (test `AtlasCheckTests`). The current apps have no manifests and are not checked. |
+| Onboarding items for TTDV2 | SQL `040`, `TTDV2.app.json`, `TTDV2.json`, `TTDV2.Dashboard.json`, role grants, one `AddAtlasModule` line. No TypeScript change. |
+| TTDV2 module code | One class with one hook (`CPTTDV2Service.cs`, 31 lines) + two option providers (`TTDV2OptionProviders.cs`, 38 lines). JSON: 19 + 210 + 92 lines. Baseline for the next 13 apps. |
 
 ## 5. Check at the target
 
