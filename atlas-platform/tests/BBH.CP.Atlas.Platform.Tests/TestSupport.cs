@@ -39,6 +39,22 @@ internal sealed class ListLogger<T> : ILogger<T>
         Entries.Add((eventId, formatter(state, exception)));
 }
 
+/// <summary>A logger factory that gives one list logger for all categories.</summary>
+internal sealed class ListLoggerFactory : ILoggerFactory
+{
+    public ListLogger<object> Logger { get; } = new();
+
+    public void AddProvider(ILoggerProvider provider)
+    {
+    }
+
+    public ILogger CreateLogger(string categoryName) => Logger;
+
+    public void Dispose()
+    {
+    }
+}
+
 internal static class TestManifests
 {
     public static AtlasAppManifest Ttdv2(AtlasAccessMode mode = AtlasAccessMode.Enforce) => new()

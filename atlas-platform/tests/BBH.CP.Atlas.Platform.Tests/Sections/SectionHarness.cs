@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BBH.CP.Atlas.Platform.Tests.Sections;
@@ -92,7 +93,11 @@ internal sealed class SectionHarness : IDisposable
         }
     }
 
-    public CPTTDV2Service Service(AtlasTableRegistry registry, string lanId, params AtlasRole[] roles)
+    public CPTTDV2Service Service(AtlasTableRegistry registry, string lanId, params AtlasRole[] roles) =>
+        new(ModuleServices(registry, lanId, roles, NullLoggerFactory.Instance)) { AppCode = "TTDV2" };
+
+    /// <summary>The services of a module class, for a test subclass of a module (for example a hook that throws).</summary>
+    public AtlasModuleServices ModuleServices(AtlasTableRegistry registry, string lanId, AtlasRole[] roles, ILoggerFactory loggerFactory)
     {
         SqlConnection connection = new(_database.ConnectionString);
         CPSharepointContext context = new(new DbContextOptionsBuilder<CPSharepointContext>().UseSqlServer(connection).Options, _configuration);
@@ -107,9 +112,9 @@ internal sealed class SectionHarness : IDisposable
             new AtlasAuditWriter(platform, user, Time),
             new AtlasDashboardService(_configStore, context, registry, user, directory, access, new AtlasRuleEngine()),
             [new PBAccountsOptionProvider(_configuration, user), new UsersInRolesOptionProvider(directory)],
-            Time, _configuration, NullLoggerFactory.Instance);
+            Time, _configuration, loggerFactory);
 
-        return new CPTTDV2Service(services) { AppCode = "TTDV2" };
+        return services;
     }
 
     public void Dispose()

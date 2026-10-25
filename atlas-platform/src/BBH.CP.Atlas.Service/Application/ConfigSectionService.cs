@@ -67,6 +67,7 @@ namespace BBH.CP.Atlas.Service.Application
 
         public static readonly EventId FieldIgnored = new(41010, "Atlas.FieldIgnored");
         public static readonly EventId SaveFailed = new(41011, "Atlas.SaveFailed");
+        public static readonly EventId AfterSaveFailed = new(41012, "Atlas.AfterSaveFailed");
 
         private Dictionary<string, IAtlasOptionProvider>? _providers;
         private AtlasAppManifest? _manifest;
@@ -106,7 +107,10 @@ namespace BBH.CP.Atlas.Service.Application
         {
         }
 
-        /// <summary>After the commit.</summary>
+        /// <summary>
+        /// After the commit. The hook must not throw: the record is already saved, so an exception is only logged
+        /// (Atlas.AfterSaveFailed) and the save returns success with the ID (review SV-06).
+        /// </summary>
         protected virtual void OnAfterSave(AtlasSaveContext context)
         {
         }
@@ -410,7 +414,16 @@ namespace BBH.CP.Atlas.Service.Application
                     () => Changes(fields, table, previous, record, isNew), errors))
                 return Failed(result, errors);
 
-            OnAfterSave(saveContext);
+            try
+            {
+                OnAfterSave(saveContext);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Review SV-06: a 500 here would make the user save again with ID = 0 and create a duplicate.
+                Logger.LogError(AfterSaveFailed, ex, "Atlas.AfterSaveFailed App={App} Record={Record} LanId={LanId}",
+                    manifest.Code, record[table.Key!.Name], Services.User.LanId);
+            }
 
             result.ID = (int)record[table.Key!.Name]!;
             result.Version = VersionOf(table, record);

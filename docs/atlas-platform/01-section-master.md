@@ -334,6 +334,8 @@ Add an optional `FormType` (`SECTION` or `STEPPER`) to each app in the dashboard
 
 Hooks: `OnLoad`, `OnBeforeSave`, `OnAfterSave`, `OnExecute`.
 
+`OnAfterSave` runs after the commit. It must not throw. If it throws, the platform logs `Atlas.AfterSaveFailed` (41012) and returns the saved ID, because the record is already saved (review SV-06). Work that must succeed with the save belongs in `OnBeforeSave`.
+
 Note: issue H6 (the engine and Atlas use separate transactions) also applies to step 10. The engine adapter spec (module 10) covers H6.
 
 ### 5.10 Workflow binding from JSON — removes SM-15

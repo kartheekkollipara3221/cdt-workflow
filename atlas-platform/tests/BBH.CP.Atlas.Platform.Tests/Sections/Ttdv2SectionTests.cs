@@ -5,6 +5,7 @@ using BBH.CP.Atlas.Platform.Tests.Data;
 using BBH.CP.Atlas.Service.Application;
 using BBH.CP.Atlas.Service.Platform;
 using BBH.CP.Atlas.Service.Platform.Registry;
+using BBH.CP.Atlas.Service.Platform.Sections;
 using BBH.CP.Atlas.Service.Platform.Security;
 using Microsoft.AspNetCore.Http;
 
@@ -383,6 +384,25 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         {
             Directory.Delete(folder, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task A_failing_OnAfterSave_hook_is_logged_and_the_save_still_succeeds()
+    {
+        // Review SV-06: the record is committed; a 500 would make the user save again and create a duplicate.
+        using ListLoggerFactory logs = new();
+        ThrowingAfterSave service = new(_harness.ModuleServices(_registry, Prep, [Ttdv2Roles.Prepare], logs)) { AppCode = "TTDV2" };
+
+        CPAtlasPage result = service.SavePage(NewInput(), NoFiles);
+
+        Assert.True(result.ID > 0, Describe(result));
+        Assert.Equal(1, await database.ScalarAsync($"SELECT COUNT(*) FROM TTDV2.General WHERE ID = {result.ID}"));
+        Assert.Contains(logs.Logger.Entries, x => x.EventId.Name == "Atlas.AfterSaveFailed" && x.Message.Contains($"Record={result.ID}", StringComparison.Ordinal));
+    }
+
+    private sealed class ThrowingAfterSave(AtlasModuleServices services) : CPTTDV2Service(services)
+    {
+        protected override void OnAfterSave(AtlasSaveContext context) => throw new InvalidOperationException("The notification failed.");
     }
 
     [Fact]
