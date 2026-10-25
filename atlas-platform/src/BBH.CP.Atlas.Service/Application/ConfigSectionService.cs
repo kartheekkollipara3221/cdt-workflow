@@ -158,6 +158,7 @@ namespace BBH.CP.Atlas.Service.Application
             section.AppCode = manifest.Code;
             section.Version = record == null ? null : VersionOf(table, record);
             section.UserPermissions = Services.Access.UserPermissions(manifest, form, record);
+            section.Computed = form.Computed;
             return section;
         }
 

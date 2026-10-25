@@ -39,6 +39,10 @@ namespace BBH.CP.Atlas.Data.DTO
 
         /// <summary>What the current user can do with this record (for the buttons and menus).</summary>
         public CPUserPermissions? UserPermissions { get; set; }
+
+        /// <summary>The Computed fields of the app (field to "Sum(...)"), so the client can show the value while the user types.
+        /// The server calculates the saved value (spec 01, 10.2).</summary>
+        public Dictionary<string, string>? Computed { get; set; }
     }
 
     public partial class CPApplicationControl

@@ -1,0 +1,123 @@
+// COPY to the target as a reference: WebUi/Source/App/platform/dashboard/. At the target, the current dashboard
+// component gets only the navigation change (formRoute first, then the current if chain) and the Columns support.
+// Locally this component is the dashboard of a platform app (route apps/:code).
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AgGridAngular } from 'ag-grid-angular';
+import { AllCommunityModule, ColDef, ModuleRegistry, themeQuartz } from 'ag-grid-community';
+import { PbdevDialog, PbdevLoader } from '@pbdev/pbdev-core';
+import { forkJoin } from 'rxjs';
+import { AtlasApiService } from '../atlas-api.service';
+import { AtlasHistoryDialog } from '../atlas-history-dialog';
+import { CPApplicationRow, CPAtlasDashboard, CPAtlasTab, CPButton } from '../atlas-models';
+import { formRoute, formTypeOf } from '../atlas-navigation';
+import { AtlasNoticeService } from '../atlas-notice.service';
+import { problemText } from '../form/atlas-form.component';
+import { columnDefs, sumsRow } from './atlas-dashboard-columns';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+@Component({
+  selector: 'atlas-dashboard',
+  imports: [AgGridAngular, PbdevLoader, PbdevDialog, AtlasHistoryDialog],
+  templateUrl: './atlas-dashboard.component.html',
+})
+export class AtlasDashboardComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly api = inject(AtlasApiService);
+  private readonly notice = inject(AtlasNoticeService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly theme = themeQuartz.withParams({ headerFontWeight: 600, fontSize: 13, spacing: 6 });
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
+  readonly dashboard = signal<CPAtlasDashboard | null>(null);
+  readonly tabIndex = signal(0);
+  readonly historyRow = signal(0);
+  readonly deleteRow = signal(0);
+
+  readonly tabs = computed(() => (this.dashboard()?.Tabs ?? []).filter((x) => x.Visible !== false));
+  readonly tab = computed<CPAtlasTab | null>(() => this.tabs()[this.tabIndex()] ?? null);
+  readonly rows = computed(() => (this.tab()?.KeyValues ?? []) as Record<string, unknown>[]);
+  readonly columns = computed<ColDef[]>(() => {
+    const tab = this.tab();
+    return tab ? columnDefs(tab, { edit: (r) => this.open(r), history: (r) => this.historyRow.set(id(r)), remove: (r) => this.deleteRow.set(id(r)) }) : [];
+  });
+  readonly totals = computed(() => {
+    const tab = this.tab();
+    const total = tab ? sumsRow(tab, this.rows()) : null;
+    return total ? [total] : [];
+  });
+
+  code = '';
+  private apps: CPApplicationRow[] = [];
+
+  ngOnInit(): void {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.code = (params.get('code') ?? '').toUpperCase();
+      this.tabIndex.set(0);
+      this.load();
+    });
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    forkJoin({ apps: this.api.applications(), dashboard: this.api.dashboard(this.code) }).subscribe({
+      next: ({ apps, dashboard }) => {
+        this.apps = apps;
+        this.dashboard.set(dashboard);
+        if (this.tabIndex() >= this.tabs().length) {
+          this.tabIndex.set(0);
+        }
+        this.loading.set(false);
+      },
+      error: (error) => {
+        this.error.set(problemText(error));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  visibleButtons(): CPButton[] {
+    return (this.dashboard()?.Buttons ?? []).filter((x) => x.Visible);
+  }
+
+  /** The add button: Target first (spec 03, 4.5). */
+  onButton(button: CPButton): void {
+    const target = button.Target ?? { AppCode: this.code, Id: 0 };
+    this.navigate(target.AppCode, target.Id);
+  }
+
+  open(row: Record<string, unknown>): void {
+    this.navigate(this.tab()?.Code || this.code, id(row));
+  }
+
+  confirmRemove(): void {
+    const recordId = this.deleteRow();
+    this.deleteRow.set(0);
+    this.api.remove(this.code, recordId).subscribe({
+      next: (result) => {
+        if (result.Errors?.length) {
+          this.notice.show('error', result.Errors.map((x) => x.Message).join(' '));
+          return;
+        }
+        this.notice.show('success', `Record ${recordId} deleted.`);
+        this.load();
+      },
+      error: (error) => this.notice.show('error', problemText(error)),
+    });
+  }
+
+  private navigate(code: string, recordId: number): void {
+    const route = formRoute(formTypeOf(this.apps, code), code, recordId);
+    // At the target: with no FormType, the current if chain runs here.
+    this.router.navigate(route ?? ['/form', code, recordId]);
+  }
+}
+
+function id(row: Record<string, unknown>): number {
+  return Number(row['ID'] ?? row['Id'] ?? 0);
+}

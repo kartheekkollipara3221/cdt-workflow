@@ -1,0 +1,88 @@
+@if (loading()) {
+  <div class="atlas-center"><pbdev-loader /></div>
+} @else if (loadError()) {
+  <div class="atlas-panel atlas-alert atlas-alert-error" role="alert">
+    <strong>The form cannot open.</strong>
+    <p>{{ loadError() }}</p>
+    <button type="button" class="btn" (click)="close()">Back to the dashboard</button>
+  </div>
+} @else if (section(); as s) {
+  <div class="atlas-form-header">
+    <div>
+      <div class="atlas-breadcrumb"><a (click)="close()">{{ code }}</a> / {{ id ? 'Record ' + id : 'New record' }}</div>
+      <h1 class="atlas-title">{{ s.HeaderName }}</h1>
+    </div>
+    <div class="atlas-header-actions">
+      @if (canViewHistory()) {
+        <button type="button" class="btn" id="btn_History" (click)="historyOpen.set(true)">History</button>
+      }
+    </div>
+  </div>
+
+  @if (pageErrors().length > 0) {
+    <div class="atlas-alert atlas-alert-error" role="alert">
+      @for (e of pageErrors(); track $index) {
+        <div>{{ e.Field ? e.Field + ': ' : '' }}{{ e.Message }}</div>
+      }
+    </div>
+  }
+
+  <form [formGroup]="form" class="atlas-form" (ngSubmit)="save()">
+    @for (container of s.Controls ?? []; track container.Name) {
+      @if (isVisible(container.Name)) {
+        @if (isSection(container)) {
+          <div class="atlas-panel {{ container.DivClass ?? '' }}" [attr.id]="'div_' + container.Name">
+            <pbdev-section-label [label]="container.Label">
+              <div class="{{ container.Class ?? 'grid grid-cols-2 gap-6 p-8' }}">
+                @for (child of container.ChildControls ?? []; track child.Name) {
+                  @if (isVisible(child.Name) && registry.get(child.Type); as renderer) {
+                    <div class="atlas-field {{ child.DivClass ?? '' }}" [attr.id]="'div_' + child.Name">
+                      <label class="atlas-label" [attr.for]="'ctl_' + child.Name">
+                        <span>{{ child.Label }}</span>
+                        @if (isRequired(child.Name)) {
+                          <span class="required-indicator">*</span>
+                        }
+                      </label>
+                      <ng-container *ngComponentOutlet="renderer; inputs: { control: child, group: form }" />
+                      @if (error(child); as message) {
+                        <span class="atlas-error">{{ message }}</span>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+            </pbdev-section-label>
+          </div>
+        } @else if (registry.get(container.Type); as renderer) {
+          <div class="atlas-panel" [attr.id]="'div_' + container.Name">
+            <pbdev-section-label [label]="container.Label">
+              <div class="p-8">
+                <ng-container *ngComponentOutlet="renderer; inputs: { control: container, group: form }" />
+              </div>
+            </pbdev-section-label>
+          </div>
+        }
+      }
+    }
+  </form>
+
+  <div class="atlas-buttons">
+    @for (button of visibleButtons(); track button.Name) {
+      <button type="button" class="btn" [class.btn--primary]="button.Action?.Type === 'Save'"
+        [class.btn--danger]="button.Action?.Type === 'Delete'" [attr.id]="'btn_' + button.Name"
+        [disabled]="button.Disabled || saving()" (click)="onButton(button)">
+        {{ saving() && button.Action?.Type === 'Save' ? 'Saving...' : button.Label }}
+      </button>
+    }
+  </div>
+
+  <atlas-history-dialog [open]="historyOpen()" [appCode]="code" [recordId]="id" (closed)="historyOpen.set(false)" />
+
+  <pbdev-dialog [open]="confirmDelete()" header="Delete record" (closed)="confirmDelete.set(false)">
+    <p>Delete record {{ id }}? The record is marked as deleted and leaves the dashboard.</p>
+    <div class="atlas-buttons">
+      <button type="button" class="btn" (click)="confirmDelete.set(false)">Cancel</button>
+      <button type="button" class="btn btn--danger" id="btn_ConfirmDelete" (click)="remove()">Delete</button>
+    </div>
+  </pbdev-dialog>
+}

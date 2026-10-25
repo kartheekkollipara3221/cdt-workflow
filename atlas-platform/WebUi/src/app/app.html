@@ -1,0 +1,39 @@
+<header class="shell-header">
+  <a class="shell-brand" routerLink="/">CP Atlas <span class="shell-tag">platform preview · local</span></a>
+  <nav class="shell-nav">
+    @for (app of apps(); track app.ID) {
+      <a [routerLink]="['/apps', app.Code]" class="shell-link">{{ app.Name }}</a>
+    }
+  </nav>
+  <div class="shell-user">
+    @if (user(); as u) {
+      <span class="shell-who" [attr.title]="'Roles: ' + (u.Roles?.join(', ') || 'none')">
+        {{ u.DisplayName }} <span class="shell-roles">{{ u.Roles?.join(', ') || 'no role' }}</span>
+      </span>
+    }
+    @if (testUsers().length > 0) {
+      <label class="shell-actas">
+        Act as
+        <select id="actAs" [value]="actAs()" (change)="changeUser($any($event.target).value)">
+          <option value="">me (Windows login)</option>
+          @for (t of testUsers(); track t.LanId) {
+            <option [value]="t.LanId" [selected]="t.LanId === actAs()">{{ t.DisplayName }} · {{ t.Note }}</option>
+          }
+        </select>
+      </label>
+    }
+  </div>
+</header>
+
+@if (apiDown()) {
+  <div class="atlas-alert atlas-alert-error shell-banner">
+    The API at http://localhost:5080 is not available. Start it (atlas-platform/local/README.md) and reload.
+  </div>
+}
+@if (notice.current(); as n) {
+  <div class="shell-toast" [class.shell-toast-error]="n.kind === 'error'" role="status" (click)="notice.clear()">{{ n.text }}</div>
+}
+
+<main class="shell-main">
+  <router-outlet />
+</main>

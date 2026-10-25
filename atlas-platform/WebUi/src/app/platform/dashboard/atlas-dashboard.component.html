@@ -1,0 +1,49 @@
+@if (loading()) {
+  <div class="atlas-center"><pbdev-loader /></div>
+} @else if (error()) {
+  <div class="atlas-panel atlas-alert atlas-alert-error" role="alert">
+    <strong>The dashboard cannot open.</strong>
+    <p>{{ error() }}</p>
+  </div>
+} @else if (dashboard(); as d) {
+  <div class="atlas-form-header">
+    <div>
+      <div class="atlas-breadcrumb">Dashboard</div>
+      <h1 class="atlas-title">{{ d.Name }}</h1>
+    </div>
+    <div class="atlas-header-actions">
+      @for (button of visibleButtons(); track button.Name) {
+        <button type="button" class="btn btn--primary" [attr.id]="'btn_' + button.Name" [disabled]="button.Disabled" (click)="onButton(button)">
+          {{ button.Label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="atlas-tabs" role="tablist">
+    @for (t of tabs(); track t.ID; let i = $index) {
+      <button type="button" role="tab" class="atlas-tab" [class.atlas-tab-active]="i === tabIndex()" [attr.aria-selected]="i === tabIndex()"
+        [attr.id]="'tab_' + t.ID" (click)="tabIndex.set(i)">
+        {{ t.Label }} <span class="atlas-count">{{ t.KeyValues?.length ?? 0 }}</span>
+      </button>
+    }
+  </div>
+
+  @if (tab(); as t) {
+    <div class="atlas-panel atlas-grid-panel">
+      <ag-grid-angular class="atlas-grid" [theme]="theme" [rowData]="rows()" [columnDefs]="columns()"
+        [pinnedBottomRowData]="totals()" [pagination]="true" [paginationPageSize]="20" [paginationPageSizeSelector]="[20, 50, 100]"
+        [overlayNoRowsTemplate]="'No records'" [domLayout]="'autoHeight'" />
+    </div>
+  }
+
+  <atlas-history-dialog [open]="historyRow() > 0" [appCode]="code" [recordId]="historyRow()" (closed)="historyRow.set(0)" />
+
+  <pbdev-dialog [open]="deleteRow() > 0" header="Delete record" (closed)="deleteRow.set(0)">
+    <p>Delete record {{ deleteRow() }}? The record is marked as deleted and leaves the dashboard.</p>
+    <div class="atlas-buttons">
+      <button type="button" class="btn" (click)="deleteRow.set(0)">Cancel</button>
+      <button type="button" class="btn btn--danger" (click)="confirmRemove()">Delete</button>
+    </div>
+  </pbdev-dialog>
+}
