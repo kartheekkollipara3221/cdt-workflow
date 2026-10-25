@@ -1,3 +1,63 @@
+# RESUME HERE - Atlas platform specs, module 6 Security in progress - 2026-10-25
+
+## Current goal
+Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
+(TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU; all Section Master) integrate with
+low-code changes (JSON + SQL + one registration line), backward compatible. DESIGN ONLY (Option 3): specs in
+docs/atlas-platform/, no Atlas code, no workflow engine change, same repo/branch (console-code-first-0518).
+Specs are written in ASD-STE100 (~80%). Each spec = .md (source) + .html report generated from it.
+
+## How we work (user preferences)
+- Ask the open questions ONE AT A TIME; after each answer update .md, regenerate .html, then ask the next.
+- Keep explanations short and plain; the user said a deep detour "is a tad confusing".
+- Do not rewrite specs when the user says so; record answers as short "Answered (date): ..." lines.
+- Deliver every DB change as a SQL script (dev: team runs; QC/prod: DBAs run DDL). Scripts additive, idempotent.
+- Commit/push only when the user asks.
+
+## Regenerate an HTML report from its .md
+Use docs/atlas-platform/tools/md2report.py (copy of the session generator). From docs/atlas-platform:
+python tools/md2report.py 06-security.md 06-security.html 01-section-master.html "<eyebrow>" "<title>" "<lead>" "<n|label;n|label;...>"
+(The 3rd argument is the file to copy the <style> from. Findings must be headed "### XX-nn Title (High|Medium|Low[, area])".
+Nested lists are not supported: keep bullets flat.)
+
+## Module status (docs/atlas-platform/README.md is the index)
+- Module 1 Section Master: 01-section-master.md/.html - draft 3, ALL questions answered (Q1-Q9, T1-T4, F1-F3). Committed d992d65.
+  SQL: sql/01-section-master-rowversion.sql (SQMS schema), sql/01-section-master-role-scope-check.sql (read-only, parts 1-5).
+- Module 5 Data mapping: 05-data-mapping.md/.html - draft 2, Q1-Q6 answered, NOT FINAL: waiting for target files
+  (CPSharepointContext.cs, Data/CodeTemplates/EFCore files, scaffold command or efpt.config.json, Data .csproj)
+  to finalize the scaffold steps in 6.2. Committed a73793a. SQL: sql/05-new-app-template.sql.
+- Module 6 Security: 06-security.md/.html - draft 1, IN PROGRESS, NOT COMMITTED.
+  Findings SE-01..SE-07. Answered: Q1 two AD groups (end users | support) in AppSettings:ADGroup, gate only, per-app
+  access only from entitlement tables; Q2 IIS + Windows auth, no JWT callers -> remove JWT (M17 updated in issues doc);
+  Q3 LAN ID for people (new apps) + LAN ID columns for existing tables; Q4 some apps hide records by user data ->
+  per-app SQL rule (fn_VisibleRecords + Can_Access_Record); Q5 log-only one release, then enforce per app
+  (AppSettings:Modules:<Code>:AccessMode).
+  OPEN: Q6 who manages entitlements (screen or SQL?) and meaning/use of IsAdmin/IsWrite/IsRead flags.
+  If SQL-managed -> add a grant/revoke role script template (soft delete via IsDeleted only).
+  SQL (not executed): sql/06-active-user-roles-view.sql, sql/06-lanid-columns-ddl.sql, sql/06-lanid-backfill-dml.sql,
+  sql/06-record-visibility-template.sql.
+- Modules not started: 2 Step Master (waits; CDT + one more app), 3 Dashboard, 4 Rules engine, 7 Registry,
+  8 Attachments (H1/H2), 9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
+
+## Key facts (do not re-derive)
+- Live: .NET 10 + EF Core 10; IIS Windows auth; live SQMS schema is SQMS (target engine already switched; local
+  repo engine copy still says SSQMS - do not change local engine unless asked; issue H14 closed for target).
+- Pilot = rebuild TTD on the new approach (module 1 section 10). TTD roles: Read view; Prepare create + edit own;
+  Owner all incl. delete; own = CreatedBy or TaxPreparerName.
+- Families: SQMS (Opportunity parent, Bid child); one future app parent + 2 children, maybe one parent + 1 child.
+- Audit JSON keeps Name/Value keys and adds Old (History window parses Name/Value).
+- Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
+
+## Uncommitted at save time
+docs/atlas-platform/06-security.md (+ .html), sql/06-*.sql (4 files), docs/atlas-platform/README.md,
+docs/TARGET_ATLAS_ISSUES_BY_SEVERITY.html (M17 note), docs/atlas-platform/tools/md2report.py, CODEX_HANDOFF.md.
+
+## Next-session prompt
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 6 Security is in progress:
+ask me Q6 (who manages entitlements; meaning of IsAdmin/IsWrite/IsRead). Then commit module 6 when I ask, and
+continue to the next module. Ask one question at a time and keep it short."
+
+---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25
 
 New: docs/atlas-platform/05-data-mapping.md/.html, sql/05-new-app-template.sql (not executed). Findings DM-01..DM-07.

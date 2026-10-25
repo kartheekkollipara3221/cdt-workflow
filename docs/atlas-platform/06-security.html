@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security and entitlements: reusable design</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 6 · design only · draft 1 · 2026-10-25</div>
+<h1>Security and entitlements: reusable design</h1>
+<p class="lead">This report examines how CP Atlas identifies users, reads roles and checks access. It gives one access design that each new app gets from its JSON, with no security code of its own.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Draft 1, 2026-10-25. Design only. No target code is changed.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>7</b><span>findings (SE-01 to SE-07)</span></div>
+<div class="kpi"><b>4</b><span>High security findings</span></div>
+<div class="kpi"><b>1</b><span>access check for all operations</span></div>
+<div class="kpi"><b>4</b><span>SQL scripts (roles view, LAN ID columns, backfill, visibility template)</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>Each new app must get the same access control with no security code of its own. This module defines one way to identify the user, read the roles, and check access on the server for each app, each record and each operation. The JSON of the app gives the rules. The platform applies them.</p>
+<p>Scope: identity, the application gate, roles, access checks on the API, ownership, record visibility. Related items in other modules: the save allow list (module 1, 5.9), <code>RoleScope</code> and families (module 1, section 11), <code>Permissions</code> and <code>OwnerFields</code> (module 1, 10.5), attachments and download (module 8, issues H1 and H2), dashboard output (module 3, issue H5).</p>
+</section>
+<section id="2-current-behaviour">
+<h2>2. Current behaviour</h2>
+
+<h3>2.1 Identity</h3>
+<ul>
+<li>The browser signs in with Windows authentication. The API reads <code>User.Identity.Name</code> (<code>DOMAIN\lanid</code>).</li>
+<li><code>UserInfo.GetCurrentUser()</code> finds the user in Active Directory on each call. It makes <code>DisplayName</code> from <code>GivenName + " " + Surname</code>. Evidence: <code>Atlasapp/Atlasapp/UserAuthentication/UserInfo.cs.txt:17-38</code>.</li>
+<li><code>v1/authorize</code> also finds the user in Active Directory, but it uses <code>principal.DisplayName</code>. Evidence: <code>Controllers/V1/CPSecurityController.cs.txt:78</code>.</li>
+<li>The default authentication scheme is JWT bearer with an empty key (issue M17). Evidence: <code>program.cs.txt:56-67</code>.</li>
+</ul>
+<h3>2.2 Application gate</h3>
+<ul>
+<li><code>v1/authorize</code> gives a user object only if the user is in the AD group <code>AppSettings:ADGroup</code> (<code>IM_TACO</code>). Otherwise it returns <code>null</code>, and the client opens <code>unauthorized-access</code>. Evidence: <code>CPSecurityController.cs.txt:21-92</code>; <code>app.component.ts.txt:65-95</code>; <code>appsettings.json.txt:22</code>.</li>
+<li>The client also opens <code>unauthorized-access</code> if the user has no app in <code>v1/Application</code> (procedure <code>dbo.Get_Application</code>). Evidence: <code>CP_Sharepoint.txt:1502-1534</code>.</li>
+</ul>
+<h3>2.3 Roles</h3>
+<ul>
+<li>Roles are rows in <code>CP_Atlas_UserEntitlement</code> → <code>CP_Atlas_Entitlement</code> (with <code>CP_Atlas_ApplicationID</code>) → <code>CP_Atlas_Application</code>.</li>
+<li><code>v1/authorize</code> returns the role names of all apps in one flat list. The client uses this list, for example <code>mfo</code> / <code>ipfg</code> for the redirect after save. Evidence: <code>CPSecurityController.cs.txt:45-49</code>; <code>cp-atlas-sectionmaster.ts.txt:347-367</code>.</li>
+<li>Each module service reads the roles again with its own query (module 1, SM-08).</li>
+<li>No role query filters <code>IsDeleted</code>.</li>
+</ul>
+<h3>2.4 Access checks on the API</h3>
+<ul>
+<li>The controllers have <code>[Authorize]</code> only. Any signed-in domain user can call each endpoint. Evidence: <code>CPAtlasController.cs.txt:28-135</code>; <code>CPAtlasExternalController.cs.txt:21</code>.</li>
+<li>The rules (<code>CPRule</code>) only set <code>Visible</code> and <code>Disabled</code> in the page response. The server does not check them again on save, delete, execute, download or history (issue H4).</li>
+</ul>
+</section>
+<section id="3-findings">
+<h2>3. Findings</h2>
+
+<div class="issue">
+<h3><span class="badge b-high">SE-01</span>The API does not check app or record access <span class="area">security</span></h3>
+<p>Any signed-in domain user can call these endpoints for any app and any record ID:</p>
+<div class="table-wrap"><table>
+<tr><th>Endpoint</th><th>Effect</th></tr>
+<tr><td><code>GET v1/SectionPage</code>, <code>GET v1/StepPage</code></td><td>Read any record of any app</td></tr>
+<tr><td><code>POST v1/ManagePage</code></td><td>Create or change a record (H4)</td></tr>
+<tr><td><code>POST v1/RemovePage</code></td><td>Delete a record (H4)</td></tr>
+<tr><td><code>GET v1/Execute</code></td><td>Run an app action (for example <code>MakeBid</code>)</td></tr>
+<tr><td><code>GET v1/GetAuditLog</code></td><td>Read the change history of any record</td></tr>
+<tr><td><code>GET v1/Download</code>, <code>POST v1/RemoveAttachment</code></td><td>Read or remove files (H1)</td></tr>
+</table></div>
+<p>Example: a user with no TTD role sends <code>GET v1/SectionPage?Code=TTD&amp;ID=10001</code>. The API returns the time sheet. Evidence: <code>CPAtlasController.cs.txt:28-135</code>.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">SE-02</span>The AD group gate is only in the client path <span class="area">security</span></h3>
+<p>Only <code>v1/authorize</code> checks the AD group. The other endpoints do not check it. A domain user who is not in <code>IM_TACO</code> cannot open the UI, but can call the API directly. Also, the group check uses <code>Contains</code>: the group <code>IM_TACO</code> also agrees with <code>IM_TACO_OLD</code> or <code>XIM_TACOY</code>. Evidence: <code>CPSecurityController.cs.txt:56-66</code>.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">SE-03</span>The roles are a flat list with no app <span class="area">security</span></h3>
+<p><code>v1/authorize</code> returns the role names of all apps together. A role name in one app (for example <code>Owner</code> in TTD) and the same name in another app look the same to the client. Deleted rows also give roles: no query filters <code>IsDeleted</code> (<code>v1/authorize</code>, <code>dbo.Get_Application</code>, the module services). Evidence: <code>CPSecurityController.cs.txt:45-49</code>; <code>CP_Sharepoint.txt:1516-1525</code>.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">SE-04</span>Users are matched by display name</h3>
+<ul>
+<li>The records keep people as display names: <code>CreatedBy</code>, <code>ModifiedBy</code>, <code>TaxPreparerName</code>, <code>SellerRMTeam</code>, <code>BuyerRMTeam</code>.</li>
+<li>The code finds users by display name in <code>CP_Atlas_User</code> (recipients) and compares display names for ownership. Evidence: <code>CPSQMSOService.txt:93-95, 335-337</code>.</li>
+<li>Two sources make the display name differently: <code>UserInfo</code> uses <code>GivenName + " " + Surname</code>; <code>v1/authorize</code> uses the AD <code>DisplayName</code>. <code>CP_Atlas_User.DisplayName</code> is a third value.</li>
+<li>SQMSO ownership uses <code>SellerRMTeam.Contains(DisplayName)</code>, a text search. "Ann Lee" also agrees with "Joann Leeds".</li>
+</ul>
+<p>Results: two users with the same name share ownership. A name change in AD removes ownership and notifications. A text search gives false owners.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">SE-05</span>Each request reads Active Directory and the roles many times <span class="area">performance</span></h3>
+<p><code>UserInfo.GetCurrentUser()</code> queries Active Directory on each call. A request can call it more than one time, and each module service reads the roles again. If Active Directory is slow or not available, all requests fail. Evidence: <code>UserInfo.cs.txt:21-24</code>; <code>CPAtlasController.cs.txt</code> (one call for each endpoint); module 1 SM-08.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">SE-06</span>The authentication setup does not agree with the identity code</h3>
+<p>The default scheme is JWT bearer with an empty key (M17), but the code reads a Windows identity (<code>User.Identity as WindowsIdentity</code>). Confirmed (2026-10-25): the live API is on IIS with Windows authentication, and no caller uses JWT. The JWT setup is not used. Evidence: <code>program.cs.txt:56-67</code>; <code>CPSecurityController.cs.txt:52</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">SE-07</span>The record visibility rules are in code for each app <span class="area">for reuse</span></h3>
+<p>Some apps limit the records or options for a user. Examples: SQMSB filters accounts by the department of the user (H13); the dashboard procedures get <code>@LanID</code>. Each app writes its own rule in C# or SQL. The PB account list is the same for all users and is in a cache for 24 hours. Evidence: <code>CPSQMSBService.cs.txt</code> (Departments); <code>CPAtlasExternalService.cs.txt:91-115</code>; <code>CPApplicationService.cs.txt:536-560</code>.</p>
+</div>
+</section>
+<section id="4-reusable-design">
+<h2>4. Reusable design</h2>
+
+<h3>4.1 One user context for each request</h3>
+<p>Add a scoped service <code>IAtlasUserContext</code>. It is made one time for each request:</p>
+<ul>
+<li><code>LanId</code>: from <code>User.Identity.Name</code> (the part after <code>\</code>). This is the key of the user in all checks.</li>
+<li><code>DisplayName</code>, <code>Email</code>, <code>Department</code>: from Active Directory, in a memory cache for each <code>LanId</code> (for example 30 minutes). The display name is only for display.</li>
+<li><code>Groups</code>: from the Windows token (<code>WindowsPrincipal.IsInRole</code>), not from a text search.</li>
+<li><code>RolesFor(appCode)</code>: the active roles of the user for the app and its <code>RoleScope</code> (module 1, 11.2). One query for each request, then kept for the request.</li>
+</ul>
+<p>This removes SE-05 and the different display names in SE-04.</p>
+<h3>4.2 One gate for all endpoints</h3>
+<p>Add a fallback authorization policy <code>AtlasUser</code>. It applies to each endpoint, also <code>v1/authorize</code>:</p>
+<ul>
+<li>The user is authenticated with Windows authentication.</li>
+<li>The user is in one of the AD groups of <code>AppSettings:ADGroup</code>. The check is an exact group match (<code>IsInRole("DOMAIN\\IM_TACO")</code>). Decision (2026-10-25): the setting has two groups separated by <code>|</code>, one for end users and one for support. There are no AD groups for each app. AD membership gives access to the platform only. What a user can see and do in each app comes only from the entitlement tables.</li>
+<li>The user is an active row in <code>CP_Atlas_User</code> (<code>IsDeleted</code> = 0).</li>
+</ul>
+<p>If the gate fails, the API returns 401 or 403. <code>v1/authorize</code> keeps its current response (<code>null</code>) for the client, so the client continues to open <code>unauthorized-access</code>. This removes SE-02.</p>
+<h3>4.3 One access check for each operation</h3>
+<p>Add <code>IAtlasAccessService.Check(appCode, recordId, operation)</code>. The platform calls it in one place before each operation. A module does not call it itself.</p>
+<div class="table-wrap"><table>
+<tr><th>Operation</th><th>Endpoints</th><th>Rule source</th></tr>
+<tr><td><code>View</code></td><td><code>SectionPage</code>, <code>StepPage</code>, <code>GetAuditLog</code></td><td>The user has a role in the app (<code>RoleScope</code>) and <code>Permissions.View</code> (default: any app role)</td></tr>
+<tr><td><code>Create</code></td><td><code>ManagePage</code> with <code>ID</code> = 0</td><td><code>Permissions.Create</code></td></tr>
+<tr><td><code>Edit</code></td><td><code>ManagePage</code> with <code>ID</code> &gt; 0</td><td><code>Permissions.Edit</code>, <code>Rules</code>, <code>OwnerFields</code> (module 1, 10.5)</td></tr>
+<tr><td><code>Delete</code></td><td><code>RemovePage</code></td><td><code>Permissions.Delete</code></td></tr>
+<tr><td><code>Execute:&lt;action&gt;</code></td><td><code>Execute</code></td><td><code>Permissions.Execute.&lt;action&gt;</code></td></tr>
+<tr><td><code>Download</code> / <code>RemoveAttachment</code></td><td>attachments</td><td><code>View</code> / <code>Edit</code> of the parent record (module 8)</td></tr>
+</table></div>
+<ul>
+<li>The check also confirms that the record belongs to the app, exists and is not deleted.</li>
+<li>A family form uses the cross-form visibility rules (module 1, 11.2).</li>
+<li>A denied check returns 403 with a short message. The server writes a log line with the <code>LanId</code>, the app, the record and the operation.</li>
+</ul>
+<p>This removes SE-01 and issue H4.</p>
+<p>The full <code>Permissions</code> block:</p>
+<pre><code>"Permissions": {
+  "View":    ["Read", "Prepare", "Owner"],
+  "Create":  ["Prepare", "Owner"],
+  "Edit":    { "Own": ["Prepare"], "All": ["Owner"] },
+  "Delete":  ["Owner"],
+  "Execute": { "MakeBid": ["MFO"] },
+  "History": ["Prepare", "Owner"]
+}</code></pre>
+<p>Each item is optional. If an item is not there, the current behaviour stays (see section 5).</p>
+<h3>4.4 Roles by app</h3>
+<ul>
+<li>One database view gives the active roles: <a href="sql/06-active-user-roles-view.sql">sql/06-active-user-roles-view.sql</a> (<code>dbo.vw_CP_Atlas_ActiveUserRole</code>). It filters <code>IsDeleted</code> on the user, the user entitlement, the entitlement and the application. All role queries use this view. This removes the <code>IsDeleted</code> part of SE-03.</li>
+<li><code>v1/authorize</code> adds an optional field <code>AppRoles</code>: <code>{ "SQMS": ["MFO"], "TTD": ["Prepare"] }</code>. Keep the flat <code>Roles</code> list for the current client. The updated client uses <code>AppRoles</code>. This removes the rest of SE-03.</li>
+<li>The server decisions (redirect, buttons, rules) use the roles of the app, not the flat list.</li>
+</ul>
+<h3>4.5 Users by LAN ID</h3>
+<ul>
+<li>New apps keep people as LAN IDs, not display names. A person field (for example <code>TaxPreparerName</code>) has <code>Value</code> = LAN ID and <code>Label</code> = display name. The <code>UsersInRoles</code> option provider gives these values (module 1, 10.2).</li>
+<li>The system columns of new apps are <code>CreatedBy</code> and <code>ModifiedBy</code> with the LAN ID. The display name comes from <code>CP_Atlas_User</code> when the page loads.</li>
+<li><code>OwnerFields</code> compare LAN IDs, with an exact match.</li>
+<li>Recipients for the workflow engine are found by LAN ID.</li>
+<li>For the existing apps, add nullable LAN ID columns and fill them from <code>CP_Atlas_User</code> where the display name is unique (decision 2026-10-25). Keep the display name columns. The rule uses the LAN ID column when it has a value, and the display name when it does not. This removes SE-04 step by step.</li>
+<li>DDL: <a href="sql/06-lanid-columns-ddl.sql">sql/06-lanid-columns-ddl.sql</a>. Columns: <code>CreatedByLanId</code> and <code>ModifiedByLanId</code> on <code>SQMS.Opportunity</code>, <code>SQMS.Bid</code>, <code>TTD.General</code> and <code>AIN.AccountInventory</code>; <code>SellerRMTeamLanIds</code> (Opportunity), <code>BuyerRMTeamLanIds</code> (Bid), <code>TaxPreparerLanId</code> (TTD).</li>
+<li>DML: <a href="sql/06-lanid-backfill-dml.sql">sql/06-lanid-backfill-dml.sql</a>. It fills only unique names, keeps <code>system</code> (the engine SQMS job) as <code>system</code>, fills a multi-person field only if all names resolve, and lists the names that did not resolve.</li>
+<li>After the change, the save writes both columns: the display name (as today) and the LAN ID.</li>
+</ul>
+<h3>4.6 Record visibility from configuration</h3>
+<p>Decision (2026-10-25): some existing and new apps hide records by user data (for example department, branch or relationship manager). Each such app has one SQL rule that the target team owns.</p>
+<pre><code>"Visibility": { "Procedure": "SQMS.Can_Access_Record" }</code></pre>
+<p>Template: <a href="sql/06-record-visibility-template.sql">sql/06-record-visibility-template.sql</a>. One rule has two users:</p>
+<ul>
+<li><code>&lt;Schema&gt;.fn_VisibleRecords(@LanID)</code>: an inline table function. It returns the IDs that the user can see. The rule is written here only.</li>
+<li><code>&lt;Schema&gt;.Can_Access_Record(@LanID, @ID, @Operation, @Allowed OUTPUT)</code>: uses the function for one record. The platform calls it in each access check (4.3), after the role check.</li>
+<li>The dashboard procedures of the app join the same function. Thus the list and the record check always agree (module 3).</li>
+<li>A new record (<code>ID</code> = 0) has no row yet. The roles decide (<code>Permissions.Create</code>).</li>
+<li>An app with no <code>Visibility</code> block has no record rule. Then the roles decide.</li>
+<li>The SQMS Bid department filter (H13) moves into this rule for SQMS. This also removes the dictionary lookup error.</li>
+</ul>
+<p>This moves the record rules from C# to SQL that the target team controls, and removes SE-07.</p>
+<h3>4.7 Authentication setup</h3>
+<p>Decision (2026-10-25): the live API is on IIS with Windows authentication, and no caller uses JWT.</p>
+<ul>
+<li>Remove the JWT bearer setup (<code>AddJwtBearer</code>, the <code>Jwt</code> settings and the Swagger bearer definition).</li>
+<li>Make Windows authentication the default scheme: <code>AddAuthentication(IISDefaults.AuthenticationScheme)</code> (IIS in-process hosting). Keep Windows authentication on and anonymous authentication off in IIS for the API.</li>
+<li>In development (Kestrel), use <code>AddNegotiate()</code>.</li>
+</ul>
+<p>This removes SE-06 and issue M17.</p>
+</section>
+<section id="5-backward-compatibility">
+<h2>5. Backward compatibility</h2>
+<ul>
+<li>Do not change the endpoints, routes, request and response shapes. <code>AppRoles</code> is a new optional field. The flat <code>Roles</code> list stays.</li>
+<li>The access checks start in <strong>log-only mode</strong> (decision 2026-10-25): the server writes each denied check to the log, but it lets the request continue. After one release, review the log, correct the entitlements, then change each app to enforce mode, one app at a time. This finds users who need roles before they lose access.</li>
+<li>The mode is a setting for each app: <code>AppSettings:Modules:&lt;Code&gt;:AccessMode = LogOnly | Enforce</code>. The default is <code>LogOnly</code>. A change back to <code>LogOnly</code> is the rollback, with no deployment.</li>
+<li>A denied request in enforce mode returns 403. This is a new status for unauthorized calls only. Permitted calls do not change.</li>
+<li>The LAN ID columns are additive and nullable. The display name columns stay.</li>
+<li>An app with no <code>Permissions</code> block keeps the current behaviour: any app role can view, create, edit and delete. The SQMS and TTD JSON get their blocks in their migration steps.</li>
+</ul>
+</section>
+<section id="6-migration-steps">
+<h2>6. Migration steps</h2>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Change</th><th>Risk</th></tr>
+<tr><td>1</td><td>Run the view script (4.4). Change all role queries to the view.</td><td>Low. Users with deleted rows lose those roles. Run part 4 of the role scope script first (module 1).</td></tr>
+<tr><td>2</td><td>Add <code>IAtlasUserContext</code> with the cache (4.1).</td><td>Low</td></tr>
+<tr><td>3</td><td>Add the gate policy (4.2) in log-only mode, then enforce.</td><td>Medium</td></tr>
+<tr><td>4</td><td>Add <code>IAtlasAccessService</code> (4.3) in log-only mode for all apps. Review the log.</td><td>Low</td></tr>
+<tr><td>5</td><td>Add <code>Permissions</code> to TTD (module 1, 10.5) and SQMS. Change these apps to enforce mode.</td><td>Medium</td></tr>
+<tr><td>6</td><td>Add <code>AppRoles</code> to <code>v1/authorize</code>. Change the client to use it.</td><td>Low</td></tr>
+<tr><td>7</td><td>Run the LAN ID DDL and DML scripts (4.5). Review part 3 of the DML (names that did not resolve) and correct <code>CP_Atlas_User</code>. Change ownership and recipients to LAN ID.</td><td>Medium</td></tr>
+<tr><td>8</td><td>Remove the JWT setup and make Windows authentication the default scheme (4.7). Test in QC that each endpoint still gets the user.</td><td>Low</td></tr>
+</table></div>
+</section>
+<section id="7-acceptance">
+<h2>7. Acceptance</h2>
+<ul>
+<li>A user with no role in TTD gets 403 for <code>SectionPage</code>, <code>ManagePage</code>, <code>RemovePage</code> and <code>GetAuditLog</code> of a TTD record.</li>
+<li>A domain user who is not in the AD group gets 403 for each endpoint, also with a direct API call.</li>
+<li>A user in group <code>IM_TACO_OLD</code> is not accepted for <code>IM_TACO</code>.</li>
+<li>A deleted entitlement gives no role.</li>
+<li>Each cell of the TTD access table (module 1, 10.5) gives the correct result on the server, also with a changed request.</li>
+<li>Two users with the same display name do not share ownership in a new app.</li>
+<li>One request queries Active Directory at most one time, and reads the roles one time for each app.</li>
+<li>In log-only mode, each denied check writes one log line and the request continues.</li>
+</ul>
+</section>
+<section id="8-open-questions">
+<h2>8. Open questions</h2>
+<ol>
+<li>Answered (2026-10-25): two AD groups, separated by <code>|</code> in <code>AppSettings:ADGroup</code>: one for end users, one for support. No AD group for each app. AD membership gives access to the platform. The entitlement tables decide what the user can see and do in each app. Support users also need entitlement rows to work in an app.</li>
+<li>Answered (2026-10-25): yes, IIS with Windows authentication. No caller uses JWT. Remove the JWT setup (4.7).</li>
+<li>Answered (2026-10-25): yes. New apps keep people as LAN IDs. The existing tables get LAN ID columns (scripts in 4.5).</li>
+<li>Answered (2026-10-25): yes, some existing and new apps limit records by user data. One SQL rule for each such app (a function and a procedure, 4.6), owned by the target team, is acceptable.</li>
+<li>Answered (2026-10-25): yes. Log-only mode for one release, then enforce, one app at a time.</li>
+<li>Who manages the entitlements today (a screen, or SQL by the DBA)? What does <code>IsAdmin</code> on <code>CP_Atlas_Entitlement</code> mean?</li>
+</ol>
+</section>
+</main>
+</body>
+</html>
