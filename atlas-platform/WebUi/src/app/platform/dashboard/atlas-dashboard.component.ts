@@ -1,6 +1,6 @@
 // COPY to the target as a reference: WebUi/Source/App/platform/dashboard/. At the target, the current dashboard
 // component gets only the navigation change (formRoute first, then the current if chain) and the Columns support.
-// Locally this component is the dashboard of a platform app (route apps/:code).
+// Locally this component is the dashboard of a platform app (route dashboard/:code).
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';

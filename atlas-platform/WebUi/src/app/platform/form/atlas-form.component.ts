@@ -10,6 +10,7 @@ import { DialogComponent, LoaderComponent, SectionComponent } from '../atlas-pbd
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
 import { CPApplicationControl, CPApplicationSection, CPButton, CPPageError } from '../atlas-models';
+import { ATLAS_DASHBOARD_LINK } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
 import { AtlasEffectTarget, applyEffects } from './atlas-effects';
 import { buildFormGroup, buildOutputs, computeValue, isSection, valueControls } from './atlas-form-model';
@@ -24,6 +25,7 @@ import { atlasValidators, errorText } from './atlas-validators';
 export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly dashboardLink = inject(ATLAS_DASHBOARD_LINK);
   private readonly api = inject(AtlasApiService);
   private readonly notice = inject(AtlasNoticeService);
   private readonly destroyRef = inject(DestroyRef);
@@ -200,7 +202,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   }
 
   close(): void {
-    this.router.navigate(['/apps', this.code]);
+    this.router.navigate(this.dashboardLink(this.code));
   }
 
   save(): void {
@@ -231,7 +233,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
             return;
           }
           this.notice.show('success', `Record ${result.ID} saved.`);
-          this.router.navigate(['/apps', this.code]);
+          this.router.navigate(this.dashboardLink(this.code));
         },
         error: (error) => {
           this.saving.set(false);
@@ -249,7 +251,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
           return;
         }
         this.notice.show('success', `Record ${this.id} deleted.`);
-        this.router.navigate(['/apps', this.code]);
+        this.router.navigate(this.dashboardLink(this.code));
       },
       error: (error) => this.pageErrors.set([{ Field: '', Code: 'Http', Message: problemText(error) }]),
     });

@@ -1,7 +1,8 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import { describe, expect, it } from 'vitest';
 import { CPApplicationControl, CPApplicationSection } from './atlas-models';
-import { formRoute, formTypeOf } from './atlas-navigation';
+import { TestBed } from '@angular/core/testing';
+import { ATLAS_DASHBOARD_LINK, formRoute, formTypeOf } from './atlas-navigation';
 import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atlas-effects';
 import { buildFormGroup, buildOutputs, computeValue } from './form/atlas-form-model';
 import { atlasValidators, errorText } from './form/atlas-validators';
@@ -157,5 +158,11 @@ describe('@pbdev adapter', () => {
       { label: '', value: '' },
     ]);
     expect(toSelectOptions(null)).toEqual([]);
+  });
+});
+
+describe('dashboard link (review NG-02)', () => {
+  it('goes to the target route dashboard/:code by default', () => {
+    expect(TestBed.inject(ATLAS_DASHBOARD_LINK)('TTDV2')).toEqual(['/dashboard', 'TTDV2']);
   });
 });

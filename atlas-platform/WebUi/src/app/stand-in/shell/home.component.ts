@@ -21,7 +21,7 @@ import { problemText } from '../../platform/form/atlas-form.component';
     } @else {
       <div class="atlas-cards">
         @for (app of apps(); track app.ID) {
-          <a class="atlas-card" [routerLink]="app.HasDashboard ? ['/apps', app.Code] : null" [attr.id]="'app_' + app.Code">
+          <a class="atlas-card" [routerLink]="app.HasDashboard ? ['/dashboard', app.Code] : null" [attr.id]="'app_' + app.Code">
             <span class="atlas-card-code">{{ app.Code }}</span>
             <span class="atlas-card-name">{{ app.Name }}</span>
             <span class="atlas-muted">Roles: {{ app.Role }} · Form: {{ app.FormType ?? 'legacy' }}</span>

@@ -2,7 +2,7 @@
   <a class="shell-brand" routerLink="/">CP Atlas <span class="shell-tag">platform preview · local</span></a>
   <nav class="shell-nav">
     @for (app of apps(); track app.ID) {
-      <a [routerLink]="['/apps', app.Code]" class="shell-link">{{ app.Name }}</a>
+      <a [routerLink]="['/dashboard', app.Code]" class="shell-link">{{ app.Name }}</a>
     }
   </nav>
   <div class="shell-user">
