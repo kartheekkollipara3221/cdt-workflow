@@ -5,7 +5,7 @@ import { CPApplicationControl, CPApplicationSection } from './atlas-models';
 import { TestBed } from '@angular/core/testing';
 import { ATLAS_DASHBOARD_LINK, formRoute, formTypeOf } from './atlas-navigation';
 import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atlas-effects';
-import { buildFormGroup, buildOutputs, computeValue } from './form/atlas-form-model';
+import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid } from './form/atlas-form-model';
 import { atlasValidators, errorText } from './form/atlas-validators';
 import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
@@ -167,5 +167,52 @@ describe('@pbdev adapter', () => {
 describe('dashboard link (review NG-02)', () => {
   it('goes to the target route dashboard/:code by default', () => {
     expect(TestBed.inject(ATLAS_DASHBOARD_LINK)('TTDV2')).toEqual(['/dashboard', 'TTDV2']);
+  });
+});
+
+describe('hidden fields (review NG-03)', () => {
+  const form: CPApplicationSection = {
+    Controls: [
+      {
+        Name: 'SectionA', Label: 'A', Type: 'section',
+        ChildControls: [
+          { Name: 'Answer', Label: 'Answer', Type: 'select', Value: 'No' },
+          { Name: 'Reason', Label: 'Reason', Type: 'text', Value: '', Validator: { Required: true } },
+        ],
+      },
+      {
+        Name: 'SectionB', Label: 'B', Type: 'section',
+        ChildControls: [{ Name: 'Detail', Label: 'Detail', Type: 'text', Value: 'old', Validator: { Required: true } }],
+      },
+    ],
+  };
+
+  it('does not stop the save for a hidden required field and does not send it', () => {
+    const group = buildFormGroup(form);
+    const hidden = new Set(['Reason']);
+    const shown = (name: string) => isShown(name, containerOf(form), (x) => !hidden.has(x));
+
+    expect(group.invalid).toBe(true); // Angular alone would stop the save
+    expect(shownInvalid(form, group, shown)).toBe(false);
+    expect(buildOutputs(form, group, shown).map((x) => x.Name)).toEqual(['Answer', 'Detail']);
+  });
+
+  it('treats the children of a hidden section as hidden', () => {
+    const group = buildFormGroup(form);
+    group.get('Reason')!.setValue('Because');
+    group.get('Detail')!.setValue('');
+    const hidden = new Set(['SectionB']);
+    const shown = (name: string) => isShown(name, containerOf(form), (x) => !hidden.has(x));
+
+    expect(shown('Detail')).toBe(false);
+    expect(shownInvalid(form, group, shown)).toBe(false);
+    expect(buildOutputs(form, group, shown).map((x) => x.Name)).toEqual(['Answer', 'Reason']);
+  });
+
+  it('still stops the save for a shown required field', () => {
+    const group = buildFormGroup(form);
+    const shown = (name: string) => isShown(name, containerOf(form), () => true);
+
+    expect(shownInvalid(form, group, shown)).toBe(true);
   });
 });

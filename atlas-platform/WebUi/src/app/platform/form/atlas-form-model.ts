@@ -27,6 +27,36 @@ export function valueControls(section: CPApplicationSection): CPApplicationContr
   return list;
 }
 
+/** The section container of each child control (child name to section name). */
+export function containerOf(section: CPApplicationSection): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const control of section.Controls ?? []) {
+    if (isSection(control)) {
+      for (const child of control.ChildControls ?? []) {
+        map.set(child.Name, control.Name);
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * True if the control and its section are visible (review NG-03). The server validates and accepts only these
+ * fields, so a hidden field or a field of a hidden section does not stop the save and is not sent.
+ */
+export function isShown(name: string, containers: Map<string, string>, visible: (name: string) => boolean): boolean {
+  const container = containers.get(name);
+  return visible(name) && (container === undefined || visible(container));
+}
+
+/** True if a shown and enabled control (or grid cell) is not valid. */
+export function shownInvalid(section: CPApplicationSection, group: FormGroup, shown: (name: string) => boolean): boolean {
+  return valueControls(section).some((control) => {
+    const item = group.get(control.Name);
+    return shown(control.Name) && !!item && item.enabled && item.invalid;
+  });
+}
+
 /** One form control for each value control; a nested group for each SingleRowFields grid. */
 export function buildFormGroup(section: CPApplicationSection): FormGroup {
   const group = new FormGroup<Record<string, FormControl | FormGroup>>({});

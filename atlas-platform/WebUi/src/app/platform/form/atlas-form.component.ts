@@ -13,7 +13,7 @@ import { CPApplicationControl, CPApplicationSection, CPButton, CPPageError } fro
 import { ATLAS_DASHBOARD_LINK } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
 import { AtlasEffectTarget, applyEffects } from './atlas-effects';
-import { buildFormGroup, buildOutputs, computeValue, isSection, valueControls } from './atlas-form-model';
+import { buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, valueControls } from './atlas-form-model';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
 import { atlasValidators, errorText } from './atlas-validators';
 
@@ -45,6 +45,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   id = 0;
   form = new FormGroup<Record<string, FormControl | FormGroup>>({});
   private controlsByName = new Map<string, CPApplicationControl>();
+  private containers = new Map<string, string>();
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -69,6 +70,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
 
   private build(section: CPApplicationSection): void {
     this.controlsByName = new Map(valueControls(section).map((x) => [x.Name, x]));
+    this.containers = containerOf(section);
     const visible: Record<string, boolean> = {};
     const required: Record<string, boolean> = {};
     for (const control of section.Controls ?? []) {
@@ -157,6 +159,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     return this.visible()[name] !== false;
   }
 
+  /** The control and its section are visible (review NG-03). */
+  isShown(name: string): boolean {
+    return isShown(name, this.containers, (x) => this.isVisible(x));
+  }
+
   isRequired(name: string): boolean {
     return !!this.required()[name];
   }
@@ -212,7 +219,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
     this.form.markAllAsTouched();
     this.pageErrors.set([]);
-    if (this.form.invalid) {
+    if (shownInvalid(section, this.form, (name) => this.isShown(name))) {
       this.pageErrors.set([{ Field: '', Code: 'Invalid', Message: 'Correct the marked fields.' }]);
       return;
     }
@@ -223,7 +230,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
         AppCode: this.code,
         ID: this.id,
         Version: section.Version ?? null,
-        Outputs: buildOutputs(section, this.form, (name) => this.isVisible(name)),
+        Outputs: buildOutputs(section, this.form, (name) => this.isShown(name)),
       })
       .subscribe({
         next: (result) => {
