@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 11 draft 2 done, not committed; NEXT = TTD pilot build spec (modules 1,3-10 committed); code later in atlas-platform/ (option B) - 2026-10-25
+# RESUME HERE - Atlas platform specs: module 12 draft 2 = TTDV2 pilot, ALL Q1-Q6 answered, NOT committed; coding plan written (12 section 11, phases C0-C10, hand-written stand-ins); NEXT = start phase C0 when the user says; module 11 committed 5446337 - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -91,6 +91,13 @@ Nested lists are not supported: keep bullets flat.)
   (H1,H2,DB-01; accepted risk) -> P4 migrate SQMS/AIN (+H6/H8, enforce, retire old component) -> P5 later.
   Platform built BESIDE current code: new generic form component + generic section service; old Section Master frozen.
   SQL: sql/11-script-log.sql (release P1).
+- Module 12 TTDV2 pilot build: 12-ttd-pilot-build.md/.html - draft 2, ALL Q1-Q6 answered, NOT COMMITTED. P1 = TTDV2, TTD rebuilt as a
+  NEW app (own schema TTDV2, typed int/date columns, LAN IDs, RowVersion, UTC); current TTD untouched = reference. Q1 AtlasPlatformContext
+  (shared-type only, same connection/tx). Q2 LAN ID (native in TTDV2; TTD LAN ID scripts stay P4). Q3 no TTD switch (replaced by TTDV2).
+  Q4 TTD stops at once: copy script part 2d revokes TTD roles, then Enabled=true. Q5 new route form/:code/:id, FormType FORM, dashboard uses
+  FormType/Target before if-chains. Q6 dashboard Source: Table for 3 tabs + new Any filter group + column Type "user"; All Report shows 7 days.
+  Code layout decision: keep 4 target projects, Platform/ folder in each, CP prefix, BBH.CP.Atlas.* namespaces; stand-ins not copied.
+  SQL (not executed): sql/12-ttdv2-app.sql (040), sql/12-ttdv2-copy-from-ttd.sql (050). Template gap: add CreatedByLanId to 05 audit table before P2.
 - Modules not started: 2 Step Master (on hold; CDT + one more app). Design session done for the 13 Section Master
   apps. NEXT: write docs/atlas-platform/12-ttd-pilot-build.md = one checklist of every decision TTD needs (vertical
   slice), with comparison tests vs CPTTDService -> becomes the coding plan for atlas-platform/.

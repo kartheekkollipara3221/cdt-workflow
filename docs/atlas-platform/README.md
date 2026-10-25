@@ -41,3 +41,4 @@ Each module spec has these sections:
 | 9 | Audit log and history | [09-audit-history.md](09-audit-history.md) · [HTML report](09-audit-history.html) | Draft 2 (all questions answered) |
 | 10 | Workflow engine adapter (start, execute, notify, SLA) | [10-engine-adapter.md](10-engine-adapter.md) · [HTML report](10-engine-adapter.html) | Draft 2 (all questions answered) |
 | 11 | Configuration and deployment | [11-config-deployment.md](11-config-deployment.md) · [HTML report](11-config-deployment.html) · SQL: [script log](sql/11-script-log.sql) | Draft 2 (all questions answered) |
+| 12 | TTDV2 pilot build (release P1: TTD rebuilt as a new app; coding plan) | [12-ttd-pilot-build.md](12-ttd-pilot-build.md) · [HTML report](12-ttd-pilot-build.html) · SQL: [TTDV2 app](sql/12-ttdv2-app.sql), [copy from TTD](sql/12-ttdv2-copy-from-ttd.sql) | Draft 2 (all questions answered) |

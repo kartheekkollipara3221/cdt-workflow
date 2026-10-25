@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TTDV2 pilot build: release P1 checklist and coding plan</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 12 · design only · draft 2 · 2026-10-25</div>
+<h1>TTDV2 pilot build: release P1 checklist and coding plan</h1>
+<p class="lead">This report plans release P1: TTD built again as the new app TTDV2 on the reusable platform. It collects the decisions of modules 1 and 3 to 11, the TTDV2 settings and field map, the SQL scripts, the tests, the code location and the coding phases.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered (section 10). Design only. This spec is the coding plan for <code>atlas-platform/</code>.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>22</b><span>parts in P1</span></div>
+<div class="kpi"><b>5</b><span>SQL scripts</span></div>
+<div class="kpi"><b>11</b><span>coding phases</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>Release P1 builds <strong>TTDV2</strong>: the Tax Time Database made again as a <strong>new app</strong> on the platform. The current TTD code is the reference for what the app does (module 1, 10.1 and 10.5). The current TTD app does not change.</p>
+<p>TTDV2 is designed and coded as if it were app #17. Thus the pilot proves two things together:</p>
+<ul>
+<li>The platform parts work (registry, rules, access, generic service, audit, form component, dashboard).</li>
+<li>A new app needs only the onboarding steps of module 7, section 5: SQL template, manifest, form JSON, dashboard JSON, role grants and one registration line.</li>
+</ul>
+<p>Rules for P1:</p>
+<ul>
+<li>The platform is built <strong>beside</strong> the current code (module 11, 4.7). The current Section Master component and the current services stay frozen.</li>
+<li>TTD, SQMSO, SQMSB, AIN and CDT do not change in P1: no route, endpoint, table, column, JSON or service change.</li>
+<li>The workflow engine does not change.</li>
+<li>"Vertical slice" is the build order of P1, not a code structure. P1 builds each layer (SQL, Data, Service, API, UI) only as far as TTDV2 needs it. All apps share one platform; each later release adds the parts that its app needs.</li>
+</ul>
+</section>
+<section id="2-scope">
+<h2>2. Scope</h2>
+
+<h3>2.1 In P1</h3>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Part</th><th>Source</th></tr>
+<tr><td>1</td><td>App manifest, <code>AddAtlasPlatform</code>, one <code>AddAtlasModule</code> line, resolver, string app code (<code>AppCode</code>, not in the enum)</td><td>Module 7, 4.1-4.4</td></tr>
+<tr><td>2</td><td>Config folder, JSON cache with copy for each request, tolerant <code>System.Text.Json</code> loader</td><td>Module 7, 4.7; module 11, 4.2</td></tr>
+<tr><td>3</td><td><code>ConfigSectionService</code> with hooks (<code>OnLoad</code>, <code>OnBeforeSave</code>, <code>OnAfterSave</code>)</td><td>Module 1, 5.7</td></tr>
+<tr><td>4</td><td>Save pipeline steps 1-9, 11, 12 (no step 10, no workflow)</td><td>Module 1, 5.9</td></tr>
+<tr><td>5</td><td><code>Errors</code> list in the <code>ManagePage</code> response (HTTP 200); <code>Version</code> token (<code>RowVersion</code>)</td><td>Module 1, 5.11, 5.13</td></tr>
+<tr><td>6</td><td>Option providers <code>PBAccounts</code>, <code>UsersInRoles</code> (platform); <code>TaxYears</code>, <code>WeekEndings</code> (TTDV2)</td><td>Module 1, 10.2</td></tr>
+<tr><td>7</td><td>Default tokens, <code>KeepSavedValue</code>, <code>Computed</code> (<code>Sum</code>), <code>SoftDelete</code>, grid <code>SingleRowFields</code>, <code>CPKeyValue.Data</code>, <code>Effects</code> with <code>SetFromOption</code></td><td>Module 1, 5.1, 5.2, 10.2</td></tr>
+<tr><td>8</td><td><code>Validator</code> properties <code>Integer</code>, <code>Min</code>, <code>Max</code> (server and client)</td><td>Module 1, 10.3</td></tr>
+<tr><td>9</td><td><code>IAtlasRuleEngine</code> with <code>MostPermissive</code>, <code>RuleDefault: ReadOnly</code>, <code>OwnerFields</code>; same rules on save</td><td>Module 4, 4.1-4.6</td></tr>
+<tr><td>10</td><td><code>IAtlasUserContext</code> (LAN ID, AD cache, roles for each app)</td><td>Module 6, 4.1</td></tr>
+<tr><td>11</td><td><code>IAtlasAccessService</code> with <code>Permissions</code> and role flags (<code>@Read</code>, <code>@Write</code>, <code>@Admin</code>); <code>AccessMode: LogOnly</code></td><td>Module 6, 4.3</td></tr>
+<tr><td>12</td><td>Active roles view <code>dbo.vw_CP_Atlas_ActiveUserRole</code></td><td>Module 6, 4.4</td></tr>
+<tr><td>13</td><td>People as LAN IDs (<code>Value</code> = LAN ID, <code>Label</code> = display name)</td><td>Module 6, 4.5</td></tr>
+<tr><td>14</td><td><code>AtlasPlatformContext</code>: shared-type entities for <code>TTDV2.General</code> and <code>TTDV2.AuditLog</code>, same connection and transaction as <code>CPSharepointContext</code></td><td>Module 5, 6.2 (question 1)</td></tr>
+<tr><td>15</td><td>Column metadata from <code>sys.columns</code>; value conversion by column type, invariant culture; load by key</td><td>Module 5, 6.2, 6.4, 6.5</td></tr>
+<tr><td>16</td><td>Server audit (<code>AuditMode: Server</code>): <code>Create</code>, <code>Update</code>, <code>Delete</code>; <code>_Event</code>, <code>Label</code>, <code>Old</code>; UTC; <code>GetAuditLog</code> access check, sort, <code>CreatedDateUtc</code></td><td>Module 9, 4.1-4.5</td></tr>
+<tr><td>17</td><td>TTDV2 dashboard: own file, rules before load, <code>Permissions</code> menus, <code>Columns</code>, <code>Target</code> button; tab data from the table (<code>Source: Table</code>) with the new <code>Any</code> filter group and column <code>Type: "user"</code> (question 6)</td><td>Module 3, 4.1-4.7</td></tr>
+<tr><td>18</td><td><code>v1/Application</code> adds <code>FormType</code>, <code>HasDashboard</code>; hides apps that are not registered</td><td>Module 7, 4.6</td></tr>
+<tr><td>19</td><td>Start-up check and <code>--atlas-check</code> command</td><td>Module 7, 4.8; module 11, 4.3</td></tr>
+<tr><td>20</td><td>Environment files change-over, log event names, log path setting</td><td>Module 11, 4.1, 4.1.1, 4.6</td></tr>
+<tr><td>21</td><td><code>dbo.CP_Atlas_ScriptLog</code> and <code>sql/release-p1/</code></td><td>Module 11, 4.4</td></tr>
+<tr><td>22</td><td>New generic form component in the client, with a renderer registry; route <code>form/:code/:id</code>; <code>FormType: FORM</code>; dashboard navigation by <code>FormType</code> and <code>Target</code> (question 5)</td><td>Module 1, 5.5; module 3, 4.5; module 11, 4.7</td></tr>
+</table></div>
+<h3>2.2 Not in P1</h3>
+<ul>
+<li>Attachments (module 8), workflow adapter (module 10), <code>Relations</code> (module 4, 4.4), <code>Visibility</code> (module 6, 4.6).</li>
+<li><code>Load: Lazy</code> and server paging (module 3, 4.2, 4.2.1).</li>
+<li><code>Redirects</code>, <code>Action</code> on buttons other than <code>Save</code> and <code>Close</code>, families (module 1, 5.3, 5.4, section 11).</li>
+<li><code>Enforce</code> mode. It comes after one release of log review (module 6, question 5).</li>
+<li>Rule preview endpoint (module 4, 4.8).</li>
+<li>Any change to TTD, SQMSO, SQMSB, AIN or CDT. The LAN ID scripts for the existing tables stay in P4.</li>
+</ul>
+</section>
+<section id="3-ttdv2-app">
+<h2>3. TTDV2 app</h2>
+<p>TTDV2 does what TTD does (module 1, 10.1 and 10.5), with the new-app rules.</p>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Setting</th></tr>
+<tr><td>Code</td><td><code>TTDV2</code> (pattern <code>^[A-Z][A-Z0-9]{1,19}$</code>). Not in <code>CPApplicationCode</code>; the client sends <code>AppCode</code>.</td></tr>
+<tr><td>Schema</td><td><code>TTDV2</code>: <code>General</code>, <code>AuditLog</code>. No attachment table in P1.</td></tr>
+<tr><td>Service</td><td><code>CPTTDV2Service : ConfigSectionService</code>, one hook: <code>OnLoad</code> (grid column dates)</td></tr>
+<tr><td>Option providers</td><td><code>TaxYears</code>, <code>WeekEndings</code> (TTDV2, with <code>TimeProvider</code>); <code>PBAccounts</code>, <code>UsersInRoles</code> (platform)</td></tr>
+<tr><td>Rule mode</td><td><code>MostPermissive</code>, <code>RuleDefault: ReadOnly</code></td></tr>
+<tr><td>Owner</td><td><code>OwnerFields: ["CreatedBy", "TaxPreparerLanId"]</code>, LAN ID match</td></tr>
+<tr><td>Roles</td><td><code>Read</code> (<code>IsRead</code>) view; <code>Prepare</code> (<code>IsWrite</code>) create and edit own; <code>Owner</code> (<code>IsAdmin</code>) all, also delete</td></tr>
+<tr><td>Day minutes</td><td><code>int</code> columns, <code>CHECK 0-1440</code>; <code>Validator: { "Integer": true, "Min": 0, "Max": 1440 }</code>; empty = 0</td></tr>
+<tr><td>Total</td><td><code>WeeklyTotal int</code>; <code>Computed: { "WeeklyTotal": "Sum(...7 day columns...)" }</code></td></tr>
+<tr><td>Dates</td><td><code>WeekEnding date</code>; <code>TaxYear smallint</code>; system dates UTC</td></tr>
+<tr><td>Delete</td><td><code>SoftDelete: { "Field": "IsDeleted" }</code></td></tr>
+<tr><td>Header</td><td><code>HeaderName: "Tax Time Database Time Sheet"</code>, <code>HeaderNameWithId: "{Name} - {ID}"</code></td></tr>
+<tr><td>Audit</td><td><code>AuditMode: Server</code>, <code>TTDV2.AuditLog</code>, UTC, <code>CreatedByLanId</code></td></tr>
+<tr><td>Access</td><td><code>AccessMode: LogOnly</code></td></tr>
+</table></div>
+<h3>3.1 Field map from TTD to TTDV2</h3>
+<div class="table-wrap"><table>
+<tr><th>TTD column (text)</th><th>TTDV2 column</th><th>Control</th></tr>
+<tr><td><code>Account varchar(1000)</code></td><td><code>Account varchar(1000)</code></td><td><code>Account</code> (<code>ngselect</code>, <code>PBAccounts</code>, <code>SetFromOption</code>)</td></tr>
+<tr><td><code>AccountNumber</code>, <code>AccountName</code></td><td>same, <code>varchar</code></td><td><code>AccountNumber</code>, <code>AccountName</code></td></tr>
+<tr><td><code>TaxYear varchar(200)</code></td><td><code>TaxYear smallint</code></td><td><code>TaxYear</code> (<code>TaxYears</code>, default <code>{Options[1]}</code>, <code>KeepSavedValue</code>)</td></tr>
+<tr><td><code>Category</code>, <code>WorkDescription</code></td><td>same</td><td>same</td></tr>
+<tr><td><code>WeekEnding varchar(100)</code></td><td><code>WeekEnding date</code></td><td><code>WeekEnding</code> (<code>WeekEndings</code>, default <code>{Options[0]}</code>, <code>KeepSavedValue</code>)</td></tr>
+<tr><td><code>MondayMinute</code> ... <code>SundayMinute varchar(100)</code></td><td><code>int NULL</code>, <code>CHECK 0-1440</code></td><td>grid <code>WeeklyHour</code>, <code>SingleRowFields</code></td></tr>
+<tr><td><code>WeeklyTotal varchar(100)</code></td><td><code>WeeklyTotal int</code></td><td><code>Computed</code></td></tr>
+<tr><td><code>TaxPreparerName varchar(1000)</code> (display name)</td><td><code>TaxPreparerLanId nvarchar(50)</code></td><td><code>TaxPreparer</code> (<code>UsersInRoles</code> <code>["Prepare", "Owner"]</code>, default <code>{User.LanID}</code>)</td></tr>
+<tr><td><code>CreatedBy</code>, <code>ModifiedBy</code> (display name)</td><td>same, LAN ID</td><td>system</td></tr>
+<tr><td><code>CreatedDate</code>, <code>ModifiedDate</code> (local)</td><td>same, UTC</td><td>system</td></tr>
+<tr><td><code>IsDeleted</code></td><td>same</td><td>system</td></tr>
+<tr><td>—</td><td><code>RowVersion rowversion</code></td><td>system</td></tr>
+</table></div>
+<h3>3.2 Dashboard tabs (<code>Source: Table</code>, no procedure)</h3>
+<p>The 3 TTD tabs (<code>CPAtlasDashboardConfig.json.txt:235-294</code>, procedures <code>TTD.Get_TTD_*</code>) become 3 table tabs in <code>TTDV2.Dashboard.json</code>. The platform always adds <code>IsDeleted = 0</code>.</p>
+<div class="table-wrap"><table>
+<tr><th>Tab <code>ID</code></th><th>Filter</th><th>Order</th><th>Columns</th></tr>
+<tr><td><code>CurrentTaxTimesheet</code></td><td><code>Any</code>: <code>CreatedBy</code>, <code>TaxPreparerLanId</code>, <code>ModifiedBy</code> <code>Eq {LanId}</code></td><td><code>ModifiedDate DESC</code>, <code>CreatedDate DESC</code></td><td>ID (hidden), Account Number (<code>Link: Edit</code>), Client Name, Tax Year, Category, Week Ending (date), Weekly Total, Modified By (user), Created (date)</td></tr>
+<tr><td><code>TaxTimeAllReport</code></td><td>none</td><td><code>CreatedBy</code>, <code>WeekEnding DESC</code></td><td>as TTD + Saturday and Sunday Minutes; <code>Sums</code> on the 7 days and Weekly Total</td></tr>
+<tr><td><code>TaxTimeReport</code></td><td><code>TaxPreparerLanId Eq {LanId}</code></td><td><code>WeekEnding DESC</code>, <code>CreatedDate DESC</code></td><td>as <code>TaxTimeAllReport</code></td></tr>
+</table></div>
+<p>Two additions to module 3 (4.7), needed by the next apps too:</p>
+<ul>
+<li><strong><code>Any</code> filter group:</strong> <code>{ "Any": [ { "Column": "CreatedBy", "Op": "Eq", "Value": "{LanId}" }, ... ] }</code>. The items in the group are joined with <code>OR</code>; the group and the other filters with <code>AND</code>. One level only.</li>
+<li><strong>Column <code>Type: "user"</code>:</strong> the column holds a LAN ID. The server returns the display name from <code>CP_Atlas_User</code> (user cache, module 6, 4.1). Sort and search use the display name only with <code>Paging: Client</code>.</li>
+</ul>
+<p>Defect fixed: the TTD "All Report" sums Saturday and Sunday, but its procedure does not return them. TTDV2 shows all 7 days.</p>
+<h3>3.3 Files for TTDV2</h3>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Content</th></tr>
+<tr><td><code>sql/12-ttdv2-app.sql</code></td><td>Schema, tables, app row, roles (from the new-app template)</td></tr>
+<tr><td><code>Config/TTDV2.app.json</code></td><td>Manifest</td></tr>
+<tr><td><code>Config/TTDV2.json</code></td><td>Form</td></tr>
+<tr><td><code>Config/TTDV2.Dashboard.json</code></td><td>Dashboard</td></tr>
+<tr><td><code>program.cs</code></td><td><code>services.AddAtlasModule&lt;CPTTDV2Service&gt;("TTDV2");</code></td></tr>
+<tr><td><code>appsettings.&lt;Env&gt;.json</code></td><td><code>AppSettings:Modules:TTDV2:Enabled</code> (<code>false</code> in production until the business approves)</td></tr>
+<tr><td>Role grants</td><td><code>sql/06-grant-revoke-role-template.sql</code>, or the copy script (section 4)</td></tr>
+</table></div>
+</section>
+<section id="4-sql-for-release-p1">
+<h2>4. SQL for release P1</h2>
+<p>Folder <code>sql/release-p1/</code>. The DBA runs the scripts in number order. Each script is additive, idempotent, and ends with the script log block.</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Script</th><th>Source</th></tr>
+<tr><td>010</td><td>Engine idempotent migrations (H9)</td><td>Module 11, 4.4</td></tr>
+<tr><td>020</td><td><code>dbo.CP_Atlas_ScriptLog</code></td><td><code>sql/11-script-log.sql</code></td></tr>
+<tr><td>030</td><td><code>dbo.vw_CP_Atlas_ActiveUserRole</code></td><td><code>sql/06-active-user-roles-view.sql</code></td></tr>
+<tr><td>040</td><td>TTDV2 app: schema, <code>General</code>, <code>AuditLog</code>, app row, roles with flags</td><td><a href="sql/12-ttdv2-app.sql">sql/12-ttdv2-app.sql</a></td></tr>
+<tr><td>050</td><td>Copy TTD data to TTDV2 (run at the change-over only, section 10, question 4)</td><td><a href="sql/12-ttdv2-copy-from-ttd.sql">sql/12-ttdv2-copy-from-ttd.sql</a></td></tr>
+</table></div>
+<p>The copy script keeps the record IDs, converts the text values, finds LAN IDs where the display name is unique, copies the audit entries, gives TTDV2 roles to the users with the same TTD roles, revokes all TTD roles (decision, question 4), and lists each value that it cannot convert.</p>
+</section>
+<section id="5-tests">
+<h2>5. Tests</h2>
+<p>The tests come from the TTD reference behaviour (module 1, 10.1, 10.3 and 10.5).</p>
+<ul>
+<li>Load: a new record gets the defaults (<code>TaxYear</code> = second option, <code>WeekEnding</code> = first option, <code>TaxPreparer</code> = current user) and the grid column dates. An existing record keeps a saved value that is not in the options.</li>
+<li>Save: an extra output name, a hidden or disabled field, and a bad minute value (<code>1.5</code>, <code>1:30</code>, <code>-5</code>, <code>1441</code>) are refused with a field error. A wrong <code>WeeklyTotal</code> from the client saves the correct sum.</li>
+<li>Access matrix: each cell of module 1, 10.5, with one user for each role, for an own record and for another user's record. In <code>LogOnly</code>, a denied check writes <code>Atlas.AccessDenied</code>; the matrix test runs in <code>Enforce</code> in the test environment.</li>
+<li>Concurrency: two users save the same record; the second user gets a conflict error.</li>
+<li>Audit: a create, an update and a delete each write one entry with <code>_Event</code>; an update with no change writes no entry.</li>
+<li>Copy script: row counts agree; each converted value agrees with the TTD value; the not-converted list is empty or approved.</li>
+<li>Regression: the current TTD, SQMSO, SQMSB, AIN and CDT pass their current checks with no change. The current JSON files load with the old and the new loader with the same result (module 11, 4.2).</li>
+</ul>
+</section>
+<section id="6-code-location-atlas-platform">
+<h2>6. Code location: <code>atlas-platform/</code></h2>
+<p>A separate solution in this repository, not in <code>WorkflowEngine.sln</code>. The user copies the code into the target.</p>
+<p>Decision 2026-10-25: keep the 4 target projects. Add a <code>Platform/</code> folder to each. Use the target names (<code>CP</code> prefix, <code>BBH.CP.Atlas.*</code> namespaces). Move no existing file.</p>
+<div class="table-wrap"><table>
+<tr><th>Target project</th><th>New code (added only)</th></tr>
+<tr><td><code>BBH.CP.Atlas.App</code> (<code>Atlasapp/</code>)</td><td><code>Platform/</code> (<code>AddAtlasPlatform</code>, start-up check, <code>--atlas-check</code>); one <code>AddAtlasModule</code> line in <code>program.cs</code>; <code>Config/TTDV2.app.json</code>, <code>Config/TTDV2.json</code>, <code>Config/TTDV2.Dashboard.json</code>. Controllers: the <code>code</code> parameter accepts the string code (module 7, 4.4).</td></tr>
+<tr><td><code>BBH.CP.Atlas.Service</code></td><td><code>Platform/</code> (registry, resolver, rule engine, user context, access service, audit writer, option providers, save pipeline); <code>Application/ConfigSectionService.cs</code>; <code>Application/CPTTDV2Service.cs</code> and the providers <code>TaxYears</code>, <code>WeekEndings</code>.</td></tr>
+<tr><td><code>BBH.CP.Atlas.Data</code></td><td><code>Platform/AtlasPlatformContext.cs</code>, column metadata reader; new optional properties on the existing DTO classes.</td></tr>
+<tr><td><code>WebUi</code></td><td><code>Platform/</code> new generic form component and renderer registry, beside the current <code>sectionmaster</code> component. <code>app.routes.ts</code>: add <code>form/:code/:id</code>. Dashboard: <code>FormType</code> and <code>Target</code> navigation before the current <code>if</code> chains.</td></tr>
+</table></div>
+<ul>
+<li><code>ConfigSectionService</code> inherits from <code>CPApplicationService</code> and implements <code>ISectionService</code>, as <code>CPTTDService</code> does. <code>CPAtlasService</code> keeps its public methods and calls the resolver for a registered code; the <code>if</code> chains stay for the current codes.</li>
+<li><code>atlas-platform/</code> has the same 4 project names and folder paths. Stand-ins replace the target parts that are not in this repository (<code>TPAMAPIAccess</code>, <code>CPPBContext</code>, <code>CPUser</code>, the existing DTOs, <code>@pbdev</code>). Integration: copy the new folders and files into the same paths. Do not copy the stand-ins.</li>
+<li>Later (after P4): a separate project or a NuGet package for the 16 apps, if necessary.</li>
+</ul>
+</section>
+<section id="7-backward-compatibility-and-rollback">
+<h2>7. Backward compatibility and rollback</h2>
+<ul>
+<li>TTD and all current apps do not change. All new DTO properties and response fields are optional.</li>
+<li>The database changes are new objects only: the <code>TTDV2</code> schema, the script log table and the active roles view.</li>
+<li>Rollback before the change-over: set <code>AppSettings:Modules:TTDV2:Enabled = false</code> and restart. TTD is not affected.</li>
+<li>Rollback after the change-over: set <code>Enabled = false</code>, restart, and give the TTD roles back (the revoked rows have <code>IsDeleted</code> = 1 and <code>ModifiedBy</code> = the change-over run). Limit: records that users made or changed in TTDV2 after the change-over are not in TTD. Copy them back by hand, or roll forward with a fix.</li>
+</ul>
+</section>
+<section id="8-acceptance">
+<h2>8. Acceptance</h2>
+<ul>
+<li>The tests of section 5 pass.</li>
+<li><code>--atlas-check</code> returns 0 for the current apps and TTDV2, and 1 for a manifest with no registration line.</li>
+<li>TTDV2 needs only the onboarding items of section 3.3. Record each step and its time (baseline for the next 13 apps).</li>
+<li>The TTDV2 module code is one class with one hook and two option providers. Record the number of lines.</li>
+</ul>
+</section>
+<section id="9-notes">
+<h2>9. Notes</h2>
+<ul>
+<li>P2 (the first of the 13 apps) uses the same parts. It adds only what that app needs.</li>
+<li>Template gap: module 9 (4.2) says new audit tables get <code>CreatedByLanId</code>. <code>sql/05-new-app-template.sql</code> does not have it yet. <code>sql/12-ttdv2-app.sql</code> has it. Add it to the template before P2.</li>
+</ul>
+</section>
+<section id="10-open-questions">
+<h2>10. Open questions</h2>
+<ol>
+<li>TTD data access: the legacy class <code>TTDGeneral</code> and shared-type entities cannot map one table in one context.</li>
+</ol>
+<p>   Answered (2026-10-25): option A. A second context, <code>AtlasPlatformContext</code>, holds only shared-type entities and uses the same connection and transaction as <code>CPSharepointContext</code>. Note (question 3): TTDV2 has its own schema, so there is no conflict; the platform context stays the place for all shared-type entities.</p>
+<ol>
+<li>Owner match by LAN ID or display name.</li>
+</ol>
+<p>   Answered (2026-10-25): option A, LAN ID. Note (question 3): TTDV2 keeps people as LAN IDs from the start. The LAN ID scripts for <code>TTD.General</code> move to P4 with the other existing tables.</p>
+<ol>
+<li>How does P1 change TTD (switch, rollback, client selection, version token)?</li>
+</ol>
+<p>   Answered (2026-10-25): it does not. P1 builds <code>TTDV2</code> as a new app with its own schema <code>TTDV2</code> and typed columns. The current TTD code is the reference. A copy script moves the TTD data at the change-over. This replaces the questions about the service switch, the client selection for TTD and the <code>RowVersion</code> column on <code>TTD.General</code>.</p>
+<ol>
+<li>Change-over: after the copy, do TTD and TTDV2 run in parallel for a period, or does TTD stop at once?</li>
+</ol>
+<p>   Answered (2026-10-25): option B. TTD stops at once. On the change-over day: (1) run the copy script; its part 2d revokes all TTD roles (soft delete) in the same transaction; (2) set <code>AppSettings:Modules:TTDV2:Enabled = true</code> and restart. TTD then leaves the menu (no active roles). The TTD rows stay unchanged.</p>
+<ol>
+<li>Client route: how does the client open the new form component for TTDV2?</li>
+</ol>
+<p>   Answered (2026-10-25): option A. New route <code>form/:code/:id</code> opens the new component (<code>WebUi/Platform/</code>). <code>v1/Application</code> <code>FormType</code> gets the new value <code>FORM</code> (with <code>SECTION</code>, <code>STEPPER</code>). The dashboard <code>onClick</code> and <code>editRow</code> use <code>FormType</code> first; with no value they use the current <code>if</code> chain. The add button uses <code>Target</code> (module 3, 4.5). The old routes and <code>CPAtlasSectionMaster</code> do not change. The dashboard component gets this small additive change in P1.</p>
+<ol>
+<li>TTDV2 dashboard: tab data from the table (<code>Source: Table</code>, module 3, 4.7) in P1, or a stored procedure as in TTD today?</li>
+</ol>
+<p>   Answered (2026-10-25): option A. <code>Source: Table</code> for the 3 tabs, no procedure (3.2). Two platform additions: the <code>Any</code> filter group and the column <code>Type: "user"</code>. The "All Report" shows all 7 days.</p>
+</section>
+<section id="11-coding-plan-for-atlas-platform">
+<h2>11. Coding plan for <code>atlas-platform/</code></h2>
+
+<h3>11.1 Solution layout</h3>
+<pre><code>atlas-platform/
+  AtlasPlatform.slnx
+  Directory.Build.props            net10.0, Nullable, TreatWarningsAsErrors (same as this repository)
+  INTEGRATION.md                   copy list, program.cs lines, settings, SQL order
+  src/
+    BBH.CP.Atlas.Data/
+      Platform/                    COPY: AtlasPlatformContext, column metadata reader, value converter
+      StandIn/                     DO NOT COPY: CPSharepointContext (members used only), DTOs, models
+    BBH.CP.Atlas.Service/
+      Platform/                    COPY: registry, resolver, rules, user context, access, audit, options, pipeline, dashboard query
+      Application/ConfigSectionService.cs, CPTTDV2Service.cs, TTDV2/ providers     COPY
+      StandIn/                     DO NOT COPY: CPApplicationService, CPAtlasService, ISectionService and the other interfaces, CPUser
+    BBH.CP.Atlas.App/
+      Platform/                    COPY: AddAtlasPlatform, AddAtlasModule, start-up check, --atlas-check
+      Config/TTDV2.app.json, TTDV2.json, TTDV2.Dashboard.json                      COPY
+      StandIn/                     DO NOT COPY: program.cs host, controllers (only the endpoints that P1 uses), TPAMAPIAccess
+    WebUi/
+      src/app/platform/            COPY: form component, renderer registry, effects, route, dashboard navigation helper
+      src/app/stand-in/            DO NOT COPY: @pbdev stand-in, old dashboard shell
+  tests/
+    BBH.CP.Atlas.Platform.Tests/   xUnit (as in this repository)
+  sql/release-p1/                  010-050 in run order (copies of the module scripts)</code></pre>
+<p>Rules:</p>
+<ul>
+<li>Stand-ins (decision 2026-10-25, coding question 1): small hand-written classes with only the members that the platform uses, with the same names, namespaces and signatures as the <code>.txt</code> copies. Each stand-in file starts with <code>// STAND-IN: do not copy to the target.</code> A compile at the target confirms the signatures.</li>
+<li>Packages: only packages that the target already uses (EF Core SqlServer 10, the ASP.NET Core framework, Angular 21, AG Grid 33), plus the test packages of this repository (xUnit, Test SDK, coverlet). No new third-party package.</li>
+<li><code>TimeProvider</code> everywhere; no <code>DateTime.Now</code> or <code>DateTime.UtcNow</code> outside the composition root.</li>
+<li>The workflow engine (<code>src/</code>, <code>WorkflowEngine.sln</code>) does not change.</li>
+<li>SQL Server tests use <code>localhost</code> with Windows authentication, as the engine tests do, with <code>[Trait("Category", "SqlServer")]</code>. They create and drop their own test database.</li>
+</ul>
+<h3>11.2 Build phases</h3>
+<p>Each phase ends with <code>dotnet build</code> (no warnings) and <code>dotnet test</code> green. Stop after each phase for a review.</p>
+<div class="table-wrap"><table>
+<tr><th>Phase</th><th>Content</th><th>Tests</th></tr>
+<tr><td>C0</td><td>Solution skeleton, <code>Directory.Build.props</code>, stand-ins, empty <code>Platform/</code> folders, <code>INTEGRATION.md</code> outline</td><td>Build only</td></tr>
+<tr><td>C1</td><td>Data: <code>AtlasPlatformContext</code> (shared-type), <code>sys.columns</code> reader, value converter (6.4), load by key</td><td>Conversion unit tests; SQL tests on a test database made by <code>12-ttdv2-app.sql</code></td></tr>
+<tr><td>C2</td><td>Config: manifest model, tolerant JSON loader, cache with copy, <code>AddAtlasPlatform</code>, <code>AddAtlasModule</code>, resolver, string app code</td><td>Loader parity test with all current JSON files; resolver 404/400</td></tr>
+<tr><td>C3</td><td>Security: <code>IAtlasUserContext</code>, active roles (view), role flags, <code>IAtlasAccessService</code>, <code>Permissions</code>, <code>LogOnly</code>/<code>Enforce</code>, <code>Atlas.AccessDenied</code> log</td><td>Access matrix (module 1, 10.5)</td></tr>
+<tr><td>C4</td><td>Rules: <code>IAtlasRuleEngine</code> (<code>FirstMatch</code>, <code>MostPermissive</code>, <code>RuleDefault</code>, <code>OwnerFields</code>)</td><td>Rule matrix; <code>FirstMatch</code> gives the current results</td></tr>
+<tr><td>C5</td><td>Section: <code>ConfigSectionService</code> load (providers, tokens, <code>KeepSavedValue</code>, grid <code>SingleRowFields</code>, header) and save pipeline (allow list, validators, <code>Computed</code>, version, system fields, audit, <code>Errors</code>); <code>CPTTDV2Service</code>, <code>TaxYears</code>, <code>WeekEndings</code></td><td>Section 5 load, save, concurrency and audit tests</td></tr>
+<tr><td>C6</td><td>API: resolver hook in <code>CPAtlasService</code> stand-in, string <code>code</code>, <code>v1/Application</code> <code>FormType</code>/<code>HasDashboard</code>, <code>GetAuditLog</code></td><td>Endpoint tests with a test host</td></tr>
+<tr><td>C7</td><td>Dashboard: TTDV2 dashboard file, rules before load, <code>Source: Table</code> query builder, <code>Any</code>, <code>Type: "user"</code>, <code>Permissions</code> menus</td><td>Query builder tests (names only from metadata, values only as parameters); 3 TTDV2 tabs</td></tr>
+<tr><td>C8</td><td>Start-up check (all modules) and <code>--atlas-check</code></td><td>Exit code 0 / 1 cases</td></tr>
+<tr><td>C9</td><td>WebUi: route <code>form/:code/:id</code>, form component, renderer registry, <code>Effects</code>, <code>Validator</code>, dashboard navigation by <code>FormType</code> and <code>Target</code></td><td>Angular unit tests</td></tr>
+<tr><td>C10</td><td>Release package: <code>sql/release-p1/</code>, <code>INTEGRATION.md</code> complete, acceptance list (section 8)</td><td>Full test run; copy-script test on a copy of TTD sample data</td></tr>
+</table></div>
+</section>
+</main>
+</body>
+</html>
