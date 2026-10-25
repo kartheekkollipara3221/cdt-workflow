@@ -45,7 +45,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 </head>
 <body>
 <main>
-<div class="eyebrow">CP Atlas reusable platform · module 1 · design only · draft 2 · complete for review · 2026-10-25</div>
+<div class="eyebrow">CP Atlas reusable platform · module 1 · design only · draft 3 · all questions answered · 2026-10-25</div>
 <h1>Section Master: reusable design</h1>
 <p class="lead">This report examines the Section Master form in CP Atlas. It shows the per-app code in the form. It gives a design that lets a new business app use the form with configuration only.</p>
 
@@ -57,10 +57,10 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 </div>
 
 <div class="kpis">
-<div class="kpi"><b>4</b><span>apps use Section Master now (SQMSO, SQMSB, TTD, AIN)</span></div>
+<div class="kpi"><b>4 + 13</b><span>apps on Section Master: 4 now, 13 next</span></div>
 <div class="kpi"><b>7 of 9</b><span>steps to add an app are code changes today</span></div>
-<div class="kpi"><b>18</b><span>findings (SM-01 to SM-18)</span></div>
-<div class="kpi"><b>1</b><span>additive SQL script (version column)</span></div>
+<div class="kpi"><b>19</b><span>findings (SM-01 to SM-19)</span></div>
+<div class="kpi"><b>2</b><span>SQL scripts (1 additive, 1 read-only)</span></div>
 </div>
 
 <section id="purpose">
@@ -106,7 +106,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <tr><td>9</td><td>Add the entitlements</td><td>SQL</td><td>SQL</td></tr>
 </table></div>
 <p>Only items 8 and 9 are low-code. Items 1 to 7 change shared files. Each of these changes can cause a fault in the other apps.</p>
-<div class="note small"><strong>Possible app list.</strong> <code>CPApplicationCode</code> already has 13 codes that no module uses: <code>TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU</code>. These are probably the planned apps. Confirm this with the target team.</div>
+<div class="note small"><strong>The next 13 apps.</strong> <code>CPApplicationCode</code> already has 13 codes that no module uses: <code>TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU</code>. The business owner confirmed (2026-10-25) that these are the next 13 apps. All 13 use Section Master.</div>
 </section>
 
 <section id="findings">
@@ -140,11 +140,14 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 </dl>
 </div>
 
-<div class="issue med">
-<h3><span class="badge b-med">SM-03</span>The template has control names <span class="area">UI</span><span class="confirm">Confirm</span></h3>
-<p>The template has special rows for <code>Vehicle1</code>, <code>Vehicle2</code> and <code>Vehicle3</code>. The same lines also show a <code>pbdev-select</code> outside the <code>*ngIf</code> for each child control. Line 14 has <code>*ngIf="isLoading"</code> on the form. These are probably copy errors, because the live form operates.</p>
+<div class="issue low">
+<h3><span class="badge b-low">SM-03</span>The template has special rows for the vehicle control <span class="area">UI</span></h3>
+<p>The template has special rows for the vehicle control by name. The vehicle options are in a component variable (<code>vehicles</code>), not on the control.</p>
+<p><strong>Confirmed 2026-10-25:</strong> the live form shows one vehicle dropdown. Its options change when the user selects a fund. The fund-to-vehicle map is in the JSON (<code>FundConsideredSecondarySale.ChildOptions</code>). The JSON has two vehicle controls (<code>Vehicle</code>, <code>Vehicle2</code>) for the same field <code>Vehicle</code>, in two sections.</p>
+<p><strong>Also confirmed:</strong> line 14 (<code>*ngIf="isLoading"</code> on the form) and the <code>pbdev-select</code> outside the <code>*ngIf</code> are copy errors. The live form shows correctly.</p>
+<p class="small">Note: the fund list and the fund-to-vehicle map are in the JSON two times. A new fund needs two JSON edits. Use one <code>OptionsSource</code> for both (10.2).</p>
 <dl>
-<dt>Location</dt><dd><code>cp-atlas-sectionmaster.html.txt:14, 21-44</code></dd>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.html.txt:21-44</code>; <code>cp-atlas-sectionmaster.ts.txt:56, 126, 284</code>; <code>SQMSO.json.txt:334-392, 556, 761, 925</code></dd>
 <dt>Design</dt><dd>5.5 Renderer registry</dd>
 </dl>
 </div>
@@ -159,12 +162,11 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 </dl>
 </div>
 
-<div class="issue med">
-<h3><span class="badge b-med">SM-05</span>Some control types do not show, and unknown types fail silently <span class="area">UI</span><span class="confirm">Confirm</span></h3>
+<div class="issue low">
+<h3><span class="badge b-low">SM-05</span>Unknown control types fail silently <span class="area">UI</span></h3>
 <ul>
-<li><code>filepicker</code> makes a form control, but the template has no <code>filepicker</code> row.</li>
-<li>The TTD JSON has a grid control (<code>WeeklyHour</code>). The template has no grid row.</li>
-<li>If a type is not known, the form shows nothing and gives no error.</li>
+<li>If a type is not known, the form shows nothing and gives no error. A typing error in the JSON <code>Type</code> hides the control, and the user does not know about it.</li>
+<li><strong>Confirmed 2026-10-25:</strong> the live form shows the <code>grid</code> and <code>filepicker</code> controls. Our template copy does not have these rows, because the copy is not complete. This part is not a defect.</li>
 </ul>
 <dl>
 <dt>Location</dt><dd><code>cp-atlas-sectionmaster.ts.txt:135-136</code>; <code>CPTTDService.cs.txt:153-167</code>; template</dd>
@@ -197,6 +199,8 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <dl>
 <dt>Location</dt><dd><code>CPAINService.cs.txt:43-48</code>; <code>CPSQMSOService.txt:88-92</code></dd>
 <dt>Example</dt><dd>A user has the role <code>Write</code> in another app only. SQMSO also gives this user <code>Write</code> access. Each new module copies one of these two patterns. Related to H4 in the issues report.</dd>
+<dt>Also</dt><dd>No role query filters <code>IsDeleted</code> on <code>CP_Atlas_User</code>, <code>CP_Atlas_UserEntitlement</code> or <code>CP_Atlas_Entitlement</code>. A deleted entitlement still gives the role (<code>CPApplicationService.cs.txt:538-542</code>).</dd>
+<dt>Decision</dt><dd>2026-10-25: each app has its own rules and roles. An app in a parent-child family (for example SQMS: SQMSO and SQMSB) can also use the roles of its parent. No app uses the roles of an unrelated app. See section 11.</dd>
 <dt>Design</dt><dd>5.7 Generic section service (always filter by application)</dd>
 </dl>
 </div>
@@ -299,6 +303,20 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <dt>Design</dt><dd>5.13 Version token</dd>
 </dl>
 </div>
+<div class="issue">
+<h3><span class="badge b-high">SM-19</span>The child form is made in code, and it can select the wrong parent <span class="area">Module: SQMS</span></h3>
+<p><code>MakeBid</code> makes a new bid from an opportunity with code in <code>CPSQMSOService</code>:</p>
+<ul>
+<li>It finds the opportunity option with <code>x.Value.StartsWith(page.ID.ToString())</code>. Opportunity 12 also agrees with 120, 121 and 1234. The bid can link to the wrong opportunity.</li>
+<li>It splits the option on <code>" $#$ "</code>. The client splits the same field on <code>" - "</code> (SM-04). Two different separators exist for one value.</li>
+<li>It copies five parent fields into the bid by position.</li>
+<li>The client keeps the result in a shared service, then opens <code>sectionmaster/SQMSB/0</code> (<code>onAddBid</code>). If the user reloads the page, the parent data is lost.</li>
+</ul>
+<dl>
+<dt>Location</dt><dd><code>CPSQMSOService.txt:558-592</code>; <code>cp-atlas-sectionmaster.ts.txt:81-84, 369-380</code></dd>
+<dt>Design</dt><dd>11.2 Child link and <code>CreateChild</code></dd>
+</dl>
+</div>
 </section>
 
 <section id="design">
@@ -371,16 +389,16 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <h3><span class="badge b-fix">5.5</span>Control renderer registry</h3>
 <ul>
 <li>Replace the long <code>*ngIf</code> chain with one map from <code>Type</code> to a renderer component. Each current type keeps its current markup and its <code>div_{Name}</code> ID.</li>
-<li>Add renderers for <code>filepicker</code> and <code>grid</code>, or confirm that the live template has them.</li>
+<li>Move the live <code>filepicker</code> and <code>grid</code> rows into the registry with no change to their behaviour. (The live form has them; Q2.)</li>
 <li>If <code>Type</code> is not known, show an "Unknown control type" message in non-production builds. In production, write a console error.</li>
-<li>Remove the <code>Vehicle1/2/3</code> special rows. Use <code>OptionsFromChild</code> and <code>DivClass</code>.</li>
+<li>Remove the vehicle special rows. <code>OptionsFromChild</code> puts the child options on the target control itself, so the normal <code>select</code> row shows them. This keeps one vehicle dropdown whose options change with the fund.</li>
 </ul>
 <p>This removes SM-03 and SM-05.</p>
 </div>
 
 <div class="design">
 <h3><span class="badge b-fix">5.6</span>Server module registry</h3>
-<p>Replace the <code>if</code> chains with a registry. Use .NET keyed services. Keyed services are part of .NET 8 and later. No third-party package is necessary. This removes SM-06 and SM-10.</p>
+<p>Replace the <code>if</code> chains with a registry. Use .NET keyed services. They are built in, and the live projects use .NET 10. No third-party package is necessary. This removes SM-06 and SM-10.</p>
 <pre><code>// Composition root: one line for each app.
 services.AddAtlasModule&lt;CPSQMSOService&gt;("SQMSO", configFile: "SQMSO.json");
 services.AddAtlasModule&lt;CPTTDService&gt;("TTD", configFile: "TTD.json");
@@ -425,7 +443,7 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <li>Examine the <code>Validator</code> rules and the <code>Require</code> effects on the server.</li>
 <li>Examine the version token (5.13).</li>
 <li>Map the allowed values to the entity.</li>
-<li>Set the system fields on the server: <code>CreatedBy</code>, <code>CreatedDate</code>, <code>ModifiedBy</code>, <code>ModifiedDate</code> and the <code>Defaults</code> values. Use <code>TimeProvider</code>, not <code>DateTime.Now</code>. The client cannot set these fields.</li>
+<li>Set the system fields on the server: <code>CreatedBy</code>, <code>CreatedDate</code>, <code>ModifiedBy</code>, <code>ModifiedDate</code> and the <code>Defaults</code> values. Use UTC from <code>TimeProvider</code>, not <code>DateTime.Now</code>. The workflow engine also writes <code>ModifiedDate</code> in UTC (5.13). The client cannot set these fields.</li>
 <li>Call the workflow engine (5.10). If the engine result is not a success, stop with an error.</li>
 <li>Write the audit entry on the server (5.12).</li>
 <li>Commit. If an error occurs, roll back, write a log and return the error (5.11).</li>
@@ -449,7 +467,9 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 }</code></pre>
 <ul>
 <li><code>BusinessObjectPrefix</code> and <code>InitialAction</code> replace the values in code. Keep the current values, so that the engine instance IDs do not change.</li>
-<li><code>ActorRoles: "User"</code> sends the roles of the user for this application. If <code>ActorRoles</code> is a list, the service sends that list (current behaviour, for example <code>["MFO"]</code>). Change SQMS to <code>"User"</code> only after a check that each submitter has the role that the engine needs.</li>
+<li><code>ActorRoles: "User"</code> sends the real roles of the user (the roles in the <code>RoleScope</code>, 11.2). This is the default for new apps. The workflow engine does the role check. Atlas does not replace the user roles with a fixed role.</li>
+<li><strong>Decision 2026-10-25:</strong> SQMS also changes to <code>"User"</code>. A list (for example <code>["MFO"]</code>) is the legacy behaviour only. Keep it until the migration step for SQMS, then remove it.</li>
+<li>Before SQMS changes, run part 5 of <a href="sql/01-section-master-role-scope-check.sql"><code>sql/01-section-master-role-scope-check.sql</code></a> with <code>@RequiredRole = 'MFO'</code>. It lists the family users without that role. Give the role to the users who must submit. After the change, the engine refuses a submit from a user without the role. Atlas shows the engine error (5.11).</li>
 <li><code>Recipients</code> maps a field to a recipient key. The service finds each user by display name in <code>CP_Atlas_User</code>.</li>
 <li>The service must read <code>Success</code> and <code>ResultCode</code> from each engine result.</li>
 <li><code>Actions</code> does not change. <code>GetWorkflowAction</code> already uses it.</li>
@@ -481,10 +501,24 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <h3><span class="badge b-fix">5.13</span>Version token</h3>
 <ul>
 <li>Add a <code>rowversion</code> column to each Section Master table. Use the script <a href="sql/01-section-master-rowversion.sql"><code>sql/01-section-master-rowversion.sql</code></a>. The script is additive and safe to run again.</li>
+<li>In EF Core 10, map the column with <code>.IsRowVersion()</code> (or <code>[Timestamp]</code>). EF Core then adds the version to the <code>UPDATE</code> and gives <code>DbUpdateConcurrencyException</code> on a conflict. The pipeline changes this exception to a conflict error (5.11).</li>
 <li>The load response has an optional <code>Version</code> (base64). The client sends it back in the save input.</li>
 <li>If the save has <code>Version</code> and it is different from the database value, return a conflict error. If the save has no <code>Version</code> (an old client), do not examine it. This keeps the current clients working.</li>
 </ul>
 <p>This removes SM-18.</p>
+<div class="note small">
+<p><strong>Other writer (confirmed 2026-10-25).</strong> The workflow engine SQMS module writes to the SQMS tables. The scheduled job (<code>run-sqms-scheduled</code>) closes opportunities and classifies bids. After each successful scheduled action, it runs:</p>
+<pre><code>UPDATE [SSQMS].[Opportunity]   -- or [SSQMS].[Bid]. Note: the live schema is SQMS (Q9, issue H14).
+SET [Status] = @state, [WorkflowState] = @state, [ModifiedBy] = @modifiedBy, [ModifiedDate] = @modifiedAtUtc
+WHERE [ID] = @id AND ([IsDeleted] IS NULL OR [IsDeleted] = 0);</code></pre>
+<p>Evidence: <code>src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs:199-257</code>; <code>src/WorkflowEngine.Sqms/SqmsWorkflowService.cs:495-536</code> (only in <code>TargetProjectionMode.Scheduled</code>). The engine reads the tables with explicit column lists (<code>SqlSqmsDataStore.cs:11-22</code>).</p>
+<ul>
+<li><strong>No break.</strong> The engine uses explicit column lists for <code>SELECT</code> and <code>UPDATE</code>. A new column does not change them. No engine change is necessary.</li>
+<li><strong>Correct conflict.</strong> The engine <code>UPDATE</code> changes the row version. Example: a user opens opportunity 12 in state <code>OPEN TO BIDDING</code>. The scheduled job closes it. Then the user saves the old form. Today the save can write the old <code>Status</code> back over the state from the job (lost update). With the version token, the user gets a conflict error and must reload. This is a strong reason for 5.13.</li>
+<li><strong>No self-conflict.</strong> The interactive Atlas save does not call this projection. Atlas writes <code>WorkflowState</code> itself.</li>
+<li><strong>Time values.</strong> The engine writes <code>ModifiedDate</code> in UTC. Atlas writes <code>DateTime.Now</code> (local time). The same column has two time zones. The save pipeline (5.9, step 9) must write UTC from <code>TimeProvider</code>.</li>
+</ul>
+</div>
 </div>
 
 <div class="good">
@@ -519,12 +553,12 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <tr><td>1</td><td>Add the optional DTO properties (<code>Effects</code>, <code>CPKeyValue.Data</code>, <code>CPButton.Action</code>, <code>Redirects</code>, <code>FormType</code>). The behaviour does not change.</td><td><span class="badge b-low">Low</span></td></tr>
 <tr><td>2</td><td>Add the client <code>Effects</code> engine and the renderer registry. Keep the legacy branches.</td><td><span class="badge b-med">Medium</span></td></tr>
 <tr><td>3</td><td>Add the server registry and the configuration cache. Keep the old configuration path keys. Replace the <code>null</code> returns with clear errors.</td><td><span class="badge b-med">Medium</span></td></tr>
-<tr><td>4</td><td>Filter the SQMSO role lookup by application (SM-08). Before this step, examine the entitlement data. Users with roles only in another app lose SQMSO access.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>4</td><td>Change the role lookup to <code>RoleScope</code> (own app + parent) and filter <code>IsDeleted</code> (SM-08, 11.2). First run <a href="sql/01-section-master-role-scope-check.sql"><code>sql/01-section-master-role-scope-check.sql</code></a>, and give roles to the users that it lists. Users with roles only in an unrelated app lose access.</td><td><span class="badge b-med">Medium</span></td></tr>
 <tr><td>5</td><td>Move the SQMS logic into <code>SQMSO.json</code> and <code>SQMSB.json</code>. Run the regression checks.</td><td><span class="badge b-med">Medium</span></td></tr>
-<tr><td>6</td><td>Add <code>ConfigSectionService</code>. Use it first for a new pilot app, for example one of the unused codes.</td><td><span class="badge b-low">Low</span></td></tr>
+<tr><td>6</td><td>Add <code>ConfigSectionService</code>. Rebuild TTD on it as the pilot (section 10). Keep the legacy TTD service as the rollback.</td><td><span class="badge b-low">Low</span></td></tr>
 <tr><td>7</td><td>Add the server save pipeline (5.9). Start the allow list in log-only mode: log the ignored names, but still save them. After one release with no unexpected names, change to enforce mode.</td><td><span class="badge b-med">Medium</span></td></tr>
 <tr><td>8</td><td>Add the <code>Errors</code> contract (5.11). Change the client to show errors.</td><td><span class="badge b-low">Low</span></td></tr>
-<tr><td>9</td><td>Move the workflow values into JSON (5.10). Keep <code>ActorRoles</code> as a list for SQMS until the role check is done. Make the service read <code>Success</code>.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>9</td><td>Move the workflow values into JSON (5.10). Make the service read <code>Success</code>. Run part 5 of the role scope script, give the missing roles, then change SQMS to <code>ActorRoles: "User"</code>.</td><td><span class="badge b-med">Medium</span></td></tr>
 <tr><td>10</td><td>Move the audit to the server (5.12), one module at a time.</td><td><span class="badge b-low">Low</span></td></tr>
 <tr><td>11</td><td>Run the <code>rowversion</code> script. Then add the version token (5.13).</td><td><span class="badge b-low">Low</span></td></tr>
 <tr><td>12</td><td>With approval, remove the legacy branches for each migrated module.</td><td><span class="badge b-med">Medium</span></td></tr>
@@ -542,6 +576,7 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <li>Make sure that the redirect after save goes to the same dashboard tab for MFO, IPFG and other users.</li>
 <li>Make sure that the SQMS dependent fields give the same results: <code>Account</code>, <code>OpportunityId</code>, <code>BidForFullCommitment</code>, <code>BidAskValue</code>, <code>FundConsideredSecondarySale</code>, <code>ClientRelationshipLeavingBBH</code>, <code>IsValuationForPrivateFundVehicle</code>. The results must now apply immediately, not after 5 seconds.</li>
 <li>Make sure that the SQMS status buttons start and execute the workflow engine actions as before, with the same engine instance IDs.</li>
+<li>Make sure that the engine gets the real roles of the user. A user without the role that the engine needs gets the engine error, and the record does not change.</li>
 <li>Make sure that a save with an extra output name (for example <code>WorkflowState</code> or <code>IsDeleted</code>) does not change that field.</li>
 <li>Make sure that a save for a control that is hidden or disabled for the user does not change that field.</li>
 <li>Make sure that a save that fails shows an error and does not redirect. The server must write no audit entry.</li>
@@ -559,15 +594,222 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <h2>9. Open questions</h2>
 <div class="table-wrap"><table>
 <tr><th>#</th><th>Question</th><th>For</th></tr>
-<tr><td>Q1</td><td><strong>Answered 2026-10-25:</strong> one more app uses Step Master. All other new apps use Section Master. Still open: are the 13 unused codes in <code>CPApplicationCode</code> these apps?</td><td>Target team</td></tr>
-<tr><td>Q2</td><td>Does the live template show <code>filepicker</code> and <code>grid</code> controls (SM-05)?</td><td>Target team</td></tr>
-<tr><td>Q3</td><td>Are template lines 14 and 21-44 copy errors (SM-03)?</td><td>Target team</td></tr>
-<tr><td>Q4</td><td>Can the target team use .NET keyed services? These need .NET 8 or later. The copy targets <code>net9.0</code> (H11).</td><td>Target team</td></tr>
-<tr><td>Q5</td><td>Do current SQMSO users need roles from other apps (SM-08, migration step 4)?</td><td>Target team, business</td></tr>
+<tr><td>Q1</td><td><strong>Answered 2026-10-25:</strong> the 13 unused codes are the next 13 apps. All 13 use Section Master. The one more Step Master app is not in this list. The pilot is TTD (section 10).</td><td>Closed</td></tr>
+<tr><td>Q2</td><td><strong>Answered 2026-10-25:</strong> yes. The live form shows the grid and the file upload field. The template copy is not complete. SM-05 is now Low.</td><td>Closed</td></tr>
+<tr><td>Q3</td><td><strong>Answered 2026-10-25:</strong> yes, they are copy errors. The vehicle is one dropdown whose options change with the selected fund. SM-03 is now Low.</td><td>Closed</td></tr>
+<tr><td>Q4</td><td><strong>Answered 2026-10-25:</strong> the live projects use .NET 10 and EF Core 10. Keyed services are available. No team rule against them is known. The copy (<code>net9.0</code>) is old. H11 is closed.</td><td>Closed</td></tr>
+<tr><td>Q5</td><td><strong>Answered 2026-10-25:</strong> each app has its own rules and roles. A child app can also use the roles of its parent. No app uses the roles of an unrelated app. Run the read-only role scope script before the change. See section 11.</td><td>Closed</td></tr>
 <tr><td>Q6</td><td><strong>Answered 2026-10-25:</strong> no, not now. Step Master serves CDT and one more app. Keep it separate. The save pipeline (5.9) and the workflow binding (5.10) are designed so that Step Master can use them later.</td><td>Closed</td></tr>
-<tr><td>Q7</td><td>Does each SQMS submitter have the role <code>MFO</code> in <code>CP_Atlas_UserEntitlement</code>? The answer decides when SQMS can use <code>ActorRoles: "User"</code> (5.10).</td><td>Target team</td></tr>
-<tr><td>Q8</td><td>Do the four tables have other writers (jobs, procedures) that a <code>rowversion</code> column can affect? The value changes on each update, and <code>SELECT *</code> returns one more column.</td><td>Target team, DBA</td></tr>
+<tr><td>Q7</td><td><strong>Answered 2026-10-25:</strong> yes, send the real roles. The workflow engine does the role check. Run part 5 of the role scope script before the SQMS change (5.10).</td><td>Closed</td></tr>
+<tr><td>Q8</td><td><strong>Answered 2026-10-25:</strong> the workflow engine SQMS scheduled job writes <code>Status</code>, <code>WorkflowState</code>, <code>ModifiedBy</code> and <code>ModifiedDate</code>. It uses explicit column lists, so the <code>rowversion</code> column does not break it. Its updates change the row version, which correctly stops a save of an old form (5.13). Run the read-only pre-check in the script for other writers.</td><td>Closed</td></tr>
+<tr><td>Q9</td><td><strong>Answered 2026-10-25:</strong> the live database uses the schema <code>SQMS</code>. The <code>rowversion</code> script uses <code>SQMS</code>. Note: the workflow engine SQMS module uses <code>SSQMS</code> in its SQL. On the live database, the scheduled SQMS job cannot find its tables. The user confirmed that the target engine copy is changed to <code>SQMS</code>. Only the local repository copy still has <code>SSQMS</code>. See issue H14 (closed for the target) in the <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues report</a>.</td><td>Closed</td></tr>
 </table></div>
+</section>
+<section id="pilot">
+<h2>10. Pilot: TTD on the new approach</h2>
+<p>The business owner selected TTD (Tax Time Database) as the pilot (2026-10-25). The target team designs and develops TTD again with <code>ConfigSectionService</code>. TTD is a good pilot:</p>
+<ul>
+<li>It is an existing app. Thus you can compare the old and new results one to one.</li>
+<li>It has no workflow. The pilot tests the form platform with no engine risk.</li>
+<li>It has the difficult parts that the next 13 apps need: a grid, option lists from data, calculated option lists, defaults, a soft delete and an external account list.</li>
+</ul>
+
+<h3>10.1 Current TTD behaviour and the new approach</h3>
+<div class="table-wrap"><table>
+<tr><th>TTD behaviour today</th><th>Evidence</th><th>New approach</th><th>Custom code?</th></tr>
+<tr><td><code>Account</code> options from the PB account service, label <code>"number - name"</code></td><td><code>CPTTDService.cs.txt:174-200</code></td><td><code>OptionsSource: { "Provider": "PBAccounts" }</code>, with <code>Data</code> (5.2)</td><td>No</td></tr>
+<tr><td><code>Account</code> fills <code>AccountNumber</code> and <code>AccountName</code> by a <code>" - "</code> split</td><td><code>cp-atlas-sectionmaster.ts.txt:244-257</code></td><td><code>Effects</code> + <code>SetFromOption</code> (5.1, 5.2)</td><td>No</td></tr>
+<tr><td><code>TaxYear</code> options are calculated. Default = second item. A saved value that is not in the list is added.</td><td><code>CPTTDService.cs.txt:202-214</code></td><td><code>OptionsSource: { "Provider": "TaxYears" }</code>, <code>Defaults: { "TaxYear": "{Options[1]}" }</code>, <code>KeepSavedValue: true</code></td><td>Provider only</td></tr>
+<tr><td><code>TaxPreparerName</code> options = users with role <code>Prepare</code> or <code>Owner</code> in TTD. Default = current user.</td><td><code>CPTTDService.cs.txt:216-234</code></td><td><code>OptionsSource: { "Provider": "UsersInRoles", "Roles": ["Prepare", "Owner"] }</code>, <code>Defaults: { "TaxPreparerName": "{User.DisplayName}" }</code></td><td>No</td></tr>
+<tr><td><code>WeekEnding</code> options = last Sunday and the next Sundays. Default = first item. Uses <code>DateTime.Today</code>.</td><td><code>CPTTDService.cs.txt:236-250, 273+</code></td><td><code>OptionsSource: { "Provider": "WeekEndings" }</code>. The provider uses <code>TimeProvider</code>.</td><td>Provider only</td></tr>
+<tr><td><code>WeeklyHour</code> grid: one row. The column headers show the dates of the selected week.</td><td><code>CPTTDService.cs.txt:252-269</code>; <code>TTD.json.txt:139+</code></td><td>Grid renderer (5.5). <code>Grid.BindMode: "SingleRowFields"</code> (10.2). Date headers in the <code>OnLoad</code> hook.</td><td><code>OnLoad</code> hook</td></tr>
+<tr><td>Save: the grid row is a JSON string. The service copies its values into <code>Outputs</code>.</td><td><code>CPTTDService.cs.txt:74-91</code></td><td><code>SingleRowFields</code> does this in the pipeline (10.2)</td><td>No</td></tr>
+<tr><td>The client calculates <code>WeeklyTotal</code> and sends it. The server saves the value that it gets.</td><td><code>CPTTDService.cs.txt:74-91</code></td><td><code>Computed: { "WeeklyTotal": "Sum(MondayMinute, ..., SundayMinute)" }</code>. The server calculates it on each save (10.2).</td><td>No</td></tr>
+<tr><td>Header <code>"Tax Time Database Time Sheet"</code> and <code>" - {ID}"</code></td><td><code>CPTTDService.cs.txt:59-60, 169</code></td><td><code>HeaderName</code>, <code>HeaderNameWithId: "{Name} - {ID}"</code></td><td>No</td></tr>
+<tr><td>Delete sets <code>IsDeleted</code>, <code>ModifiedBy</code>, <code>ModifiedDate</code></td><td><code>CPTTDService.cs.txt:125-143</code></td><td><code>SoftDelete: { "Field": "IsDeleted" }</code> in the module registration</td><td>No</td></tr>
+<tr><td>No rules and no role check on load or save</td><td><code>TTD.json.txt</code> (no <code>Rules</code>)</td><td>App roles only (SM-08). Add <code>Rules</code> for <code>Read</code> / <code>Prepare</code> / <code>Owner</code>.</td><td>No</td></tr>
+<tr><td>Errors are hidden (H7)</td><td><code>CPTTDService.cs.txt:118-121</code></td><td>Save pipeline and <code>Errors</code> (5.9, 5.11)</td><td>No</td></tr>
+</table></div>
+<div class="good"><strong>Result.</strong> TTD needs one module class with one hook (<code>OnLoad</code> for the grid headers) and two option providers (<code>TaxYears</code>, <code>WeekEndings</code>). All other parts are JSON.</div>
+
+<h3>10.2 Platform parts that the pilot adds</h3>
+<ul>
+<li><strong>Option providers.</strong> <code>OptionsSource.Provider</code> is the name of a registered <code>IOptionProvider</code>. The platform supplies <code>PBAccounts</code>, <code>UsersInRoles</code> and <code>StoredProcedure</code>. An app can register more providers, for example <code>TaxYears</code>. The next apps use providers by name in JSON.</li>
+<li><strong>Default tokens.</strong> <code>{User.DisplayName}</code>, <code>{User.LanID}</code>, <code>{Today}</code>, <code>{Options[n]}</code>. Defaults apply only to a new record or an empty value.</li>
+<li><strong><code>KeepSavedValue</code>.</strong> If the saved value is not in the options, add it at the top of the list. This keeps old records correct.</li>
+<li><strong>Grid <code>SingleRowFields</code>.</strong> The grid has one row. Each column <code>field</code> is an entity field. The load puts the fields into the row. The save puts the row cells into <code>Outputs</code>. The allow list (5.9 step 4) includes the column fields.</li>
+<li><strong><code>Computed</code> fields.</strong> The server calculates the field on each save, after the allow list (5.9, step 8). It ignores a value from the client for this field. Functions: <code>Sum</code>, <code>Count</code>, <code>Min</code>, <code>Max</code>. Do not add an expression language. Empty values count as 0. The client can still show a calculated total while the user types, but the server value is the saved value.</li>
+<li><strong><code>SoftDelete</code>.</strong> <code>RemovePage</code> sets the field to true and sets <code>ModifiedBy</code> and <code>ModifiedDate</code>.</li>
+<li><strong>Module switch.</strong> <code>AppSettings:Modules:TTD:Service = Legacy | Config</code>. The default is <code>Legacy</code>. The switch gives a rollback with no deployment.</li>
+</ul>
+
+<h3>10.3 Pilot acceptance</h3>
+<ul>
+<li>Do not change the TTD route, endpoints, table, column names or control names.</li>
+<li>Make sure that, for a set of existing TTD records, the load response of the new service is the same as the legacy response. Compare the JSON (controls, values, options, headers). A difference is permitted only where this spec repairs a defect (for example SM-12).</li>
+<li>Make sure that a save with the new service gives the same row in <code>TTD.General</code> as the legacy service, except <code>RowVersion</code> and the date values.</li>
+<li>Make sure that the service refuses a save with an extra output name, or with a bad minute value, and shows an error.</li>
+<li>Make sure that a save with a wrong <code>WeeklyTotal</code> from the client saves the correct sum of the seven day columns.</li>
+<li>Make sure that each day value is a whole number of minutes from 0 to 1440. An empty value is 0. The service must refuse <code>1.5</code>, <code>1:30</code>, <code>-5</code> or <code>1441</code> with a field error. Use the JSON validator <code>"Validator": { "Integer": true, "Min": 0, "Max": 1440 }</code> (new optional <code>CPValidator</code> properties).</li>
+<li>Make sure that a user with no TTD role cannot load or save a TTD record.</li>
+<li>Make sure that the module switch changes TTD back to <code>Legacy</code> with no data change.</li>
+<li>Record the number of lines in the TTD module code (one class, the <code>OnLoad</code> hook, two option providers). This is the baseline for the next 13 apps.</li>
+</ul>
+
+<h3>10.4 TTD questions</h3>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Question</th><th>For</th></tr>
+<tr><td>T1</td><td><strong>Answered 2026-10-25:</strong> yes. The server calculates <code>WeeklyTotal</code> on each save (<code>Computed</code>, 10.2).</td><td>Closed</td></tr>
+<tr><td>T2</td><td><strong>Answered 2026-10-25:</strong> the values are whole numbers of minutes. The server checks 0 to 1440 for each day. The columns stay <code>varchar(100)</code>. No database change.</td><td>Closed</td></tr>
+<tr><td>T3</td><td><strong>Answered 2026-10-25:</strong> <code>Read</code> can view; <code>Prepare</code> can create and edit own records; <code>Owner</code> can do everything, including delete. See 10.5.</td><td>Closed</td></tr>
+<tr><td>T4</td><td><strong>Answered 2026-10-25:</strong> yes. Both fields count. A record is "own" when <code>CreatedBy</code> or <code>TaxPreparerName</code> is the current user.</td><td>Closed</td></tr>
+</table></div>
+<h3>10.5 TTD access (decided 2026-10-25)</h3>
+<div class="table-wrap"><table>
+<tr><th>Action</th><th><code>Read</code></th><th><code>Prepare</code></th><th><code>Owner</code></th></tr>
+<tr><td>Open and view a time sheet</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Create a time sheet</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Edit a time sheet</td><td>No</td><td>Own records only</td><td>All records</td></tr>
+<tr><td>Delete a time sheet</td><td>No</td><td>No</td><td>Yes</td></tr>
+<tr><td>Listed as Tax Preparer</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+</table></div>
+<p>"Own record" (confirmed 2026-10-25): <code>CreatedBy</code> or <code>TaxPreparerName</code> is the current user. Both fields count. Add an optional <code>OwnerFields</code> list to the app JSON. The platform sets <code>IsOwner</code> for <code>CPRule</code> from these fields. This replaces the owner logic in code for each module (for example SQMSO <code>CreatedBy</code> / <code>SellerRMTeam</code>, SM-07).</p>
+<pre><code>"OwnerFields": ["CreatedBy", "TaxPreparerName"],
+"Rules": [
+  { "Roles": ["Read"], "Disabled": true },
+  { "Roles": ["Prepare"], "IsOwner": false, "Disabled": true },
+  { "Roles": ["Prepare"], "IsOwner": true, "Disabled": false },
+  { "Roles": ["Owner"], "Disabled": false }
+],
+"Buttons": [
+  { "Name": "Submit", "Label": "Save",
+    "Rules": [ { "Roles": ["Read"], "Visible": false },
+               { "Roles": ["Prepare"], "IsOwner": false, "Visible": false } ] },
+  { "Name": "Close", "Label": "Close" }
+],
+"Permissions": {
+  "Create": ["Prepare", "Owner"],
+  "Delete": ["Owner"]
+}</code></pre>
+<ul>
+<li><code>Permissions</code> is a new optional block. The server checks it on <code>ManagePage</code> (new record) and <code>RemovePage</code>. The dashboard JSON uses the same block to show or hide the add and delete menus (module 3).</li>
+<li>The server applies <code>Rules</code> again on save (5.9, steps 3 to 5). A <code>Prepare</code> user who edits the record of another user gets an error, also with a changed request.</li>
+<li>A user with more than one role gets the most permissive result. Example: <code>Read</code> + <code>Prepare</code> can edit own records. Note: today <code>ApplyRules</code> applies each matching rule in order, so the last matching rule wins. Keep that behaviour for the current JSON. Add an optional <code>RuleMode: "MostPermissive"</code> to the app JSON for TTD and the new apps.</li>
+<li>A user with none of the three roles cannot open TTD (SM-08).</li>
+<li>Acceptance: test each cell of the table above with one user for each role, for an own record and for a record of another user.</li>
+</ul>
+</section>
+
+<section id="family">
+<h2>11. Parent and child apps</h2>
+<p>Decision (2026-10-25): each app has its own rules and roles. Some apps are a parent-child family. Example: SQMS is the family. SQMSO (Opportunity) is the parent form, and SQMSB (Bid) is the child form. A bid belongs to one opportunity. Of the next 13 apps, one is a family with one parent and two children, and possibly one more has one parent and one child. The others are single apps (F1).</p>
+<h3>11.1 What exists now</h3>
+<div class="table-wrap"><table>
+<tr><th>Part</th><th>Current implementation</th><th>Evidence</th></tr>
+<tr><td>Family in data</td><td><code>CP_Atlas_Application.ParentID</code></td><td><code>CP_Sharepoint.txt:359-370</code></td></tr>
+<tr><td>Family in code</td><td>Each service sets <code>ParentCode = SQMS</code> in its constructor</td><td><code>CPSQMSOService.txt:51</code>; <code>CPSQMSBService.cs.txt:53</code></td></tr>
+<tr><td>Roles</td><td>Dashboard: parent roles. SQMSO page: all roles (SM-08). Buyer list: parent roles. User list: own + parent roles.</td><td><code>CPApplicationService.cs.txt:536-542</code>; <code>CPSQMSOService.txt:88-92, 268-290</code>; <code>CPSQMSBService.cs.txt:95-102</code></td></tr>
+<tr><td>Link in data</td><td><code>SQMS.Bid.OpportunityId</code> with a foreign key to <code>SQMS.Opportunity</code></td><td><code>CP_Sharepoint.txt:920, 1358</code></td></tr>
+<tr><td>Child creation</td><td><code>MakeBid</code> in code (SM-19)</td><td><code>CPSQMSOService.txt:558-592</code></td></tr>
+<tr><td>Dashboard</td><td>One <code>SQMS</code> dashboard with tabs for <code>SQMSO</code> and <code>SQMSB</code></td><td><code>CPAtlasDashboardConfig.json.txt:57-190</code></td></tr>
+<tr><td>Audit</td><td>One table for the family (<code>SQMS.AuditLog</code>), with <code>RefType</code> = child code</td><td><code>CPApplicationService.cs.txt:595, 635-639</code></td></tr>
+<tr><td>Roll-up</td><td>Bid totals on the opportunity, in code (issue M18)</td><td><code>CPSQMSBService.cs.txt:273, 355-384</code></td></tr>
+<tr><td>Workflow</td><td>Each form has its own workflow (<code>SqmsOpportunity</code>, <code>SqmsBid</code>)</td><td>SM-15</td></tr>
+</table></div>
+<h3>11.2 Design</h3>
+<p><strong>Family from data.</strong> The registry reads the parent from <code>CP_Atlas_Application.ParentID</code>. A module does not set <code>ParentCode</code> in code. A new family needs only rows in <code>CP_Atlas_Application</code>.</p>
+<p><strong>Role scope.</strong> Add an optional <code>RoleScope</code> to the app JSON:</p>
+<ul>
+<li><code>"Self"</code>: roles of this app only.</li>
+<li><code>"SelfAndParent"</code>: roles of this app and of its parent. This is the default when the app has a parent.</li>
+<li>The platform never uses the roles of an unrelated app.</li>
+<li>The role query ignores rows where <code>IsDeleted</code> = 1 on the user, the user entitlement or the entitlement.</li>
+</ul>
+<p><strong>Child link.</strong> Add an optional <code>Parent</code> block to the child JSON:</p>
+<pre><code>"Parent": {
+  "Code": "SQMSO",
+  "LinkField": "OpportunityId",
+  "CopyFields": {
+    "OpportunityFund": "FundConsideredSecondarySale",
+    "OpportunityVehicle": "Vehicle",
+    "CommitmentAmountForSale": "CommitmentAmountForSale",
+    "EstimatedFairValue": "EstimatedFairValue",
+    "RemainingCapitalCommitment": "RemainingCapitalCommitment"
+  },
+  "CreateWhen": { "ParentStates": ["OPEN TO BIDDING"] }
+}</code></pre>
+<ul>
+<li>The field names in these examples show the shape only. Confirm them against <code>SQMS.Opportunity</code> and <code>SQMS.Bid</code>.</li>
+<li><code>LinkField</code> is the child field that holds the parent ID.</li>
+<li><code>CopyFields</code> maps a child field to a parent field. The server copies the values from the parent record by ID, not from an option label.</li>
+<li><code>CreateWhen</code> is optional. The server refuses a new child if the parent state is not in the list.</li>
+</ul>
+<p><strong>Create a child.</strong> Add the button action type <code>CreateChild</code>:</p>
+<pre><code>{ "Name": "Bid", "Label": "Make a bid", "Action": { "Type": "CreateChild", "ChildCode": "SQMSB" } }</code></pre>
+<ul>
+<li>The client opens <code>sectionmaster/SQMSB/0?parentId={ID}</code>. The <code>parentId</code> query value is new and optional.</li>
+<li>The server loads the new child page with the parent ID. It checks that the parent exists, that the user can read the parent, and <code>CreateWhen</code>. Then it sets <code>LinkField</code> and the <code>CopyFields</code>.</li>
+<li>On save, the server checks <code>LinkField</code> again. A user cannot change the parent of a child by an edit of the request (5.9, step 4).</li>
+<li>A page reload keeps the parent, because the parent ID is in the URL.</li>
+<li>Keep <code>Execute?action=MakeBid</code> and the current <code>onAddBid</code> path for old clients.</li>
+</ul>
+<p>This removes SM-19.</p>
+<p><strong>Roll-ups.</strong> Add an optional <code>Rollups</code> list to the child JSON, for example the bid count and totals on the opportunity. The save pipeline calculates the roll-up in the same transaction as the child save, from all child rows that are not deleted. This also corrects issue M18. A complex roll-up can use the <code>OnAfterSave</code> hook.</p>
+<pre><code>"Rollups": [
+  { "ParentField": "BidsReceivedCount", "Function": "Count" },
+  { "ParentField": "TotalBidAmount", "Function": "Sum", "ChildField": "CommitmentAmountRequested" }
+]</code></pre>
+<p><strong>Cross-form visibility (decided 2026-10-25).</strong> Each family decides what a user of one form can see of the other forms. All cross-form views are read-only. An edit always needs a role in the form of that record.</p>
+<p>In the child JSON, <code>Parent.View</code> sets what a child user sees of the parent:</p>
+<pre><code>"Parent": {
+  "Code": "SQMSO",
+  "LinkField": "OpportunityId",
+  "View": { "Mode": "CopiedFields" }
+}</code></pre>
+<p>In the parent JSON, <code>Children</code> sets what a parent user sees of the linked children:</p>
+<pre><code>"Children": [
+  { "Code": "SQMSB", "View": { "Mode": "Fields", "Fields": ["ID", "BuyerRMTeam", "CommitmentAmountRequested", "Status"] } }
+]</code></pre>
+<div class="table-wrap"><table>
+<tr><th><code>View.Mode</code></th><th>Child user sees of the parent</th><th>Parent user sees of the children</th></tr>
+<tr><td><code>None</code></td><td>Nothing</td><td>Nothing</td></tr>
+<tr><td><code>CopiedFields</code> (default for <code>Parent.View</code>)</td><td>Only the <code>CopyFields</code> values, on the child form</td><td>Not used</td></tr>
+<tr><td><code>Fields</code></td><td>The listed parent fields, in a read-only panel on the child form</td><td>A read-only grid of the linked children with the listed fields</td></tr>
+<tr><td><code>Full</code></td><td>A read-only link to the full parent record</td><td>A read-only grid with a link to each full child record</td></tr>
+</table></div>
+<ul>
+<li>SQMS uses <code>Parent.View.Mode = "CopiedFields"</code>. A bid user with no SQMSO or SQMS role sees the copied opportunity fields on the bid, and cannot open the opportunity. This is the current SQMS behaviour (F3).</li>
+<li><code>Full</code> opens the other form in view mode. The server gives view access only for a record that is linked to a record that the user can open. It does not give access to other records of that form.</li>
+<li>The server applies the view settings. It sends only the permitted fields. The client cannot ask for more.</li>
+<li>The default for <code>Children</code> is <code>None</code>. Thus a parent form shows no children until the JSON says so.</li>
+</ul>
+<p><strong>Audit and dashboard.</strong> Keep the family audit table with <code>RefType</code> (module 9). Keep the family dashboard with one tab for each form (module 3).</p>
+<h3>11.3 Backward compatibility</h3>
+<ul>
+<li>SQMSO and SQMSB keep their codes, tables, link field, routes and workflow keys.</li>
+<li><code>RoleScope</code> is optional. For SQMSO the change from "all roles" to <code>"SelfAndParent"</code> can remove access. Before the change, run the read-only script <a href="sql/01-section-master-role-scope-check.sql">sql/01-section-master-role-scope-check.sql</a> for <code>SQMSO</code> and <code>SQMSB</code>. Give the needed SQMS roles to the users in the list first. Then make the change.</li>
+<li>The <code>IsDeleted</code> filter can also remove access. The same script lists the deleted rows that give roles today.</li>
+<li><code>Parent</code>, <code>CreateChild</code> and <code>Rollups</code> are optional. Without them, the current code paths stay.</li>
+</ul>
+<h3>11.4 Acceptance</h3>
+<ul>
+<li>A user with a role only in an unrelated app cannot open SQMSO or SQMSB.</li>
+<li>A user with a role in SQMS (the parent) can open SQMSO and SQMSB, as permitted by the rules of each form.</li>
+<li>A deleted entitlement gives no role.</li>
+<li>"Make a bid" on opportunity 12 links the bid to opportunity 12, also when opportunity 120 exists.</li>
+<li>A page reload on a new bid keeps the opportunity data.</li>
+<li>An edit of <code>OpportunityId</code> in the save request does not change the parent of the bid.</li>
+<li>A save or delete of a bid updates the opportunity roll-up values in the same transaction.</li>
+<li>A bid user with no SQMSO or SQMS role sees the copied opportunity fields on the bid, and gets an access error when the user opens the opportunity.</li>
+<li>For a family with <code>View.Mode = "Fields"</code>, the response contains only the listed fields of the other form.</li>
+<li>For a family with <code>View.Mode = "Full"</code>, a user can open a linked record in view mode, but cannot open an unlinked record of that form.</li>
+</ul>
+<h3>11.5 Family questions</h3>
+<ul>
+<li>F1. <strong>Answered 2026-10-25:</strong> most of the next 13 apps are single apps with no children. One app is a family with one parent and two children. Possibly one more app is a family with one parent and one child. The design supports more than one child for each parent: each child has its own <code>Parent</code> block, its own <code>CreateChild</code> button on the parent, its own <code>Rollups</code> and its own dashboard tab.</li>
+<li>F2. <strong>Answered by F1 (2026-10-25):</strong> no known app needs three levels. Keep one level (parent and children). A third level needs a new spec change.</li>
+<li>F3. <strong>Answered 2026-10-25:</strong> for SQMS, a bid user sees the copied parent fields and cannot open the opportunity without a parent-form role. Other families can choose differently: full parent and linked children, or only selected fields. See "Cross-form visibility" in 11.2.</li>
+</ul>
 </section>
 </main>
 </body>

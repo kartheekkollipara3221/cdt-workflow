@@ -48,7 +48,7 @@ a{color:#075889;text-underline-offset:3px}
 
 <div class="table-wrap"><table>
 <tr><th>Severity</th><th>Meaning</th><th>Count</th></tr>
-<tr><td><span class="badge b-high">High</span></td><td>A security hole, incorrect data, or a module that cannot operate.</td><td>13</td></tr>
+<tr><td><span class="badge b-high">High</span></td><td>A security hole, incorrect data, or a module that cannot operate.</td><td>14 (H14 closed for the target)</td></tr>
 <tr><td><span class="badge b-med">Medium</span></td><td>A function gives an incorrect result, or a control is weak. The main data stays correct.</td><td>26</td></tr>
 <tr><td><span class="badge b-low">Low</span></td><td>A risk for maintenance, performance or a rare condition.</td><td>18</td></tr>
 <tr><td><span class="badge b-info">Info</span></td><td>Not an issue. Recorded for clarity.</td><td>3</td></tr>
@@ -166,7 +166,8 @@ a{color:#075889;text-underline-offset:3px}
 <dl>
 <dt>Location</dt><dd><code>Atlasapp/Atlasapp/BBH.CP.Atlas.App.csproj.txt:4</code>; <code>Service/BBH.CP.Atlas.Service.csproj.txt:4</code></dd>
 <dt>Recommendation</dt><dd>Confirm the target framework of the engine copy in <code>BBH.CP.Atlas.Workflow</code>. Change the Atlas projects to <code>net10.0</code>.</dd>
-<dt>Status (2026-10-24)</dt><dd>Probably resolved in the live code. On 2026-10-19 the user reported a successful target build with the engine files. A <code>net9.0</code> project that references a <code>net10.0</code> project does not build, so the live projects probably target <code>net10.0</code>, or the copy is old. Confirm the <code>TargetFramework</code> values in the live project files.</dd>
+<dt>Status (2026-10-25)</dt><dd><strong>Closed.</strong> The user confirmed that the live projects use .NET 10 and EF Core 10. The copy is old.</dd>
+<dt>Earlier status (2026-10-24)</dt><dd>Probably resolved in the live code. On 2026-10-19 the user reported a successful target build with the engine files. A <code>net9.0</code> project that references a <code>net10.0</code> project does not build, so the live projects probably target <code>net10.0</code>, or the copy is old. Confirm the <code>TargetFramework</code> values in the live project files.</dd>
 </dl>
 </div>
 
@@ -188,6 +189,17 @@ a{color:#075889;text-underline-offset:3px}
 <dt>Location</dt><dd><code>CPSQMSBService.cs.txt:333</code></dd>
 <dt>Example</dt><dd>An IPG user opens a bid. The page does not load. "Make a Bid" fails in the same way.</dd>
 <dt>Recommendation</dt><dd>Use <code>TryGetValue</code>. If there is no branch, show all accounts or an empty list.</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">H14</span>The workflow engine SQMS module uses a schema name that the live database does not have <span class="area">Deployment</span><span class="area">Workflow</span></h3>
+<p>The engine SQMS data store reads and writes <code>[SSQMS].[Opportunity]</code> and <code>[SSQMS].[Bid]</code>. The live database uses the schema <code>SQMS</code> (confirmed by the user, 2026-10-25). The database script copy also has <code>SQMS</code>.</p>
+<dl>
+<dt>Location</dt><dd><code>src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs:32, 47, 67, 101, 107, 128, 149, 232</code>; also <code>sql/sqms/003_verify_sqms_deployment.sql</code>, <code>docs/sqms/DBA-DEPLOYMENT.md</code>, the SQMS tests and live acceptance tools</dd>
+<dt>Example</dt><dd>The scheduled job <code>run-sqms-scheduled</code> runs on the live database. SQL Server returns "Invalid object name 'SSQMS.Opportunity'". No opportunity closes after the bidding period, and no bid is classified. The interactive SQMS forms are not affected, because Atlas writes its own tables.</dd>
+<dt>Recommendation</dt><dd>This is an engine change. It needs approval. Options: make the schema a setting with <code>SSQMS</code> as the default (backward compatible); or add database synonyms <code>SSQMS.Opportunity</code> and <code>SSQMS.Bid</code> for the <code>SQMS</code> tables (no code change).</dd>
+<dt>Status (2026-10-25)</dt><dd><strong>Closed for the target.</strong> The user confirmed that the target engine copy is changed to the schema <code>SQMS</code>. The local repository copy (<code>src/WorkflowEngine.Sqms</code>, <code>sql/sqms</code>, the tests and <code>docs/sqms</code>) still has <code>SSQMS</code>, because it was not updated. Do not use the local SQMS scripts on the live database without a change to <code>SQMS</code>.</dd>
 </dl>
 </div>
 </section>

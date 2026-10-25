@@ -30,12 +30,12 @@ Each module spec has these sections:
 
 | # | Module | Spec | Status |
 |---|--------|------|--------|
-| 1 | Section Master (single-page forms: SQMSO, SQMSB, TTD, AIN) | [01-section-master.md](01-section-master.md) · [HTML report](01-section-master.html) · [SQL](sql/01-section-master-rowversion.sql) | Draft 2, complete for review |
+| 1 | Section Master (single-page forms: SQMSO, SQMSB, TTD, AIN) | [01-section-master.md](01-section-master.md) · [HTML report](01-section-master.html) · SQL: [rowversion](sql/01-section-master-rowversion.sql), [role scope check](sql/01-section-master-role-scope-check.sql) | Draft 3, all questions answered, ready for the target team |
 | 2 | Step Master / Step Page (multi-step forms: CDT) | — | Not started |
 | 3 | Dashboard (tabs, grids, menus, procedures) | — | Not started |
 | 4 | Rules engine (`CPRule`) | — | Not started (Section Master spec extends it) |
 | 5 | Data mapping (`MapData` / `BindData`, per-app tables) | — | Not started |
-| 6 | Security and entitlements | — | Not started |
+| 6 | Security and entitlements | — | Not started. Include: ownership uses display names (`CreatedBy`, `TaxPreparerName`); add LAN ID columns. |
 | 7 | Module registry and service factory | — | Not started (Section Master spec introduces it) |
 | 8 | Attachments and download | — | Not started |
 | 9 | Audit log and history | — | Not started |

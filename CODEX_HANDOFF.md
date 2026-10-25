@@ -1,3 +1,20 @@
+# Atlas platform: Section Master draft 3, all questions answered - 2026-10-25
+
+User answered every Section Master question one at a time. Decisions now in docs/atlas-platform/01-section-master.md/.html:
+- Q1: the 13 unused CPApplicationCode values are the next 13 apps, all Section Master. Pilot = rebuild TTD (section 10).
+- Q2/Q3: live form shows grid + file upload; template oddities were copy errors; vehicle = one dropdown driven by fund.
+- Q4: live = .NET 10 + EF Core 10 (H11 closed). Q5: each app has own rules/roles; child apps may use parent roles (RoleScope, section 11).
+- Q7: send real user roles (ActorRoles "User"); engine does the role check. Q8: engine SQMS scheduled job writes Status/WorkflowState/ModifiedBy/ModifiedDate with explicit columns; rowversion safe and prevents lost updates.
+- Q9: live schema is SQMS; target engine already switched; local repo engine copy still SSQMS (H14 closed for target, do not change local engine unless asked).
+- T1 server computes WeeklyTotal (Computed); T2 whole minutes 0-1440; T3 Read view / Prepare create+edit own / Owner all incl. delete (10.5, Permissions, OwnerFields, RuleMode MostPermissive); T4 own = CreatedBy or TaxPreparerName.
+- F1 one family with parent + 2 children, maybe one with parent + 1 child, rest single; F2 one level only; F3 SQMS child sees copied parent fields only; other families configurable via View.Mode None/CopiedFields/Fields/Full.
+New findings: SM-19 MakeBid StartsWith bug; role queries ignore IsDeleted; ModifiedDate UTC vs local.
+SQL (not executed): sql/01-section-master-rowversion.sql (SQMS schema, pre-check), sql/01-section-master-role-scope-check.sql (read-only, parts 1-5).
+Issues doc: H14 added and closed for target; High count 14.
+Not committed yet at time of writing.
+Next: commit/push; then module 5 Data mapping, then module 6 Security (include display-name ownership).
+
+---
 # Atlas platform: Section Master draft 2, complete for review - 2026-10-25
 
 User decision: only ONE more app uses Step Master; all other new apps use Section Master. Step Master spec waits. Section Master is the priority.

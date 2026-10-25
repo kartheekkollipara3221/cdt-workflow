@@ -10,6 +10,20 @@
 --      has a rowversion column with a different name.
 --   3. On a large table, the ALTER writes each row. Run it in a maintenance window.
 --
+-- SCHEMA NAME: the live database uses [SQMS] (confirmed 2026-10-25, spec open question 9).
+--
+-- Known other writer: the workflow engine SQMS scheduled job updates Status, WorkflowState,
+-- ModifiedBy and ModifiedDate with an explicit column list. The new column does not break it.
+--
+-- PRE-CHECK (read only, run first, outside this script): list the database modules that
+-- use these tables. Review each one for INSERT without a column list or SELECT *.
+--   SELECT OBJECT_SCHEMA_NAME(m.object_id) AS SchemaName, OBJECT_NAME(m.object_id) AS ObjectName,
+--          o.type_desc
+--   FROM sys.sql_modules AS m INNER JOIN sys.objects AS o ON o.object_id = m.object_id
+--   WHERE m.definition LIKE N'%Opportunity%' OR m.definition LIKE N'%Bid%'
+--      OR m.definition LIKE N'%TTD%General%' OR m.definition LIKE N'%AccountInventory%'
+--   ORDER BY SchemaName, ObjectName;
+--
 -- Rollback (only if the application does not use the column yet):
 --   ALTER TABLE <table> DROP COLUMN RowVersion;
 SET NOCOUNT ON;
