@@ -1,5 +1,6 @@
 using BBH.CP.Atlas.App.Platform;
 using BBH.CP.Atlas.Data.DTO;
+using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Platform;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using Microsoft.Extensions.Configuration;
@@ -305,6 +306,29 @@ public sealed class RegistryTests : IDisposable
         Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
         Assert.Contains(store.ConfigErrors, x => x.Contains("The last good version (DEMO) stays in use.", StringComparison.Ordinal));
         Assert.NotNull(store.FindManifest("OFF"));
+    }
+
+    [Fact]
+    public void An_app_whose_table_was_not_loaded_at_start_up_is_not_available()
+    {
+        File.WriteAllText(Path.Combine(_folder, "LATE.app.json"), """{ "Code": "LATE", "Form": "DEMO.json", "Table": "dbo.Late", "AuditMode": "Client" }""");
+        AtlasTableRegistry tables = new();
+        ServiceCollection services = new();
+        services.AddSingleton<IAtlasConfigStore>(Store());
+        services.AddSingleton(tables);
+        services.AddScoped<IAtlasModuleResolver, AtlasModuleResolver>();
+        services.AddAtlasModule<DemoModule>("LATE");
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+        IAtlasModuleResolver resolver = scope.ServiceProvider.GetRequiredService<IAtlasModuleResolver>();
+
+        Assert.False(resolver.IsPlatformApp("LATE"));
+        AtlasProblemException error = Assert.Throws<AtlasProblemException>(() => resolver.Get<DemoModule>("LATE", "form"));
+        Assert.Equal(404, error.StatusCode);
+        Assert.Contains("the table 'dbo.Late' was not loaded at start-up", error.Message, StringComparison.Ordinal);
+
+        tables.Add(new AtlasTable("dbo", "Late", [new AtlasColumn("ID", "int", false, null, 10, 0, true, false)]));
+        Assert.True(resolver.IsPlatformApp("LATE"));
     }
 
     private sealed class ManualTime(DateTimeOffset now) : TimeProvider

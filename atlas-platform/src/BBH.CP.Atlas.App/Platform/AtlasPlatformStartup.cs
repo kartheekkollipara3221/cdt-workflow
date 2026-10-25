@@ -63,8 +63,9 @@ public static class AtlasPlatformStartup
 
         IAtlasConfigStore configStore = provider.GetRequiredService<IAtlasConfigStore>();
         HashSet<string> registered = new(provider.GetServices<AtlasModuleRegistration>().Select(x => x.Code), StringComparer.OrdinalIgnoreCase);
+        // All registered manifests, also disabled ones, so an app that is switched on later finds its tables (review HO-05).
         string[] tables = [.. configStore.GetManifests()
-            .Where(x => x.Enabled && registered.Contains(x.Code))
+            .Where(x => registered.Contains(x.Code))
             .SelectMany(x => new[] { x.Table, x.AuditTable, x.AttachmentTable })
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x!)];

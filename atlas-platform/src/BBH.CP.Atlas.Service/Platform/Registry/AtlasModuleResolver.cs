@@ -1,4 +1,7 @@
+using BBH.CP.Atlas.Data.Platform;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BBH.CP.Atlas.Service.Platform.Registry;
 
@@ -11,7 +14,11 @@ public interface IAtlasModule
 /// <summary>One AddAtlasModule line (spec 07, 4.2).</summary>
 public sealed record AtlasModuleRegistration(string Code, Type ServiceType);
 
-/// <summary>Replaces the five if chains (spec 07, 4.3). Unknown or disabled app: 404. Missing service type: 400.</summary>
+/// <summary>
+/// Replaces the five if chains (spec 07, 4.3). Unknown or disabled app: 404. Missing service type: 400.
+/// An app whose Table or AuditTable was not loaded at start-up (for example a manifest changed while the app runs)
+/// is not available: 404 and Atlas.AppNotAvailable (review HO-05). A restart loads the table and runs the checks.
+/// </summary>
 public interface IAtlasModuleResolver
 {
     /// <summary>True if the code has a registration line and an enabled manifest.</summary>
@@ -25,8 +32,12 @@ public interface IAtlasModuleResolver
 public sealed class AtlasModuleResolver(
     IServiceProvider services,
     IAtlasConfigStore configStore,
-    IEnumerable<AtlasModuleRegistration> registrations) : IAtlasModuleResolver
+    IEnumerable<AtlasModuleRegistration> registrations,
+    AtlasTableRegistry? tables = null,
+    ILogger<AtlasModuleResolver>? logger = null) : IAtlasModuleResolver
 {
+    public static readonly EventId AppNotAvailable = new(41022, "Atlas.AppNotAvailable");
+
     private readonly Dictionary<string, AtlasModuleRegistration> _registrations =
         registrations.ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
 
@@ -38,7 +49,18 @@ public sealed class AtlasModuleResolver(
             return false;
 
         string code = AtlasAppCode.Normalize(appCode!);
-        return _registrations.ContainsKey(code) && configStore.FindManifest(code) is { Enabled: true };
+        return _registrations.ContainsKey(code) && configStore.FindManifest(code) is { Enabled: true } manifest
+            && MissingTable(manifest) == null;
+    }
+
+    /// <summary>The first table of the manifest that is not in the registry, or null (no registry: null).</summary>
+    private string? MissingTable(AtlasAppManifest manifest)
+    {
+        if (tables == null)
+            return null;
+
+        IEnumerable<string?> names = [manifest.Table, manifest.AuditMode == AtlasAuditMode.Server ? manifest.AuditTable : null];
+        return names.FirstOrDefault(name => !string.IsNullOrWhiteSpace(name) && !tables.TryGet(name, out _));
     }
 
     public TService Get<TService>(string appCode, string feature) where TService : class
@@ -47,8 +69,15 @@ public sealed class AtlasModuleResolver(
             throw AtlasProblemException.BadRequest($"'{appCode}' is not a valid app code.");
 
         string code = AtlasAppCode.Normalize(appCode);
-        if (!_registrations.ContainsKey(code) || configStore.FindManifest(code) is not { Enabled: true })
+        if (!_registrations.ContainsKey(code) || configStore.FindManifest(code) is not { Enabled: true } manifest)
             throw AtlasProblemException.NotFound($"App '{code}' is not registered.");
+
+        if (MissingTable(manifest) is { } missing)
+        {
+            (logger ?? (ILogger)NullLogger.Instance).LogWarning(AppNotAvailable,
+                "Atlas.AppNotAvailable App={App} Table={Table} Reason=NotLoadedAtStartup", code, missing);
+            throw AtlasProblemException.NotFound($"App '{code}' is not available: the table '{missing}' was not loaded at start-up. Restart the application.");
+        }
 
         IAtlasModule module = services.GetRequiredKeyedService<IAtlasModule>(code);
         module.AppCode = code;
