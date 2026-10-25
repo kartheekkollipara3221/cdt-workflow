@@ -1,0 +1,92 @@
+{
+  // TTDV2 dashboard (spec 12, 3.2). Tab data from the table (Source: Table), no procedure.
+  // The platform always adds IsDeleted = 0. Menus and the add button come from Permissions in TTDV2.json.
+  "Name": "Tax Time Database",
+  "Tabs": [
+    {
+      "ID": "CurrentTaxTimesheet",
+      "Code": "TTDV2",
+      "Label": "Current Tax Timesheet",
+      "Source": "Table",
+      "Filter": [
+        {
+          "Any": [
+            { "Column": "CreatedBy", "Op": "Eq", "Value": "{LanId}" },
+            { "Column": "TaxPreparerLanId", "Op": "Eq", "Value": "{LanId}" },
+            { "Column": "ModifiedBy", "Op": "Eq", "Value": "{LanId}" }
+          ]
+        }
+      ],
+      "OrderBy": [ "ModifiedDate DESC", "CreatedDate DESC" ],
+      "Columns": [
+        { "Name": "ID", "Hidden": true },
+        { "Name": "AccountNumber", "Label": "Account Number", "Link": "Edit" },
+        { "Name": "AccountName", "Label": "Client Name" },
+        { "Name": "TaxYear", "Label": "Tax Year", "Type": "number" },
+        { "Name": "Category", "Label": "Category" },
+        { "Name": "WeekEnding", "Label": "Week Ending", "Type": "date" },
+        { "Name": "WeeklyTotal", "Label": "Weekly Total", "Type": "number" },
+        { "Name": "ModifiedBy", "Label": "Modified By", "Type": "user" },
+        { "Name": "CreatedDate", "Label": "Created", "Type": "date" }
+      ]
+    },
+    {
+      "ID": "TaxTimeAllReport",
+      "Code": "TTDV2",
+      "Label": "Tax-Time All Report",
+      "Source": "Table",
+      "OrderBy": [ "CreatedBy", "WeekEnding DESC" ],
+      "Columns": [
+        { "Name": "ID", "Hidden": true },
+        { "Name": "AccountNumber", "Label": "Account Number", "Link": "Edit" },
+        { "Name": "AccountName", "Label": "Client Name" },
+        { "Name": "Category", "Label": "Category" },
+        { "Name": "TaxPreparerLanId", "Label": "Name of Tax Preparer", "Type": "user" },
+        { "Name": "TaxYear", "Label": "Tax Year", "Type": "number" },
+        { "Name": "WeekEnding", "Label": "Week Ending", "Type": "date" },
+        { "Name": "MondayMinute", "Label": "Monday Minutes", "Type": "number", "Sum": true },
+        { "Name": "TuesdayMinute", "Label": "Tuesday Minutes", "Type": "number", "Sum": true },
+        { "Name": "WednesdayMinute", "Label": "Wednesday Minutes", "Type": "number", "Sum": true },
+        { "Name": "ThursdayMinute", "Label": "Thursday Minutes", "Type": "number", "Sum": true },
+        { "Name": "FridayMinute", "Label": "Friday Minutes", "Type": "number", "Sum": true },
+        { "Name": "SaturdayMinute", "Label": "Saturday Minutes", "Type": "number", "Sum": true },
+        { "Name": "SundayMinute", "Label": "Sunday Minutes", "Type": "number", "Sum": true },
+        { "Name": "WeeklyTotal", "Label": "Weekly Total", "Type": "number", "Sum": true }
+      ]
+    },
+    {
+      "ID": "TaxTimeReport",
+      "Code": "TTDV2",
+      "Label": "Tax Time Report",
+      "Source": "Table",
+      "Filter": [ { "Column": "TaxPreparerLanId", "Op": "Eq", "Value": "{LanId}" } ],
+      "OrderBy": [ "WeekEnding DESC", "CreatedDate DESC" ],
+      "Columns": [
+        { "Name": "ID", "Hidden": true },
+        { "Name": "AccountNumber", "Label": "Account Number", "Link": "Edit" },
+        { "Name": "AccountName", "Label": "Client Name" },
+        { "Name": "Category", "Label": "Category" },
+        { "Name": "TaxPreparerLanId", "Label": "Name of Tax Preparer", "Type": "user" },
+        { "Name": "TaxYear", "Label": "Tax Year", "Type": "number" },
+        { "Name": "WeekEnding", "Label": "Week Ending", "Type": "date" },
+        { "Name": "MondayMinute", "Label": "Monday Minutes", "Type": "number", "Sum": true },
+        { "Name": "TuesdayMinute", "Label": "Tuesday Minutes", "Type": "number", "Sum": true },
+        { "Name": "WednesdayMinute", "Label": "Wednesday Minutes", "Type": "number", "Sum": true },
+        { "Name": "ThursdayMinute", "Label": "Thursday Minutes", "Type": "number", "Sum": true },
+        { "Name": "FridayMinute", "Label": "Friday Minutes", "Type": "number", "Sum": true },
+        { "Name": "SaturdayMinute", "Label": "Saturday Minutes", "Type": "number", "Sum": true },
+        { "Name": "SundayMinute", "Label": "Sunday Minutes", "Type": "number", "Sum": true },
+        { "Name": "WeeklyTotal", "Label": "Weekly Total", "Type": "number", "Sum": true }
+      ]
+    }
+  ],
+  "Buttons": [
+    {
+      "Name": "Add",
+      "Label": "Add New",
+      "Visible": true,
+      "Disabled": false,
+      "Target": { "AppCode": "TTDV2", "Id": 0 }
+    }
+  ]
+}

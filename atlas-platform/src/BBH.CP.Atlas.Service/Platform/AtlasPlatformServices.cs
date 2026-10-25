@@ -1,4 +1,5 @@
 using BBH.CP.Atlas.Service.Platform.Audit;
+using BBH.CP.Atlas.Service.Platform.Dashboard;
 using BBH.CP.Atlas.Service.Platform.Options;
 using BBH.CP.Atlas.Service.Platform.Rules;
 using BBH.CP.Atlas.Service.Platform.Sections;
@@ -26,6 +27,7 @@ public static class AtlasPlatformServices
         services.AddScoped<IAtlasAuditWriter, AtlasAuditWriter>();
         services.AddScoped<IAtlasOptionProvider, PBAccountsOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, UsersInRolesOptionProvider>();
+        services.AddScoped<IAtlasDashboardService, AtlasDashboardService>();
         services.AddScoped<AtlasModuleServices>();
     }
 }

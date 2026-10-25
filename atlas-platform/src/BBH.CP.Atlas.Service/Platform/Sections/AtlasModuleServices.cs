@@ -1,6 +1,7 @@
 using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Platform.Audit;
+using BBH.CP.Atlas.Service.Platform.Dashboard;
 using BBH.CP.Atlas.Service.Platform.Options;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Rules;
@@ -23,6 +24,7 @@ public sealed class AtlasModuleServices(
     IAtlasAccessService access,
     IAtlasRuleEngine rules,
     IAtlasAuditWriter audit,
+    IAtlasDashboardService dashboards,
     IEnumerable<IAtlasOptionProvider> optionProviders,
     TimeProvider time,
     IConfiguration configuration,
@@ -36,6 +38,7 @@ public sealed class AtlasModuleServices(
     public IAtlasAccessService Access { get; } = access;
     public IAtlasRuleEngine Rules { get; } = rules;
     public IAtlasAuditWriter Audit { get; } = audit;
+    public IAtlasDashboardService Dashboards { get; } = dashboards;
     public IReadOnlyList<IAtlasOptionProvider> OptionProviders { get; } = [.. optionProviders];
     public TimeProvider Time { get; } = time;
     public IConfiguration Configuration { get; } = configuration;

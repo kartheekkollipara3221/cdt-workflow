@@ -675,6 +675,13 @@ namespace BBH.CP.Atlas.Service.Application
 
         #endregion Save
 
+        #region Dashboard
+
+        /// <summary>The dashboard of the app (spec 03, 4.1-4.7).</summary>
+        public override CPAtlasDashboard LoadDashboard() => Dashboard = Services.Dashboards.Load(Manifest.Code);
+
+        #endregion Dashboard
+
         #region Remove and audit
 
         public override CPAtlasPage RemovePage(int id)

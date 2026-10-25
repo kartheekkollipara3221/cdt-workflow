@@ -3,6 +3,7 @@ using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Platform.Tests.Data;
 using BBH.CP.Atlas.Service.Application;
 using BBH.CP.Atlas.Service.Platform.Audit;
+using BBH.CP.Atlas.Service.Platform.Dashboard;
 using BBH.CP.Atlas.Service.Platform.Options;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Rules;
@@ -92,6 +93,7 @@ internal sealed class SectionHarness : IDisposable
         AtlasModuleServices services = new(
             _configStore, context, platform, user, directory, access, new AtlasRuleEngine(),
             new AtlasAuditWriter(platform, user, Time),
+            new AtlasDashboardService(_configStore, context, registry, user, directory, access, new AtlasRuleEngine()),
             [new PBAccountsOptionProvider(_configuration, user), new UsersInRolesOptionProvider(directory)],
             Time, _configuration, NullLoggerFactory.Instance);
 
