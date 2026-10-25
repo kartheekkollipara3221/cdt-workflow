@@ -33,7 +33,7 @@ Rules: .NET 10, warnings are errors, `TimeProvider` (no `DateTime.Now`), no new 
 | Phase | Status |
 |---|---|
 | C0 Skeleton and stand-ins | Done |
-| C1 Data | Not started |
+| C1 Data | Done |
 | C2 Config and registry | Not started |
 | C3 Security | Not started |
 | C4 Rules engine | Not started |

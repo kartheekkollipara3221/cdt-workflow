@@ -1,4 +1,4 @@
-# RESUME HERE - atlas-platform phase C0 DONE (skeleton + .NET stand-ins, build 0 warnings, 2 smoke tests pass, host /health ok), NOT committed; NEXT = C1 Data when the user says. Spec: docs/atlas-platform/12-ttd-pilot-build.md section 11 (TTDV2 pilot, all Qs answered, committed 364b116) - 2026-10-25
+# RESUME HERE - atlas-platform C0 committed 4c17e94; C1 Data DONE (AtlasPlatformContext shared-type, sys.columns reader, value converter, load by key, shared tx; 47 tests pass incl. SQL Server), NOT committed; NEXT = C2 Config/registry when the user says. Spec: docs/atlas-platform/12-ttd-pilot-build.md section 11 - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps

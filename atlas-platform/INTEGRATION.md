@@ -41,4 +41,6 @@ Run `sql/release-p1/` in number order (DBA in QC and production). See spec 12, s
 |---|---|
 | `CPAtlasUser.LanId` / `Lanid` property name | Copy error in the read-only copy (model file and mapping differ) |
 | EF Core version: local 10.0.7, target 10.0.13 | Same major version; build at the target confirms |
+| `System.Security.Cryptography.Pkcs` | Locally pinned to 10.0.13 (vulnerability advisories on 9.0.4 via EF Core 10.0.7). Check that the target build has no NU1902/NU1903. |
+| API login rights on schema `TTDV2` | `SELECT, INSERT, UPDATE, DELETE` (step 6 of `12-ttdv2-app.sql`). The metadata reader needs no extra grant. |
 | `@pbdev/pbdev-core` look and feel, masks | The local stand-in only copies the behaviour (C9) |
