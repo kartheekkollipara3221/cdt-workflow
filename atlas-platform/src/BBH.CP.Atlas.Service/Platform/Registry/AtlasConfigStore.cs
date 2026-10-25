@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using BBH.CP.Atlas.Data.DTO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BBH.CP.Atlas.Service.Platform.Registry;
 
@@ -12,6 +14,9 @@ namespace BBH.CP.Atlas.Service.Platform.Registry;
 /// The manifests are one parsed, shared snapshot (review HO-07): do not change a manifest object. The store looks
 /// at the folder (names, times, sizes) at most every AppSettings:ConfigRefreshSeconds (default 2; 0 = each call)
 /// and parses the manifests again only when the folder changed.
+/// One manifest file that cannot be read does not stop the others (review HO-02): the last good version of that file
+/// stays in use (or, with no good version, only that app is missing), Atlas.ConfigInvalid is logged and ConfigErrors
+/// names the file for the start-up check.
 /// </summary>
 public interface IAtlasConfigStore
 {
@@ -26,20 +31,28 @@ public interface IAtlasConfigStore
 
     /// <summary>The dashboard JSON of the app (a new copy), or null if the app has no dashboard.</summary>
     CPAtlasDashboard? GetDashboard(string appCode);
+
+    /// <summary>Manifest files that could not be read in the current snapshot (review HO-02).</summary>
+    IReadOnlyList<string> ConfigErrors => [];
 }
 
 public sealed class AtlasConfigStore : IAtlasConfigStore
 {
+    public static readonly EventId ConfigInvalid = new(41021, "Atlas.ConfigInvalid");
+
     private readonly IConfiguration _configuration;
+    private readonly ILogger _logger;
     private readonly TimeProvider _time;
     private readonly TimeSpan _refresh;
     private readonly ConcurrentDictionary<string, (DateTime Stamp, string Text)> _files = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
     private ManifestSnapshot? _snapshot;
 
-    public AtlasConfigStore(IConfiguration configuration, IHostEnvironment environment, TimeProvider? time = null)
+    public AtlasConfigStore(IConfiguration configuration, IHostEnvironment environment, TimeProvider? time = null,
+        ILogger<AtlasConfigStore>? logger = null)
     {
         _configuration = configuration;
+        _logger = logger ?? (ILogger)NullLogger.Instance;
         _time = time ?? TimeProvider.System;
         string folder = configuration["AppSettings:ConfigFolder"] is { Length: > 0 } configured ? configured : "Config";
         ConfigFolder = Path.GetFullPath(Path.IsPathRooted(folder) ? folder : Path.Combine(environment.ContentRootPath, folder));
@@ -53,9 +66,11 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
     public AtlasAppManifest? FindManifest(string appCode) =>
         Snapshot().ByCode.GetValueOrDefault(AtlasAppCode.Normalize(appCode));
 
+    public IReadOnlyList<string> ConfigErrors => Snapshot().Errors;
+
     private sealed record ManifestSnapshot(
         string Signature, IReadOnlyList<AtlasAppManifest> Manifests, IReadOnlyDictionary<string, AtlasAppManifest> ByCode,
-        DateTimeOffset CheckedAt);
+        IReadOnlyList<string> Errors, DateTimeOffset CheckedAt);
 
     private ManifestSnapshot Snapshot()
     {
@@ -81,29 +96,47 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
 
             ManifestSnapshot next = current != null && current.Signature == signature
                 ? current with { CheckedAt = now }
-                : Build(paths, signature, now);
+                : Build(paths, signature, now, current);
             Volatile.Write(ref _snapshot, next);
             return next;
         }
     }
 
-    private ManifestSnapshot Build(string[] paths, string signature, DateTimeOffset now)
+    private ManifestSnapshot Build(string[] paths, string signature, DateTimeOffset now, ManifestSnapshot? previous)
     {
         List<AtlasAppManifest> manifests = [];
+        List<string> errors = [];
         foreach (string path in paths)
         {
-            AtlasAppManifest manifest = AtlasJson.Deserialize<AtlasAppManifest>(ReadText(path), Path.GetFileName(path));
-            manifest.Code = AtlasAppCode.Normalize(manifest.Code);
-            manifest.SourceFile = path;
-            ApplyEnvironmentOverrides(manifest);
-            manifests.Add(manifest);
+            try
+            {
+                AtlasAppManifest manifest = AtlasJson.Deserialize<AtlasAppManifest>(ReadText(path), Path.GetFileName(path));
+                if (string.IsNullOrWhiteSpace(manifest.Code))
+                    throw new InvalidOperationException($"{Path.GetFileName(path)} has no Code.");
+                manifest.Code = AtlasAppCode.Normalize(manifest.Code);
+                manifest.SourceFile = path;
+                ApplyEnvironmentOverrides(manifest);
+                manifests.Add(manifest);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+            {
+                AtlasAppManifest? lastGood = previous?.Manifests.FirstOrDefault(x => string.Equals(x.SourceFile, path, StringComparison.OrdinalIgnoreCase));
+                string result = lastGood != null
+                    ? $"The last good version ({lastGood.Code}) stays in use."
+                    : "The app of this file is not available.";
+                string message = $"{Path.GetFileName(path)} cannot be read: {ex.Message} {result}";
+                errors.Add(message);
+                _logger.LogError(ConfigInvalid, "Atlas.ConfigInvalid File={File} Error={Error}", Path.GetFileName(path), message);
+                if (lastGood != null)
+                    manifests.Add(lastGood);
+            }
         }
 
         Dictionary<string, AtlasAppManifest> byCode = [];
         foreach (AtlasAppManifest manifest in manifests)
             byCode.TryAdd(manifest.Code, manifest); // the first file wins, as FirstOrDefault did
 
-        return new ManifestSnapshot(signature, manifests, byCode, now);
+        return new ManifestSnapshot(signature, manifests, byCode, errors, now);
     }
 
     public CPAtlasApplicationConfig GetForm(string appCode)

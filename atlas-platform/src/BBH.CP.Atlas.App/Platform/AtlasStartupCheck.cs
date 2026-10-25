@@ -48,6 +48,9 @@ public static class AtlasStartupCheck
             return [new(AtlasCheckSeverity.Error, "*", ex.Message)];
         }
 
+        foreach (string configError in configStore.ConfigErrors)
+            items.Add(new(AtlasCheckSeverity.Error, "*", configError));
+
         foreach (string code in registrations.Keys.Where(code => !manifests.Any(x => x.Code == code)))
             items.Add(new(AtlasCheckSeverity.Error, code, $"has a registration line but no {code}.app.json in {configStore.ConfigFolder}."));
 

@@ -31,7 +31,7 @@ public static class AtlasPlatformServiceCollectionExtensions
         services.AddSingleton(platformConfiguration);
         services.AddSingleton<IAtlasConfigStore>(provider =>
             new AtlasConfigStore(platformConfiguration.Configuration, provider.GetRequiredService<IHostEnvironment>(),
-                provider.GetRequiredService<TimeProvider>()));
+                provider.GetRequiredService<TimeProvider>(), provider.GetService<ILogger<AtlasConfigStore>>()));
         services.AddScoped<IAtlasModuleResolver, AtlasModuleResolver>();
 
         // Data (module 5).

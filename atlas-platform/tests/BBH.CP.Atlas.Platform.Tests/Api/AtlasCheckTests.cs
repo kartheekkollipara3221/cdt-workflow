@@ -116,6 +116,19 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         }
     }
 
+    [Fact]
+    public async Task A_manifest_file_that_cannot_be_read_is_an_error_and_the_other_apps_are_still_checked()
+    {
+        CopyRealConfig();
+        File.WriteAllText(Path.Combine(_folder, "BROKEN.app.json"), """{ "Code": """);
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR *: BROKEN.app.json cannot be read", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("ERROR TTDV2", report, StringComparison.Ordinal);
+    }
+
     private void CopyRealConfig()
     {
         Directory.CreateDirectory(_folder);

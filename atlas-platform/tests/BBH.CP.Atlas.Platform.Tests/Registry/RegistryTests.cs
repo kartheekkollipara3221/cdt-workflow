@@ -280,6 +280,33 @@ public sealed class RegistryTests : IDisposable
         Assert.Equal(AtlasAccessMode.LogOnly, store.FindManifest("DEMO")!.AccessMode);
     }
 
+    [Fact]
+    public void A_manifest_file_that_cannot_be_read_does_not_stop_the_other_apps()
+    {
+        File.WriteAllText(Path.Combine(_folder, "BROKEN.app.json"), """{ "Code": "BROKEN", "Form": """);
+        AtlasConfigStore store = Store();
+
+        Assert.NotNull(store.FindManifest("DEMO"));
+        Assert.Null(store.FindManifest("BROKEN"));
+        Assert.Contains(store.ConfigErrors, x => x.StartsWith("BROKEN.app.json cannot be read", StringComparison.Ordinal)
+            && x.EndsWith("The app of this file is not available.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_manifest_file_that_becomes_unreadable_keeps_its_last_good_version()
+    {
+        AtlasConfigStore store = Store();
+        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
+
+        string path = Path.Combine(_folder, "DEMO.app.json");
+        File.WriteAllText(path, """{ "Code": "demo", "AccessMode": "LogOnly", """); // a copy that is not complete
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
+
+        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
+        Assert.Contains(store.ConfigErrors, x => x.Contains("The last good version (DEMO) stays in use.", StringComparison.Ordinal));
+        Assert.NotNull(store.FindManifest("OFF"));
+    }
+
     private sealed class ManualTime(DateTimeOffset now) : TimeProvider
     {
         public DateTimeOffset Now { get; set; } = now;
