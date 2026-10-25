@@ -1,4 +1,4 @@
-# RESUME HERE - atlas-platform build: C0-C10 DONE and committed; TTDV2 runs locally; WAITING for the user's browser review feedback - 2026-10-25
+# RESUME HERE - atlas-platform build: C0-C10 DONE, committed and PUSHED (origin/console-code-first-0518 at 96af19e+); WAITING for the user's browser review feedback - 2026-10-25
 
 ## Status
 - All build phases done (spec docs/atlas-platform/12-ttd-pilot-build.md, section 11). Commits: C5 0ee9027, C6 253f467,
@@ -35,8 +35,21 @@
 - Select values are not checked against the options on save (e.g. TaxPreparer can be any LAN ID).
 - Script 010 (engine migrations) is made by the target team.
 
+## Restart the local review (servers do not survive the session)
+1. DB (only if missing or to reset): powershell -ExecutionPolicy Bypass -File atlas-platform/local/setup-local-db.ps1 -Recreate
+2. API: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn   (http://localhost:5080/swagger)
+3. UI: cd atlas-platform/WebUi; npm start   (http://localhost:4200)
+Stop the API before dotnet test (the running exe locks the App dll).
+
+## How to work on feedback
+- Same rules as before: commit each change; findings and design choices go to atlas-platform/INTEGRATION.md section 6
+  (next number B17); keep backward compatibility; DB changes as SQL scripts (copy module script to sql/release-p1 and
+  keep ReleaseScriptTests green); update this entry before ending.
+- Push only when the user asks.
+
 ## Next-session prompt
-"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. I reviewed TTDV2 in the browser; here is my feedback: ..."
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Restart the local review (API + UI). I reviewed TTDV2 in
+the browser; here is my feedback: ..."
 
 ---
 
