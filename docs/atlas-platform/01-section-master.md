@@ -556,7 +556,7 @@ Result: TTD needs one module class with one hook (`OnLoad` for the grid headers)
 
 - `Permissions` is a new optional block. The server checks it on `ManagePage` (new record) and `RemovePage`. The dashboard JSON uses the same block to show or hide the add and delete menus (module 3).
 - The server applies `Rules` again on save (5.9, steps 3 to 5). A `Prepare` user who edits another user's record gets an error, also with a changed request.
-- A user with more than one role gets the most permissive result. Example: `Read` + `Prepare` can edit own records. Note: today `ApplyRules` applies each matching rule in order, so the last matching rule wins. Keep that behaviour for the current JSON. Add an optional `RuleMode: "MostPermissive"` to the app JSON for TTD and the new apps.
+- A user with more than one role gets the most permissive result. Example: `Read` + `Prepare` can edit own records. Note (corrected 2026-10-25, module 4, RE-02): today `ApplyRules` stops at the first matching rule, so the first matching rule wins. Keep that behaviour (`FirstMatch`) for the current JSON. Add an optional `RuleMode: "MostPermissive"` to the app JSON for TTD and the new apps.
 - A user with none of the three roles cannot open TTD (SM-08).
 - Acceptance: test each cell of the table above with one user for each role, for an own record and for a record of another user.
 

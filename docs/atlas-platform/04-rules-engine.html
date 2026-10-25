@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rules engine: reusable design</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 4 · design only · draft 2 · 2026-10-25</div>
+<h1>Rules engine: reusable design</h1>
+<p class="lead">This report examines how CP Atlas applies its rules to steps, sections, controls, buttons and dashboard items. It gives one rules engine for all targets, with a clear result for users with more than one role, a safe default, and the same result on load and on save.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered (section 9). Design only. No target code is changed.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>7</b><span>findings (RE-01 to RE-07)</span></div>
+<div class="kpi"><b>3</b><span>High findings</span></div>
+<div class="kpi"><b>6</b><span>copies of the rule logic today, 1 after</span></div>
+<div class="kpi"><b>0</b><span>open questions</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>The rules decide what each user sees and can change: steps, sections, controls, buttons, dashboard tabs and row menus. Today the same rule logic is in six places, and each module service computes its own inputs (roles, state, owner). A new app must get correct rules from its JSON only. This module defines one rules engine for all targets, with one input context, a clear result when more than one rule matches, and the same result on load and on save.</p>
+<p>Scope: <code>CPRule</code> (roles, states, owner), the rule modes, the default when no rule matches, the owner and derived roles, the start-up check and a rule preview. Related items: value-based <code>Effects</code> (module 1, 5.1), <code>OwnerFields</code> and <code>RuleMode</code> (module 1, 10.5), <code>Permissions</code> and the role flags (module 6, 4.3), dashboard rules (module 3, 4.4), the save pipeline (module 1, 5.9).</p>
+</section>
+<section id="2-current-behaviour">
+<h2>2. Current behaviour</h2>
+
+<h3>2.1 The rule</h3>
+<pre><code>{ "Roles": ["MFO"], "States": ["DRAFT"], "IsOwner": true,
+  "Visible": true, "Disabled": false,
+  "EnableControls": [], "DisableControls": [], "ShowControls": [], "HideControls": [] }</code></pre>
+<ul>
+<li>A condition that is not there matches all. <code>Roles</code> and <code>States</code> match if one value is the same (case is ignored). <code>IsOwner</code> must be equal. Evidence: <code>Data/Data/DTO/CPAtlasApplicationConfig.cs.txt:168-179, 308-345</code>.</li>
+<li>The rules of a target are examined in order. The <strong>first</strong> rule that matches is applied, and the loop stops (<code>break</code>). Evidence: <code>CPAtlasApplicationConfig.cs.txt:373, 447, 497</code>; <code>CPAtlasDashboardConfig.cs.txt:125, 174</code>.</li>
+<li>If no rule matches, the target keeps the values of the JSON (<code>Visible</code> true, <code>Disabled</code> false, unless the JSON sets them).</li>
+</ul>
+<h3>2.2 Where the rules run</h3>
+<div class="table-wrap"><table>
+<tr><th>Target</th><th>Method</th><th>Evidence</th></tr>
+<tr><td>Step (all its controls)</td><td><code>CPApplicationStep.ApplyRules</code></td><td><code>CPAtlasApplicationConfig.cs.txt:308-380</code></td></tr>
+<tr><td>Section control and its children</td><td><code>CPApplicationSection.ApplyRules</code></td><td><code>CPAtlasApplicationConfig.cs.txt:382-456</code></td></tr>
+<tr><td>Section button</td><td><code>ApplyButtonRules</code></td><td><code>CPAtlasApplicationConfig.cs.txt:458-505</code></td></tr>
+<tr><td>Dashboard button, tab</td><td><code>ApplyButtonRules</code>, <code>ApplyTabRules</code></td><td><code>CPAtlasDashboardConfig.cs.txt:86-184</code></td></tr>
+<tr><td>Dashboard row menu (roles only)</td><td><code>ApplyMenuRules</code></td><td><code>CPAtlasDashboardConfig.cs.txt:60-84</code></td></tr>
+</table></div>
+<ul>
+<li>AIN, SQMSO and SQMSB call the section rules. TTD and CDT call no section or step rules. No service calls the step rules. Evidence: <code>CPAINService.cs.txt:62-63</code>; <code>CPSQMSOService.txt:142-152</code>; <code>CPSQMSBService.cs.txt:196-197</code>.</li>
+</ul>
+<h3>2.3 The inputs</h3>
+<p>Each service computes the roles, the state and <code>IsOwner</code> itself:</p>
+<ul>
+<li>AIN: <code>IsOwner</code> = "the user has no <code>Read</code> role". Evidence: <code>CPAINService.cs.txt:59</code>.</li>
+<li>SQMSO: <code>IsOwner</code> = <code>CreatedBy</code> is the display name of the user, or <code>SellerRMTeam</code> contains it. Evidence: <code>CPSQMSOService.txt:93-95</code>.</li>
+<li>SQMSB: in states with <code>CHECKSELLER</code>, an MFO user who owns the parent opportunity gets the role list <code>["Seller"]</code> in place of the real roles. Evidence: <code>CPSQMSBService.cs.txt:136-144</code>.</li>
+</ul>
+</section>
+<section id="3-findings">
+<h2>3. Findings</h2>
+
+<div class="issue med">
+<h3><span class="badge b-med">RE-01</span>Six copies of the same rule logic <span class="area">for reuse</span></h3>
+<p>The match of roles, states and owner is copied in six methods (2.2). The copies already differ: the menu rule does not reset its condition (module 3, DB-05), the step rule supports <code>ShowControls</code> / <code>HideControls</code> and the section rule does not, and the section rule applies <code>EnableControls</code> / <code>DisableControls</code> only to child controls. Each new module must also remember to call the rules (TTD does not). A correction must be made in six places.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">RE-02</span>The first matching rule wins, so a user with two roles can get less access</h3>
+<p>The result depends on the order of the rules in the JSON, not on the roles of the user. Example (AIN, <code>AccountInfo</code>): a user with <code>Admin</code> and <code>Read</code> gets <code>IsOwner</code> = false (because the user has <code>Read</code>). The <code>Admin</code> rule needs <code>IsOwner</code> = true and does not match. The <code>Read</code> rule matches: the section is read-only for an admin. Evidence: <code>AIN.json.txt:14-30</code>; <code>CPAINService.cs.txt:59-62</code>.</p>
+<p>Correction to module 1 (10.5): module 1 says "today the last matching rule wins". The code stops at the first match. Module 1 is corrected in the same change as this spec.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">RE-03</span>No matching rule gives full access</h3>
+<p>If no rule matches, the target keeps the JSON values, which are usually visible and enabled. A gap in the rule list gives an editable form. Example (SQMSB, <code>OpportunityInformation</code>): an MFO user who owns a bid in the state <code>CLOSED TO BIDDING</code> matches none of the four rules, so the section stays enabled. Evidence: <code>SQMSB.json.txt:265-340</code>. Today the save does not check the rules (module 1, SM-14), so the change is saved.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RE-04</span><code>IsOwner</code> has a different meaning in each app</h3>
+<p>AIN uses <code>IsOwner</code> to mean "can write". SQMSO and SQMSB use it for "my record", with a display name and a substring match (module 6, SE-04). SQMSB also makes a role (<code>Seller</code>) in code. A new app cannot reuse any of this from JSON.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">RE-05</span>The rules apply only to the display <span class="area">security</span></h3>
+<p>The rules change <code>Visible</code> and <code>Disabled</code> in the response. The save, the delete and the actions do not apply them again (module 1, SM-14; issue H4). This finding is in this module so that the engine is made for both uses; the correction is the save pipeline (module 1, 5.9) and the access check (module 6, 4.3).</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">RE-06</span>Null references</h3>
+<p>A section rule on a control with no <code>ChildControls</code>, a step rule on a step with no <code>Controls</code>, and a menu with no <code>Rule</code> stop the request with a null reference. The current JSON has rules only on group controls with children, so it does not fail today. Evidence: <code>CPAtlasApplicationConfig.cs.txt:340, 421</code>; <code>CPAtlasDashboardConfig.cs.txt:77-80</code>.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">RE-07</span>Names in rules are not checked</h3>
+<p>A wrong control name in <code>EnableControls</code>, a wrong state in <code>States</code>, or a wrong role in <code>Roles</code> has no effect and gives no message. The rule then does not match, and RE-03 applies.</p>
+</div>
+</section>
+<section id="4-reusable-design">
+<h2>4. Reusable design</h2>
+
+<h3>4.1 One engine</h3>
+<p>Add <code>IAtlasRuleEngine</code> with one method:</p>
+<pre><code>RuleResult Evaluate(IReadOnlyList&lt;CPRule&gt;? rules, RuleContext context, RuleMode mode, RuleDefault fallback);</code></pre>
+<ul>
+<li><code>RuleContext</code>: the roles of the app (module 6, 4.4, with <code>RoleScope</code> of module 1), the role flags, the state, the owner relations (4.4), and the operation (<code>View</code> or <code>Edit</code>).</li>
+<li><code>RuleResult</code>: <code>Matched</code>, <code>Visible</code>, <code>Disabled</code>, and the name lists <code>Show</code>, <code>Hide</code>, <code>Enable</code>, <code>Disable</code>.</li>
+<li>All targets use it: step, section control, child control, section button, dashboard tab, dashboard button and row menu. The six methods become thin callers. Each target applies the name lists in the same way (all four lists work for steps and for sections). This removes RE-01 and RE-06.</li>
+<li>The platform builds <code>RuleContext</code> one time for each request. A module service does not compute roles, state or owner. The platform calls the engine for all apps, also TTD.</li>
+</ul>
+<h3>4.2 Rule modes</h3>
+<p><code>RuleMode</code> is set for each app (module 1, 10.5):</p>
+<ul>
+<li><code>FirstMatch</code> (default): the current behaviour. The first matching rule is the result.</li>
+<li><code>MostPermissive</code>: all matching rules count. <code>Visible</code> = true if one rule shows. <code>Disabled</code> = false if one rule enables. A control is in <code>Enable</code> if one rule enables it. This removes RE-02 for the apps that use it.</li>
+</ul>
+<p>Decision 2026-10-25 (question 1): users can have more than one role in one app. TTD and the new apps use <code>MostPermissive</code>. AIN, SQMSO, SQMSB and CDT keep <code>FirstMatch</code> (no change in behaviour). For these apps, the order of the rules in the JSON stays important: put the rule with more access first. The case of RE-02 (AIN <code>Admin</code> + <code>Read</code>) stays until the AIN JSON changes (4.8, step 8 of section 7).</p>
+<h3>4.3 The default when no rule matches</h3>
+<p>New optional <code>RuleDefault</code> for each app: <code>Keep</code> | <code>ReadOnly</code> | <code>Hidden</code>.</p>
+<ul>
+<li><code>Keep</code> (default): the current behaviour (RE-03).</li>
+<li><code>ReadOnly</code>: a target with rules but no matching rule is visible and disabled.</li>
+<li><code>Hidden</code>: a target with rules but no matching rule is not visible.</li>
+<li>A target with no rules is not changed by <code>RuleDefault</code>.</li>
+<li>The start-up check writes a warning for each target with rules in an app that uses <code>Keep</code>. This removes RE-03 for the apps that use <code>ReadOnly</code> or <code>Hidden</code>.</li>
+<li>Decision 2026-10-25 (question 2): new apps use <code>ReadOnly</code>. It is the default in the new-app JSON template. The existing apps keep <code>Keep</code> (no change).</li>
+</ul>
+<h3>4.4 Owner and derived roles</h3>
+<ul>
+<li><code>IsOwner</code> keeps its meaning "my record". It comes from <code>OwnerFields</code> (module 1, 10.5), compared by LAN ID (module 6, 4.5). An app with no <code>OwnerFields</code> has <code>IsOwner</code> = false.</li>
+<li>"Can write" is not an owner condition. A rule uses the role flags: <code>"Roles": ["@Write"]</code> (module 6, 4.3). AIN can move from its <code>IsOwner</code> rule to <code>@Write</code> (4.8).</li>
+<li>New optional <code>Relations</code> for each app: a named owner condition on the parent record of a family (module 1, section 11). Example for SQMSB:</li>
+</ul>
+<pre><code>"Relations": {
+  "Seller": { "Record": "Parent", "Fields": ["CreatedBy", "SellerRMTeam"], "States": ["UNDER REVIEW BY SELLER"], "Roles": ["MFO"] }
+}</code></pre>
+<ul>
+<li>A rule uses a relation in place of a role: <code>"Roles": ["~Seller"]</code>. The engine adds <code>~Seller</code> to the context if the user has one of <code>Roles</code>, the record is in one of <code>States</code>, and the user is in one of <code>Fields</code> of the parent record. This replaces the <code>CHECKSELLER</code> code (SQMSB) with JSON. This removes RE-04.</li>
+<li><code>Record</code> is <code>Self</code> (the current record) or <code>Parent</code> (the parent record of a family).</li>
+</ul>
+<h3>4.4.1 Section owners</h3>
+<p>Requirement (2026-10-25, question 3): future apps have sections for users with special duties. Example: a form with 5 sections, and each section has one owner. A user with write access can change only the sections that the user owns. Some sections are hidden from a writer who is not the owner. The SQMS <code>Seller</code> is one case of this.</p>
+<p>The design gives two ways. The JSON of each section selects one. Decision 2026-10-25: both are necessary; it depends on the app (and can differ for each section of one app):</p>
+<ul>
+<li>By role: the owner is a group of users. The app has one role for each section (for example <code>Compliance</code>, <code>Tax</code>). The section rule uses the role: <code>"Roles": ["Tax"]</code>. No new feature.</li>
+<li>By person in the record: the owner is a person named in a field of the record (for example <code>TaxReviewerLanId</code>). The app has one relation with <code>Record: Self</code> for each section, and the section rule uses it: <code>"Roles": ["~TaxReviewer"]</code>.</li>
+</ul>
+<p>Example (by person), with <code>RuleDefault: ReadOnly</code>:</p>
+<pre><code>"Relations": {
+  "TaxReviewer": { "Record": "Self", "Fields": ["TaxReviewerLanId"] }
+},
+"Controls": [
+  { "Name": "TaxSection", "Type": "section",
+    "Rules": [
+      { "Roles": ["~TaxReviewer"], "Disabled": false },
+      { "Roles": ["@Admin"], "Disabled": false },
+      { "Roles": ["@Write"], "Visible": false }
+    ] }
+]</code></pre>
+<p>The tax reviewer and the admin can change the section. Other writers do not see it. Readers see it read-only (<code>RuleDefault</code>). The same rules apply on save (4.6), so a writer cannot change a section of another owner with a changed request.</p>
+<ul>
+<li>Note: SQMSB today <strong>replaces</strong> the roles with <code>Seller</code>. A relation <strong>adds</strong> <code>~Seller</code>. The SQMSB JSON must keep the result the same when it moves (4.8).</li>
+</ul>
+<h3>4.5 Rules and <code>Effects</code></h3>
+<ul>
+<li>The rules run first, on the server. They give the base: which targets the user can see and change.</li>
+<li>The <code>Effects</code> of module 1 (5.1) run after the rules, in the client and again on save. An effect can hide, disable, require or set a value. It cannot show a target that a rule hides, or enable a target that a rule disables.</li>
+<li>Thus the rules decide access, and the effects only make the form easier to use.</li>
+</ul>
+<h3>4.6 The same rules on save</h3>
+<p>The save pipeline (module 1, 5.9) builds the same <code>RuleContext</code> from the <strong>stored</strong> record (state and owner before the change), and calls the engine. A change to a hidden or disabled field returns 400 with the field name. A save of a section with no matching rule and <code>RuleDefault</code> <code>ReadOnly</code> or <code>Hidden</code> returns 403. This, with module 6 (4.3), removes RE-05.</p>
+<h3>4.7 Start-up check</h3>
+<p>The start-up check (module 5, 6.8) also examines the rules of each app:</p>
+<ul>
+<li>Each name in <code>ShowControls</code>, <code>HideControls</code>, <code>EnableControls</code> and <code>DisableControls</code> is a control of the same target.</li>
+<li>Each role in <code>Roles</code> is a role of the app (or the parent app) in the active roles view, a flag (<code>@Read</code>, <code>@Write</code>, <code>@Admin</code>) or a relation (<code>~Name</code>). An unknown role is a warning, not an error (a role can be added later).</li>
+<li>Each state in <code>States</code> is a state of the app. The states come from the workflow definition (module 10) or an optional <code>States</code> list in the app JSON. An unknown state is an error.</li>
+<li>This removes RE-07.</li>
+</ul>
+<h3>4.8 Rule preview</h3>
+<p>New endpoint <code>GET v1/RulePreview?code=&lt;Code&gt;&amp;role=&lt;Role&gt;&amp;state=&lt;State&gt;&amp;owner=&lt;true|false&gt;</code>, for users with <code>@Admin</code> in the app only. It returns the effective section, steps, buttons and dashboard for that context, with no record. The team uses it to test a new app and to compare the JSON before and after a change (for example AIN to <code>@Write</code>, SQMSB to <code>~Seller</code>). A test can also call the engine directly with a matrix of contexts. Decision 2026-10-25 (question 4): keep the preview.</p>
+</section>
+<section id="5-example-rules-for-a-new-app">
+<h2>5. Example: rules for a new app</h2>
+<pre><code>"RuleMode": "MostPermissive",
+"RuleDefault": "ReadOnly",
+"OwnerFields": ["CreatedByLanId"],
+"Section": {
+  "Controls": [
+    {
+      "Name": "Main", "Type": "section",
+      "Rules": [
+        { "Roles": ["@Read"], "Disabled": true },
+        { "Roles": ["@Write"], "IsOwner": true, "States": ["Draft"], "Disabled": false },
+        { "Roles": ["@Admin"], "Disabled": false }
+      ],
+      "ChildControls": [ ]
+    }
+  ]
+}</code></pre>
+<p>A writer edits own drafts. An admin edits all records. Any other case is read-only (<code>RuleDefault</code>), also when the JSON has a gap.</p>
+</section>
+<section id="6-backward-compatibility">
+<h2>6. Backward compatibility</h2>
+<ul>
+<li><code>CPRule</code> keeps all its properties. <code>Relations</code>, <code>RuleMode</code>, <code>RuleDefault</code>, the flag names and the relation names are additive and optional.</li>
+<li>The defaults (<code>FirstMatch</code>, <code>Keep</code>) give the current result for the current JSON. The engine has a test that runs the current JSON of AIN, SQMSO and SQMSB with a matrix of roles, states and owner values, and compares the result with the current methods. All cells must be the same.</li>
+<li>The step and section methods keep their names and signatures; they call the engine.</li>
+<li>The start-up check gives errors only for defects that do not work today (a wrong state name in a rule). Unknown roles and <code>Keep</code> give warnings.</li>
+<li>The rules on save (4.6) start in the log-only mode of module 6 (section 5).</li>
+</ul>
+</section>
+<section id="7-migration-steps">
+<h2>7. Migration steps</h2>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Change</th><th>Risk</th></tr>
+<tr><td>1</td><td>Add the engine with <code>FirstMatch</code> and <code>Keep</code>. Change the six methods to call it. Run the comparison test (section 6).</td><td>Low</td></tr>
+<tr><td>2</td><td>Build <code>RuleContext</code> in the platform (roles view, <code>RoleScope</code>, flags, state, <code>OwnerFields</code>). Call the rules for all apps.</td><td>Low</td></tr>
+<tr><td>3</td><td>Add the start-up check (4.7) with warnings.</td><td>Low</td></tr>
+<tr><td>4</td><td>Add <code>MostPermissive</code> and <code>RuleDefault</code>. Use them for TTD (pilot) and new apps.</td><td>Low</td></tr>
+<tr><td>5</td><td>Add <code>v1/RulePreview</code> (4.8).</td><td>Low</td></tr>
+<tr><td>6</td><td>Apply the rules on save in log-only mode, then enforce (4.6).</td><td>Medium</td></tr>
+<tr><td>7</td><td>Add <code>Relations</code>. Move SQMSB <code>CHECKSELLER</code> to <code>~Seller</code>. Compare with the preview.</td><td>Medium</td></tr>
+<tr><td>8</td><td>Move AIN from <code>IsOwner</code> to <code>@Write</code>. Compare with the preview.</td><td>Low</td></tr>
+<tr><td>9</td><td>Correct the note in module 1 (10.5): the first matching rule wins.</td><td>None</td></tr>
+</table></div>
+</section>
+<section id="8-acceptance">
+<h2>8. Acceptance</h2>
+<ul>
+<li>One engine gives the same result as the current methods for each cell of the AIN, SQMSO and SQMSB matrix (section 6).</li>
+<li>With <code>MostPermissive</code> (TTD), a user with <code>Read</code> and <code>Prepare</code> can edit own records. AIN with <code>FirstMatch</code> gives the same result as today.</li>
+<li>With <code>RuleDefault: ReadOnly</code>, the SQMSB case of RE-03 is read-only.</li>
+<li>A save that changes a disabled field returns 400 in enforce mode, also with a changed request.</li>
+<li>A wrong state name in a rule stops the start-up, and the log names the app, the target and the state.</li>
+<li>TTD rules run with no code in <code>CPTTDService</code>.</li>
+<li><code>v1/RulePreview</code> returns 403 for a user with no <code>@Admin</code> in the app.</li>
+</ul>
+</section>
+<section id="9-open-questions">
+<h2>9. Open questions</h2>
+<ol>
+<li>Answered (2026-10-25): yes, users can have more than one role in one app. Only TTD and the new apps change to <code>MostPermissive</code>. The existing apps keep <code>FirstMatch</code> (4.2). The read-only script <a href="sql/04-multi-role-users.sql">sql/04-multi-role-users.sql</a> lists these users, to check the rule order of the existing apps.</li>
+<li>Answered (2026-10-25): <code>ReadOnly</code> for new apps (4.3). The existing apps keep <code>Keep</code>.</li>
+<li>Answered (2026-10-25): future apps have section owners: each section has one owner, a writer can change only own sections, and some sections are hidden from other writers (4.4.1). <code>Seller</code> is the SQMS case. Follow-up answered (2026-10-25): both, it depends on the app. The design supports both, also in one form.</li>
+<li>Answered (2026-10-25): yes, keep the rule preview (4.8) for <code>@Admin</code> users, in addition to the automated tests.</li>
+</ol>
+</section>
+</main>
+</body>
+</html>

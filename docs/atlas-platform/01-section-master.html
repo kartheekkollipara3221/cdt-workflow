@@ -694,7 +694,7 @@ WHERE [ID] = @id AND ([IsDeleted] IS NULL OR [IsDeleted] = 0);</code></pre>
 <ul>
 <li><code>Permissions</code> is a new optional block. The server checks it on <code>ManagePage</code> (new record) and <code>RemovePage</code>. The dashboard JSON uses the same block to show or hide the add and delete menus (module 3).</li>
 <li>The server applies <code>Rules</code> again on save (5.9, steps 3 to 5). A <code>Prepare</code> user who edits the record of another user gets an error, also with a changed request.</li>
-<li>A user with more than one role gets the most permissive result. Example: <code>Read</code> + <code>Prepare</code> can edit own records. Note: today <code>ApplyRules</code> applies each matching rule in order, so the last matching rule wins. Keep that behaviour for the current JSON. Add an optional <code>RuleMode: "MostPermissive"</code> to the app JSON for TTD and the new apps.</li>
+<li>A user with more than one role gets the most permissive result. Example: <code>Read</code> + <code>Prepare</code> can edit own records. Note (corrected 2026-10-25, module 4, RE-02): today <code>ApplyRules</code> stops at the first matching rule, so the first matching rule wins. Keep that behaviour (<code>FirstMatch</code>) for the current JSON. Add an optional <code>RuleMode: "MostPermissive"</code> to the app JSON for TTD and the new apps.</li>
 <li>A user with none of the three roles cannot open TTD (SM-08).</li>
 <li>Acceptance: test each cell of the table above with one user for each role, for an own record and for a record of another user.</li>
 </ul>

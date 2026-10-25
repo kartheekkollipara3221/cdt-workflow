@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 3 Dashboard draft 2 done (not committed); modules 5+6 committed - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 4 Rules engine draft 2 done (not committed); modules 3, 5, 6 committed - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -15,6 +15,7 @@ Specs are written in ASD-STE100 (~80%). Each spec = .md (source) + .html report 
 - Commit/push only when the user asks.
 
 ## Regenerate an HTML report from its .md
+WARNING: 01-section-master.html is hand-made and differs from its .md. Do NOT regenerate it; patch the HTML text directly.
 Use docs/atlas-platform/tools/md2report.py (copy of the session generator). From docs/atlas-platform:
 python tools/md2report.py 06-security.md 06-security.html 01-section-master.html "<eyebrow>" "<title>" "<lead>" "<n|label;n|label;...>"
 (The 3rd argument is the file to copy the <style> from. Findings must be headed "### XX-nn Title (High|Medium|Low[, area])".
@@ -40,12 +41,19 @@ Nested lists are not supported: keep bullets flat.)
   Admin includes Write+Read, Write includes Read.
   SQL (not executed): sql/06-active-user-roles-view.sql, sql/06-lanid-columns-ddl.sql, sql/06-lanid-backfill-dml.sql,
   sql/06-record-visibility-template.sql, sql/06-grant-revoke-role-template.sql.
-- Module 3 Dashboard: 03-dashboard.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings DB-01..DB-08 (DB-01 High: hidden tabs'
+- Module 3 Dashboard: 03-dashboard.md/.html - draft 2, ALL questions answered, committed 0ece00f. Findings DB-01..DB-08 (DB-01 High: hidden tabs'
   rows still sent to browser; DB-02 High: no app access check, Get_CDT_Dashboard no user filter). Design: rules before
   load, Load Eager|Lazy + v1/DashboardTab, tokens {LanId}, Target on buttons, Columns list, menus from Permissions.
   Q1 answered: server paging per tab (4.2.1, Paging Client|Server). Q2 answered: Source Table list query from JSON (4.7), procs only for special tabs. Q3 answered: export + date filter from AG Grid Enterprise, saved views out of scope.
   Q4 answered: one dashboard file per app (existing may stay shared). Q5 answered: deployed copy = Atlasapp/Atlasapp/Config (with AIN); other 2 copies old.
-- Modules not started: 2 Step Master (waits; CDT + one more app), 4 Rules engine, 7 Registry,
+- Module 4 Rules engine: 04-rules-engine.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings RE-01..RE-07 (RE-02 High first
+  match wins -> AIN Admin+Read gets read-only; RE-03 High no-match keeps JSON = editable; RE-05 display-only).
+  Design: IAtlasRuleEngine for all 6 targets, RuleMode FirstMatch|MostPermissive, RuleDefault Keep|ReadOnly|Hidden,
+  Relations (~Seller replaces SQMSB CHECKSELLER code), rules before Effects, same rules on save, start-up check,
+  v1/RulePreview (@Admin). SQL read-only: sql/04-multi-role-users.sql. Corrected module 1 10.5 note (first match wins).
+  Q1 answered: multi-role yes; only TTD + new apps MostPermissive, existing keep FirstMatch. Q2 answered: RuleDefault ReadOnly for new apps. Q3 answered: section owners (4.4.1), by role AND by person (Relation Record Self), per app/section.
+  Q4 answered: keep v1/RulePreview.
+- Modules not started: 2 Step Master (waits; CDT + one more app), 7 Registry,
   8 Attachments (H1/H2), 9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
 
 ## Key facts (do not re-derive)
@@ -58,11 +66,12 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-docs/atlas-platform/03-dashboard.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
+docs/atlas-platform/04-rules-engine.md (+ .html), sql/04-multi-role-users.sql, 01-section-master.md (+ .html, one note),
+docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 3 Dashboard draft 2 is done;
-commit it when I ask, then start the next module (4 Rules engine unless I say otherwise). One question at a time, short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 4 Rules engine draft 2 is done;
+commit it when I ask, then start the next module (7 Registry unless I say otherwise). One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25
