@@ -266,8 +266,10 @@ namespace BBH.CP.Atlas.Service.Application
             // 3. Effective section: rules for this user and record.
             CPApplicationSection section = form.Section
                 ?? throw AtlasProblemException.BadRequest($"The form of {manifest.Code} has no Section.");
+            AtlasFormFields beforeRules = AtlasFormFields.From(section);
             Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, stored), manifest.RuleMode, manifest.RuleDefault);
             AtlasFormFields fields = AtlasFormFields.From(section);
+            fields.MarkHiddenByRules(beforeRules);
 
             Dictionary<string, string?> submitted = ReadOutputs(input, fields, errors);
             string? Current(AtlasFormField field) =>
@@ -509,7 +511,7 @@ namespace BBH.CP.Atlas.Service.Application
                     if (!Matches(effect.When, value))
                         continue;
 
-                    foreach (AtlasFormField target in Targets(fields, effect.Show)) target.Visible = true;
+                    foreach (AtlasFormField target in Targets(fields, effect.Show).Where(x => !x.HiddenByRule)) target.Visible = true;
                     foreach (AtlasFormField target in Targets(fields, effect.Hide)) target.Visible = false;
                     foreach (AtlasFormField target in Targets(fields, effect.Require)) target.Required = true;
                     foreach (AtlasFormField target in Targets(fields, effect.Unrequire)) target.Required = false;

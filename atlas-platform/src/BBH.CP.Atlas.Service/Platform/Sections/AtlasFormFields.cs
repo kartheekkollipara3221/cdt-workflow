@@ -28,6 +28,12 @@ public sealed class AtlasFormField
 
     public bool Required { get; set; }
 
+    /// <summary>
+    /// True when the JSON shows the field and a rule hides it (review SV-03). A value-driven effect cannot show it
+    /// again: an effect can only narrow what the rules allow.
+    /// </summary>
+    public bool HiddenByRule { get; set; }
+
     public CPValidator? Validator => Control.Validator;
 }
 
@@ -125,6 +131,14 @@ public sealed class AtlasFormFields
 
     /// <summary>Any control by name (section, child or grid).</summary>
     public CPApplicationControl? Control(string name) => _controls.GetValueOrDefault(name);
+
+    /// <summary>Marks the fields that the JSON (<paramref name="beforeRules"/>) shows and the rules hide.</summary>
+    public void MarkHiddenByRules(AtlasFormFields beforeRules)
+    {
+        ArgumentNullException.ThrowIfNull(beforeRules);
+        foreach (AtlasFormField field in _fields)
+            field.HiddenByRule = !field.Visible && beforeRules.Find(field.Name) is { Visible: true };
+    }
 
     public IEnumerable<AtlasFormField> FieldsOf(string controlName) =>
         _fields.Where(x => string.Equals(x.Control.Name, controlName, StringComparison.OrdinalIgnoreCase));

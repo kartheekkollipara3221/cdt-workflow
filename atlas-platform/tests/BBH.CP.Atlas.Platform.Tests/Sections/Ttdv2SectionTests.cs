@@ -333,6 +333,35 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Equal(false, await database.ScalarAsync($"SELECT IsDeleted FROM TTDV2.General WHERE ID = {id}"));
     }
 
+    [Fact]
+    public void An_effect_cannot_show_a_field_that_a_rule_hid()
+    {
+        // Review SV-03: a Prepare rule hides WorkDescription; an effect on Category tries to show it again.
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text : text
+            .Replace("""{ "Roles": [ "@Admin" ], "Disabled": false }""",
+                """{ "Roles": [ "@Admin" ], "Disabled": false }, { "Roles": [ "Prepare" ], "HideControls": [ "WorkDescription" ] }""", StringComparison.Ordinal)
+            .Replace("\"Name\": \"Category\",", "\"Name\": \"Category\", \"Effects\": [ { \"When\": { \"Equals\": \"OTHER\" }, \"Show\": [ \"WorkDescription\" ] } ],", StringComparison.Ordinal));
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            CPApplicationSection loaded = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).LoadPage(new CPAtlasPage { ID = 0 });
+            Assert.False(Control(loaded, "WorkDescription").Visible); // the rule hides it
+
+            CPAtlasPage input = NewInput();
+            input.Outputs!.Single(x => x.Name == "Category").Value = "OTHER";
+            input.Outputs!.Single(x => x.Name == "WorkDescription").Value = "sent anyway";
+
+            CPAtlasPage result = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
+
+            Assert.Equal(0, result.ID);
+            Assert.Contains(result.Errors!, x => x.Field == "WorkDescription" && x.Code == "NotAllowed");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     // ---------- Helpers ----------
 
     private CPTTDV2Service Svc(string lanId, params AtlasRole[] roles) => _harness.Service(_registry, lanId, roles);

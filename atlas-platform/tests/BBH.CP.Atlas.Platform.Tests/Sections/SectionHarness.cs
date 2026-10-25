@@ -45,16 +45,28 @@ internal sealed class SectionHarness : IDisposable
     private readonly IConfiguration _configuration;
     private readonly AtlasConfigStore _configStore;
 
-    public SectionHarness(SqlServerDatabaseFixture database, AtlasAccessMode accessMode = AtlasAccessMode.Enforce)
+    public SectionHarness(SqlServerDatabaseFixture database, AtlasAccessMode accessMode = AtlasAccessMode.Enforce, string? configFolder = null)
     {
         _database = database;
-        string configFolder = Path.Combine(TestPaths.AtlasPlatformRoot(), "src", "BBH.CP.Atlas.App", "Config");
+        configFolder ??= RealConfigFolder;
         _configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["AppSettings:ConfigFolder"] = configFolder,
             ["AppSettings:Modules:TTDV2:AccessMode"] = accessMode.ToString()
         }).Build();
         _configStore = new AtlasConfigStore(_configuration, new Host(configFolder));
+    }
+
+    public static string RealConfigFolder => Path.Combine(TestPaths.AtlasPlatformRoot(), "src", "BBH.CP.Atlas.App", "Config");
+
+    /// <summary>A copy of the real Config folder in a new temp folder, changed by <paramref name="change"/> (file name, text).</summary>
+    public static string ConfigCopy(Func<string, string, string> change)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "atlas-section-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(folder);
+        foreach (string file in Directory.GetFiles(RealConfigFolder, "*.json"))
+            File.WriteAllText(Path.Combine(folder, Path.GetFileName(file)), change(Path.GetFileName(file), File.ReadAllText(file)));
+        return folder;
     }
 
     /// <summary>Wednesday 2026-10-21 10:00 UTC.</summary>
