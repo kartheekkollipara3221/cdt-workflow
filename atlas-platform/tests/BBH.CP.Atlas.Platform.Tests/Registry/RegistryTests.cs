@@ -224,6 +224,34 @@ public sealed class RegistryTests : IDisposable
         Assert.Same(given, provider.GetRequiredService<AtlasPlatformConfiguration>().Configuration);
     }
 
+    [Fact]
+    public void The_TimeProvider_of_the_host_is_kept()
+    {
+        TimeProvider fixedTime = new FixedTime();
+        ServiceCollection services = new();
+        services.AddSingleton(fixedTime);
+        services.AddAtlasPlatform(new ConfigurationBuilder().Build());
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.Same(fixedTime, provider.GetRequiredService<TimeProvider>());
+    }
+
+    [Fact]
+    public void A_second_registration_line_for_the_same_code_is_refused_with_a_clear_message()
+    {
+        ServiceCollection services = new();
+        services.AddAtlasModule<DemoModule>("DEMO");
+
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => services.AddAtlasModule<DemoModule>("demo"));
+
+        Assert.Contains("'DEMO' is registered twice", error.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class FixedTime : TimeProvider
+    {
+    }
+
     private AtlasConfigStore Store(Dictionary<string, string?>? settings = null)
     {
         Dictionary<string, string?> values = new(settings ?? []) { ["AppSettings:ConfigFolder"] = _folder };

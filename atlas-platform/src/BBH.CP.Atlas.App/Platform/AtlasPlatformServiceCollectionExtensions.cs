@@ -3,6 +3,7 @@ using BBH.CP.Atlas.Service.Platform;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace BBH.CP.Atlas.App.Platform;
 
@@ -20,7 +21,7 @@ public static class AtlasPlatformServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddSingleton(TimeProvider.System);
+        services.TryAddSingleton(TimeProvider.System); // the host's TimeProvider wins (review HO-08)
         services.AddMemoryCache();
         services.AddHttpContextAccessor();
 
@@ -53,6 +54,10 @@ public static class AtlasPlatformServiceCollectionExtensions
             throw new ArgumentException($"'{appCode}' is not a valid app code (pattern ^[A-Z][A-Z0-9]{{1,19}}$).", nameof(appCode));
 
         string code = AtlasAppCode.Normalize(appCode);
+        if (services.Any(x => x.ServiceType == typeof(AtlasModuleRegistration)
+                && x.ImplementationInstance is AtlasModuleRegistration registered && registered.Code == code))
+            throw new InvalidOperationException($"The app code '{code}' is registered twice. Keep one AddAtlasModule line for each app.");
+
         services.AddSingleton(new AtlasModuleRegistration(code, typeof(TService)));
         services.AddKeyedScoped<IAtlasModule, TService>(code);
         return services;
