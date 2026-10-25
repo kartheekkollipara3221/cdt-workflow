@@ -1,3 +1,11 @@
+# Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25
+
+New: docs/atlas-platform/05-data-mapping.md/.html, sql/05-new-app-template.sql (not executed). Findings DM-01..DM-07.
+Decisions: Q1 option A (own typed table + own audit table per app; SQMS keeps shared SQMS.AuditLog). Q2 team scaffolds all; target team will limit scaffold to dbo/SQMS/TTD/AIN, keep OnModelCreatingPartial, add one platform partial file; new apps use own schema (shared-type entities). Q3 typed columns for new apps. Q4 dev login full DDL/DML; QC/prod login DML+execute, no DDL; metadata visible via object permissions, no VIEW DEFINITION; template has commented schema GRANT step. Q5 audit JSON keeps Name/Value keys and adds Old (History window parses Name/Value, history-report-modal.ts.txt:40-42); audit read only by per-record History window. Q6 team runs template in dev, DBAs in QC/prod.
+Files needed to confirm scaffold details (optional): CPSharepointContext.cs, CodeTemplates/EFCore contents, scaffold command or efpt.config.json, Data .csproj.
+Module 5 NOT final: waiting for target files (context, EFCore templates, scaffold command or efpt.config.json, Data .csproj); finalize 6.2 scaffold steps when they arrive. Not committed. Next: module 6 Security (include display-name ownership).
+
+---
 # Atlas platform: Section Master draft 3, all questions answered - 2026-10-25
 
 User answered every Section Master question one at a time. Decisions now in docs/atlas-platform/01-section-master.md/.html:

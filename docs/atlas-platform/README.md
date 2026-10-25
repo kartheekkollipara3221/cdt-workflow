@@ -34,7 +34,7 @@ Each module spec has these sections:
 | 2 | Step Master / Step Page (multi-step forms: CDT) | — | Not started |
 | 3 | Dashboard (tabs, grids, menus, procedures) | — | Not started |
 | 4 | Rules engine (`CPRule`) | — | Not started (Section Master spec extends it) |
-| 5 | Data mapping (`MapData` / `BindData`, per-app tables) | — | Not started |
+| 5 | Data mapping (`MapData` / `BindData`, per-app tables) | [05-data-mapping.md](05-data-mapping.md) · [HTML report](05-data-mapping.html) · SQL: [new-app template](sql/05-new-app-template.sql) | Draft 2, waiting for target files (scaffold) |
 | 6 | Security and entitlements | — | Not started. Include: ownership uses display names (`CreatedBy`, `TaxPreparerName`); add LAN ID columns. |
 | 7 | Module registry and service factory | — | Not started (Section Master spec introduces it) |
 | 8 | Attachments and download | — | Not started |
