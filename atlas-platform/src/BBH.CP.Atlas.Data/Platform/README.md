@@ -19,4 +19,5 @@ Notes:
   record would then send `ID = 0` to an identity column).
 - Supported column types: int, bigint, smallint, tinyint, bit, decimal, numeric, money, smallmoney, date, datetime,
   datetime2, smalldatetime, char, varchar, nchar, nvarchar, uniqueidentifier, rowversion. Other types stop the model
-  build with a clear message (the start-up check, C8, reports them first).
+  build with a clear message. The start-up check reports them first, with a key that is not `int IDENTITY`, and it
+  builds the model once (review DA-01).

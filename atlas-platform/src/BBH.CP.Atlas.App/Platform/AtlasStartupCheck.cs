@@ -118,6 +118,7 @@ public static class AtlasStartupCheck
                 CheckRoles(context, manifest, form, Warning);
         }
 
+        CheckModel(services, items);
         return items;
     }
 
@@ -247,11 +248,38 @@ public static class AtlasStartupCheck
             return null;
         }
 
-        if (tables.TryGet(name, out AtlasTable table))
-            return table;
+        if (!tables.TryGet(name, out AtlasTable table))
+        {
+            error($"{setting} '{name}' does not exist, or the API login cannot see it.");
+            return null;
+        }
 
-        error($"{setting} '{name}' does not exist, or the API login cannot see it.");
-        return null;
+        // Review DA-01: these stop the model build of all platform tables on the first request, so report them here.
+        if (table.Key is not { } key)
+            error($"{setting} '{table.FullName}' has no {AtlasTable.KeyColumnName} column.");
+        else if (!key.IsIdentity || key.ClrType != typeof(int))
+            error($"{setting} '{table.FullName}': the {AtlasTable.KeyColumnName} column must be an int IDENTITY column (it is {key.SqlType}{(key.IsIdentity ? "" : ", not IDENTITY")}).");
+
+        foreach (AtlasColumn column in table.Columns.Where(x => x.ClrType == null))
+            error($"{setting} '{table.FullName}': the column '{column.Name}' has the type '{column.SqlType}', which the platform does not support.");
+
+        return table;
+    }
+
+    /// <summary>Builds the EF Core model of all registered tables once, so a model error is found at start-up.</summary>
+    private static void CheckModel(IServiceProvider services, List<AtlasCheckItem> items)
+    {
+        if (items.Any(x => x.Severity == AtlasCheckSeverity.Error))
+            return; // the table errors above already name the cause
+
+        try
+        {
+            _ = services.GetRequiredService<AtlasPlatformContext>().Model;
+        }
+        catch (InvalidOperationException ex)
+        {
+            items.Add(new(AtlasCheckSeverity.Error, "*", "the data model of the platform tables cannot be built: " + ex.Message));
+        }
     }
 
     private static Dictionary<string, (int Id, int? ParentId)> AppRows(CPSharepointContext context) =>

@@ -92,6 +92,30 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains("ERROR TTDV2: the setting AppSettings:Modules:TTDV2:AccessMode = 'Enfroce' is not valid", report, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_table_with_an_unsupported_column_or_key_type_is_an_error()
+    {
+        string name = "BadTypes" + Guid.NewGuid().ToString("N")[..6];
+        await database.ScalarAsync($"CREATE TABLE TTDV2.{name} (ID bigint IDENTITY PRIMARY KEY, Notes xml NULL, Shift time NULL);");
+        try
+        {
+            CopyRealConfig();
+            string manifest = Path.Combine(_folder, "TTDV2.app.json");
+            File.WriteAllText(manifest, File.ReadAllText(manifest).Replace("\"TTDV2.AuditLog\"", $"\"TTDV2.{name}\"", StringComparison.Ordinal));
+
+            (int code, string report) = await CheckAsync(_folder);
+
+            Assert.Equal(1, code);
+            Assert.Contains($"the ID column must be an int IDENTITY column (it is bigint)", report, StringComparison.Ordinal);
+            Assert.Contains("the column 'Notes' has the type 'xml'", report, StringComparison.Ordinal);
+            Assert.Contains("the column 'Shift' has the type 'time'", report, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await database.ScalarAsync($"DROP TABLE TTDV2.{name};");
+        }
+    }
+
     private void CopyRealConfig()
     {
         Directory.CreateDirectory(_folder);
