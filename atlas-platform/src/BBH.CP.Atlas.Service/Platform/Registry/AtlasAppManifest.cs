@@ -65,6 +65,24 @@ public static partial class AtlasAppCode
 
     public static string Normalize(string code) => code.Trim().ToUpperInvariant();
 
+    /// <summary>
+    /// The code from a request (spec 07, 4.4): the text code, or a number of an old caller (the enum value), which
+    /// is changed to the enum name. Returns the text as it is if it is not a known number.
+    /// </summary>
+    public static string FromRequest(string code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        string text = code.Trim();
+        if (int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int number)
+            && Enum.IsDefined(typeof(BBH.CP.Atlas.Data.Enumerations.CPApplicationCode), number))
+            return ((BBH.CP.Atlas.Data.Enumerations.CPApplicationCode)number).ToString();
+        return text;
+    }
+
+    /// <summary>True if the code is one of the current (enum) apps.</summary>
+    public static bool IsLegacy(string? code) =>
+        code != null && Enum.TryParse(code.Trim(), true, out BBH.CP.Atlas.Data.Enumerations.CPApplicationCode _) && !int.TryParse(code, out _);
+
     [GeneratedRegex("^[A-Z][A-Z0-9]{1,19}$", RegexOptions.IgnoreCase)]
     private static partial Regex Pattern();
 }

@@ -5,6 +5,8 @@
 -- It does not change the TTD schema or any existing table.
 -- Run in the CP Atlas database (cp_sharepoint).
 SET NOCOUNT ON;
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;   -- filtered indexes need it (sqlcmd default is OFF; finding B12)
 SET XACT_ABORT ON;
 
 DECLARE @RunBy nvarchar(50) = N'<RUN_BY>';   -- LAN ID of the person who runs the script.

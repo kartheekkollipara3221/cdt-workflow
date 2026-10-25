@@ -1,17 +1,11 @@
 // STAND-IN: do not copy to the target.
 // Local demo host. The target has its own program.cs; at the target, add only the platform lines
-// that INTEGRATION.md lists (AddAtlasPlatform and one AddAtlasModule line for each app).
-// C0: skeleton only. C6 adds Windows authentication, the database contexts, the platform and the controllers.
-var builder = WebApplication.CreateBuilder(args);
+// that INTEGRATION.md lists (AddAtlasPlatform, one AddAtlasModule line for each app, StartAtlasPlatformAsync).
+using BBH.CP.Atlas.App.Platform;
+using BBH.CP.Atlas.App.StandIn;
 
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = null);
-
-var app = builder.Build();
-
-app.MapGet("/health", () => Results.Ok(new { status = "ok", host = "atlas-platform stand-in" }));
-app.MapControllers();
-
-app.Run();
+WebApplication app = StandInHost.Create(args);
+await app.Services.StartAtlasPlatformAsync();
+await app.RunAsync();
 
 public partial class Program;

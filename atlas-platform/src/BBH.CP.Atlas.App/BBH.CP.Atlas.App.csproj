@@ -10,6 +10,12 @@
     <ProjectReference Include="..\BBH.CP.Atlas.Service\BBH.CP.Atlas.Service.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Swashbuckle: the same version as the target. Negotiate: local Windows authentication on Kestrel (stand-in host only;
+         the target uses IIS Windows authentication). -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="10.0.13" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Update="Config\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

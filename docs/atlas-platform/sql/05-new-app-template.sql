@@ -13,6 +13,8 @@
 -- Additive. Safe to run again: each object is made only if it does not exist.
 -- Run in the CP Atlas database (cp_sharepoint).
 SET NOCOUNT ON;
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;   -- filtered indexes need it (sqlcmd default is OFF; finding B12)
 SET XACT_ABORT ON;
 BEGIN TRY
     BEGIN TRANSACTION;
