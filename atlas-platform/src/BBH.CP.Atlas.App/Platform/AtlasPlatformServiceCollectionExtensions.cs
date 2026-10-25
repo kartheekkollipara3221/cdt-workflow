@@ -1,6 +1,7 @@
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Platform;
 using BBH.CP.Atlas.Service.Platform.Registry;
+using BBH.CP.Atlas.Service.Platform.Security;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BBH.CP.Atlas.App.Platform;
@@ -29,6 +30,9 @@ public static class AtlasPlatformServiceCollectionExtensions
 
         // Data (module 5).
         services.AddAtlasPlatformData();
+
+        // Current user from the existing IUserInfo (module 6, 4.1).
+        services.AddScoped<IAtlasCurrentUserSource, UserInfoCurrentUserSource>();
 
         services.Configure<MvcOptions>(options => options.Filters.Add<AtlasProblemExceptionFilter>());
 

@@ -67,6 +67,31 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
         }
     }
 
+    /// <summary>Adds an active user (if not there) and grants the roles of the app (if not there).</summary>
+    public async Task SeedUserAsync(string lanId, string displayName, string appCode, params string[] roles)
+    {
+        await using SqlConnection connection = new(ConnectionString);
+        await connection.OpenAsync();
+        await using SqlCommand command = connection.CreateCommand();
+        command.CommandText = """
+            IF NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_User WHERE LanID = @LanId)
+                INSERT INTO dbo.CP_Atlas_User (LanID, DisplayName, IsDeleted) VALUES (@LanId, @DisplayName, 0);
+            DECLARE @UserId int = (SELECT ID FROM dbo.CP_Atlas_User WHERE LanID = @LanId);
+            INSERT INTO dbo.CP_Atlas_UserEntitlement (CP_Atlas_UserID, CP_Atlas_EntitlementID, IsDeleted)
+            SELECT @UserId, e.ID, 0
+            FROM dbo.CP_Atlas_Entitlement AS e
+            INNER JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID
+            WHERE a.Code = @AppCode AND e.Name IN (SELECT value FROM STRING_SPLIT(@Roles, ','))
+              AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_UserEntitlement AS x
+                              WHERE x.CP_Atlas_UserID = @UserId AND x.CP_Atlas_EntitlementID = e.ID);
+            """;
+        command.Parameters.AddWithValue("@LanId", lanId);
+        command.Parameters.AddWithValue("@DisplayName", displayName);
+        command.Parameters.AddWithValue("@AppCode", appCode);
+        command.Parameters.AddWithValue("@Roles", string.Join(',', roles));
+        await command.ExecuteNonQueryAsync();
+    }
+
     public async Task<object?> ScalarAsync(string sql)
     {
         await using SqlConnection connection = new(ConnectionString);
