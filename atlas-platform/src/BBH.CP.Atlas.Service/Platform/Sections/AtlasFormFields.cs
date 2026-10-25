@@ -34,6 +34,9 @@ public sealed class AtlasFormField
     /// </summary>
     public bool HiddenByRule { get; set; }
 
+    /// <summary>True when the JSON enables the field and a rule disables it: an effect cannot enable it (review SV-04).</summary>
+    public bool DisabledByRule { get; set; }
+
     public CPValidator? Validator => Control.Validator;
 }
 
@@ -132,12 +135,16 @@ public sealed class AtlasFormFields
     /// <summary>Any control by name (section, child or grid).</summary>
     public CPApplicationControl? Control(string name) => _controls.GetValueOrDefault(name);
 
-    /// <summary>Marks the fields that the JSON (<paramref name="beforeRules"/>) shows and the rules hide.</summary>
+    /// <summary>Marks the fields that the JSON (<paramref name="beforeRules"/>) shows or enables and the rules hide or disable.</summary>
     public void MarkHiddenByRules(AtlasFormFields beforeRules)
     {
         ArgumentNullException.ThrowIfNull(beforeRules);
         foreach (AtlasFormField field in _fields)
-            field.HiddenByRule = !field.Visible && beforeRules.Find(field.Name) is { Visible: true };
+        {
+            AtlasFormField? before = beforeRules.Find(field.Name);
+            field.HiddenByRule = !field.Visible && before is { Visible: true };
+            field.DisabledByRule = field.Disabled && before is { Disabled: false };
+        }
     }
 
     public IEnumerable<AtlasFormField> FieldsOf(string controlName) =>

@@ -362,6 +362,35 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         }
     }
 
+    [Fact]
+    public async Task The_server_applies_Set_and_Disable_effects_as_the_client_does()
+    {
+        // Review SV-04: Category OTHER sets WorkDescription (server value wins) and disables TaxYear.
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text : text
+            .Replace("\"Name\": \"Category\",",
+                "\"Name\": \"Category\", \"Effects\": [ { \"When\": { \"Equals\": \"OTHER\" }, \"Set\": { \"WorkDescription\": \"Other work\" }, \"Disable\": [ \"TaxYear\" ] } ],",
+                StringComparison.Ordinal));
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            CPAtlasPage input = NewInput();
+            input.Outputs!.Single(x => x.Name == "Category").Value = "OTHER";
+            input.Outputs!.Single(x => x.Name == "WorkDescription").Value = "client text";
+
+            CPAtlasPage changedYear = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
+            Assert.Contains(changedYear.Errors!, x => x.Field == "TaxYear" && x.Code == "NotAllowed"); // disabled by the effect
+
+            input.Outputs!.RemoveAll(x => x.Name == "TaxYear");
+            CPAtlasPage saved = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
+            Assert.True(saved.ID > 0, Describe(saved));
+            Assert.Equal("Other work", await database.ScalarAsync($"SELECT WorkDescription FROM TTDV2.General WHERE ID = {saved.ID}"));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     // ---------- Helpers ----------
 
     private CPTTDV2Service Svc(string lanId, params AtlasRole[] roles) => _harness.Service(_registry, lanId, roles);

@@ -6,7 +6,8 @@ import { TestBed } from '@angular/core/testing';
 import { ATLAS_DASHBOARD_LINK, formRoute, formTypeOf } from './atlas-navigation';
 import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atlas-effects';
 import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid } from './form/atlas-form-model';
-import { atlasValidators, errorText } from './form/atlas-validators';
+import { atlasValidators, errorCode, errorText } from './form/atlas-validators';
+import { ATLAS_VALIDATOR_CASES } from './form/atlas-validator-cases';
 import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
 import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
@@ -232,4 +233,14 @@ describe('control types (review NG-04)', () => {
     expect(registry.get('rating')).toBe(AtlasTextRenderer);
     expect(registry.hasInput('rating')).toBe(false);
   });
+});
+
+describe('validator cases shared with the server (review SV-04)', () => {
+  for (const item of ATLAS_VALIDATOR_CASES) {
+    it(`${JSON.stringify(item.validator)} "${item.value}" gives ${item.code ?? 'no error'}`, () => {
+      const control = new FormControl(item.value, atlasValidators(item.validator, !!item.validator.Required));
+      expect(errorCode(control.errors)).toBe(item.code);
+      expect(errorText(control.errors, 'Field', item.validator)).toBe(item.message);
+    });
+  }
 });

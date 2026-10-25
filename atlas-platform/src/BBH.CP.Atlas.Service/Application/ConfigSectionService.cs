@@ -326,7 +326,7 @@ namespace BBH.CP.Atlas.Service.Application
                     accepted[field] = value;
                 }
 
-                if (Validate(field, value) is { } error)
+                if (AtlasFieldValidator.Validate(field, value) is { } error)
                     errors.Add(error);
             }
 
@@ -496,7 +496,11 @@ namespace BBH.CP.Atlas.Service.Application
             }
         }
 
-        /// <summary>Applies Show/Hide/Require/Unrequire. Returns the names that SetFromOption fills (server-set).</summary>
+        /// <summary>
+        /// Applies Show/Hide/Require/Unrequire/Enable/Disable (the same actions as the client, review SV-04). An effect
+        /// cannot show a field that a rule hid or enable a field that a rule disabled. Returns the names that the
+        /// server sets: the SetFromOption targets, and the Set and Clear targets of a matching effect.
+        /// </summary>
         private static HashSet<string> ApplyServerEffects(AtlasFormFields fields, Func<AtlasFormField, string?> current)
         {
             HashSet<string> derived = new(StringComparer.OrdinalIgnoreCase);
@@ -515,13 +519,20 @@ namespace BBH.CP.Atlas.Service.Application
                     foreach (AtlasFormField target in Targets(fields, effect.Hide)) target.Visible = false;
                     foreach (AtlasFormField target in Targets(fields, effect.Require)) target.Required = true;
                     foreach (AtlasFormField target in Targets(fields, effect.Unrequire)) target.Required = false;
+                    foreach (AtlasFormField target in Targets(fields, effect.Enable).Where(x => !x.DisabledByRule)) target.Disabled = false;
+                    foreach (AtlasFormField target in Targets(fields, effect.Disable)) target.Disabled = true;
+                    foreach (string target in (effect.Set?.Keys ?? Enumerable.Empty<string>()).Concat(effect.Clear ?? []))
+                        derived.Add(target);
                 }
             }
 
             return derived;
         }
 
-        /// <summary>The values of the SetFromOption targets, from the Data of the selected option (spec 01, 5.2).</summary>
+        /// <summary>
+        /// The server-set values: SetFromOption from the Data of the selected option (spec 01, 5.2), and the Set and
+        /// Clear values of a matching effect (review SV-04). Later effects win, as on the client.
+        /// </summary>
         private IEnumerable<(string Target, string? Value)> DerivedValues(AtlasFormFields fields, Func<AtlasFormField, string?> current,
             HashSet<string> derived)
         {
@@ -531,9 +542,16 @@ namespace BBH.CP.Atlas.Service.Application
             foreach (AtlasFormField source in fields.All.Where(x => x.Control.Effects is { Count: > 0 } && !x.IsGridField))
             {
                 string? value = current(source);
-                foreach (CPEffect effect in source.Control.Effects!.Where(x => x.SetFromOption is { Count: > 0 }))
+                foreach (CPEffect effect in source.Control.Effects!)
                 {
                     if (!Matches(effect.When, value))
+                        continue;
+
+                    foreach ((string target, string text) in effect.Set ?? [])
+                        yield return (target, text);
+                    foreach (string target in effect.Clear ?? [])
+                        yield return (target, null);
+                    if (effect.SetFromOption is not { Count: > 0 })
                         continue;
 
                     CPKeyValue? option = source.Control.OptionsSource == null
@@ -567,38 +585,6 @@ namespace BBH.CP.Atlas.Service.Application
             if (when.In != null && !when.In.Contains(value ?? "", StringComparer.OrdinalIgnoreCase))
                 return false;
             return true;
-        }
-
-        private static CPPageError? Validate(AtlasFormField field, string? value)
-        {
-            CPValidator? validator = field.Validator;
-            string label = field.Label ?? field.Name;
-            if (string.IsNullOrWhiteSpace(value))
-                return field.Required && !field.IsGridField ? Error(field.Name, "Required", validator?.Message ?? $"{label} is required.") : null;
-
-            if (validator == null)
-                return null;
-            if (validator.MaxLength is { } maxLength && value.Length > maxLength)
-                return Error(field.Name, "MaxLength", $"{label} can have at most {maxLength} characters.");
-            if (validator.MinLength is { } minLength && value.Length < minLength)
-                return Error(field.Name, "MinLength", $"{label} must have at least {minLength} characters.");
-            if (!string.IsNullOrEmpty(validator.Pattern) && !Regex.IsMatch(value, validator.Pattern, RegexOptions.None, TimeSpan.FromSeconds(1)))
-                return Error(field.Name, "Pattern", validator.Message ?? $"{label} has a format that is not valid.");
-
-            if (validator.Integer || validator.Min != null || validator.Max != null)
-            {
-                string text = value.Trim();
-                if (validator.Integer && !IntegerText().IsMatch(text))
-                    return Error(field.Name, "Integer", validator.Message ?? $"{label} must be a whole number.");
-                if (!decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out decimal number))
-                    return Error(field.Name, "InvalidNumber", validator.Message ?? $"{label} must be a number.");
-                if (validator.Min is { } min && number < min)
-                    return Error(field.Name, "Min", validator.Message ?? $"{label} must be {min} or more.");
-                if (validator.Max is { } max && number > max)
-                    return Error(field.Name, "Max", validator.Message ?? $"{label} must be {max} or less.");
-            }
-
-            return null;
         }
 
         private static void Map(AtlasTable table, Dictionary<string, object?> record, string name, string fieldName, string? value, List<CPPageError> errors)
@@ -831,8 +817,6 @@ namespace BBH.CP.Atlas.Service.Application
         [GeneratedRegex(@"^\s*(Sum|Count|Min|Max)\s*\((.*)\)\s*$", RegexOptions.IgnoreCase)]
         private static partial Regex ComputedExpression();
 
-        [GeneratedRegex(@"^[+-]?\d+$")]
-        private static partial Regex IntegerText();
 
         #endregion Helpers
     }
