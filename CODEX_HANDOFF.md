@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 9 Audit/history draft 2 done (not committed); module 8 committed cf61ecd; module 7 committed 685bc2c; code later in atlas-platform/ (option B) - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 10 Engine adapter draft 2 done, not committed (modules 1,3-9 committed); code later in atlas-platform/ (option B) - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -68,13 +68,20 @@ Nested lists are not supported: keep bullets flat.)
   DB storage GZip, v1/Attachment/{app}/{id} + v1/Download kept but DB lookup by id, Path.GetFileName, memory GZip,
   Accept/MaxSizeMb/MaxFiles, same transaction, audit. Q1 answered: per-app <Schema>.Attachment (template part 3a; manifest AttachmentTable). Q2 answered: 10 MB, pdf docx xlsx csv txt msg png jpg. 
   Q3 answered: no virus scan service. Q4 answered: upload/download/remove only.
-- Module 9 Audit/history: 09-audit-history.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings AU-01..AU-05 (client interceptor
+- Module 9 Audit/history: 09-audit-history.md/.html - draft 2, ALL questions answered, committed 83411c1. Findings AU-01..AU-05 (client interceptor
   writes audit -> forgeable/missing; Execute GET + RemoveAttachment + engine changes never audited; GetAuditLog no
   access check; no Old/order/labels; local time + display name). Design: 6 server events, LogMessage keeps Name/Value
   + Label/Old + first item _Event, AuditMode Client|Server (v1/AuditLog no-op in Server), GetAuditLog access check
   (History) + sort + optional fields, workflow history via engine IWorkflowInspectionReader merged (Source=Workflow).
   Q1 answered: workflow steps + field changes in one list. Q2 answered: existing tables keep local time, new UTC, API returns CreatedDateUtc. Q3 answered: no retention rule. Q4 answered: no Audit:false fields today (feature optional).
-- Modules not started: 2 Step Master (waits; CDT + one more app), 10 Engine adapter (H6/H8), 11 Config/deployment.
+- Module 10 Engine adapter: 10-engine-adapter.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings EA-01..EA-05 (H6 engine
+  commits inside Atlas tx; H8 Success not read, SLA error swallowed; ~150 lines per service; roles all-apps/fixed MFO,
+  recipients by display name .ToList()[0]; new GUID idempotency). Design: IAtlasWorkflowAdapter (DI engine services,
+  binding from JSON), instance ID WF-<prefix><ID> unchanged, order: write+SaveChanges -> engine last -> Success?
+  commit : rollback+error; dispatch after commit; state check on load (WorkflowSync audit); RequestId idempotency;
+  recipients by LAN ID. No engine change. Q1 answered: engine last + check on load + error log, no background job. Q2 answered: outbox retry job runs;
+  H9 migrations to be applied (module 11 prerequisite). Q3 answered: refused action always stops save. Q4 answered: next Step Master app uses same engine+adapter (step-level binding).
+- Modules not started: 2 Step Master (waits; CDT + one more app), 11 Config/deployment.
 
 ## Key facts (do not re-derive)
 - Live: .NET 10 + EF Core 10; IIS Windows auth; live SQMS schema is SQMS (target engine already switched; local
@@ -86,11 +93,11 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-docs/atlas-platform/09-audit-history.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
+docs/atlas-platform/10-engine-adapter.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 9 Audit/history draft 2 is done;
-commit it when I ask, then start module 10 Engine adapter (then 11 Config/deployment). One question at a time, short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 10 Engine adapter draft 2 is done;
+commit it when I ask, then start module 11 Config/deployment (last design module before coding). One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25

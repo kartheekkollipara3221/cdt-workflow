@@ -39,5 +39,5 @@ Each module spec has these sections:
 | 7 | Module registry and service factory | [07-registry.md](07-registry.md) · [HTML report](07-registry.html) | Draft 2 (all questions answered) |
 | 8 | Attachments and download | [08-attachments.md](08-attachments.md) · [HTML report](08-attachments.html) · SQL: attachment table in [new-app template](sql/05-new-app-template.sql) part 3a | Draft 2 (all questions answered) |
 | 9 | Audit log and history | [09-audit-history.md](09-audit-history.md) · [HTML report](09-audit-history.html) | Draft 2 (all questions answered) |
-| 10 | Workflow engine adapter (start, execute, notify, SLA) | — | Not started |
+| 10 | Workflow engine adapter (start, execute, notify, SLA) | [10-engine-adapter.md](10-engine-adapter.md) · [HTML report](10-engine-adapter.html) | Draft 2 (all questions answered) |
 | 11 | Configuration and deployment | — | Not started |
