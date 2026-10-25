@@ -1,4 +1,92 @@
-# RESUME HERE - atlas-platform C0 committed 4c17e94; C1 Data DONE (AtlasPlatformContext shared-type, sys.columns reader, value converter, load by key, shared tx; 47 tests pass incl. SQL Server), NOT committed; NEXT = C2 Config/registry when the user says. Spec: docs/atlas-platform/12-ttd-pilot-build.md section 11 - 2026-10-25
+# RESUME HERE - atlas-platform build: C0-C4 DONE and committed; C5 (section service) NOT started in code; user wants C5-C10 done autonomously, commit each phase, then review TTDV2 in the browser - 2026-10-25
+
+## Instruction from the user (still active)
+"Complete all remaining steps, committing at each step completion. Do not wait for input. My goal is to review the final
+app on the browser before I pass on any review feedback." Do C5..C10 without stopping; record open design choices in
+atlas-platform/INTEGRATION.md section 6 (findings B1..) instead of asking. End state: local API + Angular UI running TTDV2.
+
+## Status
+- Spec: docs/atlas-platform/12-ttd-pilot-build.md (TTDV2 pilot, all questions answered; section 11 = coding plan,
+  11.3 local working copy, 11.4 @pbdev stand-in). Committed.
+- Code: atlas-platform/ (AtlasPlatform.slnx; projects BBH.CP.Atlas.Infra (stand-in), .Data, .Service, .App; tests/).
+  Build 0 warnings. Tests: 98 pass (dotnet test atlas-platform/AtlasPlatform.slnx; SQL tests make a throw-away DB on localhost).
+- Commits: C0 4c17e94, C1 36d34a8, C2 57c8a5c, C3 0cd4792, C4 33994b8.
+  - C1 Data/Platform: AtlasPlatformContext (shared-type Dictionary<string,object?>, sentinel fix B1), AtlasColumnMetadataReader
+    (sys.columns), AtlasTableRegistry, AtlasValueConverter, AtlasDataExtensions (AddAtlasPlatformData,
+    BeginSharedTransactionAsync, NewRecord, FindActiveAsync). local/sql/000-cp-atlas-core-tables.sql (local only).
+  - C2 Data/Platform/Dto/CPPlatformDto.cs = ALL partial DTO additions (config Rules/OwnerFields/Permissions/Defaults/
+    Computed/SoftDelete/HeaderNameWithId; section AppCode/Version/UserPermissions; control OptionsSource/Effects/
+    KeepSavedValue/Audit; validator Integer/Min/Max; CPKeyValue.Data; grid BindMode; button Action/Target; page
+    AppCode/Version/Errors; audit Event/CreatedDateUtc/Source; dashboard AppCode; tab Source/Columns/Filter/OrderBy; new
+    classes CPPermissions, CPEffect, CPPageError, CPTabColumn, CPTabFilter ...).
+    Service/Platform: AtlasJson (tolerant STJ, "required" off = B2), AtlasProblemException, Registry/AtlasAppManifest
+    (+ mode enums, AtlasAppCode), AtlasConfigStore, AtlasModuleResolver (IAtlasModule, AtlasModuleRegistration).
+    App/Platform: AddAtlasPlatform, AddAtlasModule<T>(code) (keyed scoped IAtlasModule), AtlasProblemExceptionFilter.
+    App/Config/TTDV2.app.json.
+  - C3 Service/Platform/Security: AtlasRoles (AtlasAppRoles, tokens @Read/@Write/@Admin), AtlasSql, AtlasUserContext,
+    AtlasUserDirectory (DisplayName cache, UsersInRoles), AtlasAccessService (View/Create/Edit/Delete/History; LogOnly
+    logs Atlas.AccessDenied; Enforce 403; IsOwner by LAN ID; UserPermissions). App/Platform/UserInfoCurrentUserSource.
+  - C4 Service/Platform/Rules/AtlasRuleEngine (Evaluate + ApplyToSection; app-level Rules default B5; JSON-disabled
+    control stays disabled B3; buttons use Hidden default B4). All registrations: Service/Platform/AtlasPlatformServices.Add.
+
+## C5 plan (worked out, not coded yet) - Service project
+- Options/: IAtlasOptionProvider { Name; GetOptions(AtlasOptionRequest) }. PBAccounts (CPAtlasExternalService stand-in;
+  Label/Value "number - name"; Data AccountNumber, AccountName, RelationshipManager). UsersInRoles (Value LAN ID, Label
+  display name). App providers come from the module class (virtual AppOptionProviders), so program.cs keeps ONE line per app.
+- Sections/ConfigSectionService : CPApplicationService, ISectionService, IAtlasModule; ctor(AtlasModuleServices bundle).
+  - LoadPage: manifest + form copy; access View/Create; record (FindActive, 404) or new; bind values (ToWire; grid
+    SingleRowFields gives Grid.Data with one row); OnLoad hook; options (providers, KeepSavedValue); defaults
+    ({User.LanID}, {User.DisplayName}, {Today}, {Options[n]}; new record or empty value); a control of Type "user" gets
+    an option with the display name of its LAN ID; rules (role tokens, IsOwner, new record = owner); header
+    (HeaderNameWithId); Version (base64 RowVersion); UserPermissions.
+  - SavePage: access Create/Edit on the stored record; effective section; allow list = visible and enabled Field
+    controls + grid column fields, never the system columns (ID, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate,
+    IsDeleted, RowVersion) or Computed fields; an extra, hidden or disabled name = field error "NotAllowed"; grid input
+    accepted as one output per field OR as the grid control with a JSON row; validators (Required with server Effects
+    Require/Unrequire, MaxLength, Pattern, Integer/Min/Max; the grid control Validator applies to each grid field);
+    AtlasValueConverter; Version check (Conflict); map; Computed Sum/Count/Min/Max; system fields in UTC from
+    TimeProvider (CreatedBy/ModifiedBy = LAN ID); OnBeforeSave; save + audit in one platform-context transaction;
+    OnAfterSave. Errors: ID = 0 + Errors list, HTTP 200. DbUpdateConcurrencyException gives a Conflict error.
+  - RemovePage: access Delete; SoftDelete field + Modified*; audit Delete. GetAuditLog: access History; sort descending;
+    legacy fields + Event/CreatedDateUtc/Source. AuditLog(page) does nothing when AuditMode = Server.
+- Audit/AtlasAuditWriter: LogMessage = [{"Name":"_Event","Value":"Create|Update|Delete"}, {Name, Label, Old, Value} ...];
+  CreatedBy = display name; CreatedByLanId if the column exists; CreatedDate per AuditTime (Utc for TTDV2). No entry if
+  nothing changed.
+- Application/CPTTDV2Service : ConfigSectionService; OnLoad sets the grid headers "dddd dd-MMM-yyyy" from WeekEnding
+  (days -6..0). Application/TTDV2/TaxYearsOptionProvider (Year+1 .. Year-3; default Options[1]) and
+  WeekEndingsOptionProvider (TimeProvider).
+- Finding B6 to record: the legacy LoadWeekEnding loop adds nextSunday+7 three times (duplicate dates). TTDV2 gives the
+  last Sunday + the next 3 different Sundays.
+- Config/TTDV2.json: from the target TTD.json (sections TaxTimeDatabase1-3 + the WeeklyHour grid at section level);
+  Fields = TTDV2 columns (TaxPreparer -> TaxPreparerLanId; ModifiedBy Type "user"); no "Code" key (enum); Rules,
+  Permissions, OwnerFields ["CreatedBy","TaxPreparerLanId"], Defaults, Computed WeeklyTotal, SoftDelete,
+  HeaderNameWithId; buttons with Visible true (the CPButton default is false).
+- Register in AtlasPlatformServices. Tests: load defaults; save refusals (extra name, 1.5, 1:30, -5, 1441); WeeklyTotal
+  calculated again; concurrency; audit events; access matrix through the service (SQL tests).
+
+## Remaining phases after C5
+- C6: local/setup-local-db.ps1 (create CPAtlasPlatformDev; run 000 + 11 + 06 view + 12-ttdv2-app; seed users incl. the
+  current Windows login; sample rows; a local dbo.Get_Application). Demo host: Negotiate auth
+  (Microsoft.AspNetCore.Authentication.Negotiate, fallback StandIn:Authentication = Fixed), CORS with credentials for
+  http://localhost:4200, Swashbuckle 10.2.3 (as at the target). Stand-in CPAtlasController (v1/Application + FormType/
+  HasDashboard, v1/Dashboard, v1/SectionPage, v1/ManagePage, v1/RemovePage, v1/AuditLog, v1/GetAuditLog; string code;
+  CPAtlasService resolver hook), v1/authorize, dev "act as" header (stand-in only).
+- C7: dashboard service (Source: Table query builder, Any, Type user, menus from Permissions, Add Target) +
+  Config/TTDV2.Dashboard.json (spec 12, 3.2).
+- C8: start-up check hosted service (loads the table metadata into the registry BEFORE the first request; manifest vs
+  registration; app row; fields vs columns; dashboard columns; providers; unknown rule roles = warnings) + --atlas-check.
+- C9: WebUi Angular 21 in atlas-platform/WebUi: shell (stand-in); platform form (route form/:code/:id, renderer registry,
+  effects, validators, grid row, save/errors/delete/history); platform dashboard (route apps/:code,
+  ag-grid-community 33); @pbdev stand-in package + tsconfig path.
+- C10: sql/release-p1 numbered copies; INTEGRATION.md and local/README.md complete; full test run; start the API and the
+  UI for the user's browser review; update the spec and this handoff.
+
+## Next-session prompt
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Continue autonomously from C5 through C10, commit after
+each phase, do not wait for input; finish with TTDV2 running locally for my browser review."
+
+---
+
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
