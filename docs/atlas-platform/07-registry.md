@@ -76,6 +76,7 @@ Each app has one manifest file, `<Code>.app.json`, in the configuration folder (
   "Dashboard": "PBSP.Dashboard.json",
   "Table": "PBSP.General",
   "AuditTable": "PBSP.AuditLog",
+  "AttachmentTable": "PBSP.Attachment",
   "Service": null,
   "Workflow": null,
   "AccessMode": "LogOnly",

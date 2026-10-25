@@ -71,6 +71,32 @@ BEGIN TRY
                    WHERE object_id = OBJECT_ID(QUOTENAME(@Schema) + N'.[AuditLog]') AND name = N'IX_AuditLog_RefID')
         EXEC(N'CREATE INDEX [IX_AuditLog_RefID] ON [' + @Schema + N'].[AuditLog] ([RefID], [RefType]);');
 
+    -- 3a. Attachment table (spec 08, section 4.2, question 1: one table for each app).
+    --     Skip it if the app has no filepicker control. FileContent is GZip, as in dbo.CDT_Attachment.
+    IF OBJECT_ID(QUOTENAME(@Schema) + N'.[Attachment]', N'U') IS NULL
+        EXEC(N'CREATE TABLE ' + N'[' + @Schema + N'].[Attachment] (
+            [ID]              int IDENTITY(10000,1) NOT NULL,
+            [RecordID]        int             NOT NULL,
+            [ControlName]     varchar(200)    NOT NULL,
+            [FileName]        nvarchar(255)   NOT NULL,
+            [ContentType]     varchar(200)    NULL,
+            [SizeBytes]       bigint          NULL,
+            [FileContent]     varbinary(max)  NULL,
+            [CreatedBy]       nvarchar(50)    NULL,
+            [CreatedByLanId]  nvarchar(50)    NULL,
+            [CreatedDate]     datetime2(3)    NULL,
+            [ModifiedBy]      nvarchar(50)    NULL,
+            [ModifiedByLanId] nvarchar(50)    NULL,
+            [ModifiedDate]    datetime2(3)    NULL,
+            [IsDeleted]       bit             NOT NULL CONSTRAINT [DF_' + @Schema + N'_Attachment_IsDeleted] DEFAULT (0),
+            CONSTRAINT [PK_' + @Schema + N'_Attachment] PRIMARY KEY CLUSTERED ([ID] ASC),
+            CONSTRAINT [FK_' + @Schema + N'_Attachment_General] FOREIGN KEY ([RecordID]) REFERENCES [' + @Schema + N'].[General] ([ID])
+        );');
+
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes
+                   WHERE object_id = OBJECT_ID(QUOTENAME(@Schema) + N'.[Attachment]') AND name = N'IX_Attachment_RecordID')
+        EXEC(N'CREATE INDEX [IX_Attachment_RecordID] ON [' + @Schema + N'].[Attachment] ([RecordID]) WHERE [IsDeleted] = 0;');
+
     -- 4. Application row.
     DECLARE @ParentId int = NULL;
     IF @ParentCode IS NOT NULL

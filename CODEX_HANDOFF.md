@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 7 Registry draft 2 done (not committed); code later in atlas-platform/ (option B) - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 8 Attachments draft 2 done (not committed); module 7 committed 685bc2c; code later in atlas-platform/ (option B) - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -56,14 +56,20 @@ Nested lists are not supported: keep bullets flat.)
   v1/RulePreview (@Admin). SQL read-only: sql/04-multi-role-users.sql. Corrected module 1 10.5 note (first match wins).
   Q1 answered: multi-role yes; only TTD + new apps MostPermissive, existing keep FirstMatch. Q2 answered: RuleDefault ReadOnly for new apps. Q3 answered: section owners (4.4.1), by role AND by person (Relation Record Self), per app/section.
   Q4 answered: keep v1/RulePreview.
-- Module 7 Registry: 07-registry.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings RG-01..RG-06 (5 if-chains -> null/500,
+- Module 7 Registry: 07-registry.md/.html - draft 2, ALL questions answered, committed 685bc2c. Findings RG-01..RG-06 (5 if-chains -> null/500,
   services via new not DI, enum app code, settings in 7 places + absolute paths, parent in 2 places, menu shows broken apps).
   Design: <Code>.app.json manifest, AddAtlasPlatform + AddAtlasModule<T>, IAtlasModuleResolver (keyed DI, 404/400),
   string app code + CPAtlasPage.AppCode, start-up check vs CP_Atlas_Application, v1/Application + FormType/HasDashboard,
   AppSettings:ConfigFolder. Q1 answered: one AddAtlasModule line per app (code review). Q2 answered: settings in JSON manifest; DB keeps identity+roles.
   Q3 answered: Enabled per environment. Q4 answered: client+API always deployed together.
+- Module 8 Attachments: 08-attachments.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings AT-01..AT-07 (H1 download any file,
+  H2 upload path traversal, no access check on download/remove, disk copies stay + removed files downloadable,
+  only CDT supports files - Section Master client sends empty file list, no limits). Design: IAtlasAttachmentService,
+  DB storage GZip, v1/Attachment/{app}/{id} + v1/Download kept but DB lookup by id, Path.GetFileName, memory GZip,
+  Accept/MaxSizeMb/MaxFiles, same transaction, audit. Q1 answered: per-app <Schema>.Attachment (template part 3a; manifest AttachmentTable). Q2 answered: 10 MB, pdf docx xlsx csv txt msg png jpg. 
+  Q3 answered: no virus scan service. Q4 answered: upload/download/remove only.
 - Modules not started: 2 Step Master (waits; CDT + one more app),
-  8 Attachments (H1/H2), 9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
+  9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
 
 ## Key facts (do not re-derive)
 - Live: .NET 10 + EF Core 10; IIS Windows auth; live SQMS schema is SQMS (target engine already switched; local
@@ -75,11 +81,12 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-docs/atlas-platform/07-registry.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
+docs/atlas-platform/08-attachments.md (+ .html), sql/05-new-app-template.sql (part 3a), 07-registry.md (+ .html,
+AttachmentTable), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 7 Registry draft 2 is done;
-commit it when I ask, then start the next module (8 Attachments unless I say otherwise). One question at a time, short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 8 Attachments draft 2 is done;
+commit it when I ask, then start the next module (9 Audit/history unless I say otherwise). One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25

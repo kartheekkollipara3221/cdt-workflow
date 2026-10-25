@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attachments: reusable design</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 8 · design only · draft 2 · 2026-10-25</div>
+<h1>Attachments: reusable design</h1>
+<p class="lead">This report examines how CP Atlas uploads, stores, downloads and removes files. It gives one attachment service for all apps, with the same access control as the record, and it removes two High security issues (H1, H2).</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered (section 9). Design only. No target code is changed.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>7</b><span>findings (AT-01 to AT-07)</span></div>
+<div class="kpi"><b>3</b><span>High security findings</span></div>
+<div class="kpi"><b>1</b><span>app (CDT) with attachments today</span></div>
+<div class="kpi"><b>0</b><span>open questions</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>Some apps keep files with a record (for example trade instructions in CDT). A new app must get file upload, download and removal from its JSON, with the same access control as the record. This module defines one attachment service for all apps and removes the two High security issues of the current file code (H1, H2).</p>
+<p>Scope: the <code>filepicker</code> control, the upload in <code>ManagePage</code>, the storage, <code>v1/Download</code>, <code>v1/RemoveAttachment</code>, the limits and the access checks. Related items: the access check (module 6, 4.3), the rules on save (module 4, 4.6), the registry (module 7), the audit (module 9).</p>
+</section>
+<section id="2-current-behaviour">
+<h2>2. Current behaviour</h2>
+
+<h3>2.1 Upload</h3>
+<ul>
+<li>The client sends each file as a form part <code>files</code> with the name <code>&lt;ControlName&gt;#$#&lt;FileName&gt;</code>. Evidence: <code>WebUi/.../cp-atlas-service.ts.txt:97-103</code>.</li>
+<li><code>CPCDTService.SavePage</code> writes each file to a temporary folder <code>&lt;BaseDirectory&gt;/&lt;CDTAttachmentFolderName&gt;/&lt;random number&gt;</code>, reads it back with GZip compression into <code>CDT_Attachment.FileContent</code>, and deletes the folder. The part before <code>#$#</code> goes to <code>Type</code> (the control name). Evidence: <code>Service/Application/CPCDTServices.txt:276-289</code>; <code>Service/CPApplicationService.cs.txt:109-148</code>.</li>
+<li>The Section Master client sends an empty file list: <code>pageFileOutput</code> is never filled. The section services (SQMSO, SQMSB, TTD, AIN) do not read <code>files</code>. Evidence: <code>cp-atlas-sectionmaster.ts.txt:316, 337</code>; <code>CPAINService.cs.txt:91</code>; <code>CPTTDService.cs.txt:65</code>.</li>
+</ul>
+<h3>2.2 Load and download</h3>
+<ul>
+<li>When a CDT step loads, <code>LoadAttachment</code> writes each attachment, decompressed, to <code>&lt;BaseDirectory&gt;/CDTAttachment/&lt;AttachmentID&gt;/&lt;FileName&gt;</code> if the folder is not there. It returns the URL <code>&lt;HostedURL&gt;\v1\Download?name=&lt;FileName&gt;&amp;code=CDT&amp;id=&lt;AttachmentID&gt;</code>. Evidence: <code>CPCDTServices.txt:403-424, 496-509</code>.</li>
+<li><code>v1/Download</code> opens <code>&lt;BaseDirectory&gt;/&lt;CDTAttachmentFolderName&gt;/&lt;id&gt;/&lt;name&gt;</code> from disk and returns it. It does not use the database and it ignores <code>code</code>. Evidence: <code>Controllers/V1/CPAtlasController.cs.txt:72-90</code>.</li>
+</ul>
+<h3>2.3 Removal</h3>
+<ul>
+<li><code>v1/RemoveAttachment?code=&amp;id=</code> sets <code>IsDeleted</code> on the <code>CDT_Attachment</code> row with that ID. Evidence: <code>CPAtlasController.cs.txt:92-97</code>; <code>CPCDTServices.txt:347-354</code>.</li>
+</ul>
+<h3>2.4 Storage</h3>
+<p><code>dbo.CDT_Attachment</code>: <code>ID</code>, <code>CDT_GeneralID</code>, <code>Type</code>, <code>FileName</code>, <code>FileContent</code> (GZip), <code>CreatedBy</code>, <code>CreatedDate</code>, <code>ModifiedBy</code>, <code>ModifiedDate</code>, <code>IsDeleted</code>. Evidence: <code>CP_Sharepoint.txt:222-238</code>.</p>
+</section>
+<section id="3-findings">
+<h2>3. Findings</h2>
+
+<div class="issue">
+<h3><span class="badge b-high">AT-01</span>A user can download any file from the server <span class="area">security, issue H1</span></h3>
+<p><code>v1/Download</code> joins <code>id</code> and <code>name</code> to the folder path with no check. <code>id=..\..</code> and <code>name=appsettings.json</code> returns the configuration file (with the connection settings). Evidence: <code>CPAtlasController.cs.txt:78-79</code>.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">AT-02</span>A file name from the client can write outside the upload folder <span class="area">security, issue H2</span></h3>
+<p><code>MapData</code> uses the text after <code>#$#</code> as a path part. A part named <code>General#$#..\..\x.aspx</code> writes the file two folders higher, and the clean-up does not remove it. Evidence: <code>CPApplicationService.cs.txt:115-121</code>.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">AT-03</span>Download and removal do not check access <span class="area">security</span></h3>
+<ul>
+<li>Any signed-in user can download a file of any record (also with no CDT role), and can remove any attachment by ID. <code>RemoveAttachment</code> does not check that the attachment belongs to the app or to a record that the user can change (module 6, SE-01).</li>
+<li>An unknown ID gives HTTP 500 (<code>ToList()[0]</code>). Evidence: <code>CPCDTServices.txt:349</code>.</li>
+</ul>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">AT-04</span>Files are copied to the web server disk and stay there</h3>
+<ul>
+<li>Each step load writes each attachment, decompressed, to the application folder. Nothing removes these copies.</li>
+<li>A removed attachment (<code>IsDeleted</code>) stays on disk, so its download URL continues to work.</li>
+<li>If the folder exists, the file is not written again. With more than one web server, a download from another server gives 404.</li>
+</ul>
+<p>Evidence: <code>CPCDTServices.txt:496-509</code>; <code>CPAtlasController.cs.txt:78</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">AT-05</span>Only CDT supports attachments <span class="area">for reuse</span></h3>
+<p>The table, the folder setting, the download path and the service code are for CDT only. A Section Master app with a <code>filepicker</code> loses the selected files with no message (2.1). A new app needs its own table, service code and download path.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">AT-06</span>No limits on the files</h3>
+<ul>
+<li>No limit on the size, the type or the number of files. The default request limit of IIS (about 30 MB) is the only limit.</li>
+<li>The <code>Type</code> (control name) from the client is not checked against the controls of the form, so a file can be put on any control name.</li>
+<li>The temporary folder name is <code>new Random().Next()</code>. If two uploads get the same number, the second deletes the folder of the first (<code>Directory.Delete</code>).</li>
+</ul>
+<p>Evidence: <code>CPApplicationService.cs.txt:111-113</code>; <code>CPCDTServices.txt:278-281</code>.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">AT-07</span>Display names and local time</h3>
+<p><code>CreatedBy</code> and <code>ModifiedBy</code> are display names; the dates are <code>DateTime.Now</code>. See module 6 (4.5) and module 1 (5.9, step 9).</p>
+</div>
+</section>
+<section id="4-reusable-design">
+<h2>4. Reusable design</h2>
+
+<h3>4.1 One attachment service</h3>
+<p><code>IAtlasAttachmentService</code> (platform) does upload, list, download and remove for all apps. The app JSON only declares <code>filepicker</code> controls. <code>CPCDTService</code> keeps its <code>IAttachmentService</code> methods; they call the platform service.</p>
+<h3>4.2 Storage</h3>
+<ul>
+<li>The file content stays in SQL Server, GZip-compressed, as today. No file is written to the web server disk.</li>
+<li>Decision 2026-10-25 (question 1): one attachment table for each app, <code>&lt;Schema&gt;.Attachment</code>, the same as the data and audit tables of module 5. The new-app SQL template makes it (part 3a of <a href="sql/05-new-app-template.sql">sql/05-new-app-template.sql</a>), with a foreign key to <code>&lt;Schema&gt;.General</code> and an index on <code>RecordID</code>. The manifest names it: <code>"AttachmentTable": "PBSP.Attachment"</code>.</li>
+<li>Columns: <code>ID</code>, <code>RecordID</code>, <code>ControlName</code>, <code>FileName</code>, <code>ContentType</code>, <code>SizeBytes</code>, <code>FileContent</code>, <code>CreatedByLanId</code>, <code>CreatedDate</code> (UTC), <code>ModifiedByLanId</code>, <code>ModifiedDate</code> (UTC), <code>IsDeleted</code>, plus <code>CreatedBy</code> / <code>ModifiedBy</code> display names for the History window.</li>
+<li>CDT keeps <code>dbo.CDT_Attachment</code> (registered in its manifest as its attachment table). New nullable columns can be added later with a script; no existing column changes.</li>
+</ul>
+<h3>4.3 Upload</h3>
+<ul>
+<li>The client keeps the form part format <code>&lt;ControlName&gt;#$#&lt;FileName&gt;</code>. The Section Master client fills <code>pageFileOutput</code> from its <code>filepicker</code> controls (the same code as the step page), so section apps send their files.</li>
+<li>The server accepts a file only if <code>ControlName</code> is a <code>filepicker</code> control of the effective form for this user (rules of module 4, 4.6: visible and enabled).</li>
+<li>The file name is <code>Path.GetFileName</code> of the part after <code>#$#</code>, with no path characters, at most 255 characters. The name is data only; it is never a path. This removes AT-02.</li>
+<li>The server reads the upload stream into GZip in memory. No temporary folder. This removes the <code>Random</code> collision of AT-06.</li>
+<li>Limits from the control JSON (defaults in the manifest): <code>Accept</code> (list of extensions), <code>MaxSizeMb</code>, <code>MaxFiles</code>. A file that breaks a limit returns 400 with the control name and the reason (module 1, 5.11). Platform maximum (decision 2026-10-25, question 2): 10 MB for each file. Default <code>Accept</code> list: <code>.pdf</code>, <code>.docx</code>, <code>.xlsx</code>, <code>.csv</code>, <code>.txt</code>, <code>.msg</code>, <code>.png</code>, <code>.jpg</code>. A control can set a lower size or a shorter list, not more. The server checks the extension and the first bytes of the file (the file signature) for the types that have one (PDF, Office, PNG, JPG). The IIS request limit must allow <code>MaxFiles</code> x 10 MB.</li>
+<li>The files are saved in the same transaction as the record. If the record save fails, no file is saved.</li>
+</ul>
+<h3>4.4 Download</h3>
+<ul>
+<li>New endpoint <code>GET v1/Attachment/{appCode}/{id}</code>. The server finds the row by <code>id</code> in the attachment table of the app, checks <code>IsDeleted</code> = 0, checks the access <code>View</code> on the parent record (module 6, 4.3), and streams the decompressed content from the database. The response has <code>Content-Disposition: attachment</code> with the stored file name.</li>
+<li><code>v1/Download?name=&amp;code=&amp;id=</code> stays for the current CDT URLs, but it uses the same steps: it finds the row by <code>id</code>, requires that <code>name</code> is the stored file name, checks the access, and streams from the database. It never reads a path from the parameters. This removes AT-01 and AT-04 with no change to the URLs.</li>
+<li>The load response gives the new URL for new apps and the current URL for CDT.</li>
+</ul>
+<h3>4.5 Removal</h3>
+<p><code>v1/RemoveAttachment?code=&amp;id=</code> keeps its parameters. The server checks that the attachment is in the table of that app, that it is not deleted, and that the user has <code>Edit</code> on the parent record and the <code>filepicker</code> control is enabled for the user. Then it sets <code>IsDeleted</code>. An unknown ID returns 404. This removes AT-03.</p>
+<h3>4.6 Audit</h3>
+<p>Each upload and each removal writes one audit entry for the record (module 9), with the control name and the file name (<code>Old</code> = removed file name). Decision 2026-10-25 (question 4): the functions are upload, download and remove only. A replaced file shows as one removal and one upload in the history. No file versions and no preview.</p>
+<h3>4.7 JSON</h3>
+<pre><code>{
+  "Name": "SupportingDocuments",
+  "Label": "Supporting documents",
+  "Type": "filepicker",
+  "Multiple": true,
+  "Accept": [".pdf", ".xlsx", ".docx", ".msg"],
+  "MaxSizeMb": 10,
+  "MaxFiles": 5,
+  "Validator": { "Required": false }
+}</code></pre>
+</section>
+<section id="5-backward-compatibility">
+<h2>5. Backward compatibility</h2>
+<ul>
+<li>The upload part format, <code>v1/ManagePage</code>, <code>v1/Download</code> and <code>v1/RemoveAttachment</code> keep their routes and parameters. <code>v1/Attachment/{appCode}/{id}</code> is new.</li>
+<li>The current CDT download URLs continue to work. Only bad requests (a path in <code>id</code> or <code>name</code>, a removed file, no access) now fail.</li>
+<li><code>dbo.CDT_Attachment</code> and its data do not change. The GZip format does not change, so the current rows can be read.</li>
+<li>The access checks start in log-only mode (module 6, section 5).</li>
+<li><code>Accept</code>, <code>MaxSizeMb</code> and <code>MaxFiles</code> are optional. With no value, the platform maximum (10 MB, default type list) applies. The current CDT controls have no <code>Accept</code>; a CDT file type that is not in the default list must be added to the CDT control JSON before the limits are turned on (step 7).</li>
+</ul>
+</section>
+<section id="6-migration-steps">
+<h2>6. Migration steps</h2>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Change</th><th>Risk</th></tr>
+<tr><td>1</td><td>Change <code>v1/Download</code> to read from the database by <code>id</code> (4.4). Remove the disk copy in <code>LoadAttachment</code>.</td><td>Low. Removes H1.</td></tr>
+<tr><td>2</td><td>Change the upload to <code>Path.GetFileName</code> and memory GZip (4.3).</td><td>Low. Removes H2.</td></tr>
+<tr><td>3</td><td>Add the access checks to download and removal, log-only first (4.4, 4.5).</td><td>Low</td></tr>
+<tr><td>4</td><td>Add <code>IAtlasAttachmentService</code>; change CDT to call it.</td><td>Low</td></tr>
+<tr><td>5</td><td>Use the attachment table of the new-app SQL template (part 3a).</td><td>Low</td></tr>
+<tr><td>6</td><td>Fill <code>pageFileOutput</code> in the Section Master client (4.3).</td><td>Low</td></tr>
+<tr><td>7</td><td>Add the limits (4.3) and the audit entries (4.6).</td><td>Low</td></tr>
+<tr><td>8</td><td>Delete the old attachment copies in <code>&lt;BaseDirectory&gt;/CDTAttachment</code> on each server.</td><td>Low</td></tr>
+</table></div>
+<p>Steps 1 and 2 remove two High issues and can go first, in a small release of their own.</p>
+</section>
+<section id="7-acceptance">
+<h2>7. Acceptance</h2>
+<ul>
+<li><code>v1/Download?id=..\..&amp;name=appsettings.json</code> returns 404 and reads no file.</li>
+<li>A part named <code>General#$#..\..\x.aspx</code> saves a file named <code>x.aspx</code> in the database and writes nothing to disk.</li>
+<li>A user with no role in the app gets 403 for the download in enforce mode.</li>
+<li>A removed attachment cannot be downloaded.</li>
+<li>A Section Master app with a <code>filepicker</code> saves, lists, downloads and removes files with no app code.</li>
+<li>A file larger than <code>MaxSizeMb</code> returns 400 with the control name. The record is not saved.</li>
+<li>A current CDT attachment URL downloads the same file as before.</li>
+<li>With two web servers, the download works from each server.</li>
+</ul>
+</section>
+<section id="8-security-notes">
+<h2>8. Security notes</h2>
+<ul>
+<li>The download sends <code>X-Content-Type-Options: nosniff</code> and always <code>Content-Disposition: attachment</code>, so the browser does not run an uploaded HTML or script file.</li>
+<li>The file name in the response header is encoded (RFC 6266 <code>filename*</code>).</li>
+<li>Decision 2026-10-25 (question 3): no virus scan service. The endpoint protection on the servers, the type list and the file signature check (4.3) are the controls.</li>
+</ul>
+</section>
+<section id="9-open-questions">
+<h2>9. Open questions</h2>
+<ol>
+<li>Answered (2026-10-25): one attachment table for each app, <code>&lt;Schema&gt;.Attachment</code> (4.2). Added to the new-app SQL template, part 3a.</li>
+<li>Answered (2026-10-25): 10 MB for each file; default types <code>.pdf</code>, <code>.docx</code>, <code>.xlsx</code>, <code>.csv</code>, <code>.txt</code>, <code>.msg</code>, <code>.png</code>, <code>.jpg</code> (4.3).</li>
+<li>Answered (2026-10-25): no scan service. The endpoint protection on the servers and the type checks are enough (section 8).</li>
+<li>Answered (2026-10-25): no. Upload, download and remove only; no file versions, no preview (4.6).</li>
+</ol>
+</section>
+</main>
+</body>
+</html>
