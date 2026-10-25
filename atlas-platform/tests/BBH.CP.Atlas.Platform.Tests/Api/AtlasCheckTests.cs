@@ -142,6 +142,76 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains("WARNING TTDV2: the control 'WorkDescription' has the type 'filepicker'", report, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_misspelled_property_is_a_warning_with_its_path()
+    {
+        CopyRealConfig();
+        ReplaceInForm("\"Validator\": { \"Required\": true }", "\"Validator\": { \"Requried\": true }");
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.True(code == 0, report);
+        Assert.Contains("WARNING TTDV2: TTDV2.json: 'Section.Controls[", report, StringComparison.Ordinal);
+        Assert.Contains(".Validator.Requried' is not a property of CPValidator", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_effect_target_that_is_not_a_control_is_an_error()
+    {
+        CopyRealConfig();
+        ReplaceInForm("\"Clear\": [ \"AccountNumber\", \"AccountName\" ]", "\"Clear\": [ \"AccountNumber\", \"AcountName\" ]");
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("names 'AcountName', which is not a control or field of the form", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_unknown_default_token_is_an_error()
+    {
+        CopyRealConfig();
+        ReplaceInForm("\"TaxPreparer\": \"{User.LanID}\"", "\"TaxPreparer\": \"{Todya}\"");
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("the default token '{Todya}' of 'TaxPreparer' is not known", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_pattern_that_does_not_compile_is_an_error()
+    {
+        CopyRealConfig();
+        ReplaceInForm("\"Validator\": { \"Required\": true }", "\"Validator\": { \"Required\": true, \"Pattern\": \"[0-9\" }");
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("is not a valid regular expression", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_newer_SchemaVersion_is_an_error()
+    {
+        CopyRealConfig();
+        string manifest = Path.Combine(_folder, "TTDV2.app.json");
+        File.WriteAllText(manifest, File.ReadAllText(manifest).Replace("{", "{ \"SchemaVersion\": 2,", StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("the manifest SchemaVersion 2 is newer than this platform", report, StringComparison.Ordinal);
+    }
+
+    private void ReplaceInForm(string oldText, string newText)
+    {
+        string form = Path.Combine(_folder, "TTDV2.json");
+        string text = File.ReadAllText(form);
+        Assert.Contains(oldText, text, StringComparison.Ordinal);
+        File.WriteAllText(form, text.Replace(oldText, newText, StringComparison.Ordinal));
+    }
+
     private void CopyRealConfig()
     {
         Directory.CreateDirectory(_folder);

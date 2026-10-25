@@ -121,6 +121,9 @@ public static class AtlasStartupCheck
                 CheckRoles(context, manifest, form, Warning);
             if (form?.Section != null)
                 CheckControlTypes(form, Warning);
+
+            // Review SV-07: typos in property names (warnings) and in names, tokens, patterns and actions (errors).
+            CheckContract(configStore, manifest, form, Error, Warning);
         }
 
         CheckModel(services, items);
@@ -269,6 +272,18 @@ public static class AtlasStartupCheck
             error($"{setting} '{table.FullName}': the column '{column.Name}' has the type '{column.SqlType}', which the platform does not support.");
 
         return table;
+    }
+
+    private static void CheckContract(IAtlasConfigStore configStore, AtlasAppManifest manifest, CPAtlasApplicationConfig? form, Action<string> error, Action<string> warning)
+    {
+        if (manifest.SourceFile != null)
+            AtlasConfigLint.CheckUnknownProperties(manifest.SourceFile, typeof(AtlasAppManifest), warning);
+        if (!string.IsNullOrWhiteSpace(manifest.Form))
+            AtlasConfigLint.CheckUnknownProperties(Path.Combine(configStore.ConfigFolder, manifest.Form), typeof(CPAtlasApplicationConfig), warning);
+        if (!string.IsNullOrWhiteSpace(manifest.Dashboard))
+            AtlasConfigLint.CheckUnknownProperties(Path.Combine(configStore.ConfigFolder, manifest.Dashboard), typeof(CPAtlasDashboard), warning);
+        if (form != null)
+            AtlasConfigLint.CheckForm(manifest, form, error, warning);
     }
 
     /// <summary>The control types of the platform client (WebUi platform/form/atlas-renderer-registry.ts).</summary>

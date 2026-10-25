@@ -53,6 +53,9 @@ public sealed class AtlasAppManifest
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Optional version of the config contract (review SV-07). Null or 1 = this platform; a higher value is a start-up error.</summary>
+    public int? SchemaVersion { get; set; }
+
     /// <summary>The file that the manifest came from (not in the JSON).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string? SourceFile { get; set; }
