@@ -1,5 +1,6 @@
-/* Local review styles. The form JSON uses a few Tailwind class names (the target uses Tailwind); they are defined
-   here so the local copy looks the same without Tailwind. The pbdev-* styles belong to the stand-in library. */
+/* STAND-IN: do not copy to the target. Local look-alikes of what the target already has: Tailwind classes used in the
+   form JSON, the btn / btn--primary classes of pbdev-core.min.css, the pbdev-* controls, and the local shell.
+   The platform styles are in src/app/platform/atlas-platform.css (copied). */
 @import '@ng-select/ng-select/themes/default.theme.css';
 
 :root {
@@ -31,7 +32,6 @@ a { color: var(--brand-2); cursor: pointer; }
 .items-start { align-items: start; }
 .p-8 { padding: 1.25rem 1.5rem 1.5rem; }
 .bg-white { background: #fff; }
-.grid-column-start-end-1-2 { grid-column: 1 / -1; }
 @media (max-width: 800px) {
   .grid-cols-2, .grid-cols-3 { grid-template-columns: 1fr; }
 }
@@ -58,26 +58,6 @@ a { color: var(--brand-2); cursor: pointer; }
 }
 .shell-toast-error { background: var(--danger); }
 
-/* Platform form and dashboard */
-.atlas-center { display: flex; justify-content: center; padding: 4rem 0; }
-.atlas-title { margin: 0.15rem 0 0.75rem; font-size: 1.45rem; }
-.atlas-breadcrumb { color: var(--muted); font-size: 0.8rem; }
-.atlas-muted { color: var(--muted); font-size: 0.85rem; }
-.atlas-form-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; margin-bottom: 0.5rem; }
-.atlas-header-actions { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-.atlas-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 1rem; }
-.atlas-form .atlas-panel { overflow: visible; }
-.atlas-field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
-.atlas-label { font-weight: 600; font-size: 0.85rem; color: #334055; }
-.required-indicator { color: var(--danger); margin-left: 0.2rem; }
-.atlas-error { color: var(--danger); font-size: 0.8rem; }
-.atlas-readonly { padding: 0.5rem 0.6rem; background: #f6f7f9; border: 1px solid var(--line); border-radius: 6px; min-height: 36px; }
-.atlas-buttons { display: flex; justify-content: flex-end; gap: 0.6rem; margin: 1rem 0; }
-.atlas-alert { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem; }
-.atlas-alert p { margin: 0.4rem 0 0.8rem; }
-.atlas-alert-error { background: #fdecea; border: 1px solid #f5c2bd; color: #7a1c13; }
-.atlas-link { color: var(--brand-2); text-decoration: underline; cursor: pointer; }
-
 .btn {
   border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 6px; padding: 0.5rem 1rem;
   font: inherit; cursor: pointer;
@@ -85,25 +65,6 @@ a { color: var(--brand-2); cursor: pointer; }
 .btn:hover:not(:disabled) { border-color: var(--brand-2); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn--primary { background: var(--brand-2); border-color: var(--brand-2); color: #fff; }
-.btn--danger { background: #fff; border-color: var(--danger); color: var(--danger); }
-
-.atlas-grid-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-.atlas-grid-cell { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
-.atlas-grid-header { font-size: 0.78rem; font-weight: 600; color: #334055; min-height: 2.2em; }
-.atlas-number { text-align: right; }
-
-.atlas-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); margin-bottom: 0.75rem; flex-wrap: wrap; }
-.atlas-tab {
-  border: 0; background: none; padding: 0.6rem 0.9rem; font: inherit; cursor: pointer; color: var(--muted);
-  border-bottom: 3px solid transparent; margin-bottom: -1px;
-}
-.atlas-tab-active { color: var(--brand); border-bottom-color: var(--brand-2); font-weight: 600; }
-.atlas-count { display: inline-block; min-width: 1.5em; padding: 0 0.35em; border-radius: 99px; background: #e8edf5; font-size: 0.75rem; }
-.atlas-grid-panel { padding: 0.5rem; }
-.atlas-grid { width: 100%; }
-.atlas-row-actions { display: flex; gap: 0.3rem; align-items: center; height: 100%; }
-.atlas-row-action { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 0.1rem 0.45rem; font-size: 0.78rem; cursor: pointer; line-height: 1.6; }
-.atlas-row-action-danger { color: var(--danger); border-color: #f0b8b2; }
 
 .atlas-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
 .atlas-card {
@@ -113,16 +74,6 @@ a { color: var(--brand-2); cursor: pointer; }
 .atlas-card:hover { border-color: var(--brand-2); box-shadow: 0 2px 10px rgb(18 57 91 / 10%); }
 .atlas-card-code { font-size: 0.75rem; font-weight: 700; color: var(--accent); letter-spacing: 0.05em; }
 .atlas-card-name { font-size: 1.05rem; font-weight: 600; }
-
-.atlas-history-entry { border-bottom: 1px solid var(--line); padding: 0.6rem 0; }
-.atlas-history-head { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.4rem; }
-.atlas-badge { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 99px; background: #e8edf5; }
-.atlas-badge-create { background: var(--ok-bg); color: #116a3d; }
-.atlas-badge-update { background: #e7effa; color: #1f5f99; }
-.atlas-badge-delete { background: #fdecea; color: var(--danger); }
-.atlas-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.atlas-table th, .atlas-table td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #eef0f4; vertical-align: top; }
-.atlas-table th { color: var(--muted); font-weight: 600; }
 
 /* @pbdev/pbdev-core stand-in */
 .pbdev-control {

@@ -69,7 +69,7 @@
   <div class="atlas-buttons">
     @for (button of visibleButtons(); track button.Name) {
       <button type="button" class="btn" [class.btn--primary]="button.Action?.Type === 'Save'"
-        [class.btn--danger]="button.Action?.Type === 'Delete'" [attr.id]="'btn_' + button.Name"
+        [class.atlas-btn-danger]="button.Action?.Type === 'Delete'" [attr.id]="'btn_' + button.Name"
         [disabled]="button.Disabled || saving()" (click)="onButton(button)">
         {{ saving() && button.Action?.Type === 'Save' ? 'Saving...' : button.Label }}
       </button>
@@ -82,7 +82,7 @@
     <p>Delete record {{ id }}? The record is marked as deleted and leaves the dashboard.</p>
     <div class="atlas-buttons">
       <button type="button" class="btn" (click)="confirmDelete.set(false)">Cancel</button>
-      <button type="button" class="btn btn--danger" id="btn_ConfirmDelete" (click)="remove()">Delete</button>
+      <button type="button" class="btn atlas-btn-danger" id="btn_ConfirmDelete" (click)="remove()">Delete</button>
     </div>
   </pbdev-dialog>
 }
