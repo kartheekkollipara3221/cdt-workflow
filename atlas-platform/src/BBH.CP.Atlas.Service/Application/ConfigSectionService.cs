@@ -291,7 +291,8 @@ namespace BBH.CP.Atlas.Service.Application
 
                 if (!field.Visible || field.Disabled)
                 {
-                    if (SameValue(value, previous.GetValueOrDefault(field.Field)))
+                    // Review DA-06: a typed compare, so "1250000.5" for a stored 1250000.50 is no change.
+                    if (AtlasValueConverter.SameValue(value, previous.GetValueOrDefault(field.Field), table.Find(field.Field)))
                         continue;
 
                     errors.Add(Error(field.Name, "NotAllowed", $"{field.Label ?? field.Name} cannot be changed."));
@@ -648,7 +649,7 @@ namespace BBH.CP.Atlas.Service.Application
 
                 string? old = previous.GetValueOrDefault(column.Name);
                 string? value = AtlasValueConverter.ToWire(record.GetValueOrDefault(column.Name), column);
-                if (SameValue(old, value) || (isNew && string.IsNullOrEmpty(value)))
+                if (AtlasValueConverter.SameValue(old, value, column) || (isNew && string.IsNullOrEmpty(value)))
                     continue;
 
                 bool hidden = field.Control.Audit == false;

@@ -10,6 +10,21 @@ public class AtlasValueConverterTests
         new("Field", type, nullable, maxLength, precision, scale, identity, IsComputed: false);
 
     [Theory]
+    [InlineData("decimal", "1250000.50", "1250000.5", true)]
+    [InlineData("decimal", "1250000.50", "1250000.51", false)]
+    [InlineData("int", "060", "60", true)]
+    [InlineData("datetime", "2026-10-25T10:00:00.000Z", "2026-10-25T10:00:00Z", true)]
+    [InlineData("bit", "true", "True", true)]
+    [InlineData("varchar", "a", "A", false)]
+    [InlineData("int", "", null, true)]
+    [InlineData("int", "abc", "abc", true)]
+    [InlineData("int", "abc", "1", false)]
+    public void SameValue_compares_the_typed_values(string type, string? a, string? b, bool expected)
+    {
+        Assert.Equal(expected, AtlasValueConverter.SameValue(a, b, Column(type, precision: 19, scale: 2)));
+    }
+
+    [Theory]
     [InlineData("90", 90)]
     [InlineData("0", 0)]
     [InlineData("-5", -5)]

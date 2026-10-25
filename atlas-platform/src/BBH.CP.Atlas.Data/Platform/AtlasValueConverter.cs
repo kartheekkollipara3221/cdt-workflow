@@ -104,6 +104,23 @@ public static class AtlasValueConverter
         };
     }
 
+    /// <summary>
+    /// True if two wire values give the same column value (review DA-06): "1250000.50" and "1250000.5", or two forms of
+    /// the same time. Empty is null. A value that does not convert is compared as text (ordinal).
+    /// </summary>
+    public static bool SameValue(string? a, string? b, AtlasColumn? column)
+    {
+        a = string.IsNullOrEmpty(a) ? null : a;
+        b = string.IsNullOrEmpty(b) ? null : b;
+        if (string.Equals(a, b, StringComparison.Ordinal))
+            return true;
+        if (a == null || b == null || column == null || AtlasSqlTypes.IsText(column.SqlType))
+            return false;
+
+        AtlasConversionResult left = FromWire(a, column), right = FromWire(b, column);
+        return left.Success && right.Success && Equals(left.Value, right.Value);
+    }
+
     private static AtlasConversionResult Integer(string text, AtlasColumn column, long min, long max, Func<long, object> box)
     {
         if (!long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long value))

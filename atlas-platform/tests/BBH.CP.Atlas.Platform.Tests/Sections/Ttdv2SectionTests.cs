@@ -253,6 +253,30 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Throws<AtlasProblemException>(() => Svc(Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = created.ID }));
     }
 
+    [Fact]
+    public async Task A_disabled_number_sent_in_another_form_is_no_change()
+    {
+        // Review DA-06: "02026" and the stored 2026 are the same value, so a disabled field does not give NotAllowed.
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text
+            : text.Replace("\"Name\": \"TaxYear\",", "\"Name\": \"TaxYear\", \"Disabled\": true,", StringComparison.Ordinal));
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner, taxYear: 2026);
+            string? version = custom.Service(_registry, Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = id }).Version;
+
+            CPAtlasPage saved = custom.Service(_registry, Owner, Ttdv2Roles.Owner)
+                .SavePage(EditInput(id, version, ("TaxYear", "02026"), ("Category", "OTHER")), NoFiles);
+
+            Assert.True(saved.ID > 0, Describe(saved));
+            Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     // ---------- Access matrix (spec 01, 10.5), AccessMode Enforce ----------
 
     [Fact]
