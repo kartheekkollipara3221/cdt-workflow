@@ -1,3 +1,28 @@
+# Atlas platform: Section Master draft 2, complete for review - 2026-10-25
+
+User decision: only ONE more app uses Step Master; all other new apps use Section Master. Step Master spec waits. Section Master is the priority.
+Completed: added save-path findings SM-13..SM-18 (copied save pipeline, client-trusted save H3/H4, workflow values in code + H8, hidden errors H7, client-written audit, no concurrency) and design 5.9-5.13 (12-step server save pipeline with allow list, workflow binding from JSON, additive Errors contract with HTTP 200 in phase 1, server audit, rowversion token). Migration steps 7-12, extra regression checks, Q1/Q6 answered, Q7/Q8 added. HTML report mirrors the md. New SQL: docs/atlas-platform/sql/01-section-master-rowversion.sql (additive, idempotent; not executed).
+Changed files: docs/atlas-platform/01-section-master.md, 01-section-master.html, sql/01-section-master-rowversion.sql, README.md. Not committed.
+Remaining: target-team answers Q1 (codes), Q2-Q5, Q7, Q8; then next module (recommend module 5 data mapping, then 6 security).
+Next-session prompt: "Section Master spec draft 2 is complete for review. Commit if not done; start module 5 Data mapping."
+
+---
+# Atlas platform: design-only specs started, Section Master draft 1 - 2026-10-24 (session 2)
+
+Current goal: Make CP Atlas a reusable platform so ~16 more business apps integrate with low-code changes. User chose Option 3: design specs only in docs/atlas-platform/; no Atlas code, no workflow engine change, same repo and branch.
+
+Completed changes:
+- docs/atlas-platform/README.md: goal, rules, spec template, module list (11 modules).
+- docs/atlas-platform/01-section-master.md: findings SM-01..SM-12 and reusable design (client Effects, CPKeyValue.Data, CPButton.Action, Redirects, renderer registry, keyed-service module registry, ConfigSectionService, dashboard FormType), backward-compatibility rules, migration steps, regression checks, open questions.
+- Key facts: CPApplicationCode already lists 13 unused codes (TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU), probably the planned apps. SQMSO role lookup is not filtered by application (SM-08); AIN is.
+- docs/README.md indexes the specs.
+
+Changed files: docs/atlas-platform/README.md, docs/atlas-platform/01-section-master.md, docs/README.md, CODEX_HANDOFF.md. Not committed.
+Build/test status: not run (documentation only).
+Remaining tasks: user review of Section Master draft; answers to its open questions; next module (Step Master / CDT, module 2).
+Next-session prompt: "Continue Atlas platform specs (docs/atlas-platform/). Section Master draft 1 is done; review open questions, then start module 2 Step Master."
+
+---
 # Target analysis: Atlas docs indexed, H9-H12 status added - 2026-10-24 (session 2)
 
 Current goal: Finish the CP Atlas read-only analysis follow-ups.

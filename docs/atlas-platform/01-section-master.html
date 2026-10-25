@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Section Master Spec</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 1 · design only · draft 2 · complete for review · 2026-10-25</div>
+<h1>Section Master: reusable design</h1>
+<p class="lead">This report examines the Section Master form in CP Atlas. It shows the per-app code in the form. It gives a design that lets a new business app use the form with configuration only.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies. Some copies have copy errors. An item marked <span class="confirm">Confirm</span> depends on files that are not in the copy.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="../TARGET_ATLAS_APPLICATION_FLOW.html">application flow</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>4</b><span>apps use Section Master now (SQMSO, SQMSB, TTD, AIN)</span></div>
+<div class="kpi"><b>7 of 9</b><span>steps to add an app are code changes today</span></div>
+<div class="kpi"><b>18</b><span>findings (SM-01 to SM-18)</span></div>
+<div class="kpi"><b>1</b><span>additive SQL script (version column)</span></div>
+</div>
+
+<section id="purpose">
+<h2>1. Purpose</h2>
+<p>Section Master shows a single-page form for one application record. SQMSO (Opportunity), SQMSB (Bid), TTD (Tax Time Database) and AIN (Account Inventory) use it. CDT uses Step Master (module 2).</p>
+<p>All new business apps except one use Section Master. One more app uses Step Master (business owner, 2026-10-25). Thus Section Master is the platform for most new apps. If Section Master is generic, a new app needs only a JSON file and SQL scripts.</p>
+</section>
+
+<section id="current">
+<h2>2. Current behaviour</h2>
+<h3>2.1 Flow</h3>
+<ol class="flow">
+<li>The dashboard opens <code>sectionmaster/:code/:id</code>. The value <code>id</code> = 0 means a new record.<br><span class="small"><code>app.routes.ts.txt:30-31</code>; <code>cp-atlas-dashboard.ts.txt:109-125, 316-330</code></span></li>
+<li>The form component sends <code>GET v1/SectionPage?Code=&amp;ID=</code>.<br><span class="small"><code>cp-atlas-sectionmaster.ts.txt:69-86</code>; <code>cp-atlas-service.ts.txt:76-82</code></span></li>
+<li>The controller calls <code>CPAtlasService.LoadSectionPage</code>. This method selects a module service with an <code>if</code> chain on the app code.<br><span class="small"><code>CPAtlasController.cs.txt:64-70</code>; <code>CPAtlasService.cs.txt:86-90, 164-176</code></span></li>
+<li>The module service reads its JSON file from the disk. If <code>ID</code> &gt; 0, it puts the database row into the controls (<code>BindData</code>). Then it adds default data, options, status, header name and rules.<br><span class="small"><code>CPTTDService.cs.txt:43-63, 146-171</code>; <code>CPSQMSOService.txt:68-111</code>; <code>CPSQMSBService.cs.txt:70-113</code>; <code>CPAINService.cs.txt:34-66</code></span></li>
+<li>The component makes an Angular reactive form from <code>Controls</code> and <code>ChildControls</code>. It adds validators from <code>Validator</code>.<br><span class="small"><code>cp-atlas-sectionmaster.ts.txt:97-149</code></span></li>
+<li>The template shows each child control by <code>Type</code>: <code>select</code>, <code>ngselect</code>, <code>textarea</code>, <code>text</code>, <code>currency</code>, <code>percent</code>, <code>datetimepicker</code>, <code>option</code>.<br><span class="small"><code>cp-atlas-sectionmaster.html.txt:15-126</code></span></li>
+<li>The buttons come from the JSON <code>Buttons</code> list. <code>Submit</code> saves through <code>POST v1/ManagePage</code>. <code>Close</code> goes back. <code>Bid</code> calls <code>GET v1/Execute?action=MakeBid</code>. On SQMSO and SQMSB, each other button sets <code>Status</code> to the button name and saves.<br><span class="small"><code>cp-atlas-sectionmaster.ts.txt:298-380</code>; <code>cp-atlas-service.ts.txt:93-120</code></span></li>
+</ol>
+
+<h3>2.2 Parts that are already generic</h3>
+<ul>
+<li>The JSON supplies the controls, labels, types, validators, options, CSS classes and buttons.</li>
+<li>The server has a rules engine (<code>CPRule</code>). A rule uses roles, states and owner to show, hide, enable or disable controls and buttons.</li>
+<li><code>MapData</code> and <code>BindData</code> copy form values to and from entity properties by name.</li>
+</ul>
+</section>
+
+<section id="cost">
+<h2>3. The cost to add app #17 today</h2>
+<p>To add one new single-page app, a developer must change these items:</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Item</th><th>Location</th><th>Type of change</th></tr>
+<tr><td>1</td><td>Add the code to <code>CPApplicationCode</code></td><td><code>CPApplicationCode.cs.txt</code></td><td>C#</td></tr>
+<tr><td>2</td><td>Add <code>&lt;Code&gt;ConfigPath</code></td><td><code>appsettings.json</code></td><td>Config</td></tr>
+<tr><td>3</td><td>Write a new module service class</td><td><code>Service/Application/</code></td><td>C#</td></tr>
+<tr><td>4</td><td>Add a branch to each service factory method</td><td><code>CPAtlasService.cs.txt:127-185</code></td><td>C#</td></tr>
+<tr><td>5</td><td>Add an entity, a <code>DbSet</code> and a table</td><td><code>Data/</code>, SQL</td><td>C# and SQL</td></tr>
+<tr><td>6</td><td>Add a branch to dashboard <code>onClick</code> and <code>editRow</code></td><td><code>cp-atlas-dashboard.ts.txt:109-125, 316-330</code></td><td>TypeScript</td></tr>
+<tr><td>7</td><td>Add branches for buttons, redirects and dependent fields</td><td><code>cp-atlas-sectionmaster.ts.txt:244-367</code></td><td>TypeScript</td></tr>
+<tr><td>8</td><td>Write the JSON file</td><td><code>Config/&lt;Code&gt;.json</code></td><td>Config</td></tr>
+<tr><td>9</td><td>Add the entitlements</td><td>SQL</td><td>SQL</td></tr>
+</table></div>
+<p>Only items 8 and 9 are low-code. Items 1 to 7 change shared files. Each of these changes can cause a fault in the other apps.</p>
+<div class="note small"><strong>Possible app list.</strong> <code>CPApplicationCode</code> already has 13 codes that no module uses: <code>TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU</code>. These are probably the planned apps. Confirm this with the target team.</div>
+</section>
+
+<section id="findings">
+<h2>4. Findings</h2>
+<p>Each finding has an ID (SM-nn). "High for reuse" means that each new app must change shared code because of this item.</p>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-01</span>The shared component has field-specific logic <span class="area">UI</span></h3>
+<p>The component has SQMS field names in its code:</p>
+<ul>
+<li><code>onSelectValueChange</code> splits the <code>Account</code> value on <code>" - "</code> into <code>AccountNumber</code>, <code>AccountName</code>, <code>RelationshipManager</code> and <code>BBHAffiliatedAccount</code>. It splits <code>OpportunityId</code> into five fields. <code>BidForFullCommitment</code>, <code>BidAskValue</code> and <code>FundConsideredSecondarySale</code> set or clear other fields.</li>
+<li><code>ngAfterViewInit</code> waits 5 seconds (<code>setTimeout</code>). Then it shows or hides <code>RationaleForSecondarySale</code>, <code>RecentDateOfValuation</code> and <code>ValuationAsRecentDate</code>, and adds or removes their <code>required</code> validators. It uses <code>document.getElementById</code>.</li>
+</ul>
+<dl>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.ts.txt:120-127, 173-227, 244-289</code></dd>
+<dt>Example</dt><dd>A new app with dependent fields needs TypeScript changes in the shared component. Also, the form is not correct for 5 seconds. A user can save in that time without the conditional validators.</dd>
+<dt>Design</dt><dd>5.1 Effects, 5.2 Option data</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-02</span>The shared component has app codes and role names <span class="area">UI</span></h3>
+<ul>
+<li><code>onClick</code>: only <code>SQMSO</code> and <code>SQMSB</code> set <code>Status</code> from the button name.</li>
+<li><code>onRedirectPage</code>: the target tab depends on <code>SQMSO</code>/<code>SQMSB</code> and the roles <code>mfo</code>/<code>ipfg</code>. All other apps go to <code>/dashboard/{code}/MyOpportunities</code>. This is a SQMS tab name.</li>
+<li><code>onAddBid</code>: the target is always <code>SQMSB</code>.</li>
+</ul>
+<dl>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.ts.txt:306-309, 347-367, 369-380</code></dd>
+<dt>Design</dt><dd>5.3 Button actions, 5.4 Redirects</dd>
+</dl>
+</div>
+
+<div class="issue med">
+<h3><span class="badge b-med">SM-03</span>The template has control names <span class="area">UI</span><span class="confirm">Confirm</span></h3>
+<p>The template has special rows for <code>Vehicle1</code>, <code>Vehicle2</code> and <code>Vehicle3</code>. The same lines also show a <code>pbdev-select</code> outside the <code>*ngIf</code> for each child control. Line 14 has <code>*ngIf="isLoading"</code> on the form. These are probably copy errors, because the live form operates.</p>
+<dl>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.html.txt:14, 21-44</code></dd>
+<dt>Design</dt><dd>5.5 Renderer registry</dd>
+</dl>
+</div>
+
+<div class="issue med">
+<h3><span class="badge b-med">SM-04</span>Dependent values use the position in a display label <span class="area">UI</span></h3>
+<p>The client gets related values by position after a split on <code>" - "</code> (<code>value.split(' - ')[2]</code>). The server makes these labels.</p>
+<dl>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.ts.txt:251-267</code></dd>
+<dt>Example</dt><dd>An account name contains <code>" - "</code>. The client puts the wrong values into <code>AccountName</code> and <code>RelationshipManager</code>.</dd>
+<dt>Design</dt><dd>5.2 Option data</dd>
+</dl>
+</div>
+
+<div class="issue med">
+<h3><span class="badge b-med">SM-05</span>Some control types do not show, and unknown types fail silently <span class="area">UI</span><span class="confirm">Confirm</span></h3>
+<ul>
+<li><code>filepicker</code> makes a form control, but the template has no <code>filepicker</code> row.</li>
+<li>The TTD JSON has a grid control (<code>WeeklyHour</code>). The template has no grid row.</li>
+<li>If a type is not known, the form shows nothing and gives no error.</li>
+</ul>
+<dl>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.ts.txt:135-136</code>; <code>CPTTDService.cs.txt:153-167</code>; template</dd>
+<dt>Design</dt><dd>5.5 Renderer registry</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-06</span>The server selects module services with <code>if</code> chains <span class="area">Framework</span></h3>
+<p><code>LoadApplicationService</code>, <code>LoadSectionService</code>, <code>LoadStepService</code>, <code>LoadAttachmentService</code> and <code>LoadActionService</code> each have one branch for each code. <code>LoadActionService</code> returns <code>null</code> for all codes except SQMSO.</p>
+<dl>
+<dt>Location</dt><dd><code>CPAtlasService.cs.txt:127-185</code></dd>
+<dt>Example</dt><dd>A call to <code>v1/Execute</code> for TTD causes a <code>NullReferenceException</code>.</dd>
+<dt>Design</dt><dd>5.6 Module registry</dd>
+</dl>
+</div>
+
+<div class="issue med">
+<h3><span class="badge b-med">SM-07</span>The module services have default values in code <span class="area">Framework</span></h3>
+<p>Examples: the header texts <code>"Tax Time Database Time Sheet"</code> and <code>"New Opportunity"</code>; the status <code>"DRAFT"</code>; the role filter <code>["MFO"]</code> for the buyer list.</p>
+<dl>
+<dt>Location</dt><dd><code>CPTTDService.cs.txt:59-60, 169</code>; <code>CPSQMSOService.txt:97-104</code>; <code>CPSQMSBService.cs.txt:96-109</code></dd>
+<dt>Design</dt><dd>5.7 Generic section service</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-08</span>Each module reads roles differently <span class="area">Security</span></h3>
+<p>AIN reads only the roles for its own application (<code>role.CpAtlasApplicationId == nApplicationID</code>). SQMSO reads the roles of the user for all applications.</p>
+<dl>
+<dt>Location</dt><dd><code>CPAINService.cs.txt:43-48</code>; <code>CPSQMSOService.txt:88-92</code></dd>
+<dt>Example</dt><dd>A user has the role <code>Write</code> in another app only. SQMSO also gives this user <code>Write</code> access. Each new module copies one of these two patterns. Related to H4 in the issues report.</dd>
+<dt>Design</dt><dd>5.7 Generic section service (always filter by application)</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-09</span>Rules cannot use field values <span class="area">Framework</span></h3>
+<p><code>CPRule</code> has conditions on roles, states and owner only. It operates on the server when the page loads. No rule can say "show field B when field A = X". This is the cause of SM-01. Also, each module service must call <code>ApplyRules</code> and <code>ApplyButtonRules</code> itself. AIN, SQMSO and SQMSB call them. TTD does not call them.</p>
+<dl>
+<dt>Location</dt><dd><code>CPAtlasApplicationConfig.cs.txt</code> (<code>CPRule</code>); <code>CPAINService.cs.txt:62-63</code>; <code>CPSQMSOService.txt:142-148</code>; <code>CPSQMSBService.cs.txt:196-197</code></dd>
+<dt>Design</dt><dd>5.1 Effects, 5.7 Generic section service</dd>
+</dl>
+</div>
+
+<div class="issue low">
+<h3><span class="badge b-low">SM-10</span>Each request reads the JSON file from the disk <span class="area">Config</span></h3>
+<p>Each module service constructor reads and parses its JSON file. Each app also needs its own <code>AppSettings:&lt;Code&gt;ConfigPath</code> key.</p>
+<dl>
+<dt>Location</dt><dd><code>CPTTDService.cs.txt:43</code> and the other constructors; <code>appsettings.json.txt:26-32</code></dd>
+<dt>Design</dt><dd>5.6 Module registry (configuration cache)</dd>
+</dl>
+</div>
+
+<div class="issue low">
+<h3><span class="badge b-low">SM-11</span>The UI reads <code>StepClass</code>, but the section DTO does not have it <span class="area">UI</span><span class="confirm">Confirm</span></h3>
+<p><code>CPApplicationSection</code> has no <code>StepClass</code> property. Thus <code>formClass</code> is always empty for sections.</p>
+<dl>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.ts.txt:92, 153</code>; <code>CPAtlasApplicationConfig.cs.txt:41-49</code></dd>
+</dl>
+</div>
+
+<div class="issue low">
+<h3><span class="badge b-low">SM-12</span>TTD loads the full table to find one row <span class="area">Module: TTD</span></h3>
+<p>The code is <code>TTDGenerals.ToList().Where(x =&gt; x.Id.ToString() == ...)</code>. The time to load a record increases with the table size.</p>
+<dl>
+<dt>Location</dt><dd><code>CPTTDService.cs.txt:149-151</code></dd>
+<dt>Recommendation</dt><dd>Use <code>Find(id)</code> or <code>Single(x =&gt; x.Id == id)</code>.</dd>
+</dl>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">SM-13</span>Each module has its own copy of the save pipeline <span class="area">Framework</span></h3>
+<p><code>SavePage</code> has the same structure in each module: map the outputs, set <code>CreatedBy</code>/<code>ModifiedBy</code> and <code>DateTime.Now</code>, set the status in code (<code>"SUBMITTED"</code>), start or execute the workflow, commit, catch all exceptions. Each new app copies this method.</p>
+<dl>
+<dt>Location</dt><dd><code>CPSQMSOService.txt:178-237</code>; <code>CPSQMSBService.cs.txt:222-279</code>; <code>CPTTDService.cs.txt:65-121</code>; <code>CPAINService.cs.txt:91-131</code></dd>
+<dt>Design</dt><dd>5.9 Save pipeline</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-14</span>The save trusts the client <span class="area">Security</span></h3>
+<ul>
+<li><code>MapData</code> sets each entity property whose name is in <code>Outputs</code>. It does not use the controls of the page (issue H3).</li>
+<li>The save does not apply the rules again. A control that is hidden or disabled for the user is still saved. <code>ManagePage</code> does not check the role, state or owner (issue H4).</li>
+<li>The save does not examine the <code>Validator</code> rules (<code>Required</code>, <code>MaxLength</code>, <code>Pattern</code>). Only the client examines them.</li>
+</ul>
+<dl>
+<dt>Location</dt><dd><code>Service/CPApplicationService.cs.txt:83-107</code>; the <code>SavePage</code> methods in SM-13</dd>
+<dt>Example</dt><dd>A user adds <code>{Name:"IsDeleted", Value:"true"}</code> to the save. The service saves it.</dd>
+<dt>Design</dt><dd>5.9 Save pipeline (steps 3 to 6)</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-15</span>The workflow calls are in code for each module <span class="area">Workflow</span></h3>
+<ul>
+<li><code>Start</code> has the business object prefix (<code>"SQMS-OPP-"</code>, <code>"SQMS-BID-"</code>), the initial action (<code>"SubmitOpportunity"</code>, <code>"SubmitBid"</code>) and the actor roles (<code>["MFO"]</code>) in code. The actor roles do not come from the user.</li>
+<li><code>Execute</code> makes the notification recipients in code from fields (<code>CreatedBy</code>, <code>SellerRMTeam</code>).</li>
+<li>The service reads only <code>NewState</code>. It does not read <code>Success</code> or <code>ResultCode</code> (issue H8).</li>
+<li>Good: the action selection is already generic. <code>GetWorkflowAction</code> uses the <code>Workflow.Actions</code> conditions in the JSON.</li>
+</ul>
+<dl>
+<dt>Location</dt><dd><code>CPSQMSOService.txt:302-380</code>; <code>CPSQMSBService.cs.txt:386-409</code>; <code>CPApplicationService.cs.txt:285</code>; <code>SQMSO.json.txt:36-61</code></dd>
+<dt>Design</dt><dd>5.10 Workflow binding</dd>
+</dl>
+</div>
+
+<div class="issue">
+<h3><span class="badge b-high">SM-16</span>Save errors are hidden from the user <span class="area">Framework</span></h3>
+<p><code>SavePage</code> catches all exceptions, rolls back and returns the result object with no error (issue H7). The client always shows "Record saved successfully".</p>
+<dl>
+<dt>Location</dt><dd><code>cp-atlas-sectionmaster.ts.txt:337-339</code>; the <code>catch</code> blocks in SM-13</dd>
+<dt>Example</dt><dd>A database error occurs during a TTD save. The user sees "Record saved successfully". The timesheet is not in the database.</dd>
+<dt>Design</dt><dd>5.11 Error contract</dd>
+</dl>
+</div>
+
+<div class="issue med">
+<h3><span class="badge b-med">SM-17</span>The client writes the audit log <span class="area">Security</span></h3>
+<p>An HTTP interceptor sends <code>POST AuditLog</code> after each successful <code>POST</code>, with the response body. Thus a save that rolled back (SM-16) still gets an audit entry. A user can also skip the audit entry, or send a false one. Each app has its own audit table (<code>AIN.AuditLog</code>, <code>SQMS.AuditLog</code>, <code>TTD.AuditLog</code>, <code>dbo.CDT_AuditLog</code>).</p>
+<dl>
+<dt>Location</dt><dd><code>WebUi/.../Interceptors/postrequestinterceptor.ts.txt:15-27</code></dd>
+<dt>Design</dt><dd>5.12 Server audit</dd>
+</dl>
+</div>
+
+<div class="issue med">
+<h3><span class="badge b-med">SM-18</span>There is no concurrency check <span class="area">Data</span></h3>
+<p>Two users open the same record. The second save overwrites the first save with no warning. The tables have no <code>rowversion</code> column.</p>
+<dl>
+<dt>Location</dt><dd><code>CP_Sharepoint.txt:133</code> (<code>AIN.AccountInventory</code>), <code>918</code> (<code>SQMS.Bid</code>), <code>948</code> (<code>SQMS.Opportunity</code>), <code>1009</code> (<code>TTD.General</code>)</dd>
+<dt>Design</dt><dd>5.13 Version token</dd>
+</dl>
+</div>
+</section>
+
+<section id="design">
+<h2>5. Reusable design</h2>
+<p>The design adds optional JSON properties and a server registry. If a new property is not in the JSON, the current behaviour does not change.</p>
+
+<div class="design">
+<h3><span class="badge b-fix">5.1</span>Value-based client rules (<code>Effects</code>)</h3>
+<p>Add an optional <code>Effects</code> list to <code>CPApplicationControl</code>. The component runs the effects when it makes the form, and each time the source value changes. It does not use a timer or <code>document.getElementById</code>. This removes SM-01 and SM-09.</p>
+<pre><code>{
+  "Name": "ClientRelationshipLeavingBBH",
+  "Type": "option",
+  "Effects": [
+    { "When": { "Equals": "No" },
+      "Show": ["RationaleForSecondarySale"],
+      "Require": ["RationaleForSecondarySale"] },
+    { "When": { "NotEquals": "No" },
+      "Hide": ["RationaleForSecondarySale"],
+      "Unrequire": ["RationaleForSecondarySale"] }
+  ]
+}</code></pre>
+<pre><code>{
+  "Name": "BidAskValue",
+  "Effects": [
+    { "When": { "Equals": "Yes, Fair Value" }, "Set": { "BidExpressedAsFairValue": "100 %" } },
+    { "When": { "NotEquals": "Yes, Fair Value" }, "Clear": ["BidExpressedAsFairValue"] }
+  ]
+}</code></pre>
+<ul>
+<li>Conditions: <code>Equals</code>, <code>NotEquals</code>, <code>In</code>, <code>HasValue</code>. Do not add an expression language.</li>
+<li>Actions: <code>Show</code>, <code>Hide</code>, <code>Require</code>, <code>Unrequire</code>, <code>Enable</code>, <code>Disable</code>, <code>Set</code>, <code>Clear</code>, <code>SetFromOption</code>, <code>OptionsFromChild</code>.</li>
+<li>A hidden control has no validators. The client does not send it in the save.</li>
+<li>The server must also examine the <code>Require</code> rules on save. A client rule is only for the user interface.</li>
+</ul>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.2</span>Structured option data</h3>
+<p>Add an optional <code>Data</code> dictionary to <code>CPKeyValue</code>. <code>SetFromOption</code> reads from <code>Data</code>. If <code>Data</code> is not there, the client uses the current <code>" - "</code> split. This removes SM-04 and keeps the current options.</p>
+<pre><code>{ "Label": "12345 - Smith Trust - J. Doe",
+  "Value": "12345 - Smith Trust - J. Doe",
+  "Data": { "AccountNumber": "12345", "AccountName": "Smith Trust", "RelationshipManager": "J. Doe" } }
+
+{ "Name": "Account", "Type": "ngselect",
+  "Effects": [ { "When": { "HasValue": true },
+    "SetFromOption": { "AccountNumber": "AccountNumber", "AccountName": "AccountName",
+                       "RelationshipManager": "RelationshipManager" } } ] }</code></pre>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.3</span>Button actions from JSON</h3>
+<p>Add an optional <code>Action</code> object to <code>CPButton</code>. The <code>Type</code> values are <code>Save</code>, <code>Close</code>, <code>Execute</code> and <code>Navigate</code>. If a button has no <code>Action</code>, the component uses the current logic by button name. This removes part of SM-02.</p>
+<pre><code>{ "Name": "Accepted", "Label": "Accept", "Action": { "Type": "Save", "Set": { "Status": "Accepted" } } }
+{ "Name": "Bid", "Label": "Make a bid", "Action": { "Type": "Execute", "Execute": "MakeBid", "OpenCode": "SQMSB" } }
+{ "Name": "Close", "Label": "Close", "Action": { "Type": "Close" } }</code></pre>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.4</span>Redirect after save from JSON</h3>
+<p>Add an optional <code>Redirects</code> list to <code>CPApplicationSection</code>. The component uses the first entry that agrees with the roles of the user. This removes the remainder of SM-02.</p>
+<pre><code>"Redirects": [
+  { "Roles": ["MFO"],  "Url": "/dashboard/{code}/MyBids" },
+  { "Roles": ["IPFG"], "Url": "/dashboard/{code}/IPFGBids" },
+  { "Url": "/dashboard/{code}" }
+]</code></pre>
+<p>If there is no <code>Redirects</code> list, SQMSO, SQMSB, TTD and AIN use the current logic. A new app with no list goes to <code>/dashboard/{code}</code>.</p>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.5</span>Control renderer registry</h3>
+<ul>
+<li>Replace the long <code>*ngIf</code> chain with one map from <code>Type</code> to a renderer component. Each current type keeps its current markup and its <code>div_{Name}</code> ID.</li>
+<li>Add renderers for <code>filepicker</code> and <code>grid</code>, or confirm that the live template has them.</li>
+<li>If <code>Type</code> is not known, show an "Unknown control type" message in non-production builds. In production, write a console error.</li>
+<li>Remove the <code>Vehicle1/2/3</code> special rows. Use <code>OptionsFromChild</code> and <code>DivClass</code>.</li>
+</ul>
+<p>This removes SM-03 and SM-05.</p>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.6</span>Server module registry</h3>
+<p>Replace the <code>if</code> chains with a registry. Use .NET keyed services. Keyed services are part of .NET 8 and later. No third-party package is necessary. This removes SM-06 and SM-10.</p>
+<pre><code>// Composition root: one line for each app.
+services.AddAtlasModule&lt;CPSQMSOService&gt;("SQMSO", configFile: "SQMSO.json");
+services.AddAtlasModule&lt;CPTTDService&gt;("TTD", configFile: "TTD.json");
+// A new app with no special logic:
+services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.json");</code></pre>
+<ul>
+<li><code>AddAtlasModule</code> registers the service by code for each interface that the service implements.</li>
+<li>If a code has no service for an interface, return HTTP 404 or 400 with a clear message. Do not return <code>null</code>.</li>
+<li>Load the JSON files from one folder setting (<code>AppSettings:ConfigFolder</code>). Keep them in a cache. Load them again when a file changes. Give a deep copy to each request, because the services change the section object.</li>
+<li>Keep the old <code>&lt;Code&gt;ConfigPath</code> keys. If a key exists, it replaces the folder path for that code.</li>
+<li>Keep <code>CPApplicationCode</code> for the current codes. The registry uses the string code, so a new app does not need an enum change.</li>
+</ul>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.7</span>Generic section service</h3>
+<p><code>ConfigSectionService</code> is the default service for a simple app. It does these steps from JSON:</p>
+<ul>
+<li><strong>Header.</strong> <code>HeaderName</code>, and an optional template such as <code>"{Name} - {ID}"</code>.</li>
+<li><strong>Defaults.</strong> An optional <code>Defaults</code> map, for example <code>{ "Status": "DRAFT", "CreatedBy": "{User.DisplayName}" }</code>.</li>
+<li><strong>Roles.</strong> It always reads only the roles for the current application. Then it applies <code>CPRule</code> to the controls and the buttons. This removes SM-08 and the missed calls in SM-09.</li>
+<li><strong>Options from data.</strong> An optional <code>OptionsSource</code> on a control, for example a stored procedure name. Module 5 (data mapping) gives the details.</li>
+<li><strong>Save and load.</strong> <code>MapData</code> and <code>BindData</code> with the entity or table from the module registration. Module 5 gives the details.</li>
+</ul>
+<p>An app with special logic still has its own service class. The class inherits from <code>ConfigSectionService</code>. It overrides only the hooks that it needs: <code>OnLoad</code>, <code>OnBeforeSave</code>, <code>OnAfterSave</code>, <code>OnExecute</code>. This removes SM-07.</p>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.8</span>Dashboard navigation</h3>
+<p>Add an optional <code>FormType</code> (<code>SECTION</code> or <code>STEPPER</code>) to each app in the dashboard JSON. <code>onClick</code> and <code>editRow</code> use it to open <code>sectionmaster</code> or <code>stepmaster</code>. If <code>FormType</code> is not there, the dashboard uses the current <code>if</code> chain.</p>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.9</span>Server save pipeline</h3>
+<p><code>ConfigSectionService</code> has one save pipeline. A module service changes it only through hooks (<code>OnLoad</code>, <code>OnBeforeSave</code>, <code>OnAfterSave</code>, <code>OnExecute</code>). This removes SM-13, SM-14 and SM-16.</p>
+<ol>
+<li>Load the configuration and the record.</li>
+<li>Read the user roles for this application only. Find the owner and the state.</li>
+<li>Apply <code>CPRule</code> and the server part of <code>Effects</code>. The result is the effective section for this user.</li>
+<li>Make an allow list: the controls that are visible and enabled in the effective section. Ignore all other <code>Outputs</code>. Write a warning log for each ignored name. This fixes H3 and the field part of H4.</li>
+<li>If the button or the save is not permitted for this user and state, stop with an error. This fixes the access part of H4.</li>
+<li>Examine the <code>Validator</code> rules and the <code>Require</code> effects on the server.</li>
+<li>Examine the version token (5.13).</li>
+<li>Map the allowed values to the entity.</li>
+<li>Set the system fields on the server: <code>CreatedBy</code>, <code>CreatedDate</code>, <code>ModifiedBy</code>, <code>ModifiedDate</code> and the <code>Defaults</code> values. Use <code>TimeProvider</code>, not <code>DateTime.Now</code>. The client cannot set these fields.</li>
+<li>Call the workflow engine (5.10). If the engine result is not a success, stop with an error.</li>
+<li>Write the audit entry on the server (5.12).</li>
+<li>Commit. If an error occurs, roll back, write a log and return the error (5.11).</li>
+</ol>
+<p class="small">Issue H6 (the engine and Atlas use separate transactions) also applies to step 10. The engine adapter spec (module 10) covers H6.</p>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.10</span>Workflow binding from JSON</h3>
+<p>Add optional properties to the <code>Workflow</code> block. This removes SM-15.</p>
+<pre><code>"Workflow": {
+  "Key": "SqmsOpportunity",
+  "BusinessObjectPrefix": "SQMS-OPP-",
+  "InitialAction": "SubmitOpportunity",
+  "ActorRoles": "User",
+  "Recipients": {
+    "maker":        { "FromUserField": "CreatedBy" },
+    "sellerRmTeam": { "FromUserField": "SellerRMTeam", "Multiple": true }
+  },
+  "Actions": { "...": "unchanged" }
+}</code></pre>
+<ul>
+<li><code>BusinessObjectPrefix</code> and <code>InitialAction</code> replace the values in code. Keep the current values, so that the engine instance IDs do not change.</li>
+<li><code>ActorRoles: "User"</code> sends the roles of the user for this application. If <code>ActorRoles</code> is a list, the service sends that list (current behaviour, for example <code>["MFO"]</code>). Change SQMS to <code>"User"</code> only after a check that each submitter has the role that the engine needs.</li>
+<li><code>Recipients</code> maps a field to a recipient key. The service finds each user by display name in <code>CP_Atlas_User</code>.</li>
+<li>The service must read <code>Success</code> and <code>ResultCode</code> from each engine result.</li>
+<li><code>Actions</code> does not change. <code>GetWorkflowAction</code> already uses it.</li>
+</ul>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.11</span>Error contract</h3>
+<ul>
+<li>Add an optional <code>Errors</code> list to the <code>ManagePage</code> response: <code>[{ "Field": "AccountName", "Code": "Required", "Message": "..." }]</code>. <code>Field</code> is empty for a page error.</li>
+<li>On error, the response has <code>ID</code> = 0 and <code>Errors</code> is not empty. The HTTP status stays 200 in phase 1, so the current client does not fail.</li>
+<li>The updated client shows the errors and does not redirect. It shows "saved" only when <code>Errors</code> is empty.</li>
+<li>Phase 2 (with approval): return HTTP 400 for validation errors and 409 for a version conflict.</li>
+</ul>
+<p>This removes SM-16.</p>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.12</span>Server audit</h3>
+<ul>
+<li>The save pipeline writes the audit entry in the same transaction. It uses the change list from <code>MapData</code> (<code>lstDifference</code>). The service already makes this list.</li>
+<li>Keep the <code>POST AuditLog</code> endpoint for old clients. When the server audit is active for a module, the endpoint ignores calls for that module. This prevents two entries.</li>
+<li>One shared audit table for all apps is part of module 9. Until then, use the current table of each app.</li>
+</ul>
+<p>This removes SM-17.</p>
+</div>
+
+<div class="design">
+<h3><span class="badge b-fix">5.13</span>Version token</h3>
+<ul>
+<li>Add a <code>rowversion</code> column to each Section Master table. Use the script <a href="sql/01-section-master-rowversion.sql"><code>sql/01-section-master-rowversion.sql</code></a>. The script is additive and safe to run again.</li>
+<li>The load response has an optional <code>Version</code> (base64). The client sends it back in the save input.</li>
+<li>If the save has <code>Version</code> and it is different from the database value, return a conflict error. If the save has no <code>Version</code> (an old client), do not examine it. This keeps the current clients working.</li>
+</ul>
+<p>This removes SM-18.</p>
+</div>
+
+<div class="good">
+<strong>Result.</strong> After this design, a new simple app needs these items only: a JSON file, one registration line, SQL scripts (table, procedures, entitlements) and one dashboard JSON entry.
+</div>
+</section>
+
+<section id="compat">
+<h2>6. Backward compatibility</h2>
+<ul>
+<li>Do not change the route <code>sectionmaster/:code/:id</code>.</li>
+<li>Do not change the endpoints <code>v1/SectionPage</code>, <code>v1/ManagePage</code> and <code>v1/Execute</code>, or their request and response shapes. All new DTO properties are optional and nullable.</li>
+<li>Do not change control names, the <code>div_{Name}</code> and <code>btn_{Name}</code> element IDs, or the <code>#$#</code> multi-value separator.</li>
+<li>The current JSON for SQMSO, SQMSB, TTD and AIN must give the same result with no edits. Each new property has a fallback to the current code path.</li>
+<li>Remove a legacy code path only when all these conditions are true:
+<ol>
+<li>The JSON for that module has the equivalent <code>Effects</code>, <code>Action</code> or <code>Redirects</code>.</li>
+<li>The regression checks in section 8 pass for that module.</li>
+<li>The target team approves the removal.</li>
+</ol></li>
+<li>Do not change the <code>ManagePage</code> response fields. <code>Errors</code> and <code>Version</code> are new optional fields. The HTTP status stays 200 in phase 1.</li>
+<li>Do not change the engine instance IDs (<code>BusinessObjectPrefix</code> + ID) or the action keys.</li>
+<li>Keep the <code>POST AuditLog</code> endpoint.</li>
+<li>The only database change is an additive <code>rowversion</code> column (5.13). It does not change existing data.</li>
+</ul>
+</section>
+
+<section id="migration">
+<h2>7. Migration steps</h2>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Change</th><th>Risk</th></tr>
+<tr><td>1</td><td>Add the optional DTO properties (<code>Effects</code>, <code>CPKeyValue.Data</code>, <code>CPButton.Action</code>, <code>Redirects</code>, <code>FormType</code>). The behaviour does not change.</td><td><span class="badge b-low">Low</span></td></tr>
+<tr><td>2</td><td>Add the client <code>Effects</code> engine and the renderer registry. Keep the legacy branches.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>3</td><td>Add the server registry and the configuration cache. Keep the old configuration path keys. Replace the <code>null</code> returns with clear errors.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>4</td><td>Filter the SQMSO role lookup by application (SM-08). Before this step, examine the entitlement data. Users with roles only in another app lose SQMSO access.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>5</td><td>Move the SQMS logic into <code>SQMSO.json</code> and <code>SQMSB.json</code>. Run the regression checks.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>6</td><td>Add <code>ConfigSectionService</code>. Use it first for a new pilot app, for example one of the unused codes.</td><td><span class="badge b-low">Low</span></td></tr>
+<tr><td>7</td><td>Add the server save pipeline (5.9). Start the allow list in log-only mode: log the ignored names, but still save them. After one release with no unexpected names, change to enforce mode.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>8</td><td>Add the <code>Errors</code> contract (5.11). Change the client to show errors.</td><td><span class="badge b-low">Low</span></td></tr>
+<tr><td>9</td><td>Move the workflow values into JSON (5.10). Keep <code>ActorRoles</code> as a list for SQMS until the role check is done. Make the service read <code>Success</code>.</td><td><span class="badge b-med">Medium</span></td></tr>
+<tr><td>10</td><td>Move the audit to the server (5.12), one module at a time.</td><td><span class="badge b-low">Low</span></td></tr>
+<tr><td>11</td><td>Run the <code>rowversion</code> script. Then add the version token (5.13).</td><td><span class="badge b-low">Low</span></td></tr>
+<tr><td>12</td><td>With approval, remove the legacy branches for each migrated module.</td><td><span class="badge b-med">Medium</span></td></tr>
+</table></div>
+</section>
+
+<section id="checks">
+<h2>8. Regression and acceptance checks</h2>
+<h3>8.1 Current modules</h3>
+<p>Do these checks for SQMSO, SQMSB, TTD and AIN. Do them for a new record and for an existing record.</p>
+<ul>
+<li>Make sure that the same controls show, with the same labels, values, options, disabled state and required markers.</li>
+<li>Make sure that the same buttons show and do the same actions.</li>
+<li>Make sure that the save sends the same <code>Outputs</code> names and values.</li>
+<li>Make sure that the redirect after save goes to the same dashboard tab for MFO, IPFG and other users.</li>
+<li>Make sure that the SQMS dependent fields give the same results: <code>Account</code>, <code>OpportunityId</code>, <code>BidForFullCommitment</code>, <code>BidAskValue</code>, <code>FundConsideredSecondarySale</code>, <code>ClientRelationshipLeavingBBH</code>, <code>IsValuationForPrivateFundVehicle</code>. The results must now apply immediately, not after 5 seconds.</li>
+<li>Make sure that the SQMS status buttons start and execute the workflow engine actions as before, with the same engine instance IDs.</li>
+<li>Make sure that a save with an extra output name (for example <code>WorkflowState</code> or <code>IsDeleted</code>) does not change that field.</li>
+<li>Make sure that a save for a control that is hidden or disabled for the user does not change that field.</li>
+<li>Make sure that a save that fails shows an error and does not redirect. The server must write no audit entry.</li>
+<li>Make sure that an engine rejection shows an error. The record and the state must not change.</li>
+<li>Two users save the same record. Make sure that the second user gets a conflict error.</li>
+</ul>
+<h3>8.2 New pilot app</h3>
+<ul>
+<li>Make sure that the app operates with these changes only: a JSON file, one registration line, SQL scripts and a dashboard JSON entry.</li>
+<li>Make sure that a user with a role only in another app cannot see or change the pilot app records.</li>
+</ul>
+</section>
+
+<section id="questions">
+<h2>9. Open questions</h2>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Question</th><th>For</th></tr>
+<tr><td>Q1</td><td><strong>Answered 2026-10-25:</strong> one more app uses Step Master. All other new apps use Section Master. Still open: are the 13 unused codes in <code>CPApplicationCode</code> these apps?</td><td>Target team</td></tr>
+<tr><td>Q2</td><td>Does the live template show <code>filepicker</code> and <code>grid</code> controls (SM-05)?</td><td>Target team</td></tr>
+<tr><td>Q3</td><td>Are template lines 14 and 21-44 copy errors (SM-03)?</td><td>Target team</td></tr>
+<tr><td>Q4</td><td>Can the target team use .NET keyed services? These need .NET 8 or later. The copy targets <code>net9.0</code> (H11).</td><td>Target team</td></tr>
+<tr><td>Q5</td><td>Do current SQMSO users need roles from other apps (SM-08, migration step 4)?</td><td>Target team, business</td></tr>
+<tr><td>Q6</td><td><strong>Answered 2026-10-25:</strong> no, not now. Step Master serves CDT and one more app. Keep it separate. The save pipeline (5.9) and the workflow binding (5.10) are designed so that Step Master can use them later.</td><td>Closed</td></tr>
+<tr><td>Q7</td><td>Does each SQMS submitter have the role <code>MFO</code> in <code>CP_Atlas_UserEntitlement</code>? The answer decides when SQMS can use <code>ActorRoles: "User"</code> (5.10).</td><td>Target team</td></tr>
+<tr><td>Q8</td><td>Do the four tables have other writers (jobs, procedures) that a <code>rowversion</code> column can affect? The value changes on each update, and <code>SELECT *</code> returns one more column.</td><td>Target team, DBA</td></tr>
+</table></div>
+</section>
+</main>
+</body>
+</html>
