@@ -37,12 +37,12 @@
     </div>
   }
 
-  <atlas-history-dialog [open]="historyRow() > 0" [appCode]="code" [recordId]="historyRow()" (closed)="historyRow.set(0)" />
+  <atlas-history-dialog [open]="!!historyRow()" [appCode]="historyRow()?.code ?? code" [recordId]="historyRow()?.id ?? 0" (closed)="historyRow.set(null)" />
 
-  <pbdev-dialog [visible]="deleteRow() > 0" header="Delete record" (visibleChange)="!$event && deleteRow.set(0)">
-    <p>Delete record {{ deleteRow() }}? The record is marked as deleted and leaves the dashboard.</p>
+  <pbdev-dialog [visible]="!!deleteRow()" header="Delete record" (visibleChange)="!$event && deleteRow.set(null)">
+    <p>Delete record {{ deleteRow()?.id }}? The record is marked as deleted and leaves the dashboard.</p>
     <div class="atlas-buttons">
-      <button type="button" class="btn" (click)="deleteRow.set(0)">Cancel</button>
+      <button type="button" class="btn" (click)="deleteRow.set(null)">Cancel</button>
       <button type="button" class="btn atlas-btn-danger" (click)="confirmRemove()">Delete</button>
     </div>
   </pbdev-dialog>

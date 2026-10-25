@@ -12,6 +12,10 @@ import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
 import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
 import { toSelectOptions } from './atlas-pbdev';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { AtlasApiService } from './atlas-api.service';
+import { AtlasDashboardComponent } from './dashboard/atlas-dashboard.component';
 
 class Recorder implements AtlasEffectTarget {
   calls: string[] = [];
@@ -243,4 +247,36 @@ describe('validator cases shared with the server (review SV-04)', () => {
       expect(errorText(control.errors, 'Field', item.validator)).toBe(item.message);
     });
   }
+});
+
+describe('dashboard rows of another app (review NG-07)', () => {
+  it('sends Delete and History to the app of the tab, not the dashboard app', () => {
+    const removed: string[] = [];
+    const api = {
+      applications: () => of([]),
+      dashboard: () => of({ Name: 'D', Tabs: [{ ID: 'T', Label: 'T', Code: 'OTHERAPP', Visible: true, KeyValues: [{ ID: 7 }], Columns: [] }], Buttons: [] }),
+      remove: (code: string, id: number) => {
+        removed.push(`${code} ${id}`);
+        return of({ Errors: [] });
+      },
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: AtlasApiService, useValue: api },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ code: 'ttdv2' })) } },
+      ],
+    });
+    const component = TestBed.createComponent(AtlasDashboardComponent).componentInstance;
+    component.ngOnInit();
+
+    const row = component.rows()[0];
+    component.historyRow.set(component.rowRef(row));
+    expect(component.historyRow()).toEqual({ code: 'OTHERAPP', id: 7 });
+
+    component.deleteRow.set(component.rowRef(row));
+    component.confirmRemove();
+    expect(removed).toEqual(['OTHERAPP 7']);
+    expect(component.deleteRow()).toBeNull();
+  });
 });

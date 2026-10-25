@@ -35,15 +35,16 @@ export class AtlasDashboardComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly dashboard = signal<CPAtlasDashboard | null>(null);
   readonly tabIndex = signal(0);
-  readonly historyRow = signal(0);
-  readonly deleteRow = signal(0);
+  /** Review NG-07: the app of the row is the tab Code (spec 03), not always the dashboard app. */
+  readonly historyRow = signal<AtlasRowRef | null>(null);
+  readonly deleteRow = signal<AtlasRowRef | null>(null);
 
   readonly tabs = computed(() => (this.dashboard()?.Tabs ?? []).filter((x) => x.Visible !== false));
   readonly tab = computed<CPAtlasTab | null>(() => this.tabs()[this.tabIndex()] ?? null);
   readonly rows = computed(() => (this.tab()?.KeyValues ?? []) as Record<string, unknown>[]);
   readonly columns = computed<ColDef[]>(() => {
     const tab = this.tab();
-    return tab ? columnDefs(tab, { edit: (r) => this.open(r), history: (r) => this.historyRow.set(id(r)), remove: (r) => this.deleteRow.set(id(r)) }) : [];
+    return tab ? columnDefs(tab, { edit: (r) => this.open(r), history: (r) => this.historyRow.set(this.rowRef(r)), remove: (r) => this.deleteRow.set(this.rowRef(r)) }) : [];
   });
   readonly totals = computed(() => {
     const tab = this.tab();
@@ -92,13 +93,23 @@ export class AtlasDashboardComponent implements OnInit {
   }
 
   open(row: Record<string, unknown>): void {
-    this.navigate(this.tab()?.Code || this.code, id(row));
+    const ref = this.rowRef(row);
+    this.navigate(ref.code, ref.id);
+  }
+
+  /** The app and the ID of a row of the current tab. */
+  rowRef(row: Record<string, unknown>): AtlasRowRef {
+    return { code: this.tab()?.Code || this.code, id: id(row) };
   }
 
   confirmRemove(): void {
-    const recordId = this.deleteRow();
-    this.deleteRow.set(0);
-    this.api.remove(this.code, recordId).subscribe({
+    const ref = this.deleteRow();
+    this.deleteRow.set(null);
+    if (!ref) {
+      return;
+    }
+    const recordId = ref.id;
+    this.api.remove(ref.code, recordId).subscribe({
       next: (result) => {
         if (result.Errors?.length) {
           this.notice.show('error', result.Errors.map((x) => x.Message).join(' '));
@@ -116,6 +127,11 @@ export class AtlasDashboardComponent implements OnInit {
     // At the target: with no FormType, the current if chain runs here.
     this.router.navigate(route ?? ['/form', code, recordId]);
   }
+}
+
+export interface AtlasRowRef {
+  code: string;
+  id: number;
 }
 
 function id(row: Record<string, unknown>): number {
