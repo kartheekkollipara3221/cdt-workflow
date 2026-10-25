@@ -1,6 +1,6 @@
 # Module 13: Architecture review of the atlas-platform code
 
-Status: Review 1 (2026-10-25). Read-only review of commit `056be47`. No code changed for this review. Each finding has file:line evidence that was read and checked.
+Status: Review 1 (2026-10-25) of commit `056be47`. Wave 1 (11 findings) is fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.
 
 ## 1. Purpose and method
 
@@ -641,3 +641,25 @@ Housekeeping: the phase table in `atlas-platform/README.md` still shows C5 to C1
 - The target `CustomRouteReuseStrategy` creates the form again when the parameters change, so an old request cannot overwrite a newer one.
 - PascalCase DTOs agree with the target `PropertyNamingPolicy = null`.
 - Error details: only `AtlasProblemException` messages go to clients. Other exceptions go to the general 500 of the target.
+
+## 12. Status of the fixes
+
+Wave 1 is fixed (2026-10-25). Each finding has its own commit and a row in `atlas-platform/INTEGRATION.md` section 6. Line numbers in sections 4 to 8 refer to commit `056be47`.
+
+| Finding | Commit | INTEGRATION.md | Result |
+|---|---|---|---|
+| NG-01 | `4863984` | B18 | The stand-in has the target class names and only the members that the target uses (`atlas-platform/PBDEV.md`). All imports go through `platform/atlas-pbdev.ts`. |
+| NG-02 | `0122a64` | B19 | `ATLAS_DASHBOARD_LINK`, default `['/dashboard', code]`. The local route is the same path. |
+| NG-05 | `dc26e97` | B20 | The spec has no runner import and only APIs that Jasmine and Vitest both have. |
+| NG-06 | `8ebc1ef` | B21 | `platform/atlas-platform.css` (copied) and `platform/atlas-tailwind-classes.ts`. |
+| SV-01 | `4e852a9` | B22 | A changed value must be one of the server options (`NotInOptions`). |
+| SV-02 | `f29b2fc` | B23 | A delete gets 403 in `LogOnly` too. A form with no `Permissions` is a start-up error. |
+| HO-03 | `4632475` | B24 | A setting that is not valid fails closed and is a start-up error. |
+| DA-01 | `8f98b8c` | B25 | The start-up check reports unsupported column and key types and builds the model. |
+| DA-07 | `046598e` | B26 | The script log row is written in the main transaction. `050` stops if TTD changed during the run. |
+| HO-01 | `8a84315` | B27 | The settings come from the configuration given to `AddAtlasPlatform`. `--atlas-check` prints the sources. |
+| HO-08 | `e40f9cb` | B28 | `TryAddSingleton(TimeProvider.System)`. A duplicate module code is refused at the line. |
+
+Regression: 169 .NET tests and 16 Angular tests pass; `ng build` and `dotnet build` have 0 warnings; `--atlas-check` returns 0. Browser check: load, save, history, dialogs and the dashboard link work; in `LogOnly`, a delete by Read, Prepare or a user with no role gets 403 and the record stays.
+
+Wave 2 and Wave 3 are not started.

@@ -1,4 +1,4 @@
-# RESUME HERE - atlas-platform build: C0-C10 DONE, committed and PUSHED (origin/console-code-first-0518 at 96af19e+); WAITING for the user's browser review feedback - 2026-10-25
+# RESUME HERE - atlas-platform: review Wave 1 (11 findings) FIXED, one commit each (4863984..e40f9cb), not pushed; Wave 2/3 open - 2026-10-25
 
 ## Status
 - All build phases done (spec docs/atlas-platform/12-ttd-pilot-build.md, section 11). Commits: C5 0ee9027, C6 253f467,
@@ -9,6 +9,24 @@
   (swagger), UI http://localhost:4200. Steps: atlas-platform/local/README.md. Act-as switch in the UI header.
 - Integration guide complete: atlas-platform/INTEGRATION.md (files to copy, target file changes, SQL, settings,
   acceptance with line counts, findings B1-B16 for review).
+
+## Review feedback done
+- R1 (B17): Chrome Issues on the form (inputs with no id/name, label for with no target). Renderers pass id ctl_<Name>
+  (inputId on pbdev controls, labelForId on ng-select); registry hasInput() leaves 'for' off user/grid labels.
+  Checked live: form edit/new and dashboard have 0 fields without id/name and 0 bad label targets.
+- Note: record 10003 was soft-deleted during the review (IsDeleted=1, audit Delete row). Reset with setup-local-db.ps1 -Recreate.
+
+## Architecture review (module 13) - Wave 1 FIXED
+- Review: docs/atlas-platform/13-architecture-review.md/.html (47 findings: 9 High, 24 Medium, 14 Low; IDs NG/HO/SV/DA).
+  Section 12 = fix status. Wave 1 commits: NG-01 4863984, NG-02 0122a64, NG-05 dc26e97, NG-06 8ebc1ef, SV-01 4e852a9,
+  SV-02 f29b2fc, HO-03 4632475, DA-01 8f98b8c, DA-07 046598e, HO-01 8a84315, HO-08 e40f9cb. INTEGRATION.md B18-B28.
+- Tests: 169 .NET + 16 Angular; builds 0 warnings; --atlas-check 0. Browser smoke OK (save, dialogs, dashboard link,
+  LogOnly delete 403 for Read/Prepare/no role).
+- @pbdev level-set: atlas-platform/PBDEV.md (inventory from target usages; section 3 = 4 bindings to check; section 4 =
+  ask for node_modules/@pbdev/pbdev-core *.d.ts to make it exact). Platform imports @pbdev only in platform/atlas-pbdev.ts.
+- Local route is now /dashboard/:code (same as target); /apps/:code redirects.
+- Next: Wave 2 (section 10 of the review): config snapshot HO-02/05/07; config promise NG-03, NG-04, SV-03, SV-04, SV-07,
+  DA-04, DA-05; data DA-02, DA-03, DA-06, SV-05, NG-07, SV-06; SV-08 refactor; NG-09 component tests. Next B number: B29.
 
 ## Review feedback done
 - R1 (B17): Chrome Issues on the form (inputs with no id/name, label for with no target). Renderers pass id ctl_<Name>

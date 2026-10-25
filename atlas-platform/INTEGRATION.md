@@ -1,6 +1,6 @@
 # Integration at the target
 
-Status: complete for release P1 (C10, 2026-10-25). Build: 0 warnings. Tests: 140 .NET (xUnit, SQL Server) + 13 Angular (Vitest).
+Status: complete for release P1 (C10, 2026-10-25), with review Wave 1 fixed (B18-B28). Build: 0 warnings. Tests: 169 .NET (xUnit, SQL Server) + 16 Angular (Vitest; the spec also runs on Karma/Jasmine).
 Local review: `local/README.md`.
 
 ## 1. Files to copy

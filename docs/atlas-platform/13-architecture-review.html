@@ -53,16 +53,15 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
 <p><strong>Ownership.</strong> This report reviews the atlas-platform code in this repository. The fixes are for that code. The report does not change the workflow engine or the target code.</p>
 <p><strong>Source.</strong> <code>atlas-platform/</code> at commit <code>056be47</code>. Target facts come from <code>target-implementation-read-only/</code> (<code>.txt</code> copies).</p>
-<p><strong>Status.</strong> Review 1 (2026-10-25). Read-only review of commit <code>056be47</code>. No code changed for this review. Each finding has file:line evidence that was read and checked.</p>
+<p><strong>Status.</strong> Review 1 (2026-10-25) of commit <code>056be47</code>. Wave 1 (11 findings) is fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.</p>
 <p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
 </div>
 
 <div class="kpis">
 <div class="kpi"><b>47</b><span>findings</span></div>
 <div class="kpi"><b>9</b><span>High</span></div>
-<div class="kpi"><b>24</b><span>Medium</span></div>
-<div class="kpi"><b>14</b><span>Low</span></div>
-<div class="kpi"><b>3</b><span>fix waves</span></div>
+<div class="kpi"><b>11</b><span>fixed (Wave 1)</span></div>
+<div class="kpi"><b>36</b><span>open</span></div>
 </div>
 
 <section id="1-purpose-and-method">
@@ -599,6 +598,26 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <li>PascalCase DTOs agree with the target <code>PropertyNamingPolicy = null</code>.</li>
 <li>Error details: only <code>AtlasProblemException</code> messages go to clients. Other exceptions go to the general 500 of the target.</li>
 </ul>
+</section>
+<section id="12-status-of-the-fixes">
+<h2>12. Status of the fixes</h2>
+<p>Wave 1 is fixed (2026-10-25). Each finding has its own commit and a row in <code>atlas-platform/INTEGRATION.md</code> section 6. Line numbers in sections 4 to 8 refer to commit <code>056be47</code>.</p>
+<div class="table-wrap"><table>
+<tr><th>Finding</th><th>Commit</th><th>INTEGRATION.md</th><th>Result</th></tr>
+<tr><td>NG-01</td><td><code>4863984</code></td><td>B18</td><td>The stand-in has the target class names and only the members that the target uses (<code>atlas-platform/PBDEV.md</code>). All imports go through <code>platform/atlas-pbdev.ts</code>.</td></tr>
+<tr><td>NG-02</td><td><code>0122a64</code></td><td>B19</td><td><code>ATLAS_DASHBOARD_LINK</code>, default <code>['/dashboard', code]</code>. The local route is the same path.</td></tr>
+<tr><td>NG-05</td><td><code>dc26e97</code></td><td>B20</td><td>The spec has no runner import and only APIs that Jasmine and Vitest both have.</td></tr>
+<tr><td>NG-06</td><td><code>8ebc1ef</code></td><td>B21</td><td><code>platform/atlas-platform.css</code> (copied) and <code>platform/atlas-tailwind-classes.ts</code>.</td></tr>
+<tr><td>SV-01</td><td><code>4e852a9</code></td><td>B22</td><td>A changed value must be one of the server options (<code>NotInOptions</code>).</td></tr>
+<tr><td>SV-02</td><td><code>f29b2fc</code></td><td>B23</td><td>A delete gets 403 in <code>LogOnly</code> too. A form with no <code>Permissions</code> is a start-up error.</td></tr>
+<tr><td>HO-03</td><td><code>4632475</code></td><td>B24</td><td>A setting that is not valid fails closed and is a start-up error.</td></tr>
+<tr><td>DA-01</td><td><code>8f98b8c</code></td><td>B25</td><td>The start-up check reports unsupported column and key types and builds the model.</td></tr>
+<tr><td>DA-07</td><td><code>046598e</code></td><td>B26</td><td>The script log row is written in the main transaction. <code>050</code> stops if TTD changed during the run.</td></tr>
+<tr><td>HO-01</td><td><code>8a84315</code></td><td>B27</td><td>The settings come from the configuration given to <code>AddAtlasPlatform</code>. <code>--atlas-check</code> prints the sources.</td></tr>
+<tr><td>HO-08</td><td><code>e40f9cb</code></td><td>B28</td><td><code>TryAddSingleton(TimeProvider.System)</code>. A duplicate module code is refused at the line.</td></tr>
+</table></div>
+<p>Regression: 169 .NET tests and 16 Angular tests pass; <code>ng build</code> and <code>dotnet build</code> have 0 warnings; <code>--atlas-check</code> returns 0. Browser check: load, save, history, dialogs and the dashboard link work; in <code>LogOnly</code>, a delete by Read, Prepare or a user with no role gets 403 and the record stays.</p>
+<p>Wave 2 and Wave 3 are not started.</p>
 </section>
 </main>
 </body>
