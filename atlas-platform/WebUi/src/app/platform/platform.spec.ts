@@ -1,5 +1,6 @@
+// COPY to the target with platform/. The spec uses only describe/it/expect/TestBed and matchers that Jasmine (Karma, the
+// target runner) and Vitest (the local runner, globals on) both have: toBe, toEqual, toBeNull, toBeTruthy. No runner import.
 import { FormControl, FormGroup } from '@angular/forms';
-import { describe, expect, it } from 'vitest';
 import { CPApplicationControl, CPApplicationSection } from './atlas-models';
 import { TestBed } from '@angular/core/testing';
 import { ATLAS_DASHBOARD_LINK, formRoute, formTypeOf } from './atlas-navigation';
@@ -75,15 +76,17 @@ describe('effects (spec 01, 5.1)', () => {
 });
 
 describe('validators (spec 01, 10.3)', () => {
-  it.each([
+  for (const [value, key] of [
     ['1.5', 'integer'],
     ['1:30', 'integer'],
     ['-5', 'min'],
     ['1441', 'max'],
-  ])('refuses %s with %s', (value, key) => {
-    const control = new FormControl(value, atlasValidators(minutes, false));
-    expect(control.errors?.[key]).toBeTruthy();
-  });
+  ]) {
+    it(`refuses ${value} with ${key}`, () => {
+      const control = new FormControl(value, atlasValidators(minutes, false));
+      expect(control.errors?.[key]).toBeTruthy();
+    });
+  }
 
   it('accepts 0, 1440 and empty', () => {
     for (const value of ['0', '1440', '']) {
