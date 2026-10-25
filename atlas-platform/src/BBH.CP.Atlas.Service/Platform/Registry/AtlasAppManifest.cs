@@ -53,6 +53,12 @@ public sealed class AtlasAppManifest
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>
+    /// Review DA-02: an update of a table with a rowversion column must send the Version from the load (default true).
+    /// False lets a caller that does not send it overwrite changes of other users (last write wins).
+    /// </summary>
+    public bool RequireVersion { get; set; } = true;
+
     /// <summary>Optional version of the config contract (review SV-07). Null or 1 = this platform; a higher value is a start-up error.</summary>
     public int? SchemaVersion { get; set; }
 

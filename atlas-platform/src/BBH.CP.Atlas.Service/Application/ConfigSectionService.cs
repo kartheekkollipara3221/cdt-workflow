@@ -68,7 +68,6 @@ namespace BBH.CP.Atlas.Service.Application
         public static readonly EventId FieldIgnored = new(41010, "Atlas.FieldIgnored");
         public static readonly EventId SaveFailed = new(41011, "Atlas.SaveFailed");
 
-        private const string RowVersionColumn = "RowVersion";
         private Dictionary<string, IAtlasOptionProvider>? _providers;
         private AtlasAppManifest? _manifest;
 
@@ -331,9 +330,15 @@ namespace BBH.CP.Atlas.Service.Application
             }
 
             // 7. Version token.
-            if (stored != null && !string.IsNullOrWhiteSpace(input.Version) && table.HasColumn(RowVersionColumn))
+            // Review DA-02: the rowversion column is found by its type, and an update with no Version is refused.
+            if (stored != null && RowVersion(table) != null)
             {
-                if (!string.Equals(input.Version, VersionOf(table, stored), StringComparison.Ordinal))
+                if (string.IsNullOrWhiteSpace(input.Version))
+                {
+                    if (manifest.RequireVersion)
+                        errors.Add(VersionRequired());
+                }
+                else if (!string.Equals(input.Version, VersionOf(table, stored), StringComparison.Ordinal))
                     errors.Add(Conflict());
             }
 
@@ -393,10 +398,10 @@ namespace BBH.CP.Atlas.Service.Application
                 return Failed(result, errors);
 
             // 11-12. Save and audit in one transaction.
-            if (stored != null && !string.IsNullOrWhiteSpace(input.Version) && table.HasColumn(RowVersionColumn))
+            if (stored != null && !string.IsNullOrWhiteSpace(input.Version) && RowVersion(table) is { } rowVersion)
             {
                 // The UPDATE uses the version from the client, so a change after the load gives a conflict.
-                Services.PlatformContext.Entry(stored).Property(table.Find(RowVersionColumn)!.Name).OriginalValue =
+                Services.PlatformContext.Entry(stored).Property(rowVersion.Name).OriginalValue =
                     Convert.FromBase64String(input.Version);
             }
 
@@ -784,8 +789,10 @@ namespace BBH.CP.Atlas.Service.Application
             return values;
         }
 
+        private static AtlasColumn? RowVersion(AtlasTable table) => table.Columns.FirstOrDefault(x => x.IsRowVersion);
+
         private static string? VersionOf(AtlasTable table, IReadOnlyDictionary<string, object?> record) =>
-            table.Find(RowVersionColumn) is { } column && record.GetValueOrDefault(column.Name) is byte[] bytes
+            RowVersion(table) is { } column && record.GetValueOrDefault(column.Name) is byte[] bytes
                 ? Convert.ToBase64String(bytes)
                 : null;
 
@@ -799,6 +806,9 @@ namespace BBH.CP.Atlas.Service.Application
             string.Equals(string.IsNullOrEmpty(a) ? null : a, string.IsNullOrEmpty(b) ? null : b, StringComparison.Ordinal);
 
         private static CPPageError Error(string field, string code, string message) => new() { Field = field, Code = code, Message = message };
+
+        private static CPPageError VersionRequired() =>
+            Error("", "VersionRequired", "The record version is missing. Open the record again and repeat your change.");
 
         private static CPPageError Conflict() =>
             Error("", "Conflict", "Another user changed this record after you opened it. Open the record again and repeat your change.");

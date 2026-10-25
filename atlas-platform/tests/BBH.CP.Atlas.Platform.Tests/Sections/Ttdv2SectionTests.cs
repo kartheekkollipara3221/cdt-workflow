@@ -334,6 +334,40 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     }
 
     [Fact]
+    public async Task An_update_with_no_Version_is_refused()
+    {
+        // Review DA-02: a caller that does not send Version must not overwrite changes of other users.
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+
+        CPAtlasPage result = Svc(Owner, Ttdv2Roles.Owner).SavePage(EditInput(id, null, ("Category", "OTHER")), NoFiles);
+
+        Assert.Equal(0, result.ID);
+        Assert.Contains(result.Errors!, x => x.Code == "VersionRequired");
+        Assert.NotEqual("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
+    }
+
+    [Fact]
+    public async Task With_RequireVersion_false_an_update_with_no_Version_is_saved()
+    {
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.app.json" ? text
+            : text.Replace("\"Enabled\": true", "\"Enabled\": true, \"RequireVersion\": false", StringComparison.Ordinal));
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+
+            CPAtlasPage result = custom.Service(_registry, Owner, Ttdv2Roles.Owner).SavePage(EditInput(id, null, ("Category", "OTHER")), NoFiles);
+
+            Assert.True(result.Errors is null or { Count: 0 }, Describe(result));
+            Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
     public void An_effect_cannot_show_a_field_that_a_rule_hid()
     {
         // Review SV-03: a Prepare rule hides WorkDescription; an effect on Category tries to show it again.
