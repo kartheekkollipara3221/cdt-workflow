@@ -24,8 +24,12 @@ public static class AtlasPlatformServiceCollectionExtensions
         services.AddMemoryCache();
         services.AddHttpContextAccessor();
 
-        // Registry and configuration (module 7, module 11).
-        services.AddSingleton<IAtlasConfigStore, AtlasConfigStore>();
+        // Registry and configuration (module 7, module 11). The platform settings come from the configuration given
+        // here (review HO-01), so the target decides the source; the container IConfiguration is not used for them.
+        AtlasPlatformConfiguration platformConfiguration = new(configuration);
+        services.AddSingleton(platformConfiguration);
+        services.AddSingleton<IAtlasConfigStore>(provider =>
+            new AtlasConfigStore(platformConfiguration.Configuration, provider.GetRequiredService<IHostEnvironment>()));
         services.AddScoped<IAtlasModuleResolver, AtlasModuleResolver>();
 
         // Data (module 5).

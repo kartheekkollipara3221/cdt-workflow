@@ -47,6 +47,8 @@ public static class AtlasPlatformStartup
         string environment = services.GetRequiredService<IHostEnvironment>().EnvironmentName;
         await output.WriteLineAsync($"Atlas check ({environment}): {items.Count(x => x.Severity == AtlasCheckSeverity.Error)} error(s), "
             + $"{items.Count(x => x.Severity == AtlasCheckSeverity.Warning)} warning(s).");
+        if (services.GetService<AtlasPlatformConfiguration>() is { } configuration)
+            await output.WriteLineAsync($"  Settings from: {configuration.Sources}");
         foreach (AtlasCheckItem item in items)
             await output.WriteLineAsync("  " + item);
         return items.Any(x => x.Severity == AtlasCheckSeverity.Error) ? 1 : 0;

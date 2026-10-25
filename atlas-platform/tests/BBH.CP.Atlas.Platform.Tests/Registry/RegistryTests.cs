@@ -198,6 +198,32 @@ public sealed class RegistryTests : IDisposable
         Assert.Equal(AtlasAuditMode.Server, manifest.AuditMode);
     }
 
+    [Fact]
+    public void The_platform_settings_come_from_the_configuration_given_to_AddAtlasPlatform()
+    {
+        // The target replaces the container IConfiguration with its own root (review HO-01).
+        IConfiguration container = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["AppSettings:ConfigFolder"] = "WrongFolder",
+            ["AppSettings:Modules:DEMO:AccessMode"] = "LogOnly"
+        }).Build();
+        IConfiguration given = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["AppSettings:ConfigFolder"] = _folder
+        }).Build();
+        ServiceCollection services = new();
+        services.AddSingleton(container);
+        services.AddSingleton<IHostEnvironment>(new TestHost(_folder));
+        services.AddAtlasPlatform(given);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IAtlasConfigStore store = provider.GetRequiredService<IAtlasConfigStore>();
+
+        Assert.Equal(Path.GetFullPath(_folder), store.ConfigFolder);
+        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode); // the container override is not used
+        Assert.Same(given, provider.GetRequiredService<AtlasPlatformConfiguration>().Configuration);
+    }
+
     private AtlasConfigStore Store(Dictionary<string, string?>? settings = null)
     {
         Dictionary<string, string?> values = new(settings ?? []) { ["AppSettings:ConfigFolder"] = _folder };

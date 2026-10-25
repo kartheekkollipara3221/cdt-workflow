@@ -49,6 +49,13 @@ Run `sql/release-p1/` in number order (DBA in QC and production). See `sql/relea
 
 Release check: `BBH.CP.Atlas.App.exe --atlas-check --environment QC` returns 0 (no errors) or 1.
 
+Settings source (review HO-01): the platform reads these keys only from the configuration given to
+`AddAtlasPlatform(configuration)`. The target `program.cs` builds that root from `appsettings.json` in
+`AppContext.BaseDirectory` only (no `appsettings.{Environment}.json`, no environment variables, no reload). So put the
+values for each environment in the `appsettings.json` that is deployed to that environment, and restart the app pool
+after a change. `--atlas-check` prints the line `Settings from: ...` with the files it read. `ConfigFolder` is relative
+to the content root (the app folder under IIS, which is also `AppContext.BaseDirectory` for a published app).
+
 ## 4.1 Acceptance (spec 12, section 8)
 
 | Item | Result |
@@ -99,3 +106,4 @@ Release check: `BBH.CP.Atlas.App.exe --atlas-check --environment QC` returns 0 (
 | B24 | Review HO-03 | An environment override that could not be parsed was ignored, so a typo left the app on (`Enabled`) or access not enforced (`AccessMode`); a number such as `2` was accepted as an enum value. | Only the enum names (any case) and `true`/`false` are accepted. A value that is present but not valid fails closed: `Enabled` = false, `AccessMode` = `Enforce`; the other modes keep the manifest value. Each one is a start-up check error (`AtlasAppManifest.SettingErrors`), so `--atlas-check` returns 1. A warning reminds that `AccessMode` is `LogOnly` outside Development. Valid settings work as before. |
 | B25 | Review DA-01 | A table with a column type that the platform does not support (`xml`, `time`, `float`, ...) or with a key that is not `int IDENTITY` passed `--atlas-check`; the first request then failed while the one EF model of all platform tables was built, so all platform apps failed. | The start-up check reports, for each Table/AuditTable/AttachmentTable: no `ID` column, an `ID` that is not `int IDENTITY`, and each unsupported column. When there is no other error it builds the EF model once and reports a failure. Test: `A_table_with_an_unsupported_column_or_key_type_is_an_error`. |
 | B26 | Review DA-07 | The script log row of `040` and `050` was in a batch after `GO`, so it was written also when the main batch failed (SSMS and `sqlcmd` without `-b` go on). In `050` the snapshot of TTD was taken before the copy transaction and before the roles were revoked, so a row saved in TTD during the run was not copied. | The log row is written inside the main transaction, before `COMMIT` (also the rule in the `11-script-log.sql` template). `050` part 2 now copies the roles, revokes the TTD roles, then checks that TTD did not change after the snapshot (row count, last created and modified dates, with locks until the commit); a change stops it with error 55007 and nothing changes. README: `sqlcmd -I -b`. Tests: `A_failed_copy_writes_no_script_log_row_...`, `A_failed_app_script_writes_no_script_log_row_...`. |
+| B27 | Review HO-01 | `AddAtlasPlatform(configuration)` did not use its parameter; the store read the container `IConfiguration`. The local host has environment files and variables, the target root has `appsettings.json` only, so local overrides did not prove the target. | The store is built from the given configuration (`AtlasPlatformConfiguration`, registered as a singleton). `--atlas-check` prints the setting sources. Section 4 states the target settings source. The `AddAtlasPlatform` signature does not change. Test: `The_platform_settings_come_from_the_configuration_given_to_AddAtlasPlatform`. |
