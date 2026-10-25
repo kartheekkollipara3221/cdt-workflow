@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 8 Attachments draft 2 done (not committed); module 7 committed 685bc2c; code later in atlas-platform/ (option B) - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 9 Audit/history draft 2 done (not committed); module 8 committed cf61ecd; module 7 committed 685bc2c; code later in atlas-platform/ (option B) - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -62,14 +62,19 @@ Nested lists are not supported: keep bullets flat.)
   string app code + CPAtlasPage.AppCode, start-up check vs CP_Atlas_Application, v1/Application + FormType/HasDashboard,
   AppSettings:ConfigFolder. Q1 answered: one AddAtlasModule line per app (code review). Q2 answered: settings in JSON manifest; DB keeps identity+roles.
   Q3 answered: Enabled per environment. Q4 answered: client+API always deployed together.
-- Module 8 Attachments: 08-attachments.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings AT-01..AT-07 (H1 download any file,
+- Module 8 Attachments: 08-attachments.md/.html - draft 2, ALL questions answered, committed cf61ecd. Findings AT-01..AT-07 (H1 download any file,
   H2 upload path traversal, no access check on download/remove, disk copies stay + removed files downloadable,
   only CDT supports files - Section Master client sends empty file list, no limits). Design: IAtlasAttachmentService,
   DB storage GZip, v1/Attachment/{app}/{id} + v1/Download kept but DB lookup by id, Path.GetFileName, memory GZip,
   Accept/MaxSizeMb/MaxFiles, same transaction, audit. Q1 answered: per-app <Schema>.Attachment (template part 3a; manifest AttachmentTable). Q2 answered: 10 MB, pdf docx xlsx csv txt msg png jpg. 
   Q3 answered: no virus scan service. Q4 answered: upload/download/remove only.
-- Modules not started: 2 Step Master (waits; CDT + one more app),
-  9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
+- Module 9 Audit/history: 09-audit-history.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings AU-01..AU-05 (client interceptor
+  writes audit -> forgeable/missing; Execute GET + RemoveAttachment + engine changes never audited; GetAuditLog no
+  access check; no Old/order/labels; local time + display name). Design: 6 server events, LogMessage keeps Name/Value
+  + Label/Old + first item _Event, AuditMode Client|Server (v1/AuditLog no-op in Server), GetAuditLog access check
+  (History) + sort + optional fields, workflow history via engine IWorkflowInspectionReader merged (Source=Workflow).
+  Q1 answered: workflow steps + field changes in one list. Q2 answered: existing tables keep local time, new UTC, API returns CreatedDateUtc. Q3 answered: no retention rule. Q4 answered: no Audit:false fields today (feature optional).
+- Modules not started: 2 Step Master (waits; CDT + one more app), 10 Engine adapter (H6/H8), 11 Config/deployment.
 
 ## Key facts (do not re-derive)
 - Live: .NET 10 + EF Core 10; IIS Windows auth; live SQMS schema is SQMS (target engine already switched; local
@@ -81,12 +86,11 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-docs/atlas-platform/08-attachments.md (+ .html), sql/05-new-app-template.sql (part 3a), 07-registry.md (+ .html,
-AttachmentTable), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
+docs/atlas-platform/09-audit-history.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 8 Attachments draft 2 is done;
-commit it when I ask, then start the next module (9 Audit/history unless I say otherwise). One question at a time, short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 9 Audit/history draft 2 is done;
+commit it when I ask, then start module 10 Engine adapter (then 11 Config/deployment). One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25

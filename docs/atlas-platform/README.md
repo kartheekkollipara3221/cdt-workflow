@@ -38,6 +38,6 @@ Each module spec has these sections:
 | 6 | Security and entitlements | [06-security.md](06-security.md) · [HTML report](06-security.html) · SQL: [active roles view](sql/06-active-user-roles-view.sql), [LAN ID columns](sql/06-lanid-columns-ddl.sql), [LAN ID backfill](sql/06-lanid-backfill-dml.sql), [visibility template](sql/06-record-visibility-template.sql), [grant/revoke role](sql/06-grant-revoke-role-template.sql) | Draft 2 (all questions answered) |
 | 7 | Module registry and service factory | [07-registry.md](07-registry.md) · [HTML report](07-registry.html) | Draft 2 (all questions answered) |
 | 8 | Attachments and download | [08-attachments.md](08-attachments.md) · [HTML report](08-attachments.html) · SQL: attachment table in [new-app template](sql/05-new-app-template.sql) part 3a | Draft 2 (all questions answered) |
-| 9 | Audit log and history | — | Not started |
+| 9 | Audit log and history | [09-audit-history.md](09-audit-history.md) · [HTML report](09-audit-history.html) | Draft 2 (all questions answered) |
 | 10 | Workflow engine adapter (start, execute, notify, SLA) | — | Not started |
 | 11 | Configuration and deployment | — | Not started |
