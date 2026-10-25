@@ -1,0 +1,210 @@
+{
+  // TTDV2 form (spec 12, section 3; reference: the target TTD.json). People are LAN IDs (spec 06, 4.5).
+  // No "Code" key: the enum cannot hold TTDV2; the manifest gives the code (spec 07, 4.4).
+  "Name": "Tax Time Database",
+  "Type": "SECTION",
+  "OwnerFields": [ "CreatedBy", "TaxPreparerLanId" ],
+  "Rules": [
+    { "Roles": [ "@Read" ], "Disabled": true },
+    { "Roles": [ "Prepare" ], "IsOwner": true, "Disabled": false },
+    { "Roles": [ "@Admin" ], "Disabled": false }
+  ],
+  "Permissions": {
+    "View": [ "@Read" ],
+    "Create": [ "Prepare", "Owner" ],
+    "Edit": { "Own": [ "Prepare" ], "All": [ "Owner" ] },
+    "Delete": [ "Owner" ],
+    "History": [ "@Read" ]
+  },
+  "Defaults": {
+    "TaxYear": "{Options[1]}",
+    "WeekEnding": "{Options[0]}",
+    "TaxPreparer": "{User.LanID}"
+  },
+  "Computed": {
+    "WeeklyTotal": "Sum(MondayMinute, TuesdayMinute, WednesdayMinute, ThursdayMinute, FridayMinute, SaturdayMinute, SundayMinute)"
+  },
+  "SoftDelete": { "Field": "IsDeleted" },
+  "HeaderNameWithId": "{Name} - {ID}",
+  "Section": {
+    "Name": "Tax Time Database",
+    "Description": "",
+    "HeaderName": "Tax Time Database Time Sheet",
+    "Controls": [
+      {
+        "Name": "TaxTimeDatabase1",
+        "Label": "Account Details",
+        "Type": "section",
+        "PlaceHolder": "",
+        "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "ChildControls": [
+          {
+            "Name": "Account",
+            "Field": "Account",
+            "Label": "Account",
+            "Type": "ngselect",
+            "Multiple": false,
+            "PlaceHolder": "Account",
+            "OptionsSource": { "Provider": "PBAccounts" },
+            "KeepSavedValue": true,
+            "Effects": [
+              {
+                "When": { "HasValue": true },
+                "SetFromOption": { "AccountNumber": "AccountNumber", "AccountName": "AccountName" }
+              },
+              {
+                "When": { "HasValue": false },
+                "Clear": [ "AccountNumber", "AccountName" ]
+              }
+            ],
+            "Validator": { "Required": true }
+          },
+          {
+            "Name": "AccountNumber",
+            "Field": "AccountNumber",
+            "Label": "Selected Account Number",
+            "Type": "text",
+            "PlaceHolder": "Account Number",
+            "Validator": { "Required": true },
+            "Disabled": true
+          },
+          {
+            "Name": "AccountName",
+            "Field": "AccountName",
+            "Label": "Selected Account Name",
+            "Type": "text",
+            "PlaceHolder": "Account Name",
+            "Validator": { "Required": true },
+            "Disabled": true
+          }
+        ]
+      },
+      {
+        "Name": "TaxTimeDatabase2",
+        "Label": "Work Details",
+        "Type": "section",
+        "PlaceHolder": "",
+        "Class": "grid grid-cols-2 gap-6 items-start p-8 bg-white",
+        "ChildControls": [
+          {
+            "Name": "TaxYear",
+            "Field": "TaxYear",
+            "Label": "Tax Year",
+            "Type": "select",
+            "PlaceHolder": "Tax Year",
+            "OptionsSource": { "Provider": "TaxYears" },
+            "KeepSavedValue": true,
+            "Validator": { "Required": true }
+          },
+          {
+            "Name": "Category",
+            "Field": "Category",
+            "Label": "Category",
+            "Type": "select",
+            "PlaceHolder": "Category",
+            "Validator": { "Required": true },
+            "Options": [
+              { "Label": "OTHER", "Value": "OTHER" },
+              { "Label": "STMT_N", "Value": "STMT_N" },
+              { "Label": "TAX_N", "Value": "TAX_N" }
+            ]
+          },
+          {
+            "Name": "WorkDescription",
+            "Field": "WorkDescription",
+            "Label": "Work Description",
+            "Type": "textarea",
+            "PlaceHolder": "Work Description",
+            "DivClass": "grid-column-start-end-1-2",
+            "Validator": { "MaxLength": 100 }
+          }
+        ]
+      },
+      {
+        "Name": "TaxTimeDatabase3",
+        "Label": "Preparer & Period",
+        "Type": "section",
+        "PlaceHolder": "",
+        "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "ChildControls": [
+          {
+            "Name": "ModifiedBy",
+            "Field": "ModifiedBy",
+            "Label": "Last Modified By",
+            "Type": "user",
+            "PlaceHolder": "Last Modified By",
+            "Disabled": true
+          },
+          {
+            "Name": "TaxPreparer",
+            "Field": "TaxPreparerLanId",
+            "Label": "Name Of Tax Preparer",
+            "Type": "select",
+            "PlaceHolder": "Name of the person working on tax preparation",
+            "OptionsSource": { "Provider": "UsersInRoles", "Roles": [ "Prepare", "Owner" ] },
+            "KeepSavedValue": true,
+            "Validator": { "Required": true }
+          },
+          {
+            "Name": "WeekEnding",
+            "Field": "WeekEnding",
+            "Label": "Week Ending",
+            "Type": "select",
+            "PlaceHolder": "Week Ending",
+            "OptionsSource": { "Provider": "WeekEndings" },
+            "KeepSavedValue": true,
+            "Validator": { "Required": true }
+          }
+        ]
+      },
+      {
+        "Name": "WeeklyHour",
+        "Label": "Weekly Hours (minutes)",
+        "Type": "grid",
+        "Validator": { "Integer": true, "Min": 0, "Max": 1440, "Message": "Enter whole minutes from 0 to 1440." },
+        "Grid": {
+          "BindMode": "SingleRowFields",
+          "Columns": [
+            { "headerName": "Monday", "width": 150, "field": "MondayMinute", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": false, "code": "TTDV2", "ctrlname": "Monday" } },
+            { "headerName": "Tuesday", "width": 150, "field": "TuesdayMinute", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": false, "code": "TTDV2", "ctrlname": "Tuesday" } },
+            { "headerName": "Wednesday", "width": 150, "field": "WednesdayMinute", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": false, "code": "TTDV2", "ctrlname": "Wednesday" } },
+            { "headerName": "Thursday", "width": 150, "field": "ThursdayMinute", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": false, "code": "TTDV2", "ctrlname": "Thursday" } },
+            { "headerName": "Friday", "width": 150, "field": "FridayMinute", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": false, "code": "TTDV2", "ctrlname": "Friday" } },
+            { "headerName": "Saturday", "width": 150, "field": "SaturdayMinute", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": false, "code": "TTDV2", "ctrlname": "Saturday" } },
+            { "headerName": "Sunday", "width": 150, "field": "SundayMinute", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": false, "code": "TTDV2", "ctrlname": "Sunday" } },
+            { "headerName": "Weekly Total", "width": 120, "field": "WeeklyTotal", "wrapHeaderText": true, "autoHeaderHeight": true, "cellRenderer": "NumericEditor", "cellRendererParams": { "disabled": true, "code": "TTDV2", "ctrlname": "WeeklyTotal" } }
+          ],
+          "Paginate": false
+        }
+      }
+    ],
+    "Buttons": [
+      {
+        "Name": "Submit",
+        "Label": "Save",
+        "Visible": true,
+        "Disabled": false,
+        "Action": { "Type": "Save" },
+        "Rules": [
+          { "Roles": [ "Prepare" ], "IsOwner": true },
+          { "Roles": [ "@Admin" ] }
+        ]
+      },
+      {
+        "Name": "Delete",
+        "Label": "Delete",
+        "Visible": true,
+        "Disabled": false,
+        "Action": { "Type": "Delete" },
+        "Rules": [ { "Roles": [ "Owner" ] } ]
+      },
+      {
+        "Name": "Close",
+        "Label": "Close",
+        "Visible": true,
+        "Disabled": false,
+        "Action": { "Type": "Close" }
+      }
+    ]
+  }
+}

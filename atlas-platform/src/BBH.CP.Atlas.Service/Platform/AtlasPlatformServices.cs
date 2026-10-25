@@ -1,4 +1,7 @@
+using BBH.CP.Atlas.Service.Platform.Audit;
+using BBH.CP.Atlas.Service.Platform.Options;
 using BBH.CP.Atlas.Service.Platform.Rules;
+using BBH.CP.Atlas.Service.Platform.Sections;
 using BBH.CP.Atlas.Service.Platform.Security;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,5 +21,11 @@ public static class AtlasPlatformServices
 
         // Rules (module 4).
         services.AddSingleton<IAtlasRuleEngine, AtlasRuleEngine>();
+
+        // Audit (module 9), option providers (module 1, 10.2) and the module service bundle.
+        services.AddScoped<IAtlasAuditWriter, AtlasAuditWriter>();
+        services.AddScoped<IAtlasOptionProvider, PBAccountsOptionProvider>();
+        services.AddScoped<IAtlasOptionProvider, UsersInRolesOptionProvider>();
+        services.AddScoped<AtlasModuleServices>();
     }
 }
