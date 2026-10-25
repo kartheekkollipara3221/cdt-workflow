@@ -8,7 +8,10 @@ namespace BBH.CP.Atlas.Service.Platform.Registry;
 /// <summary>
 /// Reads the manifests, form JSON and dashboard JSON from one folder (AppSettings:ConfigFolder, default "Config",
 /// relative to the content root; spec 07, 4.7). The file text is kept in memory and read again when the file
-/// changes. Each call returns a new object, so a request can change it (spec 01, 5.6).
+/// changes. Each form and dashboard call returns a new object, so a request can change it (spec 01, 5.6).
+/// The manifests are one parsed, shared snapshot (review HO-07): do not change a manifest object. The store looks
+/// at the folder (names, times, sizes) at most every AppSettings:ConfigRefreshSeconds (default 2; 0 = each call)
+/// and parses the manifests again only when the folder changed.
 /// </summary>
 public interface IAtlasConfigStore
 {
@@ -28,24 +31,66 @@ public interface IAtlasConfigStore
 public sealed class AtlasConfigStore : IAtlasConfigStore
 {
     private readonly IConfiguration _configuration;
+    private readonly TimeProvider _time;
+    private readonly TimeSpan _refresh;
     private readonly ConcurrentDictionary<string, (DateTime Stamp, string Text)> _files = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _lock = new();
+    private ManifestSnapshot? _snapshot;
 
-    public AtlasConfigStore(IConfiguration configuration, IHostEnvironment environment)
+    public AtlasConfigStore(IConfiguration configuration, IHostEnvironment environment, TimeProvider? time = null)
     {
         _configuration = configuration;
+        _time = time ?? TimeProvider.System;
         string folder = configuration["AppSettings:ConfigFolder"] is { Length: > 0 } configured ? configured : "Config";
         ConfigFolder = Path.GetFullPath(Path.IsPathRooted(folder) ? folder : Path.Combine(environment.ContentRootPath, folder));
+        _refresh = TimeSpan.FromSeconds(int.TryParse(configuration["AppSettings:ConfigRefreshSeconds"], out int seconds) && seconds >= 0 ? seconds : 2);
     }
 
     public string ConfigFolder { get; }
 
-    public IReadOnlyList<AtlasAppManifest> GetManifests()
-    {
-        if (!Directory.Exists(ConfigFolder))
-            return [];
+    public IReadOnlyList<AtlasAppManifest> GetManifests() => Snapshot().Manifests;
 
+    public AtlasAppManifest? FindManifest(string appCode) =>
+        Snapshot().ByCode.GetValueOrDefault(AtlasAppCode.Normalize(appCode));
+
+    private sealed record ManifestSnapshot(
+        string Signature, IReadOnlyList<AtlasAppManifest> Manifests, IReadOnlyDictionary<string, AtlasAppManifest> ByCode,
+        DateTimeOffset CheckedAt);
+
+    private ManifestSnapshot Snapshot()
+    {
+        DateTimeOffset now = _time.GetUtcNow();
+        ManifestSnapshot? current = Volatile.Read(ref _snapshot);
+        if (current != null && now - current.CheckedAt < _refresh)
+            return current;
+
+        lock (_lock)
+        {
+            current = _snapshot;
+            if (current != null && now - current.CheckedAt < _refresh)
+                return current;
+
+            string[] paths = Directory.Exists(ConfigFolder)
+                ? [.. Directory.GetFiles(ConfigFolder, "*.app.json").Order(StringComparer.OrdinalIgnoreCase)]
+                : [];
+            string signature = string.Join("|", paths.Select(path =>
+            {
+                FileInfo file = new(path);
+                return $"{path}:{file.LastWriteTimeUtc.Ticks}:{file.Length}";
+            }));
+
+            ManifestSnapshot next = current != null && current.Signature == signature
+                ? current with { CheckedAt = now }
+                : Build(paths, signature, now);
+            Volatile.Write(ref _snapshot, next);
+            return next;
+        }
+    }
+
+    private ManifestSnapshot Build(string[] paths, string signature, DateTimeOffset now)
+    {
         List<AtlasAppManifest> manifests = [];
-        foreach (string path in Directory.GetFiles(ConfigFolder, "*.app.json").Order(StringComparer.OrdinalIgnoreCase))
+        foreach (string path in paths)
         {
             AtlasAppManifest manifest = AtlasJson.Deserialize<AtlasAppManifest>(ReadText(path), Path.GetFileName(path));
             manifest.Code = AtlasAppCode.Normalize(manifest.Code);
@@ -54,13 +99,11 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
             manifests.Add(manifest);
         }
 
-        return manifests;
-    }
+        Dictionary<string, AtlasAppManifest> byCode = [];
+        foreach (AtlasAppManifest manifest in manifests)
+            byCode.TryAdd(manifest.Code, manifest); // the first file wins, as FirstOrDefault did
 
-    public AtlasAppManifest? FindManifest(string appCode)
-    {
-        string code = AtlasAppCode.Normalize(appCode);
-        return GetManifests().FirstOrDefault(x => x.Code == code);
+        return new ManifestSnapshot(signature, manifests, byCode, now);
     }
 
     public CPAtlasApplicationConfig GetForm(string appCode)

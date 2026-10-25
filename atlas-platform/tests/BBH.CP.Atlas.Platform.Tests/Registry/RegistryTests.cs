@@ -252,10 +252,46 @@ public sealed class RegistryTests : IDisposable
     {
     }
 
-    private AtlasConfigStore Store(Dictionary<string, string?>? settings = null)
+    [Fact]
+    public void The_manifests_are_parsed_once_while_the_folder_does_not_change()
+    {
+        AtlasConfigStore store = Store();
+
+        AtlasAppManifest first = store.FindManifest("DEMO")!;
+
+        Assert.Same(first, store.FindManifest("DEMO"));
+        Assert.Same(first, store.GetManifests().Single(x => x.Code == "DEMO"));
+    }
+
+    [Fact]
+    public void A_changed_manifest_is_seen_after_the_refresh_time()
+    {
+        ManualTime time = new(new DateTimeOffset(2026, 10, 25, 12, 0, 0, TimeSpan.Zero));
+        AtlasConfigStore store = Store(new() { ["AppSettings:ConfigRefreshSeconds"] = "60" }, time);
+        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
+
+        string path = Path.Combine(_folder, "DEMO.app.json");
+        File.WriteAllText(path, File.ReadAllText(path).Replace("\"Enforce\"", "\"LogOnly\"", StringComparison.Ordinal));
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
+
+        time.Now = time.Now.AddSeconds(30);
+        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);   // not checked yet
+        time.Now = time.Now.AddSeconds(31);
+        Assert.Equal(AtlasAccessMode.LogOnly, store.FindManifest("DEMO")!.AccessMode);
+    }
+
+    private sealed class ManualTime(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private AtlasConfigStore Store(Dictionary<string, string?>? settings = null, TimeProvider? time = null)
     {
         Dictionary<string, string?> values = new(settings ?? []) { ["AppSettings:ConfigFolder"] = _folder };
-        return new AtlasConfigStore(new ConfigurationBuilder().AddInMemoryCollection(values).Build(), new TestHost(_folder));
+        values.TryAdd("AppSettings:ConfigRefreshSeconds", "0");
+        return new AtlasConfigStore(new ConfigurationBuilder().AddInMemoryCollection(values).Build(), new TestHost(_folder), time);
     }
 
     public sealed class DemoModule : IAtlasModule
