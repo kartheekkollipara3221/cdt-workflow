@@ -35,7 +35,7 @@ Each module spec has these sections:
 | 3 | Dashboard (tabs, grids, menus, procedures) | — | Not started |
 | 4 | Rules engine (`CPRule`) | — | Not started (Section Master spec extends it) |
 | 5 | Data mapping (`MapData` / `BindData`, per-app tables) | [05-data-mapping.md](05-data-mapping.md) · [HTML report](05-data-mapping.html) · SQL: [new-app template](sql/05-new-app-template.sql) | Draft 2, waiting for target files (scaffold) |
-| 6 | Security and entitlements | [06-security.md](06-security.md) · [HTML report](06-security.html) · SQL: [active roles view](sql/06-active-user-roles-view.sql), [LAN ID columns](sql/06-lanid-columns-ddl.sql), [LAN ID backfill](sql/06-lanid-backfill-dml.sql), [visibility template](sql/06-record-visibility-template.sql) | Draft 1 |
+| 6 | Security and entitlements | [06-security.md](06-security.md) · [HTML report](06-security.html) · SQL: [active roles view](sql/06-active-user-roles-view.sql), [LAN ID columns](sql/06-lanid-columns-ddl.sql), [LAN ID backfill](sql/06-lanid-backfill-dml.sql), [visibility template](sql/06-record-visibility-template.sql), [grant/revoke role](sql/06-grant-revoke-role-template.sql) | Draft 2 (all questions answered) |
 | 7 | Module registry and service factory | — | Not started (Section Master spec introduces it) |
 | 8 | Attachments and download | — | Not started |
 | 9 | Audit log and history | — | Not started |

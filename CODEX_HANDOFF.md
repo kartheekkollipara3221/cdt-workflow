@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 6 Security in progress - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 6 Security draft 2 done (not committed) - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -26,16 +26,17 @@ Nested lists are not supported: keep bullets flat.)
 - Module 5 Data mapping: 05-data-mapping.md/.html - draft 2, Q1-Q6 answered, NOT FINAL: waiting for target files
   (CPSharepointContext.cs, Data/CodeTemplates/EFCore files, scaffold command or efpt.config.json, Data .csproj)
   to finalize the scaffold steps in 6.2. Committed a73793a. SQL: sql/05-new-app-template.sql.
-- Module 6 Security: 06-security.md/.html - draft 1, IN PROGRESS, NOT COMMITTED.
+- Module 6 Security: 06-security.md/.html - draft 2, ALL questions answered. Draft 1 committed 754b2dc; Q6 changes not committed (commit when user asks).
   Findings SE-01..SE-07. Answered: Q1 two AD groups (end users | support) in AppSettings:ADGroup, gate only, per-app
   access only from entitlement tables; Q2 IIS + Windows auth, no JWT callers -> remove JWT (M17 updated in issues doc);
   Q3 LAN ID for people (new apps) + LAN ID columns for existing tables; Q4 some apps hide records by user data ->
   per-app SQL rule (fn_VisibleRecords + Can_Access_Record); Q5 log-only one release, then enforce per app
   (AppSettings:Modules:<Code>:AccessMode).
-  OPEN: Q6 who manages entitlements (screen or SQL?) and meaning/use of IsAdmin/IsWrite/IsRead flags.
-  If SQL-managed -> add a grant/revoke role script template (soft delete via IsDeleted only).
+  Q6 team grants/revokes by SQL by hand (admin screen later) -> sql/06-grant-revoke-role-template.sql (soft delete);
+  IsAdmin/IsWrite/IsRead = app-level flags per role, platform uses them as @Read/@Write/@Admin in Permissions lists;
+  Admin includes Write+Read, Write includes Read.
   SQL (not executed): sql/06-active-user-roles-view.sql, sql/06-lanid-columns-ddl.sql, sql/06-lanid-backfill-dml.sql,
-  sql/06-record-visibility-template.sql.
+  sql/06-record-visibility-template.sql, sql/06-grant-revoke-role-template.sql.
 - Modules not started: 2 Step Master (waits; CDT + one more app), 3 Dashboard, 4 Rules engine, 7 Registry,
   8 Attachments (H1/H2), 9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
 
@@ -49,13 +50,13 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-docs/atlas-platform/06-security.md (+ .html), sql/06-*.sql (4 files), docs/atlas-platform/README.md,
-docs/TARGET_ATLAS_ISSUES_BY_SEVERITY.html (M17 note), docs/atlas-platform/tools/md2report.py, CODEX_HANDOFF.md.
+Draft 1 was committed in 754b2dc. Uncommitted Q6 changes: docs/atlas-platform/06-security.md (+ .html),
+docs/atlas-platform/README.md, sql/06-grant-revoke-role-template.sql (new), CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 6 Security is in progress:
-ask me Q6 (who manages entitlements; meaning of IsAdmin/IsWrite/IsRead). Then commit module 6 when I ask, and
-continue to the next module. Ask one question at a time and keep it short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 6 Security is done (draft 2);
+commit it when I ask. Then start the next module (3 Dashboard unless I say otherwise). Ask one question at a time
+and keep it short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25

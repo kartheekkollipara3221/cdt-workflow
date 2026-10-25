@@ -1,6 +1,6 @@
 # Module 6: Security and entitlements
 
-Status: Draft 1, 2026-10-25. Design only. No target code is changed.
+Status: Draft 2, 2026-10-25. All open questions answered. Design only. No target code is changed.
 
 ## 1. Purpose
 
@@ -137,9 +137,27 @@ The full `Permissions` block:
 
 Each item is optional. If an item is not there, the current behaviour stays (see section 5).
 
+App-level flags (decision 2026-10-25, question 6): each role (`CP_Atlas_Entitlement` row) has the flags `IsRead`, `IsWrite` and `IsAdmin`. A `Permissions` list can use the flag names `@Read`, `@Write` and `@Admin` in place of role names. `@Write` means "any role of the app with `IsWrite` = 1". Then a new app needs no role names in its JSON, and a new role works when its flags are set. The template for a new app:
+
+```json
+"Permissions": {
+  "View":    ["@Read"],
+  "Create":  ["@Write"],
+  "Edit":    { "Own": ["@Write"], "All": ["@Admin"] },
+  "Delete":  ["@Admin"],
+  "History": ["@Read"]
+}
+```
+
+A list can mix role names and flag names, for example `["Owner", "@Admin"]`.
+
+Flag order (decision 2026-10-25): `IsAdmin` includes write and read; `IsWrite` includes read. So `@Read` matches a role with any flag, and `@Write` matches a role with `IsWrite` or `IsAdmin`.
+
 ### 4.4 Roles by app
 
 - One database view gives the active roles: [sql/06-active-user-roles-view.sql](sql/06-active-user-roles-view.sql) (`dbo.vw_CP_Atlas_ActiveUserRole`). It filters `IsDeleted` on the user, the user entitlement, the entitlement and the application. All role queries use this view. This removes the `IsDeleted` part of SE-03.
+- The view also gives `IsRead`, `IsWrite` and `IsAdmin` for each role. The access check (4.3) reads them for the `@Read`, `@Write` and `@Admin` names.
+- The team grants and revokes roles with SQL: [sql/06-grant-revoke-role-template.sql](sql/06-grant-revoke-role-template.sql). It finds the user by LAN ID and the role by app code and role name. Revoke sets `IsDeleted` = 1; the script deletes no row. A later admin screen must use the same rules.
 - `v1/authorize` adds an optional field `AppRoles`: `{ "SQMS": ["MFO"], "TTD": ["Prepare"] }`. Keep the flat `Roles` list for the current client. The updated client uses `AppRoles`. This removes the rest of SE-03.
 - The server decisions (redirect, buttons, rules) use the roles of the app, not the flat list.
 
@@ -223,4 +241,4 @@ This removes SE-06 and issue M17.
 3. Answered (2026-10-25): yes. New apps keep people as LAN IDs. The existing tables get LAN ID columns (scripts in 4.5).
 4. Answered (2026-10-25): yes, some existing and new apps limit records by user data. One SQL rule for each such app (a function and a procedure, 4.6), owned by the target team, is acceptable.
 5. Answered (2026-10-25): yes. Log-only mode for one release, then enforce, one app at a time.
-6. Who manages the entitlements today (a screen, or SQL by the DBA)? What does `IsAdmin` on `CP_Atlas_Entitlement` mean?
+6. Answered (2026-10-25): today the team adds and removes entitlements with SQL by hand (template in 4.4). Later, the team wants an admin screen. Each role has the flags `IsAdmin`, `IsWrite` and `IsRead`: app-level permissions. The platform uses them (`@Read`, `@Write`, `@Admin` in 4.3). No Atlas code reads them today. Follow-up answered (2026-10-25): `IsAdmin` includes write and read; `IsWrite` includes read.

@@ -45,7 +45,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 </head>
 <body>
 <main>
-<div class="eyebrow">CP Atlas reusable platform · module 6 · design only · draft 1 · 2026-10-25</div>
+<div class="eyebrow">CP Atlas reusable platform · module 6 · design only · draft 2 · 2026-10-25</div>
 <h1>Security and entitlements: reusable design</h1>
 <p class="lead">This report examines how CP Atlas identifies users, reads roles and checks access. It gives one access design that each new app gets from its JSON, with no security code of its own.</p>
 
@@ -53,7 +53,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
 <p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
 <p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
-<p><strong>Status.</strong> Draft 1, 2026-10-25. Design only. No target code is changed.</p>
+<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered. Design only. No target code is changed.</p>
 <p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
 </div>
 
@@ -61,7 +61,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <div class="kpi"><b>7</b><span>findings (SE-01 to SE-07)</span></div>
 <div class="kpi"><b>4</b><span>High security findings</span></div>
 <div class="kpi"><b>1</b><span>access check for all operations</span></div>
-<div class="kpi"><b>4</b><span>SQL scripts (roles view, LAN ID columns, backfill, visibility template)</span></div>
+<div class="kpi"><b>5</b><span>SQL scripts (roles view, LAN ID columns, backfill, visibility template, grant/revoke role)</span></div>
 </div>
 
 <section id="1-purpose">
@@ -192,9 +192,21 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
   "History": ["Prepare", "Owner"]
 }</code></pre>
 <p>Each item is optional. If an item is not there, the current behaviour stays (see section 5).</p>
+<p>App-level flags (decision 2026-10-25, question 6): each role (<code>CP_Atlas_Entitlement</code> row) has the flags <code>IsRead</code>, <code>IsWrite</code> and <code>IsAdmin</code>. A <code>Permissions</code> list can use the flag names <code>@Read</code>, <code>@Write</code> and <code>@Admin</code> in place of role names. <code>@Write</code> means "any role of the app with <code>IsWrite</code> = 1". Then a new app needs no role names in its JSON, and a new role works when its flags are set. The template for a new app:</p>
+<pre><code>"Permissions": {
+  "View":    ["@Read"],
+  "Create":  ["@Write"],
+  "Edit":    { "Own": ["@Write"], "All": ["@Admin"] },
+  "Delete":  ["@Admin"],
+  "History": ["@Read"]
+}</code></pre>
+<p>A list can mix role names and flag names, for example <code>["Owner", "@Admin"]</code>.</p>
+<p>Flag order (decision 2026-10-25): <code>IsAdmin</code> includes write and read; <code>IsWrite</code> includes read. So <code>@Read</code> matches a role with any flag, and <code>@Write</code> matches a role with <code>IsWrite</code> or <code>IsAdmin</code>.</p>
 <h3>4.4 Roles by app</h3>
 <ul>
 <li>One database view gives the active roles: <a href="sql/06-active-user-roles-view.sql">sql/06-active-user-roles-view.sql</a> (<code>dbo.vw_CP_Atlas_ActiveUserRole</code>). It filters <code>IsDeleted</code> on the user, the user entitlement, the entitlement and the application. All role queries use this view. This removes the <code>IsDeleted</code> part of SE-03.</li>
+<li>The view also gives <code>IsRead</code>, <code>IsWrite</code> and <code>IsAdmin</code> for each role. The access check (4.3) reads them for the <code>@Read</code>, <code>@Write</code> and <code>@Admin</code> names.</li>
+<li>The team grants and revokes roles with SQL: <a href="sql/06-grant-revoke-role-template.sql">sql/06-grant-revoke-role-template.sql</a>. It finds the user by LAN ID and the role by app code and role name. Revoke sets <code>IsDeleted</code> = 1; the script deletes no row. A later admin screen must use the same rules.</li>
 <li><code>v1/authorize</code> adds an optional field <code>AppRoles</code>: <code>{ "SQMS": ["MFO"], "TTD": ["Prepare"] }</code>. Keep the flat <code>Roles</code> list for the current client. The updated client uses <code>AppRoles</code>. This removes the rest of SE-03.</li>
 <li>The server decisions (redirect, buttons, rules) use the roles of the app, not the flat list.</li>
 </ul>
@@ -277,7 +289,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <li>Answered (2026-10-25): yes. New apps keep people as LAN IDs. The existing tables get LAN ID columns (scripts in 4.5).</li>
 <li>Answered (2026-10-25): yes, some existing and new apps limit records by user data. One SQL rule for each such app (a function and a procedure, 4.6), owned by the target team, is acceptable.</li>
 <li>Answered (2026-10-25): yes. Log-only mode for one release, then enforce, one app at a time.</li>
-<li>Who manages the entitlements today (a screen, or SQL by the DBA)? What does <code>IsAdmin</code> on <code>CP_Atlas_Entitlement</code> mean?</li>
+<li>Answered (2026-10-25): today the team adds and removes entitlements with SQL by hand (template in 4.4). Later, the team wants an admin screen. Each role has the flags <code>IsAdmin</code>, <code>IsWrite</code> and <code>IsRead</code>: app-level permissions. The platform uses them (<code>@Read</code>, <code>@Write</code>, <code>@Admin</code> in 4.3). No Atlas code reads them today. Follow-up answered (2026-10-25): <code>IsAdmin</code> includes write and read; <code>IsWrite</code> includes read.</li>
 </ol>
 </section>
 </main>
