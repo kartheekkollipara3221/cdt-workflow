@@ -51,3 +51,6 @@ Run `sql/release-p1/` in number order (DBA in QC and production). See spec 12, s
 |---|---|---|---|
 | B1 | C1 | EF Core property bags use the sentinel null; a new record sent `ID = 0` to the identity column. | Sentinel = type default for non-nullable value columns (`AtlasPlatformContext`). |
 | B2 | C2 | `System.Text.Json` enforces the C# `required` keyword; `Newtonsoft.Json` does not. `SQMSO.json`, `SQMSB.json` (no `Workflow.Roles`) and `CDT.json` (controls with no `Label`) fail with a plain STJ loader. | The platform loader turns `required` off (`AtlasJson`). Test: all current form files and the dashboard file load. |
+| B3 | C4 | Design choice for the new path: a rule can hide or disable a child control, but a control that the JSON disables (for example `AccountNumber`, filled by `SetFromOption`) stays disabled unless a rule names it in `EnableControls`. The legacy `ApplyRules` enables it. Only apps on the new path use this. | `AtlasRuleEngine.ApplyToSection`. For review. |
+| B4 | C4 | Button rules use `RuleDefault: Hidden` when the app uses `ReadOnly` or `Hidden` (a read-only button has no use). | For review. |
+| B5 | C4 | The form JSON gets an optional app-level `Rules` list (module 1, 10.5 example): the default for each section-level control with no own rules. | `CPAtlasApplicationConfig.Rules`. |

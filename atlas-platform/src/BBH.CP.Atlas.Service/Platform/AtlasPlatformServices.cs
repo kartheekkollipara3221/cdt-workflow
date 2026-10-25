@@ -1,3 +1,4 @@
+using BBH.CP.Atlas.Service.Platform.Rules;
 using BBH.CP.Atlas.Service.Platform.Security;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,5 +15,8 @@ public static class AtlasPlatformServices
         services.AddScoped<IAtlasUserContext, AtlasUserContext>();
         services.AddScoped<IAtlasUserDirectory, AtlasUserDirectory>();
         services.AddScoped<IAtlasAccessService, AtlasAccessService>();
+
+        // Rules (module 4).
+        services.AddSingleton<IAtlasRuleEngine, AtlasRuleEngine>();
     }
 }

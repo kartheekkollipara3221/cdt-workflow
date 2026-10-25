@@ -10,6 +10,9 @@ namespace BBH.CP.Atlas.Data.DTO
         /// <summary>Header for an existing record, for example "{Name} - {ID}" (spec 01, 5.7).</summary>
         public string? HeaderNameWithId { get; set; }
 
+        /// <summary>App-level rules: the default for each section-level control with no Rules (spec 01, 10.5 example).</summary>
+        public List<CPRule>? Rules { get; set; }
+
         /// <summary>Fields that name the owner of a record, compared by LAN ID (spec 01, 10.5; spec 04, 4.4).</summary>
         public List<string>? OwnerFields { get; set; }
 
