@@ -3,7 +3,9 @@
 -- Run in the CP Atlas database (cp_sharepoint). In QC and production the DBA runs it.
 -- Run it once, as the first platform script (after the engine migration script) of release P1.
 --
--- Each later platform script ends with the "log this script" block at the bottom of this file.
+-- Each later platform script writes the "log this script" block at the bottom of this file INSIDE its main
+-- transaction, just before COMMIT (review DA-07). A block after a GO runs also when the main batch failed (SSMS and
+-- sqlcmd without -b go on to the next batch), so the log would say "applied" when nothing changed.
 -- The API login needs SELECT on the table (start-up check, module 7 4.8); it does not write to it.
 --
 -- Rollback: DROP TABLE dbo.CP_Atlas_ScriptLog;  (no other object depends on it)
@@ -35,8 +37,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'P1' AND Sc
     INSERT INTO dbo.CP_Atlas_ScriptLog (ScriptName, Release) VALUES (N'11-script-log.sql', N'P1');
 GO
 
--- ===== Block to copy to the end of each platform script =====
+-- ===== Block to copy into each platform script, inside the main transaction before COMMIT TRANSACTION =====
 -- IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL
 --    AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'<RELEASE>' AND ScriptName = N'<SCRIPT_FILE_NAME>')
 --     INSERT INTO dbo.CP_Atlas_ScriptLog (ScriptName, Release) VALUES (N'<SCRIPT_FILE_NAME>', N'<RELEASE>');
--- GO

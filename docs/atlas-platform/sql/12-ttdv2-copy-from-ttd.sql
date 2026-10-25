@@ -15,6 +15,9 @@
 --   * Part 1 is read only. If it finds a value that it cannot convert, part 2 stops.
 --     Correct the source data or CP_Atlas_User, then run again.
 --   * Safe to run again: it copies only rows and audit entries that are not in TTDV2 yet.
+--   * Part 2 revokes the TTD roles first in its transaction, then checks that TTD did not change after the
+--     snapshot of part 1 (a user saved during the run). If it changed, nothing is copied: run the script again.
+--   * The script log row is written in the copy transaction, so it is there only when the copy is committed.
 --
 -- Needs SQL Server 2016 or later (AT TIME ZONE).
 SET NOCOUNT ON;
@@ -39,6 +42,11 @@ GROUP BY LTRIM(RTRIM(u.DisplayName))
 HAVING COUNT(DISTINCT u.LanID) = 1;
 IF NOT EXISTS (SELECT 1 FROM #NameMap WHERE DisplayName = 'system')
     INSERT INTO #NameMap (DisplayName, LanId) VALUES ('system', 'system');
+
+-- Snapshot marks, taken before the converted rows (a change between the two gives a false stop, never a lost row).
+DECLARE @SrcRows int, @SrcModified datetime2, @SrcCreated datetime2;
+SELECT @SrcRows = COUNT(*), @SrcModified = MAX(CAST(ModifiedDate AS datetime2)), @SrcCreated = MAX(CAST(CreatedDate AS datetime2))
+FROM TTD.General;
 
 -- Converted rows.
 IF OBJECT_ID('tempdb..#Src') IS NOT NULL DROP TABLE #Src;
@@ -120,7 +128,38 @@ IF EXISTS (SELECT 1 FROM #Problem)
 BEGIN TRY
     BEGIN TRANSACTION;
 
-    -- 2a. Records (IDs kept).
+    -- 2a. Roles: each active TTD role of a user gives the TTDV2 role with the same name.
+    INSERT INTO dbo.CP_Atlas_UserEntitlement (CP_Atlas_UserID, CP_Atlas_EntitlementID, CreatedBy, CreatedDate, IsDeleted)
+    SELECT DISTINCT ue.CP_Atlas_UserID, e2.ID, @RunBy, GETUTCDATE(), 0
+    FROM dbo.CP_Atlas_UserEntitlement AS ue
+    INNER JOIN dbo.CP_Atlas_Entitlement AS e1 ON e1.ID = ue.CP_Atlas_EntitlementID AND ISNULL(e1.IsDeleted, 0) = 0
+    INNER JOIN dbo.CP_Atlas_Application AS a1 ON a1.ID = e1.CP_Atlas_ApplicationID AND a1.Code = 'TTD'
+    INNER JOIN dbo.CP_Atlas_Application AS a2 ON a2.Code = 'TTDV2' AND ISNULL(a2.IsDeleted, 0) = 0
+    INNER JOIN dbo.CP_Atlas_Entitlement AS e2 ON e2.CP_Atlas_ApplicationID = a2.ID AND e2.Name = e1.Name AND ISNULL(e2.IsDeleted, 0) = 0
+    INNER JOIN dbo.CP_Atlas_User AS u ON u.ID = ue.CP_Atlas_UserID AND ISNULL(u.IsDeleted, 0) = 0
+    WHERE ISNULL(ue.IsDeleted, 0) = 0
+      AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_UserEntitlement AS x
+                      WHERE x.CP_Atlas_UserID = ue.CP_Atlas_UserID AND x.CP_Atlas_EntitlementID = e2.ID
+                        AND ISNULL(x.IsDeleted, 0) = 0);
+
+    -- 2b. TTD stops at once (spec 12, question 4): revoke all active TTD roles (soft delete).
+    --     Rollback: set IsDeleted = 0 on the rows with ModifiedBy = @RunBy and this ModifiedDate.
+    UPDATE ue SET ue.IsDeleted = 1, ue.ModifiedBy = @RunBy, ue.ModifiedDate = GETUTCDATE()
+    FROM dbo.CP_Atlas_UserEntitlement AS ue
+    INNER JOIN dbo.CP_Atlas_Entitlement AS e ON e.ID = ue.CP_Atlas_EntitlementID
+    INNER JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID AND a.Code = 'TTD'
+    WHERE ISNULL(ue.IsDeleted, 0) = 0;
+
+    -- 2c. TTD must not have changed after the snapshot (review DA-07). The locks keep it so until the commit.
+    IF EXISTS (SELECT 1
+               FROM (SELECT COUNT(*) AS Rows, MAX(CAST(ModifiedDate AS datetime2)) AS Modified, MAX(CAST(CreatedDate AS datetime2)) AS Created
+                     FROM TTD.General WITH (UPDLOCK, HOLDLOCK)) AS now
+               WHERE now.Rows <> @SrcRows
+                  OR ISNULL(now.Modified, '19000101') <> ISNULL(@SrcModified, '19000101')
+                  OR ISNULL(now.Created, '19000101') <> ISNULL(@SrcCreated, '19000101'))
+        THROW 55007, 'TTD data changed during the run (a user saved). Nothing was copied and no role changed. Run the script again.', 1;
+
+    -- 2d. Records (IDs kept).
     SET IDENTITY_INSERT TTDV2.General ON;
     INSERT INTO TTDV2.General (
         ID, Account, AccountNumber, AccountName, TaxYear, Category, WorkDescription, WeekEnding,
@@ -136,7 +175,7 @@ BEGIN TRY
     WHERE NOT EXISTS (SELECT 1 FROM TTDV2.General AS g WHERE g.ID = s.ID);
     SET IDENTITY_INSERT TTDV2.General OFF;
 
-    -- 2b. Audit entries. RefType = 'TTD' marks a copied entry. The old LogMessage format
+    -- 2e. Audit entries. RefType = 'TTD' marks a copied entry. The old LogMessage format
     --     (Name/Value) is kept; the History window reads it (spec 09, 4.2).
     INSERT INTO TTDV2.AuditLog (RefID, RefType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
     SELECT a.RefID, 'TTD', a.CreatedBy, m.LanId,
@@ -147,27 +186,10 @@ BEGIN TRY
     WHERE a.RefID IN (SELECT ID FROM TTDV2.General)
       AND NOT EXISTS (SELECT 1 FROM TTDV2.AuditLog AS x WHERE x.RefID = a.RefID AND x.RefType = 'TTD');
 
-    -- 2c. Roles: each active TTD role of a user gives the TTDV2 role with the same name.
-    INSERT INTO dbo.CP_Atlas_UserEntitlement (CP_Atlas_UserID, CP_Atlas_EntitlementID, CreatedBy, CreatedDate, IsDeleted)
-    SELECT DISTINCT ue.CP_Atlas_UserID, e2.ID, @RunBy, GETUTCDATE(), 0
-    FROM dbo.CP_Atlas_UserEntitlement AS ue
-    INNER JOIN dbo.CP_Atlas_Entitlement AS e1 ON e1.ID = ue.CP_Atlas_EntitlementID AND ISNULL(e1.IsDeleted, 0) = 0
-    INNER JOIN dbo.CP_Atlas_Application AS a1 ON a1.ID = e1.CP_Atlas_ApplicationID AND a1.Code = 'TTD'
-    INNER JOIN dbo.CP_Atlas_Application AS a2 ON a2.Code = 'TTDV2' AND ISNULL(a2.IsDeleted, 0) = 0
-    INNER JOIN dbo.CP_Atlas_Entitlement AS e2 ON e2.CP_Atlas_ApplicationID = a2.ID AND e2.Name = e1.Name AND ISNULL(e2.IsDeleted, 0) = 0
-    INNER JOIN dbo.CP_Atlas_User AS u ON u.ID = ue.CP_Atlas_UserID AND ISNULL(u.IsDeleted, 0) = 0
-    WHERE ISNULL(ue.IsDeleted, 0) = 0
-      AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_UserEntitlement AS x
-                      WHERE x.CP_Atlas_UserID = ue.CP_Atlas_UserID AND x.CP_Atlas_EntitlementID = e2.ID
-                        AND ISNULL(x.IsDeleted, 0) = 0);
-
-    -- 2d. TTD stops at once (spec 12, question 4): revoke all active TTD roles (soft delete).
-    --     Rollback: set IsDeleted = 0 on the rows with ModifiedBy = @RunBy and this ModifiedDate.
-    UPDATE ue SET ue.IsDeleted = 1, ue.ModifiedBy = @RunBy, ue.ModifiedDate = GETUTCDATE()
-    FROM dbo.CP_Atlas_UserEntitlement AS ue
-    INNER JOIN dbo.CP_Atlas_Entitlement AS e ON e.ID = ue.CP_Atlas_EntitlementID
-    INNER JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID AND a.Code = 'TTD'
-    WHERE ISNULL(ue.IsDeleted, 0) = 0;
+    -- Log this script in the same transaction: the log says "applied" only when the copy is committed.
+    IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'P1' AND ScriptName = N'12-ttdv2-copy-from-ttd.sql')
+        INSERT INTO dbo.CP_Atlas_ScriptLog (ScriptName, Release) VALUES (N'12-ttdv2-copy-from-ttd.sql', N'P1');
 
     COMMIT TRANSACTION;
 END TRY
@@ -185,10 +207,4 @@ UNION ALL SELECT 'TTD active user roles', COUNT(*) FROM dbo.CP_Atlas_UserEntitle
     INNER JOIN dbo.CP_Atlas_Entitlement AS e ON e.ID = ue.CP_Atlas_EntitlementID
     INNER JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID AND a.Code = 'TTD'
     WHERE ISNULL(ue.IsDeleted, 0) = 0;
-GO
-
--- Log this script.
-IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL
-   AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'P1' AND ScriptName = N'12-ttdv2-copy-from-ttd.sql')
-    INSERT INTO dbo.CP_Atlas_ScriptLog (ScriptName, Release) VALUES (N'12-ttdv2-copy-from-ttd.sql', N'P1');
 GO

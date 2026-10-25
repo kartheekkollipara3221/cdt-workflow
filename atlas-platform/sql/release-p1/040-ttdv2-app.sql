@@ -108,6 +108,11 @@ BEGIN TRY
     --    Skip if the login gets the rights from a database role.
     -- GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[TTDV2] TO [<API_PRINCIPAL>];
 
+    -- Log this script in the same transaction: the log says "applied" only when the changes are committed (review DA-07).
+    IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'P1' AND ScriptName = N'12-ttdv2-app.sql')
+        INSERT INTO dbo.CP_Atlas_ScriptLog (ScriptName, Release) VALUES (N'12-ttdv2-app.sql', N'P1');
+
     COMMIT TRANSACTION;
 END TRY
 BEGIN CATCH
@@ -122,10 +127,4 @@ SELECT e.ID, e.Name, e.IsAdmin, e.IsWrite, e.IsRead
 FROM dbo.CP_Atlas_Entitlement AS e
 INNER JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID
 WHERE a.Code = 'TTDV2' AND ISNULL(e.IsDeleted, 0) = 0;
-GO
-
--- Log this script.
-IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL
-   AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'P1' AND ScriptName = N'12-ttdv2-app.sql')
-    INSERT INTO dbo.CP_Atlas_ScriptLog (ScriptName, Release) VALUES (N'12-ttdv2-app.sql', N'P1');
 GO

@@ -44,10 +44,41 @@ public sealed class CopyScriptTests : IAsyncLifetime
         Assert.Equal(0, await _db.ScalarAsync(RoleCount("TTD")));
         Assert.Equal(2, await _db.ScalarAsync(RoleCount("TTDV2")));
 
+        Assert.Equal(1, await _db.ScalarAsync(LogCount("12-ttdv2-copy-from-ttd.sql")));
+
         await RunCopyAsync(); // safe to run again
         Assert.Equal(3, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General WHERE ID IN (10001, 10002, 10003)"));
         Assert.Equal(3, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.AuditLog WHERE RefType = 'TTD'"));
+        Assert.Equal(1, await _db.ScalarAsync(LogCount("12-ttdv2-copy-from-ttd.sql")));
     }
+
+    [Fact]
+    public async Task A_failed_copy_writes_no_script_log_row_when_the_tool_goes_on_to_the_next_batch()
+    {
+        await _db.ScalarAsync("UPDATE TTD.General SET MondayMinute = '1:30' WHERE ID = 10002");
+
+        List<string> errors = await _db.RunScriptFileLikeSsmsAsync(Path.Combine(Release, "050-ttdv2-copy-from-ttd.sql"),
+            ("<SERVER_TIME_ZONE>", "Eastern Standard Time"), ("<RUN_BY>", "test.runner"));
+
+        Assert.Contains(errors, x => x.Contains("cannot be converted", StringComparison.Ordinal));
+        Assert.Equal(0, await _db.ScalarAsync(LogCount("12-ttdv2-copy-from-ttd.sql")));
+    }
+
+    [Fact]
+    public async Task A_failed_app_script_writes_no_script_log_row_when_the_tool_goes_on_to_the_next_batch()
+    {
+        Assert.Equal(1, await _db.ScalarAsync(LogCount("12-ttdv2-app.sql"))); // the fixture ran it
+        await _db.ScalarAsync("DELETE FROM dbo.CP_Atlas_ScriptLog WHERE ScriptName = N'12-ttdv2-app.sql'");
+
+        // <RUN_BY> not set: the main batch stops; the result batch after GO still runs.
+        List<string> errors = await _db.RunScriptFileLikeSsmsAsync(Path.Combine(Release, "040-ttdv2-app.sql"));
+
+        Assert.Contains(errors, x => x.Contains("Set @RunBy", StringComparison.Ordinal));
+        Assert.Equal(0, await _db.ScalarAsync(LogCount("12-ttdv2-app.sql")));
+    }
+
+    private static string LogCount(string script) =>
+        $"SELECT COUNT(*) FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'P1' AND ScriptName = N'{script}'";
 
     [Fact]
     public async Task A_value_that_cannot_be_converted_stops_the_copy_and_copies_nothing()
@@ -59,6 +90,7 @@ public sealed class CopyScriptTests : IAsyncLifetime
         Assert.Contains("cannot be converted", error.Message, StringComparison.Ordinal);
         Assert.Equal(0, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General"));
         Assert.Equal(2, await _db.ScalarAsync(RoleCount("TTD")));
+        Assert.Equal(0, await _db.ScalarAsync(LogCount("12-ttdv2-copy-from-ttd.sql")));
     }
 
     private Task RunCopyAsync() =>

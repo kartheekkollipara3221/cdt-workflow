@@ -67,6 +67,35 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// Runs each batch like SSMS (and sqlcmd without -b): an error does not stop the next batch. Returns the errors.
+    /// </summary>
+    public async Task<List<string>> RunScriptFileLikeSsmsAsync(string path, params (string Placeholder, string Value)[] replacements)
+    {
+        string script = await File.ReadAllTextAsync(path);
+        foreach ((string placeholder, string value) in replacements)
+            script = script.Replace(placeholder, value, StringComparison.Ordinal);
+
+        List<string> errors = [];
+        await using SqlConnection connection = new(ConnectionString);
+        await connection.OpenAsync();
+        foreach (string batch in GoSeparator().Split(script).Where(x => !string.IsNullOrWhiteSpace(x)))
+        {
+            await using SqlCommand command = connection.CreateCommand();
+            command.CommandText = batch;
+            try
+            {
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (SqlException ex)
+            {
+                errors.Add(ex.Message);
+            }
+        }
+
+        return errors;
+    }
+
     /// <summary>Adds an active user (if not there) and grants the roles of the app (if not there).</summary>
     public async Task SeedUserAsync(string lanId, string displayName, string appCode, params string[] roles)
     {
