@@ -322,6 +322,17 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         _ = id;
     }
 
+    [Fact]
+    public async Task LogOnly_does_not_let_a_user_without_the_Delete_permission_delete()
+    {
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        using SectionHarness logOnly = new(database, AtlasAccessMode.LogOnly);
+
+        Assert.Equal(403, Status(() => logOnly.Service(_registry, "t.nobody").RemovePage(id)));
+        Assert.Equal(403, Status(() => logOnly.Service(_registry, Reader, Ttdv2Roles.Read).RemovePage(id)));
+        Assert.Equal(false, await database.ScalarAsync($"SELECT IsDeleted FROM TTDV2.General WHERE ID = {id}"));
+    }
+
     // ---------- Helpers ----------
 
     private CPTTDV2Service Svc(string lanId, params AtlasRole[] roles) => _harness.Service(_registry, lanId, roles);

@@ -70,6 +70,19 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains("WARNING TTDV2: the role 'Auditor'", report, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_form_without_a_Permissions_block_is_an_error()
+    {
+        CopyRealConfig();
+        string form = Path.Combine(_folder, "TTDV2.json");
+        File.WriteAllText(form, File.ReadAllText(form).Replace("\"Permissions\":", "\"PermissionsOff\":", StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR TTDV2: the form has no Permissions block", report, StringComparison.Ordinal);
+    }
+
     private void CopyRealConfig()
     {
         Directory.CreateDirectory(_folder);

@@ -11,6 +11,8 @@ public sealed record AtlasAccessDecision(bool Allowed, string Reason);
 /// <summary>
 /// One access check for each operation (spec 06, 4.3). The platform calls it before each operation; a module does
 /// not call it itself. AccessMode LogOnly writes Atlas.AccessDenied and continues; Enforce returns 403.
+/// A Delete is never only logged (review SV-02): LogOnly keeps users at work while the role grants are checked, and
+/// that does not need a delete.
 /// </summary>
 public interface IAtlasAccessService
 {
@@ -63,7 +65,7 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
         logger.LogWarning(AccessDenied, "Atlas.AccessDenied LanId={LanId} App={App} Record={Record} Operation={Operation} Mode={Mode} Reason={Reason}",
             user.LanId, manifest.Code, recordId, operation, manifest.AccessMode, decision.Reason);
 
-        if (manifest.AccessMode == AtlasAccessMode.Enforce)
+        if (manifest.AccessMode == AtlasAccessMode.Enforce || operation == AtlasOperation.Delete)
             throw AtlasProblemException.Forbidden(decision.Reason);
     }
 

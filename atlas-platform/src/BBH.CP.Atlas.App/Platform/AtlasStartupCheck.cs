@@ -115,6 +115,10 @@ public static class AtlasStartupCheck
 
     private static void CheckForm(IServiceProvider services, AtlasAppManifest manifest, CPAtlasApplicationConfig form, AtlasTable table, Action<string> error)
     {
+        // Review SV-02: with no Permissions block every operation is allowed for each role of the app.
+        if (form.Permissions == null)
+            error("the form has no Permissions block (View, Create, Edit, Delete, History); a missing block allows all operations.");
+
         AtlasFormFields fields = AtlasFormFields.From(form.Section!);
         foreach (AtlasFormField field in fields.All.Where(x => !table.HasColumn(x.Field)))
             error($"form field '{field.Name}' names the column '{field.Field}', which is not in {table.FullName}.");

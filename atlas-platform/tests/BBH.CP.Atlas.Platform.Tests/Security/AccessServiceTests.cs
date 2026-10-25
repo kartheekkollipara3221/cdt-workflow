@@ -91,9 +91,30 @@ public class AccessServiceTests
         ListLogger<AtlasAccessService> log = new();
         AtlasAccessService service = new(new FakeUserContext("me", Ttdv2Roles.Read), log);
 
-        service.Demand(TestManifests.Ttdv2(AtlasAccessMode.LogOnly), Form, AtlasOperation.Delete, OtherRecord, 10001);
+        service.Demand(TestManifests.Ttdv2(AtlasAccessMode.LogOnly), Form, AtlasOperation.Edit, OtherRecord, 10001);
 
         Assert.Contains(log.Entries, x => x.EventId.Name == "Atlas.AccessDenied" && x.Message.Contains("Mode=LogOnly"));
+    }
+
+    [Theory]
+    [InlineData("Read")]
+    [InlineData("Prepare")]
+    [InlineData("None")]
+    public void LogOnly_mode_still_refuses_a_delete_with_403(string role)
+    {
+        ListLogger<AtlasAccessService> log = new();
+        AtlasAccessService service = new(new FakeUserContext("me", role switch
+        {
+            "Read" => [Ttdv2Roles.Read],
+            "Prepare" => [Ttdv2Roles.Prepare],
+            _ => []
+        }), log);
+
+        AtlasProblemException error = Assert.Throws<AtlasProblemException>(() =>
+            service.Demand(TestManifests.Ttdv2(AtlasAccessMode.LogOnly), Form, AtlasOperation.Delete, OtherRecord, 10001));
+
+        Assert.Equal(403, error.StatusCode);
+        Assert.Contains(log.Entries, x => x.EventId.Name == "Atlas.AccessDenied" && x.Message.Contains("Operation=Delete"));
     }
 
     [Fact]
