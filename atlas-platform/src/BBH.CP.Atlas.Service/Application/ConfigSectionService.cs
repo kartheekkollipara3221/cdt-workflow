@@ -114,6 +114,10 @@ namespace BBH.CP.Atlas.Service.Application
 
         #endregion Hooks
 
+        /// <summary>The names of all option providers of this app (for the start-up check).</summary>
+        public IEnumerable<string> OptionProviderNames() =>
+            Services.OptionProviders.Concat(AppOptionProviders).Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase);
+
         #region Load
 
         public CPApplicationSection LoadPage(CPAtlasPage page)

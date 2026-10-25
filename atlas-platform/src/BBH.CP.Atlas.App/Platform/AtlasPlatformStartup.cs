@@ -10,11 +10,49 @@ namespace BBH.CP.Atlas.App.Platform;
 /// Start-up of the platform. program.cs calls it after Build and before Run:
 /// <code>await app.Services.StartAtlasPlatformAsync();</code>
 /// It reads the table metadata of each registered app into the table registry before the first request
-/// (spec 05, 6.2). A new table needs a restart.
+/// (spec 05, 6.2; a new table needs a restart) and runs the start-up check (spec 07, 4.8).
 /// </summary>
 public static class AtlasPlatformStartup
 {
+    public static readonly EventId StartupCheck = new(41020, "Atlas.StartupCheck");
+
+    /// <summary>Loads the table metadata and runs the start-up check. An error stops the start-up (spec 07, 4.8).</summary>
     public static async Task StartAtlasPlatformAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<AtlasCheckItem> items = await LoadAndCheckAsync(services, cancellationToken);
+        AtlasCheckItem[] errors = [.. items.Where(x => x.Severity == AtlasCheckSeverity.Error)];
+        if (errors.Length > 0)
+            throw new InvalidOperationException("The Atlas start-up check found errors:" + Environment.NewLine
+                + string.Join(Environment.NewLine, errors.Select(x => "  " + x)));
+    }
+
+    /// <summary>
+    /// The --atlas-check command (spec 11, 4.3): the same checks, a report on <paramref name="output"/>, no web server.
+    /// Returns the exit code: 0 = no errors, 1 = errors.
+    /// </summary>
+    public static async Task<int> RunAtlasCheckAsync(this IServiceProvider services, TextWriter output, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        IReadOnlyList<AtlasCheckItem> items;
+        try
+        {
+            items = await LoadAndCheckAsync(services, cancellationToken);
+        }
+        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
+        {
+            await output.WriteLineAsync("ERROR *: " + ex.Message);
+            return 1;
+        }
+
+        string environment = services.GetRequiredService<IHostEnvironment>().EnvironmentName;
+        await output.WriteLineAsync($"Atlas check ({environment}): {items.Count(x => x.Severity == AtlasCheckSeverity.Error)} error(s), "
+            + $"{items.Count(x => x.Severity == AtlasCheckSeverity.Warning)} warning(s).");
+        foreach (AtlasCheckItem item in items)
+            await output.WriteLineAsync("  " + item);
+        return items.Any(x => x.Severity == AtlasCheckSeverity.Error) ? 1 : 0;
+    }
+
+    private static async Task<IReadOnlyList<AtlasCheckItem>> LoadAndCheckAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(services);
         using IServiceScope scope = services.CreateScope();
@@ -30,12 +68,24 @@ public static class AtlasPlatformStartup
             .Select(x => x!)];
 
         CPSharepointContext context = provider.GetRequiredService<CPSharepointContext>();
-        await using SqlConnection connection = new(context.Database.GetConnectionString());
-        IReadOnlyList<string> missing = await provider.GetRequiredService<AtlasColumnMetadataReader>()
-            .LoadAsync(connection, provider.GetRequiredService<AtlasTableRegistry>(), tables, cancellationToken);
+        await using (SqlConnection connection = new(context.Database.GetConnectionString()))
+        {
+            await provider.GetRequiredService<AtlasColumnMetadataReader>()
+                .LoadAsync(connection, provider.GetRequiredService<AtlasTableRegistry>(), tables, cancellationToken);
+        }
 
-        foreach (string table in missing)
-            logger.LogError("Atlas.TableMissing Table={Table}: the table does not exist or the API login cannot see it.", table);
-        logger.LogInformation("Atlas.Started Tables={Count} Modules={Modules}", tables.Length - missing.Count, string.Join(",", registered));
+        IReadOnlyList<AtlasCheckItem> items = AtlasStartupCheck.Run(provider);
+        foreach (AtlasCheckItem item in items)
+        {
+            if (item.Severity == AtlasCheckSeverity.Error)
+                logger.LogError(StartupCheck, "Atlas.StartupCheck {Item}", item.ToString());
+            else
+                logger.LogWarning(StartupCheck, "Atlas.StartupCheck {Item}", item.ToString());
+        }
+
+        logger.LogInformation(StartupCheck, "Atlas.Started Environment={Environment} Modules={Modules} Tables={Tables} Errors={Errors} Warnings={Warnings}",
+            provider.GetRequiredService<IHostEnvironment>().EnvironmentName, string.Join(",", registered), tables.Length,
+            items.Count(x => x.Severity == AtlasCheckSeverity.Error), items.Count(x => x.Severity == AtlasCheckSeverity.Warning));
+        return items;
     }
 }
