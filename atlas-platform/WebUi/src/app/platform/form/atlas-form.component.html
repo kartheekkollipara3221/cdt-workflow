@@ -37,7 +37,7 @@
                 @for (child of container.ChildControls ?? []; track child.Name) {
                   @if (isVisible(child.Name) && registry.get(child.Type); as renderer) {
                     <div class="atlas-field {{ child.DivClass ?? '' }}" [attr.id]="'div_' + child.Name">
-                      <label class="atlas-label" [attr.for]="'ctl_' + child.Name">
+                      <label class="atlas-label" [attr.for]="registry.hasInput(child.Type) ? 'ctl_' + child.Name : null">
                         <span>{{ child.Label }}</span>
                         @if (isRequired(child.Name)) {
                           <span class="required-indicator">*</span>

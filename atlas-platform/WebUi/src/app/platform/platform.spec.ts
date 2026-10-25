@@ -6,6 +6,8 @@ import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atl
 import { buildFormGroup, buildOutputs, computeValue } from './form/atlas-form-model';
 import { atlasValidators, errorText } from './form/atlas-validators';
 import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
+import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
+import { AtlasTextRenderer } from './form/renderers/atlas-renderers';
 
 class Recorder implements AtlasEffectTarget {
   calls: string[] = [];
@@ -129,5 +131,19 @@ describe('dashboard columns', () => {
     expect(formatDate('2026-10-18')).toBe('18-Oct-2026');
     const total = sumsRow({ Columns: [{ Name: 'Account' }, { Name: 'Minutes', Sum: true }] }, [{ Minutes: 30 }, { Minutes: 15 }, { Minutes: null }]);
     expect(total).toEqual({ Account: 'Total', Minutes: 45 });
+  });
+});
+
+describe('renderer registry', () => {
+  it('gives no label target for types without an input, and register can change it', () => {
+    const registry = new AtlasRendererRegistry();
+    expect(registry.hasInput('select')).toBe(true);
+    expect(registry.hasInput('ngselect')).toBe(true);
+    expect(registry.hasInput('User')).toBe(false);
+    expect(registry.hasInput('grid')).toBe(false);
+    registry.register('badge', AtlasTextRenderer, false);
+    expect(registry.hasInput('badge')).toBe(false);
+    registry.register('user', AtlasTextRenderer);
+    expect(registry.hasInput('user')).toBe(true);
   });
 });

@@ -67,7 +67,7 @@ export interface PbdevOption {
 
 @Component({
   selector: 'pbdev-select',
-  template: `<select class="pbdev-control" [disabled]="disabled" (change)="update($any($event.target).value || null)" (blur)="touch()">
+  template: `<select class="pbdev-control" [attr.id]="inputId || null" [disabled]="disabled" (change)="update($any($event.target).value || null)" (blur)="touch()">
     <option value="" [selected]="!value">{{ placeholder || 'Select' }}</option>
     @for (option of options ?? []; track $index) {
       <option [value]="optionValue(option)" [selected]="optionValue(option) === value">{{ optionLabel(option) }}</option>
@@ -76,6 +76,7 @@ export interface PbdevOption {
   providers: [accessor(PbdevSelect)],
 })
 export class PbdevSelect extends PbdevValueAccessor {
+  @Input() inputId = '';
   @Input() options: PbdevOption[] | null | undefined = [];
   @Input() placeholder = '';
 
@@ -90,30 +91,34 @@ export class PbdevSelect extends PbdevValueAccessor {
 
 @Component({
   selector: 'pbdev-textarea',
-  template: `<textarea class="pbdev-control" [rows]="rows || 3" [value]="value ?? ''" [disabled]="disabled"
+  template: `<textarea class="pbdev-control" [attr.id]="inputId || null" [rows]="rows || 3" [value]="value ?? ''" [disabled]="disabled"
     [attr.placeholder]="placeholder || null" (input)="update($any($event.target).value)" (blur)="touch()"></textarea>`,
   providers: [accessor(PbdevTextarea)],
 })
 export class PbdevTextarea extends PbdevValueAccessor {
+  @Input() inputId = '';
   @Input() rows: number | null | undefined = 3;
   @Input() placeholder = '';
 }
 
 @Component({
   selector: 'pbdev-date-picker',
-  template: `<input class="pbdev-control" type="date" [value]="value ?? ''" [disabled]="disabled"
+  template: `<input class="pbdev-control" type="date" [attr.id]="inputId || null" [value]="value ?? ''" [disabled]="disabled"
     (change)="update($any($event.target).value || null)" (blur)="touch()" />`,
   providers: [accessor(PbdevDatePicker)],
 })
-export class PbdevDatePicker extends PbdevValueAccessor {}
+export class PbdevDatePicker extends PbdevValueAccessor {
+  @Input() inputId = '';
+}
 
 @Component({
   selector: 'pbdev-checkbox',
-  template: `<label class="pbdev-checkbox"><input type="checkbox" [checked]="value === 'true'" [disabled]="disabled"
+  template: `<label class="pbdev-checkbox"><input type="checkbox" [attr.id]="inputId || null" [checked]="value === 'true'" [disabled]="disabled"
     (change)="update($any($event.target).checked ? 'true' : 'false')" (blur)="touch()" /> {{ label }}</label>`,
   providers: [accessor(PbdevCheckbox)],
 })
 export class PbdevCheckbox extends PbdevValueAccessor {
+  @Input() inputId = '';
   @Input() label = '';
 }
 

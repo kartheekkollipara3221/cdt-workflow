@@ -28,8 +28,22 @@ export class AtlasRendererRegistry {
     ['grid', AtlasGridRowRenderer],
   ]);
 
-  register(type: string, component: Type<unknown>): void {
-    this.renderers.set(type.toLowerCase(), component);
+  /** Types that render no input with the id "ctl_" + Name, so the form label gets no "for" attribute. */
+  private readonly noInput = new Set<string>(['user', 'grid']);
+
+  register(type: string, component: Type<unknown>, hasInput = true): void {
+    const key = type.toLowerCase();
+    this.renderers.set(key, component);
+    if (hasInput) {
+      this.noInput.delete(key);
+    } else {
+      this.noInput.add(key);
+    }
+  }
+
+  /** True when the renderer of the type has an input that a label can point to. */
+  hasInput(type: string | null | undefined): boolean {
+    return !this.noInput.has((type ?? '').toLowerCase());
   }
 
   get(type: string | null | undefined): Type<unknown> | null {

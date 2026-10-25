@@ -27,7 +27,7 @@ export class AtlasTextRenderer extends AtlasRenderer {}
 @Component({
   selector: 'atlas-select-renderer',
   imports: [ReactiveFormsModule, PbdevSelect],
-  template: `<pbdev-select [options]="control.Options" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
+  template: `<pbdev-select [inputId]="'ctl_' + control.Name" [options]="control.Options" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
 })
 export class AtlasSelectRenderer extends AtlasRenderer {}
 
@@ -37,28 +37,28 @@ export class AtlasSelectRenderer extends AtlasRenderer {}
   imports: [ReactiveFormsModule, NgSelectComponent],
   template: `<ng-select [items]="control.Options ?? []" bindLabel="Label" bindValue="Value" [multiple]="!!control.Multiple"
     [clearable]="true" [virtualScroll]="true" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl"
-    [attr.id]="'ctl_' + control.Name" />`,
+    [labelForId]="'ctl_' + control.Name" />`,
 })
 export class AtlasNgSelectRenderer extends AtlasRenderer {}
 
 @Component({
   selector: 'atlas-textarea-renderer',
   imports: [ReactiveFormsModule, PbdevTextarea],
-  template: `<pbdev-textarea [rows]="control.Row ?? 3" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
+  template: `<pbdev-textarea [inputId]="'ctl_' + control.Name" [rows]="control.Row ?? 3" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
 })
 export class AtlasTextareaRenderer extends AtlasRenderer {}
 
 @Component({
   selector: 'atlas-date-renderer',
   imports: [ReactiveFormsModule, PbdevDatePicker],
-  template: `<pbdev-date-picker [formControl]="formControl" />`,
+  template: `<pbdev-date-picker [inputId]="'ctl_' + control.Name" [formControl]="formControl" />`,
 })
 export class AtlasDateRenderer extends AtlasRenderer {}
 
 @Component({
   selector: 'atlas-checkbox-renderer',
   imports: [ReactiveFormsModule, PbdevCheckbox],
-  template: `<pbdev-checkbox [label]="control.Label" [formControl]="formControl" />`,
+  template: `<pbdev-checkbox [inputId]="'ctl_' + control.Name" [label]="control.Label" [formControl]="formControl" />`,
 })
 export class AtlasCheckboxRenderer extends AtlasRenderer {}
 

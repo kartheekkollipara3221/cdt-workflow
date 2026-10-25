@@ -3,12 +3,18 @@
 ## Status
 - All build phases done (spec docs/atlas-platform/12-ttd-pilot-build.md, section 11). Commits: C5 0ee9027, C6 253f467,
   C7 405d78b, C8 a72ee38, C9 3c4eec4, C10 (this entry). Earlier: C0 4c17e94 .. C4 33994b8.
-- Tests: 144 .NET (dotnet test atlas-platform/AtlasPlatform.slnx; SQL tests make throw-away DBs on localhost) + 13 Angular
+- Tests: 144 .NET (dotnet test atlas-platform/AtlasPlatform.slnx; SQL tests make throw-away DBs on localhost) + 14 Angular
   (cd atlas-platform/WebUi; npx ng test --watch=false). Build 0 warnings. --atlas-check exit 0.
 - Local review DB: CPAtlasPlatformDev (atlas-platform/local/setup-local-db.ps1 [-Recreate]). API http://localhost:5080
   (swagger), UI http://localhost:4200. Steps: atlas-platform/local/README.md. Act-as switch in the UI header.
 - Integration guide complete: atlas-platform/INTEGRATION.md (files to copy, target file changes, SQL, settings,
   acceptance with line counts, findings B1-B16 for review).
+
+## Review feedback done
+- R1 (B17): Chrome Issues on the form (inputs with no id/name, label for with no target). Renderers pass id ctl_<Name>
+  (inputId on pbdev controls, labelForId on ng-select); registry hasInput() leaves 'for' off user/grid labels.
+  Checked live: form edit/new and dashboard have 0 fields without id/name and 0 bad label targets.
+- Note: record 10003 was soft-deleted during the review (IsDeleted=1, audit Delete row). Reset with setup-local-db.ps1 -Recreate.
 
 ## What was built (C5-C10)
 - C5 Service: Application/ConfigSectionService (load: values, options, KeepSavedValue, defaults tokens, user labels,
@@ -43,7 +49,7 @@ Stop the API before dotnet test (the running exe locks the App dll).
 
 ## How to work on feedback
 - Same rules as before: commit each change; findings and design choices go to atlas-platform/INTEGRATION.md section 6
-  (next number B17); keep backward compatibility; DB changes as SQL scripts (copy module script to sql/release-p1 and
+  (next number B18); keep backward compatibility; DB changes as SQL scripts (copy module script to sql/release-p1 and
   keep ReleaseScriptTests green); update this entry before ending.
 - Push only when the user asks.
 
