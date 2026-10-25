@@ -32,7 +32,7 @@ Each module spec has these sections:
 |---|--------|------|--------|
 | 1 | Section Master (single-page forms: SQMSO, SQMSB, TTD, AIN) | [01-section-master.md](01-section-master.md) · [HTML report](01-section-master.html) · SQL: [rowversion](sql/01-section-master-rowversion.sql), [role scope check](sql/01-section-master-role-scope-check.sql) | Draft 3, all questions answered, ready for the target team |
 | 2 | Step Master / Step Page (multi-step forms: CDT) | — | Not started |
-| 3 | Dashboard (tabs, grids, menus, procedures) | — | Not started |
+| 3 | Dashboard (tabs, grids, menus, procedures) | [03-dashboard.md](03-dashboard.md) · [HTML report](03-dashboard.html) | Draft 2 (all questions answered) |
 | 4 | Rules engine (`CPRule`) | — | Not started (Section Master spec extends it) |
 | 5 | Data mapping (`MapData` / `BindData`, per-app tables) | [05-data-mapping.md](05-data-mapping.md) · [HTML report](05-data-mapping.html) · SQL: [new-app template](sql/05-new-app-template.sql) | Draft 3 (all questions answered) |
 | 6 | Security and entitlements | [06-security.md](06-security.md) · [HTML report](06-security.html) · SQL: [active roles view](sql/06-active-user-roles-view.sql), [LAN ID columns](sql/06-lanid-columns-ddl.sql), [LAN ID backfill](sql/06-lanid-backfill-dml.sql), [visibility template](sql/06-record-visibility-template.sql), [grant/revoke role](sql/06-grant-revoke-role-template.sql) | Draft 2 (all questions answered) |

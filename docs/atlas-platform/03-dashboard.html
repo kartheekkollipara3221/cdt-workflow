@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard: reusable design</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 3 · design only · draft 2 · 2026-10-25</div>
+<h1>Dashboard: reusable design</h1>
+<p class="lead">This report examines how CP Atlas builds the dashboard of each app: tabs, grids, buttons and row menus. It gives a design that lets a new app get its dashboard from JSON and SQL only, and it removes a data leak through hidden tabs.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered (section 9). Design only. No target code is changed.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>8</b><span>findings (DB-01 to DB-08)</span></div>
+<div class="kpi"><b>2</b><span>High security findings</span></div>
+<div class="kpi"><b>0</b><span>client code changes for a new app</span></div>
+<div class="kpi"><b>0</b><span>open questions</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>Each app opens on a dashboard: tabs, one grid for each tab, buttons above the tabs and a menu on each row. A new app must get its dashboard from JSON and SQL only, with no change to the shared client code or the server code. This module defines that design and corrects the current defects.</p>
+<p>Scope: the dashboard JSON, the tab data load, the tab, button and menu rules, the grid columns and the navigation from the dashboard. Related items in other modules: the access check and <code>Permissions</code> (module 6, 4.3), the active roles view (module 6, 4.4), the redirect after save (module 1, 5.7), the form type for navigation (module 1, 5.8), the app registry (module 7).</p>
+</section>
+<section id="2-current-behaviour">
+<h2>2. Current behaviour</h2>
+
+<h3>2.1 Configuration</h3>
+<ul>
+<li>One JSON file for all apps: <code>CPAtlasDashboardConfig.json</code>, path in <code>AppSettings:DashboardConfigPath</code>. Evidence: <code>Atlasapp/Atlasapp/appsettings.json.txt:32</code>.</li>
+<li>Each dashboard has <code>Code</code>, <code>Name</code>, <code>Tabs</code> and <code>Buttons</code>. Each tab has <code>ID</code>, <code>Code</code> (the app of the rows), <code>Label</code>, <code>Description</code>, <code>Procedure</code>, <code>Parameters</code>, <code>Groups</code>, <code>Sums</code>, <code>ColumnTypes</code>, <code>Menus</code> and <code>Rules</code>. Evidence: <code>Data/Data/DTO/CPAtlasDashboardConfig.cs.txt:12-50</code>.</li>
+<li>The repository has three copies of the file. Two are the same (367 lines). The copy in <code>Atlasapp/Atlasapp/Config</code> (399 lines) is newer and has AIN. Evidence: <code>Config/Config/</code>, <code>Atlasapp/Atlasapp/Config/</code>, <code>Atlasapp/Atlasapp/Config/Config/</code>.</li>
+<li>Each app service reads and parses the file in its constructor, on each request, and selects its dashboard with <code>Single</code>. Evidence: <code>Service/Application/CPTTDService.cs.txt:37-38</code>, <code>CPSQMSOService.txt:62-66</code>.</li>
+</ul>
+<h3>2.2 Load</h3>
+<ul>
+<li><code>GET v1/Dashboard?code=&lt;Code&gt;</code> calls <code>LoadDashboard</code> of the app service. Evidence: <code>Controllers/V1/CPAtlasController.cs.txt:44-47</code>.</li>
+<li><code>LoadDashboard</code> runs the procedure of <strong>each</strong> tab, puts all rows in <code>KeyValues</code>, and computes the column widths (<code>KeyLength</code>). Then it applies the menu, button and tab rules. Evidence: <code>Service/CPApplicationService.cs.txt:529-585</code>.</li>
+<li>A parameter with the value <code>LANID</code> gets the LAN ID of the user. Only the types <code>Varchar</code> and <code>Int</code> are supported. Evidence: <code>CPApplicationService.cs.txt:549-574</code>.</li>
+<li>The roles come from a query that does not filter <code>IsDeleted</code> (module 6, SE-03). Evidence: <code>CPApplicationService.cs.txt:537-542</code>.</li>
+</ul>
+<h3>2.3 Rules</h3>
+<ul>
+<li>A tab rule and a button rule match by role, state and owner. The first rule that matches sets <code>Visible</code> (tab) or <code>Visible</code> and <code>Disabled</code> (button). Evidence: <code>CPAtlasDashboardConfig.cs.txt:86-184</code>.</li>
+<li>A menu has one rule. It matches by role only. Evidence: <code>CPAtlasDashboardConfig.cs.txt:60-84</code>.</li>
+<li>The rules change only flags in the response. The client hides or disables the items.</li>
+</ul>
+<h3>2.4 Client</h3>
+<ul>
+<li>The client shows the visible tabs, makes one AG Grid for the active tab, and makes the columns from the keys of the first rows. Evidence: <code>WebUi/.../cp-atlas-dashboard.ts.txt:130-282</code>.</li>
+<li>The buttons and the row edit open a form by an <code>if</code> chain on the app code. Evidence: <code>cp-atlas-dashboard.ts.txt:109-125, 316-330</code>.</li>
+<li>Special cells are fixed by column name: <code>UPDATEDDATE</code> (date format) and <code>AccountInformation</code> (link). Evidence: <code>cp-atlas-dashboard.ts.txt:220-228</code>.</li>
+</ul>
+</section>
+<section id="3-findings">
+<h2>3. Findings</h2>
+
+<div class="issue">
+<h3><span class="badge b-high">DB-01</span>The data of hidden tabs goes to the browser <span class="area">security</span></h3>
+<p><code>LoadDashboard</code> runs all tab procedures before the tab rules. A hidden tab gets <code>Visible = false</code>, but its rows stay in <code>KeyValues</code> in the response. Example: an MFO user opens the SQMS dashboard. The tabs <code>IPG - Opportunities</code> and <code>IPG - Bids</code> are hidden, but the response contains all opportunities and all bids of all users (<code>SQMS.Get_SQMSO_IPGOpportunity</code> and <code>SQMS.Get_SQMSB_IPGBid</code> have no user parameter). The browser developer tools show the data. Evidence: <code>CPApplicationService.cs.txt:544-583</code>; <code>CP_Sharepoint.txt:2093, 2220-2222</code>; dashboard JSON, SQMS tabs <code>IPGOpportunities</code>, <code>IPGBids</code>.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">DB-02</span>The dashboard checks no app access <span class="area">security</span></h3>
+<p>Any signed-in user can call <code>v1/Dashboard</code> for any app code and get the rows of all tabs that have no rule. Example: a user with no CDT role gets all pending and completed trades. <code>dbo.Get_CDT_Dashboard</code> has no user filter and does not use its <code>@AppCode</code> parameter. This is the dashboard part of module 6, SE-01. Evidence: <code>CPAtlasController.cs.txt:44-47</code>; <code>CP_Sharepoint.txt:1574-1596</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">DB-03</span>Each dashboard load runs all tab procedures <span class="area">performance</span></h3>
+<p>The SQMS dashboard runs 6 procedures and returns all rows of each, also when the user looks at one tab. The tab change in the client does not call the server. The load time grows with each tab and each row. Evidence: <code>CPApplicationService.cs.txt:544-581</code>; <code>cp-atlas-dashboard.ts.txt:125-128</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">DB-04</span>A new app needs client code <span class="area">for reuse</span></h3>
+<ul>
+<li><code>onClick</code> opens a form by the button name (<code>CDT</code>, <code>Opportunity</code>, <code>Bid</code>, <code>TTD</code>, <code>AIN</code>). <code>editRow</code> opens a form by the app code. A new app needs a new branch in both. Evidence: <code>cp-atlas-dashboard.ts.txt:109-125, 316-330</code>.</li>
+<li>A new app also needs a code in <code>CPApplicationCode</code> and a section in the shared JSON file (module 1, section 3).</li>
+</ul>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">DB-05</span>Menu rule defects</h3>
+<ul>
+<li><code>ApplyMenuRules</code> does not reset <code>roleCondition</code> for each menu. If one menu matches, the next menus also match. Today the menus of each tab have the same roles, so the result is correct by chance. Evidence: <code>CPAtlasDashboardConfig.cs.txt:63-80</code>.</li>
+<li>A menu with no <code>Rule</code> stops the load with a null reference (<code>source.Rule!.Visible</code>). Evidence: <code>CPAtlasDashboardConfig.cs.txt:77-80</code>.</li>
+<li>A menu rule hides a menu only in the client. The server does not check <code>Delete</code> or <code>History</code> (module 6, SE-01).</li>
+</ul>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">DB-06</span>The configuration is read on each request and changed in memory</h3>
+<ul>
+<li>Each request reads and parses the full JSON file (module 1, SM-08).</li>
+<li><code>LoadDashboard</code> writes the LAN ID into <code>param.Value</code> of the configuration object. The object is new for each request, so no user sees the value of another user today. If the configuration is cached later (6.1), this becomes a defect: the second user gets the LAN ID of the first user. Evidence: <code>CPApplicationService.cs.txt:555-556</code>.</li>
+<li><code>Single</code> stops the request with an error if the app has no dashboard section.</li>
+</ul>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">DB-07</span>Parameter types</h3>
+<p>Only <code>Varchar</code> and <code>Int</code> are supported. A parameter with another type (for example <code>Date</code>) is not added, and the procedure fails with "expects parameter". A parameter with no <code>Type</code> stops the load with a null reference. Evidence: <code>CPApplicationService.cs.txt:558-573</code>.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">DB-08</span>Client cell defects</h3>
+<ul>
+<li>The <code>AccountInformation</code> link and the <code>UPDATEDDATE</code> format never apply: the procedures return <code>Account Information</code> (with a space) and no <code>UPDATEDDATE</code>. If the alias changes, the link builds HTML from the value with no encoding (issue H5). The group row renderer also builds HTML from the value. Evidence: <code>cp-atlas-dashboard.ts.txt:158-160, 178-180, 220-228</code>; <code>CP_Sharepoint.txt:1583</code>.</li>
+<li><code>dateFormatter</code> reads <code>params.value</code>, but the caller gives the value itself. The format gives no date. Evidence: <code>cp-atlas-dashboard.ts.txt:221-223, 284-286</code>.</li>
+<li>A <code>debugger;</code> statement is in <code>GenerateColumns</code>. Evidence: <code>cp-atlas-dashboard.ts.txt:280</code>.</li>
+<li>The columns come from the keys of the rows. A tab with no rows shows no columns and no message.</li>
+</ul>
+</div>
+</section>
+<section id="4-reusable-design">
+<h2>4. Reusable design</h2>
+
+<h3>4.1 Configuration</h3>
+<ul>
+<li>The platform reads each dashboard one time at start-up and keeps it in memory (read-only). The request uses a copy of the tab parameters. This removes DB-06.</li>
+<li>One file for each app (decision 2026-10-25, question 4), named in the module registration: <code>dashboardFile: "PBSP.Dashboard.json"</code>. A new app always has its own file, so a new app never changes a shared file. If the registration names no file, the platform reads the shared file as today. The existing apps can stay in the shared file, or move one at a time.</li>
+<li>An app code must be in one place only. The start-up check stops the API if a code is in its own file and also in the shared file.</li>
+<li>The start-up check (module 5, 6.8) also checks each dashboard: each tab has an <code>ID</code>, a <code>Procedure</code> that exists, and parameters with a supported type. A defect stops the start-up and the log names the app and the tab.</li>
+<li>If an app has no dashboard, <code>v1/Dashboard</code> returns 404, not an error 500.</li>
+</ul>
+<h3>4.2 Load of tab data</h3>
+<ul>
+<li>The server applies the tab rules <strong>before</strong> it runs a procedure. It runs no procedure for a hidden tab, and it sends no rows for a hidden tab. This removes DB-01.</li>
+<li>New optional setting for each dashboard: <code>"Load": "Eager" | "Lazy"</code>.</li>
+<li><code>Eager</code> (default): the current behaviour, but only for the visible tabs.</li>
+<li><code>Lazy</code>: <code>v1/Dashboard</code> returns the tabs with no rows. The client gets the rows of a tab when the user opens it, with a new endpoint <code>GET v1/DashboardTab?code=&lt;Code&gt;&amp;tabId=&lt;ID&gt;</code>. This removes DB-03.</li>
+<li><code>v1/DashboardTab</code> applies the same rules. A request for a hidden tab returns 403.</li>
+</ul>
+<h3>4.2.1 Server paging</h3>
+<p>Decision 2026-10-25 (question 1): today the largest tabs have a few thousand rows; later they will have tens of thousands. Thus the design supports paging on the server for each tab.</p>
+<ul>
+<li>New optional tab setting: <code>"Paging": "Client" | "Server"</code>. Default <code>Client</code>: the current behaviour (all rows to the grid). A tab with <code>Server</code> paging requires <code>Load: Lazy</code>.</li>
+<li>With <code>Server</code>, the client sends <code>page</code>, <code>size</code>, <code>sort</code>, <code>dir</code> and <code>search</code> to <code>v1/DashboardTab</code>. The server gives the procedure the parameters <code>@PageNumber</code>, <code>@PageSize</code>, <code>@SortColumn</code>, <code>@SortDir</code>, <code>@Search</code>.</li>
+<li>The procedure returns two result sets: the rows of the page, then one row with <code>TotalRows</code> and the <code>Sums</code> totals of all rows (not only the page).</li>
+<li>The server accepts a <code>sort</code> value only if it is a name in the tab <code>Columns</code> list. The procedure uses the value only in a <code>CASE</code> list, never in dynamic SQL. Maximum <code>size</code>: 500.</li>
+<li><code>Groups</code> are not available with <code>Server</code> paging (the group rows need all rows). The start-up check rejects a tab with both.</li>
+<li>The grid uses the AG Grid server-side row model (the client already uses <code>ag-grid-enterprise</code>).</li>
+<li>With <code>Source: Table</code> (4.7) the server makes the paging part, so a tab can change to <code>Server</code> with no SQL change. The procedure template for special tabs also has the paging parameters.</li>
+<li>Change an existing tab to <code>Server</code> only when its rows become many. Start with the tab that grows first.</li>
+<li>Before the load, the access check of module 6 runs with the operation <code>View</code> for the dashboard app. In log-only mode it writes a log line. In enforce mode it returns 403. This removes DB-02.</li>
+</ul>
+<h3>4.3 Parameters</h3>
+<ul>
+<li>Value tokens: <code>{LanId}</code>, <code>{AppCode}</code>, <code>{TabCode}</code>. The current value <code>LANID</code> stays as an alias of <code>{LanId}</code>.</li>
+<li>Types: <code>Varchar</code>, <code>NVarchar</code>, <code>Int</code>, <code>Bit</code>, <code>Date</code>, <code>DateTime</code>, <code>Decimal</code>. The start-up check rejects other types. This removes DB-07.</li>
+<li>The client cannot send parameter values. All values come from the JSON or from the tokens.</li>
+</ul>
+<h3>4.4 Rules</h3>
+<ul>
+<li>One rule engine for tabs, buttons and menus (the same match for role, state and owner). The menu rule gets the same logic as the tab rule, with a reset for each item. This removes DB-05.</li>
+<li>Rules can use the role flags of module 6: <code>"Roles": ["@Admin"]</code>.</li>
+<li>If an app has a <code>Permissions</code> block (module 6, 4.3) and a tab has no <code>Menus</code>, the platform makes the menus from it: <code>Edit</code> from <code>Permissions.Edit</code>, <code>History</code> from <code>Permissions.History</code>, <code>Delete</code> from <code>Permissions.Delete</code>. The same for a button with no <code>Rules</code>: <code>Disabled</code> if the user has no <code>Permissions.Create</code>. The JSON of a new app then has no menu and button rules.</li>
+<li>The rules continue to set only <code>Visible</code> and <code>Disabled</code> for the display. The server check of module 6 decides the access for each operation.</li>
+</ul>
+<h3>4.5 Navigation</h3>
+<ul>
+<li>A button gets an optional <code>Target</code>: <code>{ "AppCode": "PBSP", "Id": 0 }</code>. A tab row opens the form of the tab <code>Code</code>.</li>
+<li>The client gets the form type (<code>SECTION</code> or <code>STEPPER</code>) for each app code from the server (module 1, 5.8; module 7). It opens <code>sectionmaster</code> or <code>stepmaster</code> with no <code>if</code> chain.</li>
+<li>If <code>Target</code> or the form type is not there, the client uses the current <code>if</code> chain. This removes DB-04.</li>
+</ul>
+<h3>4.6 Columns</h3>
+<ul>
+<li>New optional <code>Columns</code> list for each tab: <code>Name</code>, <code>Label</code>, <code>Type</code> (<code>string</code>, <code>number</code>, <code>date</code>, <code>currency</code>), <code>Format</code>, <code>Hidden</code>, <code>Width</code>, <code>Link</code> (<code>Edit</code> to open the form of the row). If there is no <code>Columns</code> list, the client makes the columns from the rows, as today. <code>ColumnTypes</code>, <code>Groups</code> and <code>Sums</code> stay.</li>
+<li>With a <code>Columns</code> list, a tab with no rows still shows its columns and the message "No records".</li>
+<li>All cell and group renderers write text, not HTML (H5). A link is made with DOM methods.</li>
+<li>Remove the <code>debugger;</code> statement. Correct <code>dateFormatter</code> (DB-08).</li>
+<li>Grid functions (decision 2026-10-25, question 3): Excel export and the date filter come from AG Grid Enterprise. The platform adds no code for them. A column with <code>Type: date</code> gets the AG Grid date filter (with "in range"). Excel export uses the grid menu. Limit: with <code>Paging: Server</code> (4.2.1), the export contains only the loaded rows. Saved views for each user are not in scope.</li>
+</ul>
+<h3>4.7 Tab data from the table (no procedure)</h3>
+<p>Decision 2026-10-25 (question 2): a simple tab of a new app needs no procedure. The platform makes the list query from the JSON. A procedure is necessary only for a special tab (for example a join of two tables, a calculation, or the SQMS "Pending Seller Approval" list).</p>
+<ul>
+<li>New tab property <code>"Source": "Table"</code>. The tab has no <code>Procedure</code>. The table is the registered table of the tab <code>Code</code> (module 5, 6.1).</li>
+<li>The query selects only the columns in the tab <code>Columns</code> list. The start-up check confirms each name against <code>sys.columns</code>, as for the form fields (module 5, 6.8). <code>Label</code> is the grid header.</li>
+<li>Optional <code>Filter</code> list: <code>{ "Column": "Status", "Op": "In", "Value": ["Draft", "Submitted"] }</code>. Operators: <code>Eq</code>, <code>NotEq</code>, <code>In</code>, <code>IsNull</code>, <code>NotNull</code>, <code>Gt</code>, <code>Lt</code>. A value can be a token (4.3), for example <code>{LanId}</code> for "my records" on a <code>CreatedBy</code> LAN ID column.</li>
+<li>The platform always adds <code>IsDeleted = 0</code> and, if the app has a <code>Visibility</code> block, a join to <code>&lt;Schema&gt;.fn_VisibleRecords(@LanId)</code> (module 6, 4.6). The JSON cannot remove these conditions.</li>
+<li>Default order: <code>OrderBy</code> of the tab, else <code>ID DESC</code>.</li>
+<li>Paging, sort and search (4.2.1) work the same as for a procedure tab. The server makes the paging part.</li>
+<li>The server makes the SQL with parameters only. Table and column names come only from the registration and the checked <code>Columns</code> list, in <code>QUOTENAME</code> form. No value from the request goes into the SQL text.</li>
+<li>A tab with <code>Procedure</code> works as today. A tab must have <code>Procedure</code> or <code>Source: Table</code>, not both (start-up check).</li>
+</ul>
+<p>The new-app SQL template (module 5, 6.9) needs no dashboard procedure. The team adds a procedure only for a special tab, from a short template with the visibility join and the paging parameters (4.2.1).</p>
+</section>
+<section id="5-example-dashboard-json-for-a-new-app">
+<h2>5. Example: dashboard JSON for a new app</h2>
+<pre><code>{
+  "Code": "PBSP",
+  "Name": "PB Service Plan",
+  "Load": "Lazy",
+  "Tabs": [
+    {
+      "ID": "MyItems",
+      "Code": "PBSP",
+      "Label": "My Items",
+      "Source": "Table",
+      "Filter": [ { "Column": "CreatedByLanId", "Op": "Eq", "Value": "{LanId}" } ],
+      "Columns": [
+        { "Name": "ID", "Hidden": true },
+        { "Name": "ReferenceNo", "Label": "Reference", "Link": "Edit" },
+        { "Name": "Status" },
+        { "Name": "ModifiedDate", "Label": "Modified Date", "Type": "date", "Format": "MM/dd/yyyy" }
+      ]
+    }
+  ],
+  "Buttons": [ { "Name": "Add", "Label": "Add New", "Target": { "AppCode": "PBSP", "Id": 0 } } ]
+}</code></pre>
+<p>The menus and the button rule come from the <code>Permissions</code> block of the app (4.4).</p>
+</section>
+<section id="6-backward-compatibility">
+<h2>6. Backward compatibility</h2>
+<ul>
+<li><code>v1/Dashboard</code> keeps its route, request and response shape. A hidden tab now has no rows (<code>KeyValues</code> is empty). The client does not show hidden tabs, so the display does not change.</li>
+<li><code>Load</code> is optional. The default <code>Eager</code> keeps one call for all visible tabs.</li>
+<li><code>v1/DashboardTab</code>, <code>Target</code>, <code>Columns</code>, the tokens and the new types are additive. The existing JSON stays valid.</li>
+<li>The value <code>LANID</code> continues to work.</li>
+<li>The access check starts in log-only mode (module 6, section 5).</li>
+<li>The client keeps the <code>if</code> chain as the fallback.</li>
+<li>The fixes of DB-05 do not change the result for the current JSON (the menus of each tab have the same roles).</li>
+</ul>
+</section>
+<section id="7-migration-steps">
+<h2>7. Migration steps</h2>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Change</th><th>Risk</th></tr>
+<tr><td>1</td><td>Apply the tab rules before the load; no rows for hidden tabs (4.2).</td><td>Low</td></tr>
+<tr><td>2</td><td>Read the dashboards one time at start-up; copy the parameters for each request; start-up check (4.1).</td><td>Low</td></tr>
+<tr><td>3</td><td>Use the active roles view (module 6, 4.4). Correct the menu rules (4.4).</td><td>Low</td></tr>
+<tr><td>4</td><td>Add the access check for <code>View</code> in log-only mode (4.2).</td><td>Low</td></tr>
+<tr><td>5</td><td>Add the tokens and the types (4.3).</td><td>Low</td></tr>
+<tr><td>6</td><td>Add <code>Target</code> and the form type to the client (4.5), with the <code>if</code> chain as fallback.</td><td>Low</td></tr>
+<tr><td>7</td><td>Add <code>Columns</code> and the text renderers; correct DB-08 (4.6).</td><td>Low</td></tr>
+<tr><td>8</td><td>Add <code>Load: Lazy</code> and <code>v1/DashboardTab</code> (4.2). Use it for SQMS first and compare the load time.</td><td>Medium</td></tr>
+<tr><td>9</td><td>Add <code>Source: Table</code> with <code>Filter</code> (4.7). Add a short procedure template for special tabs.</td><td>Medium</td></tr>
+<tr><td>10</td><td>Add <code>Paging: Server</code> (4.2.1). Use it first for the tab that grows first.</td><td>Medium</td></tr>
+</table></div>
+</section>
+<section id="8-acceptance">
+<h2>8. Acceptance</h2>
+<ul>
+<li>An MFO user opens the SQMS dashboard. The response has no rows for the IPG tabs.</li>
+<li>A user with no CDT role calls <code>v1/Dashboard?code=CDT</code> in enforce mode and gets 403. In log-only mode the server writes one log line.</li>
+<li>A new app shows its dashboard with a JSON file only (<code>Source: Table</code>), with no procedure and no client or server code change.</li>
+<li>A <code>Source: Table</code> tab returns only rows with <code>IsDeleted = 0</code> that <code>fn_VisibleRecords</code> permits, also if the <code>Filter</code> list is empty.</li>
+<li>A <code>Columns</code> name that is not a column of the table stops the start-up, and the log names the app and the tab.</li>
+<li>A button with <code>Target</code> opens the correct form for an app that is not in the <code>if</code> chain.</li>
+<li>With <code>Load: Lazy</code>, the dashboard load runs no procedure, and the first tab load runs one procedure.</li>
+<li>A value <code>&lt;img src=x onerror=alert(1)&gt;</code> in a cell shows as text.</li>
+<li>A tab with a <code>Columns</code> list and no rows shows its columns and "No records".</li>
+<li>A tab with <code>Paging: Server</code> and 50,000 rows returns one page of at most <code>size</code> rows, the correct <code>TotalRows</code>, and the sums of all rows. A <code>sort</code> value that is not in <code>Columns</code> returns 400.</li>
+<li>The CDT, SQMS, TTD and AIN dashboards show the same tabs, rows, buttons and menus as before for each role.</li>
+</ul>
+</section>
+<section id="9-open-questions">
+<h2>9. Open questions</h2>
+<ol>
+<li>Answered (2026-10-25): today a few thousand rows; later tens of thousands. Paging on the server is necessary: optional for each tab (4.2.1).</li>
+<li>Answered (2026-10-25): the platform makes a simple list query from the JSON (<code>Source: Table</code>, 4.7). A procedure only for special tabs.</li>
+<li>Answered (2026-10-25): Excel export and the date-range filter come from AG Grid Enterprise, with no platform work (4.6). Saved views for each user: not in scope, to limit the scope.</li>
+<li>Answered (2026-10-25): one file for each app (4.1). The existing apps can stay in the shared file.</li>
+<li>Answered (2026-10-25): the copy with AIN (<code>Atlasapp/Atlasapp/Config</code>, 399 lines) is deployed. This spec uses that copy. The two other copies (367 lines, no AIN) are old; the target team can remove them, so that nobody changes the wrong file.</li>
+</ol>
+</section>
+</main>
+</body>
+</html>

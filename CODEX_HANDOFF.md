@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 5 draft 3 done (not committed); module 6 committed c03388d - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 3 Dashboard draft 2 done (not committed); modules 5+6 committed - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -23,7 +23,7 @@ Nested lists are not supported: keep bullets flat.)
 ## Module status (docs/atlas-platform/README.md is the index)
 - Module 1 Section Master: 01-section-master.md/.html - draft 3, ALL questions answered (Q1-Q9, T1-T4, F1-F3). Committed d992d65.
   SQL: sql/01-section-master-rowversion.sql (SQMS schema), sql/01-section-master-role-scope-check.sql (read-only, parts 1-5).
-- Module 5 Data mapping: 05-data-mapping.md/.html - draft 3 (NOT committed). Target files arrived in
+- Module 5 Data mapping: 05-data-mapping.md/.html - draft 3, all Q1-Q7 answered, committed 9d47952. Target files arrived in
   target-implementation-read-only/Data/Data/Data extended/ (context, DbContext.t4, EntityType.t4, Data csproj).
   New: DM-08 context hand-edited after scaffold, DM-09 Atlas context maps 19 engine tables + MockSectionData,
   DM-10 dbo naming/old Http package; 6.2.1 scaffold settings. Q7 answered: scaffold all dbo tables except
@@ -40,7 +40,12 @@ Nested lists are not supported: keep bullets flat.)
   Admin includes Write+Read, Write includes Read.
   SQL (not executed): sql/06-active-user-roles-view.sql, sql/06-lanid-columns-ddl.sql, sql/06-lanid-backfill-dml.sql,
   sql/06-record-visibility-template.sql, sql/06-grant-revoke-role-template.sql.
-- Modules not started: 2 Step Master (waits; CDT + one more app), 3 Dashboard, 4 Rules engine, 7 Registry,
+- Module 3 Dashboard: 03-dashboard.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings DB-01..DB-08 (DB-01 High: hidden tabs'
+  rows still sent to browser; DB-02 High: no app access check, Get_CDT_Dashboard no user filter). Design: rules before
+  load, Load Eager|Lazy + v1/DashboardTab, tokens {LanId}, Target on buttons, Columns list, menus from Permissions.
+  Q1 answered: server paging per tab (4.2.1, Paging Client|Server). Q2 answered: Source Table list query from JSON (4.7), procs only for special tabs. Q3 answered: export + date filter from AG Grid Enterprise, saved views out of scope.
+  Q4 answered: one dashboard file per app (existing may stay shared). Q5 answered: deployed copy = Atlasapp/Atlasapp/Config (with AIN); other 2 copies old.
+- Modules not started: 2 Step Master (waits; CDT + one more app), 4 Rules engine, 7 Registry,
   8 Attachments (H1/H2), 9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
 
 ## Key facts (do not re-derive)
@@ -53,11 +58,11 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-docs/atlas-platform/05-data-mapping.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
+docs/atlas-platform/03-dashboard.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 5 draft 3 is done; commit it
-when I ask. Then start module 3 Dashboard. One question at a time, short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 3 Dashboard draft 2 is done;
+commit it when I ask, then start the next module (4 Rules engine unless I say otherwise). One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25
