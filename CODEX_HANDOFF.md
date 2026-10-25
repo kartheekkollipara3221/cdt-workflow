@@ -1,10 +1,13 @@
-# RESUME HERE - Atlas platform specs, module 4 Rules engine draft 2 done (not committed); modules 3, 5, 6 committed - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 7 Registry draft 2 done (not committed); code later in atlas-platform/ (option B) - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
 (TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU; all Section Master) integrate with
 low-code changes (JSON + SQL + one registration line), backward compatible. DESIGN ONLY (Option 3): specs in
 docs/atlas-platform/, no Atlas code, no workflow engine change, same repo/branch (console-code-first-0518).
+UPDATE 2026-10-25: the user is also the target decision maker. After the design session we CODE the generic
+approach; the user integrates it at the target, backward compatible. Code location (decided, option B): separate solution atlas-platform/ in this repo (not in WorkflowEngine.sln),
+built against stand-ins for missing target parts; user copies into target. Coding starts after the design session.
 Specs are written in ASD-STE100 (~80%). Each spec = .md (source) + .html report generated from it.
 
 ## How we work (user preferences)
@@ -46,14 +49,20 @@ Nested lists are not supported: keep bullets flat.)
   load, Load Eager|Lazy + v1/DashboardTab, tokens {LanId}, Target on buttons, Columns list, menus from Permissions.
   Q1 answered: server paging per tab (4.2.1, Paging Client|Server). Q2 answered: Source Table list query from JSON (4.7), procs only for special tabs. Q3 answered: export + date filter from AG Grid Enterprise, saved views out of scope.
   Q4 answered: one dashboard file per app (existing may stay shared). Q5 answered: deployed copy = Atlasapp/Atlasapp/Config (with AIN); other 2 copies old.
-- Module 4 Rules engine: 04-rules-engine.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings RE-01..RE-07 (RE-02 High first
+- Module 4 Rules engine: 04-rules-engine.md/.html - draft 2, ALL questions answered, committed 5751c7e. Findings RE-01..RE-07 (RE-02 High first
   match wins -> AIN Admin+Read gets read-only; RE-03 High no-match keeps JSON = editable; RE-05 display-only).
   Design: IAtlasRuleEngine for all 6 targets, RuleMode FirstMatch|MostPermissive, RuleDefault Keep|ReadOnly|Hidden,
   Relations (~Seller replaces SQMSB CHECKSELLER code), rules before Effects, same rules on save, start-up check,
   v1/RulePreview (@Admin). SQL read-only: sql/04-multi-role-users.sql. Corrected module 1 10.5 note (first match wins).
   Q1 answered: multi-role yes; only TTD + new apps MostPermissive, existing keep FirstMatch. Q2 answered: RuleDefault ReadOnly for new apps. Q3 answered: section owners (4.4.1), by role AND by person (Relation Record Self), per app/section.
   Q4 answered: keep v1/RulePreview.
-- Modules not started: 2 Step Master (waits; CDT + one more app), 7 Registry,
+- Module 7 Registry: 07-registry.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings RG-01..RG-06 (5 if-chains -> null/500,
+  services via new not DI, enum app code, settings in 7 places + absolute paths, parent in 2 places, menu shows broken apps).
+  Design: <Code>.app.json manifest, AddAtlasPlatform + AddAtlasModule<T>, IAtlasModuleResolver (keyed DI, 404/400),
+  string app code + CPAtlasPage.AppCode, start-up check vs CP_Atlas_Application, v1/Application + FormType/HasDashboard,
+  AppSettings:ConfigFolder. Q1 answered: one AddAtlasModule line per app (code review). Q2 answered: settings in JSON manifest; DB keeps identity+roles.
+  Q3 answered: Enabled per environment. Q4 answered: client+API always deployed together.
+- Modules not started: 2 Step Master (waits; CDT + one more app),
   8 Attachments (H1/H2), 9 Audit/history, 10 Engine adapter (H6/H8), 11 Config/deployment.
 
 ## Key facts (do not re-derive)
@@ -66,12 +75,11 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-docs/atlas-platform/04-rules-engine.md (+ .html), sql/04-multi-role-users.sql, 01-section-master.md (+ .html, one note),
-docs/atlas-platform/README.md, CODEX_HANDOFF.md.
+docs/atlas-platform/07-registry.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 4 Rules engine draft 2 is done;
-commit it when I ask, then start the next module (7 Registry unless I say otherwise). One question at a time, short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 7 Registry draft 2 is done;
+commit it when I ask, then start the next module (8 Attachments unless I say otherwise). One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25

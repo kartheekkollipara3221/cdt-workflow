@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App registry: reusable design</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 7 · design only · draft 2 · 2026-10-25</div>
+<h1>App registry: reusable design</h1>
+<p class="lead">This report examines where CP Atlas defines each app: an enum, five if chains, settings, JSON files, a database row and the client. It gives one registry, so that each app is described one time and all modules read it from one place.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered (section 9). Design only. No target code is changed.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>6</b><span>findings (RG-01 to RG-06)</span></div>
+<div class="kpi"><b>7</b><span>places that define one app today</span></div>
+<div class="kpi"><b>1</b><span>manifest for each app after</span></div>
+<div class="kpi"><b>0</b><span>open questions</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>Today the facts about one app are in many places: an enum, five <code>if</code> chains, <code>appsettings.json</code>, the dashboard JSON, a database row and the client code. A new app must change each place. This module defines one registry: each app is described one time, the platform registers it at start-up, and all modules (forms, dashboard, rules, security, data, workflow) read the app from the registry.</p>
+<p>Scope: the app manifest, the registration, the service resolver, the app code type, the link to <code>CP_Atlas_Application</code>, the menu data for the client, and the configuration folder. Related items: the server module registry (module 1, 5.6), the table registration (module 5, 6.1), the dashboard file (module 3, 4.1), the access mode (module 6, section 5), the rule mode (module 4, 4.2), the workflow binding (module 1, 5.10; module 10).</p>
+</section>
+<section id="2-current-behaviour">
+<h2>2. Current behaviour</h2>
+
+<h3>2.1 Where an app is defined</h3>
+<div class="table-wrap"><table>
+<tr><th>Place</th><th>What it holds</th><th>Evidence</th></tr>
+<tr><td><code>CPApplicationCode</code> enum</td><td>The app code (19 values)</td><td><code>Data/Data/Enumerations/CPApplicationCode.cs.txt:9-30</code></td></tr>
+<tr><td><code>CPAtlasService</code></td><td>Five <code>if</code> chains: app, section, step, attachment and action service</td><td><code>Service/CPAtlasService.cs.txt:127-185</code></td></tr>
+<tr><td>Module service constructor</td><td><code>Code</code>, <code>ParentCode</code>, the JSON path keys, the dashboard selection</td><td><code>CPSQMSBService.cs.txt:52-70</code>; <code>CPTTDService.cs.txt:31-38</code></td></tr>
+<tr><td><code>appsettings.json</code></td><td><code>&lt;Code&gt;ConfigPath</code> for each app, <code>DashboardConfigPath</code> (absolute local paths)</td><td><code>Atlasapp/Atlasapp/appsettings.json.txt:26-32</code></td></tr>
+<tr><td>Dashboard JSON</td><td>Tabs and buttons</td><td>module 3</td></tr>
+<tr><td><code>dbo.CP_Atlas_Application</code></td><td><code>Code</code>, <code>Name</code>, <code>ParentID</code>; the roles link to it</td><td><code>CP_Sharepoint.txt:359-372</code></td></tr>
+<tr><td>Client</td><td>Navigation <code>if</code> chains, redirect after save</td><td>module 1, SM-02; module 3, DB-04</td></tr>
+</table></div>
+<h3>2.2 Service resolution</h3>
+<ul>
+<li>Each request makes a new <code>CPAtlasService</code> in the controller. It makes the module service with <code>new</code>, with different constructor arguments for each app. Evidence: <code>CPAtlasController.cs.txt:40, 47</code>; <code>CPAtlasService.cs.txt:127-146</code>.</li>
+<li>An unknown code returns <code>null</code>. The caller then fails with a null reference (HTTP 500). Evidence: <code>CPAtlasService.cs.txt:71, 97, 102, 124, 144-145</code>.</li>
+<li>The workflow services are optional constructor arguments. <code>SQMS</code> (the dashboard code) makes <code>CPSQMSOService</code> with no workflow services; <code>SQMSO</code> makes it with them. Evidence: <code>CPAtlasService.cs.txt:132-136</code>.</li>
+</ul>
+<h3>2.3 The app code on the wire</h3>
+<ul>
+<li><code>v1/Dashboard</code>, <code>v1/Download</code>, <code>v1/RemoveAttachment</code> and <code>v1/RemovePage</code> bind the code to the enum. <code>CPAtlasPage.Code</code> is the enum. Evidence: <code>CPAtlasController.cs.txt:45, 74, 94, 124</code>; <code>Data/Data/DTO/CPAtlasPage.cs.txt:12</code>.</li>
+<li>The responses use <code>System.Text.Json</code> with no enum converter, so an enum in a response is a number. Evidence: <code>program.cs.txt:70</code>.</li>
+<li>The menu comes from <code>dbo.Get_Application</code>: the apps where the user has a role, with <code>Code</code>, <code>Name</code>, <code>ParentID</code> and the role names. The client links each app to <code>dashboard/&lt;Code&gt;</code>. Evidence: <code>CP_Sharepoint.txt:1508-1534</code>; <code>WebUi/.../app.component.ts.txt:131-155</code>.</li>
+</ul>
+</section>
+<section id="3-findings">
+<h2>3. Findings</h2>
+
+<div class="issue">
+<h3><span class="badge b-high">RG-01</span>Five <code>if</code> chains select the services <span class="area">for reuse</span></h3>
+<p>A new app needs a change in up to five methods. A missing branch returns <code>null</code> and gives HTTP 500 with no message (module 1, SM-06). <code>LoadActionService</code> supports only SQMSO. Evidence: <code>CPAtlasService.cs.txt:127-185</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RG-02</span>The services are not made by dependency injection</h3>
+<p>The services are made with <code>new</code>. Each app has its own list of constructor arguments, and a forgotten argument is <code>null</code> with no error until it is used. The services cannot get the platform services (rules engine, access check, user context) from the container. Evidence: <code>CPAtlasService.cs.txt:129-143</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RG-03</span>The app code is an enum <span class="area">for reuse</span></h3>
+<p>The 13 next apps are already in the enum. App number 18 and later need an enum change and a new build of all projects. A request with a code that is not in the enum fails in model binding (HTTP 400 with a binding message) or in <code>JsonConvert</code> (HTTP 500). Evidence: <code>CPApplicationCode.cs.txt</code>; <code>CPAtlasService.cs.txt:95</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RG-04</span>The settings of one app are in many places</h3>
+<p>To see or change one app, a person must look in seven places (2.1). The JSON paths in <code>appsettings.json</code> are absolute paths of one developer computer (<code>C:\Projects\Investment Management\...</code>), so each environment needs its own file with seven keys. Evidence: <code>appsettings.json.txt:26-32</code>.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">RG-05</span>The parent of an app is in two places</h3>
+<p><code>CP_Atlas_Application.ParentID</code> and the <code>ParentCode</code> in the service constructor give the same fact. Nothing checks that they agree. Evidence: <code>CPSQMSBService.cs.txt:52-53</code>; <code>CP_Sharepoint.txt:368</code>.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">RG-06</span>The menu can show an app that does not work</h3>
+<p><code>dbo.Get_Application</code> returns each app where the user has a role, also when the app has no service or no dashboard, and it does not filter <code>IsDeleted</code> (module 6, SE-03). The menu item then opens a dashboard that fails. Evidence: <code>CP_Sharepoint.txt:1508-1534</code>.</p>
+</div>
+</section>
+<section id="4-reusable-design">
+<h2>4. Reusable design</h2>
+
+<h3>4.1 App manifest</h3>
+<p>Each app has one manifest file, <code>&lt;Code&gt;.app.json</code>, in the configuration folder (4.7). The manifest names the other files and holds the settings of the app for all modules:</p>
+<pre><code>{
+  "Code": "PBSP",
+  "Name": "PB Service Plan",
+  "FormType": "SECTION",
+  "Parent": null,
+  "Form": "PBSP.json",
+  "Dashboard": "PBSP.Dashboard.json",
+  "Table": "PBSP.General",
+  "AuditTable": "PBSP.AuditLog",
+  "Service": null,
+  "Workflow": null,
+  "AccessMode": "LogOnly",
+  "RuleMode": "MostPermissive",
+  "RuleDefault": "ReadOnly",
+  "Visibility": null,
+  "Enabled": true
+}</code></pre>
+<ul>
+<li><code>Service</code>: the key of a custom service class (for example <code>"TTD"</code>). <code>null</code> means the generic <code>ConfigSectionService</code> (module 1, 5.7).</li>
+<li><code>Workflow</code>: the workflow binding (module 1, 5.10; module 10). <code>null</code> means no workflow.</li>
+<li><code>Parent</code>: the code of the parent app of a family (module 1, section 11).</li>
+<li>The form JSON keeps the form items (<code>Section</code>, <code>Rules</code>, <code>OwnerFields</code>, <code>Permissions</code>, <code>Effects</code>). The manifest keeps only the items that are not part of the form. No item is in both files.</li>
+<li>Decision 2026-10-25 (question 2): the behaviour settings are in the manifest (JSON, deployed with the API, with a review). The database keeps only the identity of the app (<code>Code</code>, <code>Name</code>, <code>ParentID</code>) and the roles, as today. No new columns in <code>CP_Atlas_Application</code>.</li>
+<li>The settings in the manifest can be changed for each environment in <code>appsettings.&lt;Environment&gt;.json</code> with <code>AppSettings:Modules:&lt;Code&gt;:&lt;Setting&gt;</code> (for example <code>AccessMode</code>, <code>Enabled</code>). The environment value wins.</li>
+</ul>
+<h3>4.2 Registration</h3>
+<p>Decision 2026-10-25 (question 1): each app has one registration line in <code>Program.cs</code>. Thus each new app goes through a code review and a release. The platform does not register an app from its manifest only.</p>
+<pre><code>// Composition root:
+services.AddAtlasPlatform(configuration);              // platform services, manifests, start-up check
+services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP");  // a new app with the generic service
+services.AddAtlasModule&lt;CPTTDService&gt;("TTD");           // an app with a custom service</code></pre>
+<ul>
+<li><code>AddAtlasModule&lt;T&gt;(code)</code> registers the app by its code as a keyed service for each interface that <code>T</code> implements (<code>IApplicationService</code>, <code>ISectionService</code>, <code>IStepService</code>, <code>IAttachmentService</code>, <code>IActionService</code>).</li>
+<li>The line and the manifest must agree. The start-up check stops the API if a manifest has no line, if a line has no manifest, or if the line uses a class that is not the <code>Service</code> of the manifest (<code>null</code> = <code>ConfigSectionService</code>).</li>
+<li>The existing apps (CDT, SQMSO, SQMSB, TTD, AIN, and SQMS for the dashboard) get manifests that name their existing services. Their behaviour does not change.</li>
+<li><code>Enabled: false</code> registers nothing for the app. The app is not in the menu and its endpoints return 404.</li>
+<li>Decision 2026-10-25 (question 3): <code>Enabled</code> is used to turn an app on in each environment. One build goes to all environments. Example: <code>AppSettings:Modules:PBSP:Enabled = false</code> in <code>appsettings.Production.json</code> until the business approves the app; then change the value to <code>true</code> (configuration change and restart, no new build).</li>
+</ul>
+<h3>4.3 Resolver</h3>
+<p><code>IAtlasModuleResolver.Get&lt;TService&gt;(appCode)</code> replaces the five <code>if</code> chains:</p>
+<ul>
+<li>The services come from the container (scoped), so the constructors get the platform services and the workflow services from dependency injection. This removes RG-02.</li>
+<li>An unknown code, a disabled app, or an app with no service for the interface returns a problem response: 404 <code>"App 'XYZ' is not registered"</code> or 400 <code>"App 'PBSP' has no step form"</code>. No <code>null</code>. This removes RG-01.</li>
+<li><code>CPAtlasService</code> keeps its public methods and calls the resolver.</li>
+</ul>
+<h3>4.4 App code as text</h3>
+<ul>
+<li>The platform uses a string app code (case is ignored). Pattern: <code>^[A-Z][A-Z0-9]{1,19}$</code> (the <code>Code</code> column is <code>varchar(20)</code>).</li>
+<li>The controller parameters change from the enum to <code>string</code>. The same query values (<code>code=TTD</code>) bind as before. A number value (<code>code=13</code>) is mapped to the enum name, for old callers.</li>
+<li><code>CPAtlasPage</code> gets an optional <code>AppCode</code> string. The server uses <code>AppCode</code>, else <code>Code</code>. A new app after the enum list sends <code>AppCode</code>. The <code>Code</code> property stays.</li>
+<li>The enum stays for the existing code. The response shapes do not change (an enum in a response is still a number). This removes RG-03.</li>
+</ul>
+<h3>4.5 Link to the database</h3>
+<ul>
+<li>The start-up check confirms that each enabled manifest has an active row in <code>CP_Atlas_Application</code> with the same <code>Code</code>, and that <code>Parent</code> agrees with <code>ParentID</code>. A difference stops the start-up, and the log names the app. This removes RG-05.</li>
+<li>The new-app SQL template (module 5, 6.9) makes the row. The manifest does not make database rows.</li>
+<li>The <code>Name</code> in the manifest is for the logs only. The menu continues to use <code>CP_Atlas_Application.Name</code>.</li>
+</ul>
+<h3>4.6 Menu data</h3>
+<ul>
+<li><code>v1/Application</code> keeps its rows and adds two optional fields from the registry: <code>FormType</code> and <code>HasDashboard</code>.</li>
+<li>The server removes an app from the result if it is not registered, not enabled, or deleted (module 6, the active roles view). This removes RG-06.</li>
+<li>The client uses <code>FormType</code> for the navigation (module 3, 4.5) and shows a menu item only if <code>HasDashboard</code> is true. If the fields are not there, the client works as today. Decision 2026-10-25 (question 4): the client and the API are always deployed together, so the client and the API change in the same release. Keep the fallback anyway, for a rollback of the API only.</li>
+</ul>
+<h3>4.7 Configuration folder</h3>
+<ul>
+<li>New setting <code>AppSettings:ConfigFolder</code>, relative to the content root (default <code>Config</code>). All manifests, form JSON and dashboard JSON are in this folder.</li>
+<li>The old <code>&lt;Code&gt;ConfigPath</code> and <code>DashboardConfigPath</code> keys stay. If a key exists, it overrides the folder for that file (module 1, 5.6).</li>
+<li>The files are read one time at start-up, kept in memory, and read again when a file changes. Each request gets a copy (module 1, 5.6; module 3, 4.1).</li>
+</ul>
+<h3>4.8 Start-up check</h3>
+<p>One start-up check runs the checks of all modules for each enabled app: the manifest (4.1), the services (4.2), the database row (4.5), the form fields and table columns (module 5, 6.8), the dashboard (module 3, 4.1) and the rules (module 4, 4.7). It writes one report to the log, with each defect and the app code. An error stops the start-up; a warning does not.</p>
+</section>
+<section id="5-adding-app-17-target">
+<h2>5. Adding app #17 (target)</h2>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Item</th><th>Type</th></tr>
+<tr><td>1</td><td>Run the new-app SQL template (table, audit table, app row, roles)</td><td>SQL</td></tr>
+<tr><td>2</td><td>Add <code>&lt;Code&gt;.app.json</code></td><td>JSON</td></tr>
+<tr><td>3</td><td>Add <code>&lt;Code&gt;.json</code> (form)</td><td>JSON</td></tr>
+<tr><td>4</td><td>Add <code>&lt;Code&gt;.Dashboard.json</code></td><td>JSON</td></tr>
+<tr><td>5</td><td>Grant the roles (module 6, 4.4)</td><td>SQL</td></tr>
+<tr><td>6</td><td>Add one <code>AddAtlasModule</code> line</td><td>C# (one line)</td></tr>
+</table></div>
+<p>Plus one registration line in <code>Program.cs</code> (decision, question 1). No other C# change and no TypeScript change, if the app uses <code>ConfigSectionService</code> and the enum already has the code (the 13 next apps).</p>
+</section>
+<section id="6-backward-compatibility">
+<h2>6. Backward compatibility</h2>
+<ul>
+<li>All endpoints keep their routes, parameters and response shapes. <code>AppCode</code>, <code>FormType</code> and <code>HasDashboard</code> are additive and optional.</li>
+<li>The string parameters accept the same values as the enum parameters.</li>
+<li>The existing apps get manifests that name their existing services. Their behaviour does not change.</li>
+<li>The <code>&lt;Code&gt;ConfigPath</code> keys continue to work.</li>
+<li>The <code>CPApplicationCode</code> enum and <code>IApplicationService.Code</code> stay. A custom service can still use them.</li>
+<li>An unknown code now returns 404 or 400 in place of 500.</li>
+</ul>
+</section>
+<section id="7-migration-steps">
+<h2>7. Migration steps</h2>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Change</th><th>Risk</th></tr>
+<tr><td>1</td><td>Add the resolver with keyed services. Register the existing services with one <code>AddAtlasModule</code> line each. Change <code>CPAtlasService</code> to the resolver.</td><td>Low</td></tr>
+<tr><td>2</td><td>Add the manifests for the existing apps, with their existing services.</td><td>Low</td></tr>
+<tr><td>3</td><td>Add <code>AppSettings:ConfigFolder</code>; keep the old path keys.</td><td>Low</td></tr>
+<tr><td>4</td><td>Change the controller parameters to <code>string</code>; add <code>CPAtlasPage.AppCode</code>.</td><td>Low</td></tr>
+<tr><td>5</td><td>Add the start-up check (4.8), with warnings first for one release.</td><td>Low</td></tr>
+<tr><td>6</td><td>Add <code>FormType</code> and <code>HasDashboard</code> to <code>v1/Application</code>; change the client menu and navigation.</td><td>Low</td></tr>
+<tr><td>7</td><td>Add the first new app with a manifest and <code>ConfigSectionService</code>.</td><td>Low</td></tr>
+</table></div>
+</section>
+<section id="8-acceptance">
+<h2>8. Acceptance</h2>
+<ul>
+<li><code>v1/SectionPage?Code=XYZ</code> returns 404 with the message "App 'XYZ' is not registered", not 500.</li>
+<li>A new app with a manifest, JSON files, the SQL template and one registration line works with no other C# change and no TypeScript change.</li>
+<li>A manifest with no registration line stops the start-up, and the log names the app.</li>
+<li>A manifest with <code>Parent</code> that does not agree with <code>ParentID</code> stops the start-up, and the log names the app.</li>
+<li><code>Enabled: false</code> in <code>appsettings.QC.json</code> removes the app from the menu in QC only.</li>
+<li>The existing apps give the same responses as before for the same requests.</li>
+</ul>
+</section>
+<section id="9-open-questions">
+<h2>9. Open questions</h2>
+<ol>
+<li>Answered (2026-10-25): one registration line in <code>Program.cs</code> for each app (4.2), for a code review and a release step for each new app.</li>
+<li>Answered (2026-10-25): in the JSON manifest (4.1). The database keeps the identity and the roles only, as today.</li>
+<li>Answered (2026-10-25): yes. <code>Enabled</code> for each environment (4.2), so that one build goes to all environments and the app is turned on in production after approval.</li>
+<li>Answered (2026-10-25): yes, the client and the API are always deployed together (4.6).</li>
+</ol>
+</section>
+</main>
+</body>
+</html>
