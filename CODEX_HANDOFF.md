@@ -16,6 +16,12 @@
   Checked live: form edit/new and dashboard have 0 fields without id/name and 0 bad label targets.
 - Note: record 10003 was soft-deleted during the review (IsDeleted=1, audit Delete row). Reset with setup-local-db.ps1 -Recreate.
 
+## Architecture review (module 13) - done, no code changed
+- docs/atlas-platform/13-architecture-review.md + .html: 47 findings (9 High, 24 Medium, 14 Low), IDs NG/HO/SV/DA, fix
+  waves in section 10. Wave 1 (before copy to target): NG-01 @pbdev export names, NG-02 /apps route, NG-05 Vitest spec,
+  NG-06 styles, SV-01 options check, SV-02 LogOnly delete, HO-03 override parsing, DA-01 column types, DA-07 script log,
+  HO-01 config root, HO-08 TryAdd. Waiting for the user to choose which findings to fix.
+
 ## What was built (C5-C10)
 - C5 Service: Application/ConfigSectionService (load: values, options, KeepSavedValue, defaults tokens, user labels,
   OnLoad, rules, header, Version, UserPermissions, Computed map; save: access, rules, allow list B7, effects, validators,
