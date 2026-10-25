@@ -107,22 +107,55 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         return text;
     }
 
-    // Environment values win (spec 07, 4.1; spec 11, 4.5).
+    // Environment values win (spec 07, 4.1; spec 11, 4.5). A value that is present but not valid fails closed
+    // (review HO-03): Enabled = false, AccessMode = Enforce; the other modes keep the manifest value. Each one is a
+    // setting error that the start-up check reports. Only the names of the enum values are accepted (not numbers).
     private void ApplyEnvironmentOverrides(AtlasAppManifest manifest)
     {
         IConfigurationSection section = _configuration.GetSection($"AppSettings:Modules:{manifest.Code}");
         if (!section.Exists())
             return;
 
-        if (bool.TryParse(section["Enabled"], out bool enabled))
-            manifest.Enabled = enabled;
-        if (Enum.TryParse(section["AccessMode"], true, out AtlasAccessMode accessMode))
+        if (section["Enabled"] is { } enabledText)
+        {
+            if (bool.TryParse(enabledText.Trim(), out bool enabled))
+                manifest.Enabled = enabled;
+            else
+            {
+                manifest.Enabled = false;
+                manifest.SettingErrors.Add(Invalid(manifest.Code, "Enabled", enabledText, "true, false") + " The app is disabled.");
+            }
+        }
+
+        if (Override(manifest, section, "AccessMode", out AtlasAccessMode accessMode, AtlasAccessMode.Enforce))
             manifest.AccessMode = accessMode;
-        if (Enum.TryParse(section["AuditMode"], true, out AtlasAuditMode auditMode))
+        if (Override(manifest, section, "AuditMode", out AtlasAuditMode auditMode, manifest.AuditMode))
             manifest.AuditMode = auditMode;
-        if (Enum.TryParse(section["RuleMode"], true, out AtlasRuleMode ruleMode))
+        if (Override(manifest, section, "RuleMode", out AtlasRuleMode ruleMode, manifest.RuleMode))
             manifest.RuleMode = ruleMode;
-        if (Enum.TryParse(section["RuleDefault"], true, out AtlasRuleDefault ruleDefault))
+        if (Override(manifest, section, "RuleDefault", out AtlasRuleDefault ruleDefault, manifest.RuleDefault))
             manifest.RuleDefault = ruleDefault;
     }
+
+    /// <summary>True when the key is present: value = the named enum value, or <paramref name="whenInvalid"/> with a setting error.</summary>
+    private static bool Override<T>(AtlasAppManifest manifest, IConfigurationSection section, string key, out T value, T whenInvalid)
+        where T : struct, Enum
+    {
+        value = whenInvalid;
+        if (section[key] is not { } text)
+            return false;
+
+        string? name = Enum.GetNames<T>().FirstOrDefault(x => string.Equals(x, text.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (name != null)
+        {
+            value = Enum.Parse<T>(name);
+            return true;
+        }
+
+        manifest.SettingErrors.Add(Invalid(manifest.Code, key, text, string.Join(", ", Enum.GetNames<T>())) + $" The value {whenInvalid} is used.");
+        return true;
+    }
+
+    private static string Invalid(string code, string key, string text, string allowed) =>
+        $"the setting AppSettings:Modules:{code}:{key} = '{text}' is not valid (allowed: {allowed}).";
 }

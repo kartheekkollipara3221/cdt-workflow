@@ -7,6 +7,7 @@ using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
 using BBH.CP.Atlas.Service.Platform.Sections;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 
 namespace BBH.CP.Atlas.App.Platform;
 
@@ -33,6 +34,7 @@ public static class AtlasStartupCheck
         IAtlasConfigStore configStore = services.GetRequiredService<IAtlasConfigStore>();
         AtlasTableRegistry tables = services.GetRequiredService<AtlasTableRegistry>();
         CPSharepointContext context = services.GetRequiredService<CPSharepointContext>();
+        IHostEnvironment? environment = services.GetService<IHostEnvironment>();
         Dictionary<string, AtlasModuleRegistration> registrations = services.GetServices<AtlasModuleRegistration>()
             .ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
 
@@ -61,11 +63,17 @@ public static class AtlasStartupCheck
                 continue;
             }
 
+            foreach (string settingError in manifest.SettingErrors)
+                Error(settingError);
+
             if (!manifest.Enabled)
             {
                 Warning("is disabled (Enabled = false); not checked.");
                 continue;
             }
+
+            if (manifest.AccessMode == AtlasAccessMode.LogOnly && environment?.IsDevelopment() == false)
+                Warning($"AccessMode is LogOnly in {environment.EnvironmentName}: denied View, Create, Edit and History are only logged. Set Enforce after the log review.");
 
             if (!registrations.TryGetValue(manifest.Code, out AtlasModuleRegistration? registration))
             {

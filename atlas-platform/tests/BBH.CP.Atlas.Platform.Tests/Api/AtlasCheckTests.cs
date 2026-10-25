@@ -83,6 +83,15 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains("ERROR TTDV2: the form has no Permissions block", report, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_setting_that_is_not_valid_is_an_error()
+    {
+        (int code, string report) = await CheckAsync(RealConfig, new() { ["AppSettings:Modules:TTDV2:AccessMode"] = "Enfroce" });
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR TTDV2: the setting AppSettings:Modules:TTDV2:AccessMode = 'Enfroce' is not valid", report, StringComparison.Ordinal);
+    }
+
     private void CopyRealConfig()
     {
         Directory.CreateDirectory(_folder);
@@ -90,14 +99,15 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
             File.Copy(file, Path.Combine(_folder, Path.GetFileName(file)));
     }
 
-    private async Task<(int Code, string Report)> CheckAsync(string configFolder)
+    private async Task<(int Code, string Report)> CheckAsync(string configFolder, Dictionary<string, string?>? settings = null)
     {
+        Dictionary<string, string?> values = new(settings ?? [])
+        {
+            ["ConnectionStrings:DBConnection"] = database.ConnectionString,
+            ["AppSettings:ConfigFolder"] = configFolder
+        };
         await using WebApplication app = StandInHost.Create(["--environment=Development"], builder =>
-            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:DBConnection"] = database.ConnectionString,
-                ["AppSettings:ConfigFolder"] = configFolder
-            }));
+            builder.Configuration.AddInMemoryCollection(values));
         using StringWriter output = new();
         int code = await app.Services.RunAtlasCheckAsync(output);
         return (code, output.ToString());

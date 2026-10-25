@@ -58,6 +58,46 @@ public sealed class RegistryTests : IDisposable
         Assert.False(store.FindManifest("OFF")!.Enabled);
     }
 
+    [Theory]
+    [InlineData("flase")]
+    [InlineData("0")]
+    [InlineData("no")]
+    public void An_Enabled_setting_that_is_not_valid_disables_the_app_and_is_reported(string value)
+    {
+        AtlasConfigStore store = Store(new() { ["AppSettings:Modules:DEMO:Enabled"] = value });
+
+        AtlasAppManifest demo = store.FindManifest("DEMO")!;
+
+        Assert.False(demo.Enabled);
+        Assert.Contains(demo.SettingErrors, x => x.Contains("AppSettings:Modules:DEMO:Enabled", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Enfroce")]
+    [InlineData("2")]
+    [InlineData("1")]
+    public void An_AccessMode_setting_that_is_not_valid_gives_Enforce_and_is_reported(string value)
+    {
+        AtlasConfigStore store = Store(new() { ["AppSettings:Modules:DEMO:AccessMode"] = value });
+
+        AtlasAppManifest demo = store.FindManifest("DEMO")!;
+
+        Assert.Equal(AtlasAccessMode.Enforce, demo.AccessMode);
+        Assert.Contains(demo.SettingErrors, x => x.Contains("AccessMode", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_mode_setting_that_is_not_valid_keeps_the_manifest_value_and_is_reported()
+    {
+        AtlasConfigStore store = Store(new() { ["AppSettings:Modules:DEMO:RuleDefault"] = "Hiden", ["AppSettings:Modules:DEMO:Enabled"] = " True " });
+
+        AtlasAppManifest demo = store.FindManifest("DEMO")!;
+
+        Assert.Equal(AtlasRuleDefault.ReadOnly, demo.RuleDefault);
+        Assert.True(demo.Enabled);
+        Assert.Single(demo.SettingErrors);
+    }
+
     [Fact]
     public void Each_form_request_gets_its_own_copy()
     {

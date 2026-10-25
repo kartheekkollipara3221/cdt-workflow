@@ -56,6 +56,10 @@ public sealed class AtlasAppManifest
     /// <summary>The file that the manifest came from (not in the JSON).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string? SourceFile { get; set; }
+
+    /// <summary>Environment settings that are present but not valid (not in the JSON). The start-up check reports them.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public List<string> SettingErrors { get; } = [];
 }
 
 public static partial class AtlasAppCode
