@@ -1,0 +1,19 @@
+{
+  // TTDV2 manifest (spec 07, 4.1; spec 12, section 3). Environment overrides: AppSettings:Modules:TTDV2:*.
+  "Code": "TTDV2",
+  "Name": "Tax Time Database",
+  "FormType": "FORM",
+  "Parent": null,
+  "Form": "TTDV2.json",
+  "Dashboard": "TTDV2.Dashboard.json",
+  "Table": "TTDV2.General",
+  "AuditTable": "TTDV2.AuditLog",
+  "AttachmentTable": null,
+  "Service": "TTDV2",
+  "AccessMode": "LogOnly",
+  "AuditMode": "Server",
+  "AuditTime": "Utc",
+  "RuleMode": "MostPermissive",
+  "RuleDefault": "ReadOnly",
+  "Enabled": true
+}

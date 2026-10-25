@@ -34,7 +34,7 @@ Rules: .NET 10, warnings are errors, `TimeProvider` (no `DateTime.Now`), no new 
 |---|---|
 | C0 Skeleton and stand-ins | Done |
 | C1 Data | Done |
-| C2 Config and registry | Not started |
+| C2 Config and registry | Done |
 | C3 Security | Not started |
 | C4 Rules engine | Not started |
 | C5 Section service and save pipeline | Not started |

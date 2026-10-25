@@ -44,3 +44,10 @@ Run `sql/release-p1/` in number order (DBA in QC and production). See spec 12, s
 | `System.Security.Cryptography.Pkcs` | Locally pinned to 10.0.13 (vulnerability advisories on 9.0.4 via EF Core 10.0.7). Check that the target build has no NU1902/NU1903. |
 | API login rights on schema `TTDV2` | `SELECT, INSERT, UPDATE, DELETE` (step 6 of `12-ttdv2-app.sql`). The metadata reader needs no extra grant. |
 | `@pbdev/pbdev-core` look and feel, masks | The local stand-in only copies the behaviour (C9) |
+
+## 6. Findings during the build (for the review)
+
+| # | Phase | Finding | Handling |
+|---|---|---|---|
+| B1 | C1 | EF Core property bags use the sentinel null; a new record sent `ID = 0` to the identity column. | Sentinel = type default for non-nullable value columns (`AtlasPlatformContext`). |
+| B2 | C2 | `System.Text.Json` enforces the C# `required` keyword; `Newtonsoft.Json` does not. `SQMSO.json`, `SQMSB.json` (no `Workflow.Roles`) and `CDT.json` (controls with no `Label`) fail with a plain STJ loader. | The platform loader turns `required` off (`AtlasJson`). Test: all current form files and the dashboard file load. |
