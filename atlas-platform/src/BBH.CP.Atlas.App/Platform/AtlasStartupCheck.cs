@@ -55,6 +55,7 @@ public static class AtlasStartupCheck
             items.Add(new(AtlasCheckSeverity.Error, code, $"has a registration line but no {code}.app.json in {configStore.ConfigFolder}."));
 
         Dictionary<string, (int Id, int? ParentId)> appRows = AppRows(context);
+        CheckSharedAuditTables(manifests, items);
         foreach (AtlasAppManifest manifest in manifests)
         {
             void Error(string message) => items.Add(new(AtlasCheckSeverity.Error, manifest.Code, message));
@@ -190,6 +191,20 @@ public static class AtlasStartupCheck
         foreach (AtlasFormField field in fields.All.Where(x => x.Control.OptionsSource != null && !x.IsGridField))
             if (!providers.Contains(field.Control.OptionsSource!.Provider))
                 error($"control '{field.Name}' uses the option provider '{field.Control.OptionsSource.Provider}', which is not registered.");
+    }
+
+    /// <summary>Review DA-03: History of an app with a shared AuditTable must read only its own RefType values.</summary>
+    private static void CheckSharedAuditTables(IReadOnlyList<AtlasAppManifest> manifests, List<AtlasCheckItem> items)
+    {
+        foreach (IGrouping<string, AtlasAppManifest> group in manifests
+            .Where(x => x.Enabled && !string.IsNullOrWhiteSpace(x.AuditTable))
+            .GroupBy(x => x.AuditTable!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(x => x.Count() > 1))
+        {
+            foreach (AtlasAppManifest manifest in group.Where(x => x.AuditReadRefTypes() == null))
+                items.Add(new(AtlasCheckSeverity.Warning, manifest.Code,
+                    $"the AuditTable {group.Key} is shared with {string.Join(", ", group.Where(x => x != manifest).Select(x => x.Code))}, but the manifest has no AuditRefTypes and no Parent, so History shows the entries of the other apps with the same ID. Set \"AuditRefTypes\": [\"{manifest.Code}\"]."));
+        }
     }
 
     /// <summary>

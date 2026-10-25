@@ -70,8 +70,16 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
         ArgumentNullException.ThrowIfNull(manifest);
         AtlasTable table = AuditTable(manifest);
 
-        List<Dictionary<string, object?>> rows = [.. context.Records(table.FullName).AsNoTracking()
-            .Where(x => EF.Property<int?>(x, "RefID") == refId)
+        IQueryable<Dictionary<string, object?>> query = context.Records(table.FullName).AsNoTracking()
+            .Where(x => EF.Property<int?>(x, "RefID") == refId);
+        if (manifest.AuditReadRefTypes() is { } refTypes && table.HasColumn("RefType"))
+        {
+            // Review DA-03: in a shared audit table, record 42 of another app is not this record.
+            List<string> values = [.. refTypes];
+            query = query.Where(x => values.Contains(EF.Property<string>(x, "RefType")));
+        }
+
+        List<Dictionary<string, object?>> rows = [.. query
             .OrderByDescending(x => EF.Property<DateTime?>(x, "CreatedDate"))
             .ThenByDescending(x => EF.Property<int>(x, AtlasTable.KeyColumnName))];
 

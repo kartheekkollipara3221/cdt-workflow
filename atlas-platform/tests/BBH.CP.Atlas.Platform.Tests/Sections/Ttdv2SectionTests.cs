@@ -334,6 +334,34 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     }
 
     [Fact]
+    public async Task History_reads_only_the_AuditRefTypes_of_the_app()
+    {
+        // Review DA-03: a shared audit table has entries of other apps with the same RefID.
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        await database.ScalarAsync($"""
+            INSERT INTO TTDV2.AuditLog (RefID, RefType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
+            VALUES ({id}, 'TTD', 'Old', 'old', '2026-01-01', '[]'), ({id}, 'OTHERAPP', 'Other', 'other', '2026-01-02', '[]');
+            """);
+
+        Assert.Equal(2, Svc(Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id).Count); // no setting: all entries (as before)
+
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.app.json" ? text
+            : text.Replace("\"Enabled\": true", "\"Enabled\": true, \"AuditRefTypes\": [ \"TTDV2\", \"TTD\" ]", StringComparison.Ordinal));
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            List<CPAuditLog> audit = custom.Service(_registry, Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id);
+
+            CPAuditLog entry = Assert.Single(audit);
+            Assert.Equal("Old", entry.CreatedBy);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task An_update_with_no_Version_is_refused()
     {
         // Review DA-02: a caller that does not send Version must not overwrite changes of other users.

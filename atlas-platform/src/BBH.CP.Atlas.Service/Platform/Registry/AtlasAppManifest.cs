@@ -38,6 +38,16 @@ public sealed class AtlasAppManifest
 
     public string? AttachmentTable { get; set; }
 
+    /// <summary>
+    /// Review DA-03: the RefType values that History reads from the AuditTable, for example ["TTDV2", "TTD"].
+    /// Null: only RefType = Code when Parent is set (a shared family audit table), else all entries of the record.
+    /// </summary>
+    public List<string>? AuditRefTypes { get; set; }
+
+    /// <summary>The RefType filter of the History read, or null for no filter (review DA-03).</summary>
+    public IReadOnlyList<string>? AuditReadRefTypes() =>
+        AuditRefTypes is { Count: > 0 } list ? list : Parent != null ? [Code] : null;
+
     /// <summary>Key of a custom service class; null = ConfigSectionService (spec 07, 4.1).</summary>
     public string? Service { get; set; }
 

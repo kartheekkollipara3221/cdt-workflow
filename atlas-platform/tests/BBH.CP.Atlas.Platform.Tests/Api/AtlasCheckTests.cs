@@ -234,6 +234,19 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         }
     }
 
+    [Fact]
+    public async Task A_shared_AuditTable_without_AuditRefTypes_is_a_warning()
+    {
+        CopyRealConfig();
+        File.WriteAllText(Path.Combine(_folder, "PBSP.app.json"),
+            """{ "Code": "PBSP", "Form": "TTDV2.json", "Table": "TTDV2.General", "AuditTable": "TTDV2.AuditLog", "AuditRefTypes": [ "PBSP" ] }""");
+
+        (_, string report) = await CheckAsync(_folder);
+
+        Assert.Contains("WARNING TTDV2: the AuditTable TTDV2.AuditLog is shared with PBSP", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("WARNING PBSP: the AuditTable", report, StringComparison.Ordinal);
+    }
+
     private void ReplaceInForm(string oldText, string newText)
     {
         string form = Path.Combine(_folder, "TTDV2.json");
