@@ -67,3 +67,7 @@
 .atlas-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .atlas-table th, .atlas-table td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #eef0f4; vertical-align: top; }
 .atlas-table th { color: var(--atlas-muted); font-weight: 600; }
+
+.atlas-unsupported { padding: 0.5rem 0.6rem; border: 1px dashed var(--atlas-danger); border-radius: 6px; color: var(--atlas-danger); font-size: 0.85rem; }
+.atlas-radio-group { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; }
+.atlas-radio { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 400; }

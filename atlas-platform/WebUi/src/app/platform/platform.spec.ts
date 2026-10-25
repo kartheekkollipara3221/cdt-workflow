@@ -8,8 +8,8 @@ import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atl
 import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid } from './form/atlas-form-model';
 import { atlasValidators, errorText } from './form/atlas-validators';
 import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
-import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
-import { AtlasTextRenderer } from './form/renderers/atlas-renderers';
+import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
+import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
 import { toSelectOptions } from './atlas-pbdev';
 
 class Recorder implements AtlasEffectTarget {
@@ -214,5 +214,22 @@ describe('hidden fields (review NG-03)', () => {
     const shown = (name: string) => isShown(name, containerOf(form), () => true);
 
     expect(shownInvalid(form, group, shown)).toBe(true);
+  });
+});
+
+describe('control types (review NG-04)', () => {
+  it('knows the types of the current JSON and gives a note for a type with no renderer', () => {
+    const registry = new AtlasRendererRegistry();
+    expect(registry.resolve('check')).toBe(AtlasCheckboxRenderer);
+    expect(registry.resolve('option')).toBe(AtlasRadioRenderer);
+    expect(registry.has('filepicker')).toBe(false);
+    expect(registry.resolve('filepicker')).toBe(AtlasUnsupportedRenderer);
+  });
+
+  it('adds the renderers of an app with provideAtlasRenderers', () => {
+    TestBed.configureTestingModule({ providers: [provideAtlasRenderers({ rating: AtlasTextRenderer }, ['rating'])] });
+    const registry = TestBed.inject(AtlasRendererRegistry);
+    expect(registry.get('rating')).toBe(AtlasTextRenderer);
+    expect(registry.hasInput('rating')).toBe(false);
   });
 });

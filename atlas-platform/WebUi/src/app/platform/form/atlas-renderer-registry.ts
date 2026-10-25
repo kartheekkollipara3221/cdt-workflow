@@ -1,8 +1,11 @@
 // COPY to the target: WebUi/Source/App/platform/form/. The renderer registry (spec 01, 5.5): control Type to
-// component. A new control type is one register() call; the form component does not change.
-import { Injectable, Type } from '@angular/core';
+// component. A new control type is one provideAtlasRenderers entry (or register() call); the form does not change.
+import { EnvironmentProviders, Injectable, Type, inject, provideEnvironmentInitializer } from '@angular/core';
 import {
   AtlasCheckboxRenderer,
+  AtlasRadioRenderer,
+  AtlasRendererBase,
+  AtlasUnsupportedRenderer,
   AtlasDateRenderer,
   AtlasGridRowRenderer,
   AtlasNgSelectRenderer,
@@ -24,6 +27,8 @@ export class AtlasRendererRegistry {
     ['datetimepicker', AtlasDateRenderer],
     ['date', AtlasDateRenderer],
     ['checkbox', AtlasCheckboxRenderer],
+    ['check', AtlasCheckboxRenderer],
+    ['option', AtlasRadioRenderer],
     ['user', AtlasUserRenderer],
     ['grid', AtlasGridRowRenderer],
   ]);
@@ -53,4 +58,26 @@ export class AtlasRendererRegistry {
   has(type: string | null | undefined): boolean {
     return this.get(type) !== null;
   }
+
+  /** The renderer of the type, or the "unsupported" note for a type with no renderer (review NG-04). */
+  resolve(type: string | null | undefined): Type<unknown> {
+    return this.get(type) ?? AtlasUnsupportedRenderer;
+  }
+}
+
+/**
+ * Adds renderers of an app (review NG-04), for example in app.config.ts:
+ * provideAtlasRenderers({ rating: RatingRenderer }). A renderer extends AtlasRendererBase.
+ * Types in noInput have no input for the label (as "user" and "grid").
+ */
+export function provideAtlasRenderers(
+  renderers: Record<string, Type<AtlasRendererBase>>,
+  noInput: readonly string[] = [],
+): EnvironmentProviders {
+  return provideEnvironmentInitializer(() => {
+    const registry = inject(AtlasRendererRegistry);
+    for (const [type, component] of Object.entries(renderers)) {
+      registry.register(type, component, !noInput.includes(type));
+    }
+  });
 }

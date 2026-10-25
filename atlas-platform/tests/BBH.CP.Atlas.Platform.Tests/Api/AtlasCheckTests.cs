@@ -129,6 +129,19 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.DoesNotContain("ERROR TTDV2", report, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_control_type_with_no_client_renderer_is_a_warning()
+    {
+        CopyRealConfig();
+        string form = Path.Combine(_folder, "TTDV2.json");
+        File.WriteAllText(form, File.ReadAllText(form).Replace("\"Type\": \"textarea\"", "\"Type\": \"filepicker\"", StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.True(code == 0, report);
+        Assert.Contains("WARNING TTDV2: the control 'WorkDescription' has the type 'filepicker'", report, StringComparison.Ordinal);
+    }
+
     private void CopyRealConfig()
     {
         Directory.CreateDirectory(_folder);

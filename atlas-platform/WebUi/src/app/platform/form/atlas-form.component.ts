@@ -83,6 +83,12 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     this.visible.set(visible);
     this.required.set(required);
     this.form = buildFormGroup(section);
+    // A control with no renderer cannot be edited, so it is not validated or sent (review NG-04).
+    for (const control of this.controlsByName.values()) {
+      if (!this.registry.has(control.Type)) {
+        this.form.get(control.Name)?.disable({ emitEvent: false });
+      }
+    }
     this.section.set(section);
 
     // Effects run when the form is built and each time the source value changes (spec 01, 5.1).

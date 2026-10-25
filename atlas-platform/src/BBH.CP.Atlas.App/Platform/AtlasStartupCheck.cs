@@ -119,6 +119,8 @@ public static class AtlasStartupCheck
             CheckDashboard(configStore, tables, manifest, Error);
             if (form != null)
                 CheckRoles(context, manifest, form, Warning);
+            if (form?.Section != null)
+                CheckControlTypes(form, Warning);
         }
 
         CheckModel(services, items);
@@ -267,6 +269,22 @@ public static class AtlasStartupCheck
             error($"{setting} '{table.FullName}': the column '{column.Name}' has the type '{column.SqlType}', which the platform does not support.");
 
         return table;
+    }
+
+    /// <summary>The control types of the platform client (WebUi platform/form/atlas-renderer-registry.ts).</summary>
+    private static readonly HashSet<string> ClientTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "section", "text", "currency", "percent", "select", "ngselect", "textarea", "datetimepicker", "date",
+        "checkbox", "check", "option", "user", "grid"
+    };
+
+    /// <summary>Review NG-04: a type with no client renderer shows only a note and cannot be edited.</summary>
+    private static void CheckControlTypes(CPAtlasApplicationConfig form, Action<string> warning)
+    {
+        IEnumerable<CPApplicationControl> controls = (form.Section!.Controls ?? [])
+            .SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []));
+        foreach (CPApplicationControl control in controls.Where(x => !ClientTypes.Contains(x.Type ?? "")))
+            warning($"the control '{control.Name}' has the type '{control.Type}', which the platform client does not render (unless the app adds a renderer with provideAtlasRenderers).");
     }
 
     /// <summary>Builds the EF Core model of all registered tables once, so a model error is found at start-up.</summary>

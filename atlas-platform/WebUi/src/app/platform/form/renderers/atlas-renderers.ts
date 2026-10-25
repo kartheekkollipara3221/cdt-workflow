@@ -1,7 +1,7 @@
 // COPY to the target: WebUi/Source/App/platform/form/renderers/. One small component for each control Type.
 // Each renderer gets the control (JSON) and the form group, and binds the form control by name. The label, the
 // required mark and the error text are drawn by the form component, so a renderer has only the input.
-import { Component, Directive, Input } from '@angular/core';
+import { Component, Directive, Input, OnInit, isDevMode } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import {
@@ -16,8 +16,12 @@ import {
 } from '../../atlas-pbdev';
 import { CPApplicationControl, CPGridColumn, CPKeyValue } from '../../atlas-models';
 
+/**
+ * The base class of a renderer (review NG-04). A renderer of an app extends it and is added with
+ * provideAtlasRenderers({ myType: MyRenderer }) or AtlasRendererRegistry.register. The form gives the two inputs.
+ */
 @Directive()
-abstract class AtlasRenderer {
+export abstract class AtlasRendererBase {
   @Input({ required: true }) control!: CPApplicationControl;
   @Input({ required: true }) group!: FormGroup;
 
@@ -31,14 +35,14 @@ abstract class AtlasRenderer {
   imports: [ReactiveFormsModule, InputComponent],
   template: `<pbdev-input inputType="string" [inputId]="'ctl_' + control.Name" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
 })
-export class AtlasTextRenderer extends AtlasRenderer {}
+export class AtlasTextRenderer extends AtlasRendererBase {}
 
 @Component({
   selector: 'atlas-select-renderer',
   imports: [ReactiveFormsModule, SelectComponent, AtlasControlIdDirective],
   template: `<pbdev-select [atlasControlId]="'ctl_' + control.Name" [options]="options" [formControl]="formControl" />`,
 })
-export class AtlasSelectRenderer extends AtlasRenderer {
+export class AtlasSelectRenderer extends AtlasRendererBase {
   private source: CPKeyValue[] | null | undefined;
   private mapped: SelectOption[] = [];
 
@@ -60,35 +64,35 @@ export class AtlasSelectRenderer extends AtlasRenderer {
     [clearable]="true" [virtualScroll]="true" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl"
     [labelForId]="'ctl_' + control.Name" />`,
 })
-export class AtlasNgSelectRenderer extends AtlasRenderer {}
+export class AtlasNgSelectRenderer extends AtlasRendererBase {}
 
 @Component({
   selector: 'atlas-textarea-renderer',
   imports: [ReactiveFormsModule, TextareaComponent, AtlasControlIdDirective],
   template: `<pbdev-textarea [atlasControlId]="'ctl_' + control.Name" [rows]="control.Row ?? 3" [formControl]="formControl" />`,
 })
-export class AtlasTextareaRenderer extends AtlasRenderer {}
+export class AtlasTextareaRenderer extends AtlasRendererBase {}
 
 @Component({
   selector: 'atlas-date-renderer',
   imports: [ReactiveFormsModule, DatePickerComponent, AtlasControlIdDirective],
   template: `<pbdev-date-picker [atlasControlId]="'ctl_' + control.Name" [formControl]="formControl" />`,
 })
-export class AtlasDateRenderer extends AtlasRenderer {}
+export class AtlasDateRenderer extends AtlasRendererBase {}
 
 @Component({
   selector: 'atlas-checkbox-renderer',
   imports: [ReactiveFormsModule, CheckboxComponent, AtlasControlIdDirective],
   template: `<pbdev-checkbox [atlasControlId]="'ctl_' + control.Name" inputLabel="" [formControl]="formControl" />`,
 })
-export class AtlasCheckboxRenderer extends AtlasRenderer {}
+export class AtlasCheckboxRenderer extends AtlasRendererBase {}
 
 /** "user": a LAN ID shown as the display name (the option that the server adds). Read-only. */
 @Component({
   selector: 'atlas-user-renderer',
   template: `<div class="atlas-readonly" [attr.title]="formControl.value || null">{{ displayName }}</div>`,
 })
-export class AtlasUserRenderer extends AtlasRenderer {
+export class AtlasUserRenderer extends AtlasRendererBase {
   get displayName(): string {
     const value = this.formControl.value as string | null;
     if (!value) {
@@ -105,7 +109,8 @@ export class AtlasUserRenderer extends AtlasRenderer {
 @Component({
   selector: 'atlas-grid-row-renderer',
   imports: [ReactiveFormsModule],
-  template: `<div class="atlas-grid-row" [formGroup]="rowGroup">
+  template: `@if (rowGroup) {
+  <div class="atlas-grid-row" [formGroup]="rowGroup">
     @for (column of columns; track column.field) {
       <label class="atlas-grid-cell" [style.min-width.px]="(column.width ?? 120) * 0.7">
         <span class="atlas-grid-header">{{ column.headerName }}</span>
@@ -115,11 +120,15 @@ export class AtlasUserRenderer extends AtlasRenderer {
         }
       </label>
     }
-  </div>`,
+  </div>
+  } @else {
+    <div class="atlas-unsupported" role="note">The grid "{{ control.Name }}" needs Grid.BindMode "SingleRowFields".</div>
+  }`,
 })
-export class AtlasGridRowRenderer extends AtlasRenderer {
-  get rowGroup(): FormGroup {
-    return this.group.get(this.control.Name) as FormGroup;
+export class AtlasGridRowRenderer extends AtlasRendererBase {
+  get rowGroup(): FormGroup | null {
+    const item = this.group.get(this.control.Name);
+    return item instanceof FormGroup ? item : null;
   }
 
   get columns(): CPGridColumn[] {
@@ -127,7 +136,36 @@ export class AtlasGridRowRenderer extends AtlasRenderer {
   }
 
   cellError(column: CPGridColumn): string {
-    const errors = this.rowGroup.get(column.field!)?.errors ?? {};
+    const errors = this.rowGroup?.get(column.field!)?.errors ?? {};
     return errors['server'] ?? this.control.Validator?.Message ?? 'Not valid.';
+  }
+}
+
+/** "option": one radio button for each option, as the current section master (a plain input type="radio"). */
+@Component({
+  selector: 'atlas-radio-renderer',
+  imports: [ReactiveFormsModule],
+  template: `<div class="atlas-radio-group" role="radiogroup">
+    @for (option of control.Options ?? []; track $index) {
+      <label class="atlas-radio">
+        <input type="radio" [attr.id]="$index === 0 ? 'ctl_' + control.Name : null" [name]="'ctl_' + control.Name"
+          [value]="option.Value" [formControl]="formControl" />
+        {{ option.Label ?? option.Value }}
+      </label>
+    }
+  </div>`,
+})
+export class AtlasRadioRenderer extends AtlasRendererBase {}
+
+/** A control Type with no renderer (review NG-04): a visible note instead of a missing field. The form disables it. */
+@Component({
+  selector: 'atlas-unsupported-renderer',
+  template: `<div class="atlas-unsupported" role="note">Unsupported control type "{{ control.Type }}".</div>`,
+})
+export class AtlasUnsupportedRenderer extends AtlasRendererBase implements OnInit {
+  ngOnInit(): void {
+    if (isDevMode()) {
+      console.warn(`Atlas: no renderer for the control type "${this.control.Type}" (${this.control.Name}). Register one with provideAtlasRenderers.`);
+    }
   }
 }
