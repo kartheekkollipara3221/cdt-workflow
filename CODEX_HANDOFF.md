@@ -1,10 +1,10 @@
-# RESUME HERE - Atlas platform specs, module 10 Engine adapter draft 2 done, not committed (modules 1,3-9 committed); code later in atlas-platform/ (option B) - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 11 draft 2 done, not committed; NEXT = TTD pilot build spec (modules 1,3-10 committed); code later in atlas-platform/ (option B) - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
 (TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU; all Section Master) integrate with
-low-code changes (JSON + SQL + one registration line), backward compatible. DESIGN ONLY (Option 3): specs in
-docs/atlas-platform/, no Atlas code, no workflow engine change, same repo/branch (console-code-first-0518).
+low-code changes (JSON + SQL + one registration line), backward compatible. Phase 1 = design specs in
+docs/atlas-platform/ (done for Section Master apps); no workflow engine change; same repo/branch (console-code-first-0518).
 UPDATE 2026-10-25: the user is also the target decision maker. After the design session we CODE the generic
 approach; the user integrates it at the target, backward compatible. Code location (decided, option B): separate solution atlas-platform/ in this repo (not in WorkflowEngine.sln),
 built against stand-ins for missing target parts; user copies into target. Coding starts after the design session.
@@ -74,14 +74,26 @@ Nested lists are not supported: keep bullets flat.)
   + Label/Old + first item _Event, AuditMode Client|Server (v1/AuditLog no-op in Server), GetAuditLog access check
   (History) + sort + optional fields, workflow history via engine IWorkflowInspectionReader merged (Source=Workflow).
   Q1 answered: workflow steps + field changes in one list. Q2 answered: existing tables keep local time, new UTC, API returns CreatedDateUtc. Q3 answered: no retention rule. Q4 answered: no Audit:false fields today (feature optional).
-- Module 10 Engine adapter: 10-engine-adapter.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings EA-01..EA-05 (H6 engine
+- Module 10 Engine adapter: 10-engine-adapter.md/.html - draft 2, ALL questions answered, committed 3899622. Findings EA-01..EA-05 (H6 engine
   commits inside Atlas tx; H8 Success not read, SLA error swallowed; ~150 lines per service; roles all-apps/fixed MFO,
   recipients by display name .ToList()[0]; new GUID idempotency). Design: IAtlasWorkflowAdapter (DI engine services,
   binding from JSON), instance ID WF-<prefix><ID> unchanged, order: write+SaveChanges -> engine last -> Success?
   commit : rollback+error; dispatch after commit; state check on load (WorkflowSync audit); RequestId idempotency;
   recipients by LAN ID. No engine change. Q1 answered: engine last + check on load + error log, no background job. Q2 answered: outbox retry job runs;
   H9 migrations to be applied (module 11 prerequisite). Q3 answered: refused action always stops save. Q4 answered: next Step Master app uses same engine+adapter (step-level binding).
-- Modules not started: 2 Step Master (waits; CDT + one more app), 11 Config/deployment.
+- Module 11 Config/deployment: 11-config-deployment.md/.html - draft 2, ALL questions answered, NOT COMMITTED. Findings CD-01..CD-06 (env
+  values in base appsettings; named persons in Smtp:RoleEmailMap base file; H9 engine migrations missing at target;
+  no SQL script order/log; JSON loader must accept comments+trailing commas; fixed log paths). Design: config layers
+  (base no hosts/emails; appsettings.<Env>.json; TPAM unchanged), tolerant STJ loader, --atlas-check command in
+  pipeline, sql/release-<n>/ numbered scripts, engine idempotent migration script first, dbo.CP_Atlas_ScriptLog,
+  switch table, log event names, release plan (see Q4). Q1 answered: today manual server edits; team must move to env files (guide 4.1.1). Q2 answered: DBA runs idempotent engine script first.
+  Q3 answered: dbo.CP_Atlas_ScriptLog (sql/11-script-log.sql). Q4 answered: release order P1 TTD pilot -> P2 first new app -> P3 security fixes
+  (H1,H2,DB-01; accepted risk) -> P4 migrate SQMS/AIN (+H6/H8, enforce, retire old component) -> P5 later.
+  Platform built BESIDE current code: new generic form component + generic section service; old Section Master frozen.
+  SQL: sql/11-script-log.sql (release P1).
+- Modules not started: 2 Step Master (on hold; CDT + one more app). Design session done for the 13 Section Master
+  apps. NEXT: write docs/atlas-platform/12-ttd-pilot-build.md = one checklist of every decision TTD needs (vertical
+  slice), with comparison tests vs CPTTDService -> becomes the coding plan for atlas-platform/.
 
 ## Key facts (do not re-derive)
 - Live: .NET 10 + EF Core 10; IIS Windows auth; live SQMS schema is SQMS (target engine already switched; local
@@ -90,14 +102,25 @@ Nested lists are not supported: keep bullets flat.)
   Owner all incl. delete; own = CreatedBy or TaxPreparerName.
 - Families: SQMS (Opportunity parent, Bid child); one future app parent + 2 children, maybe one parent + 1 child.
 - Audit JSON keeps Name/Value keys and adds Old (History window parses Name/Value).
-- Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
+- Scaffold: SQMS/TTD/AIN + all dbo tables except the 19 engine tables and MockSectionData (module 5 Q7); new apps use own
+  schema + shared-type entities (no scaffold).
+- Release plan (module 11 4.7, user decision): P1 TTD pilot -> P2 first new app -> P3 H1/H2/DB-01 fixes (accepted risk,
+  do not re-argue) -> P4 migrate SQMSO/SQMSB/AIN (+H6/H8, enforce) -> P5 attachments/adapter/paging/Step Master.
+  Build BESIDE current code: new generic form component + ConfigSectionService; old Section Master frozen.
+
+## Next steps
+1. Commit module 11 (+ sql/11-script-log.sql, README, handoff) when the user asks.
+2. Write docs/atlas-platform/12-ttd-pilot-build.md (+ .html): one checklist of all decisions TTD needs (modules 1, 3-11),
+   scope in/out of P1, comparison tests vs CPTTDService, file list for atlas-platform/. Ask open points one at a time.
+3. Then plan coding: atlas-platform/ solution layout, stand-ins for missing target parts (Infra, TPAMAPIAccess, @pbdev).
 
 ## Uncommitted at save time
-docs/atlas-platform/10-engine-adapter.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
+docs/atlas-platform/11-config-deployment.md (+ .html), sql/11-script-log.sql, docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 10 Engine adapter draft 2 is done;
-commit it when I ask, then start module 11 Config/deployment (last design module before coding). One question at a time, short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 11 is done (commit when I ask).
+Next: write the TTD pilot build spec (12-ttd-pilot-build.md) from all module decisions, then plan coding in atlas-platform/.
+One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25

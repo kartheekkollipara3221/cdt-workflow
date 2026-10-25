@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration and deployment: reusable design</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · module 11 · design only · draft 2 · 2026-10-25</div>
+<h1>Configuration and deployment: reusable design</h1>
+<p class="lead">This report examines how CP Atlas is configured and deployed in each environment. It gives configuration layers, tolerant JSON load rules, a check before each release, an order for the SQL scripts, and one release plan for all modules.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered (section 9). Design only. No target code is changed.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>6</b><span>findings (CD-01 to CD-06)</span></div>
+<div class="kpi"><b>1</b><span>High finding (H9 engine migrations)</span></div>
+<div class="kpi"><b>6</b><span>feature switches for safe rollback</span></div>
+<div class="kpi"><b>0</b><span>open questions</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>The platform moves app behaviour into configuration (JSON, settings) and SQL scripts. Thus the configuration and the scripts must be deployed as carefully as the code. This module defines the configuration layers for each environment, the JSON load rules, the check before a release, the order of the SQL scripts, and the release plan for all modules.</p>
+<p>Scope: <code>appsettings</code> files, the configuration folder, the JSON parse options, the start-up check in a pipeline, the engine migrations at the target (issue H9), the platform SQL scripts, the feature switches (<code>AccessMode</code>, <code>AuditMode</code>, <code>Enabled</code>), the logs, and the release order. Related items: the registry (module 7), the start-up check (module 7, 4.8), all SQL scripts of modules 1, 4, 5, 6 and 8.</p>
+</section>
+<section id="2-current-behaviour">
+<h2>2. Current behaviour</h2>
+<ul>
+<li><code>appsettings.json</code> holds the settings of one developer environment: test SQL Server and Oracle hosts, <code>localhost</code> URLs, absolute JSON paths on one computer, and an empty JWT key. <code>appsettings.Development.json</code> holds only the log levels. The copy has no QC or production file. Evidence: <code>Atlasapp/Atlasapp/appsettings.json.txt:1-60</code>; <code>appsettings.Development.json.txt</code>.</li>
+<li>The database password is not in the file. <code>TPAMAPIAccess.GetConnectionString</code> gets the connection (TPAM credential service). Evidence: <code>program.cs.txt:25-26</code>; <code>appsettings.json.txt:22-25</code>.</li>
+<li>The engine e-mail map <code>Smtp:RoleEmailMap:*</code> lists the addresses of two named persons for all CDT roles, in the base file. Evidence: <code>appsettings.json.txt:46-53</code>.</li>
+<li>The JSON files have <code>//</code> comments and trailing commas. <code>Newtonsoft.Json</code> accepts them. Evidence: <code>Config/CDT.json.txt:26</code>; <code>Config/SQMSO.json.txt:115</code>.</li>
+<li>log4net writes to fixed paths: <code>C:\Logs\CPAtlas\AppLog.log</code> and <code>D:\CPAtlasLogs\CPAtlas_Debug.log</code>. Evidence: <code>log4net.config.txt:3, 22</code>.</li>
+<li>The target database script (2026-10-06) does not have the two latest engine migrations: <code>20261014222530_AddOutboxRetryScheduling</code> and <code>20261018214009_AddCdtV2SlaReminderControls</code> (issue H9). Evidence: <code>CP_Sharepoint.txt</code>; <code>src/WorkflowEngine.Infrastructure/Migrations</code>.</li>
+<li>The client has <code>environment.ts</code> (production: <code>apiBaseUrl</code> = <code>/v1/</code>, same server) and <code>environment.development.ts</code> (<code>https://localhost:44399/v1/</code>). Evidence: <code>WebUi/WebUi/Source/Environments/</code>.</li>
+</ul>
+</section>
+<section id="3-findings">
+<h2>3. Findings</h2>
+
+<div class="issue med">
+<h3><span class="badge b-med">CD-01</span>Environment values are in the base settings file</h3>
+<p>The base <code>appsettings.json</code> has the test hosts, <code>localhost</code> URLs and developer paths. Any environment that does not override each key uses the test values. Nothing stops a production server from connecting to the test database if one key is missing.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">CD-02</span>Named persons receive all CDT role e-mails</h3>
+<p><code>Smtp:RoleEmailMap</code> sends the e-mails of all CDT roles (Checker, Trading Desk, Maker, ...) to two named persons, in the base file. If a QC or production file does not override each key, these persons get production e-mails. The map belongs to the engine configuration; the target team owns the values.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">CD-03</span>The engine migrations at the target are not current <span class="area">issue H9</span></h3>
+<p>The outbox retry (<code>NextAttemptAtUtc</code>) and the CDT v2 SLA reminder controls are not in the target database. Module 10 needs the outbox retry (question 2 of module 10). There is no defined step that applies the engine migrations at the target.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">CD-04</span>No order for the SQL scripts</h3>
+<p>The modules deliver many additive scripts (roles view, LAN ID columns and backfill, rowversion, visibility template, grant/revoke, new-app template). Nothing records which script ran in which database, or in which order the scripts must run.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">CD-05</span>The JSON parse rules must stay the same</h3>
+<p>The platform will load JSON with its own loader (module 7, 4.7). If the loader uses strict <code>System.Text.Json</code> rules, the current files with comments and trailing commas fail to load. The parse rules must stay as tolerant as <code>Newtonsoft.Json</code>.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">CD-06</span>Fixed log paths</h3>
+<p>The log paths are fixed in <code>log4net.config</code>. A server with no <code>D:</code> drive loses the debug log.</p>
+</div>
+</section>
+<section id="4-reusable-design">
+<h2>4. Reusable design</h2>
+
+<h3>4.1 Configuration layers</h3>
+<div class="table-wrap"><table>
+<tr><th>Layer</th><th>Holds</th><th>Owner</th></tr>
+<tr><td><code>appsettings.json</code></td><td>Values that are the same in all environments: log levels, defaults, feature defaults. No host, no URL, no e-mail address.</td><td>Target team (code review)</td></tr>
+<tr><td><code>appsettings.{Development,QC,Production}.json</code></td><td>Hosts, URLs, CORS origin, e-mail maps, <code>AppSettings:Modules:&lt;Code&gt;:*</code> overrides (<code>Enabled</code>, <code>AccessMode</code>, <code>AuditMode</code>)</td><td>Target team (code review); production values approved by the business owner</td></tr>
+<tr><td>TPAM</td><td>Database and API credentials (no change)</td><td>Security</td></tr>
+<tr><td><code>Config/</code> folder</td><td>App manifests, form JSON, dashboard JSON (module 7)</td><td>Target team (code review)</td></tr>
+</table></div>
+<ul>
+<li>The IIS application pool sets <code>ASPNETCORE_ENVIRONMENT</code> (<code>QC</code>, <code>Production</code>).</li>
+<li>A required environment value that is missing stops the start-up with a clear message (<code>AppSettings:HostedURL is not set for Production</code>). There is no fall-back to a test value. This removes CD-01.</li>
+<li>The <code>Smtp:RoleEmailMap</code> values move to the environment files. The base file keeps no address. This removes CD-02. (Engine configuration keys: the keys do not change, only the file that holds them.)</li>
+</ul>
+<h3>4.1.1 Team guide: environment files</h3>
+<p>Decision 2026-10-25 (question 1): today the values are changed on the server after each deployment. The target is the environment files of 4.1. The team does not know them yet, so this guide is part of the release P1 training.</p>
+<p>How it works:</p>
+<ul>
+<li>ASP.NET Core reads <code>appsettings.json</code> first, then <code>appsettings.&lt;Environment&gt;.json</code>. A key in the environment file replaces the same key of the base file. A key that is not in the environment file keeps the base value.</li>
+<li><code>&lt;Environment&gt;</code> is the value of <code>ASPNETCORE_ENVIRONMENT</code> on the server. On IIS, set it one time for each site, in <code>web.config</code>:</li>
+</ul>
+<pre><code>&lt;aspNetCore processPath="dotnet" arguments=".\BBH.CP.Atlas.App.dll" hostingModel="inprocess"&gt;
+  &lt;environmentVariables&gt;
+    &lt;environmentVariable name="ASPNETCORE_ENVIRONMENT" value="QC" /&gt;
+  &lt;/environmentVariables&gt;
+&lt;/aspNetCore&gt;</code></pre>
+<ul>
+<li>All files are in the release package. The same package goes to each server; only <code>ASPNETCORE_ENVIRONMENT</code> is different. Nobody changes a file on the server after the deployment.</li>
+<li>A change of a value is a change of the file in the repository, with a code review, and a new deployment.</li>
+<li>Secrets never go in these files. The database credentials stay in TPAM.</li>
+</ul>
+<p>Example <code>appsettings.QC.json</code>:</p>
+<pre><code>{
+  "AppSettings": {
+    "HostedURL": "https://qc-atlas.example.internal",
+    "HostedClientURL": "https://qc-atlas.example.internal",
+    "Modules": {
+      "PBSP": { "Enabled": true, "AccessMode": "LogOnly" }
+    }
+  },
+  "Smtp:RoleEmailMap:Checker": "qc-checker-group@example.internal"
+}</code></pre>
+<p>Checklist for each release:</p>
+<ul>
+<li>The new key is in the base file (default) or in each environment file that needs a different value.</li>
+<li>No host, URL, e-mail address or secret is in the base file.</li>
+<li><code>--atlas-check --environment &lt;Env&gt;</code> (4.3) passes for QC and Production.</li>
+<li>After the deployment, the start-up report in the log shows the environment name and the switch values (4.5).</li>
+</ul>
+<p>Change-over from the current way (one time, in release P1):</p>
+<ol>
+<li>Copy the values that are changed on each server today into <code>appsettings.QC.json</code> and <code>appsettings.Production.json</code> in the repository.</li>
+<li>Add <code>ASPNETCORE_ENVIRONMENT</code> to <code>web.config</code> of each site.</li>
+<li>Deploy the package with no manual change. Compare the start-up report with the old values.</li>
+<li>From then on, no manual change on the server.</li>
+</ol>
+<h3>4.2 JSON parse rules</h3>
+<p>The platform loader uses <code>System.Text.Json</code> with <code>ReadCommentHandling = Skip</code>, <code>AllowTrailingCommas = true</code>, <code>PropertyNameCaseInsensitive = true</code>, and string enums by name. The current files load with no change. A test loads each current JSON file with the old and the new loader and compares the result. This removes CD-05.</p>
+<h3>4.3 Check before a release</h3>
+<ul>
+<li>The start-up check (module 7, 4.8) can also run as a command: <code>BBH.CP.Atlas.App.exe --atlas-check --environment QC</code>. It loads the settings, the manifests, the JSON files and the database metadata, runs all checks, writes the report, and exits with code 0 (no errors) or 1 (errors). It does not start the web server.</li>
+<li>The release pipeline runs it for the target environment before the files are copied. A release with errors stops.</li>
+</ul>
+<h3>4.4 SQL scripts</h3>
+<ul>
+<li>One release folder for each release: <code>sql/release-&lt;n&gt;/</code>. Each script has a number: <code>010-engine-migrations.sql</code>, <code>020-active-user-roles-view.sql</code>, <code>030-lanid-columns.sql</code>, ... The DBA runs them in number order.</li>
+<li>Each script is additive and idempotent (as all module scripts are today).</li>
+<li>Engine migrations: the target team makes an idempotent script from the engine migrations (<code>dotnet ef migrations script --idempotent</code>) and puts it first in the release folder. The API does not run migrations at start-up. Decision 2026-10-25 (question 2): the DBA runs the idempotent engine script as the first script of the release; the API login keeps no DDL right in QC and production (module 5, question 4). This removes CD-03.</li>
+<li>A script tracking table (decision 2026-10-25, question 3): <code>dbo.CP_Atlas_ScriptLog</code> (<code>ScriptName</code>, <code>Release</code>, <code>AppliedAtUtc</code>, <code>AppliedBy</code>). Script: <a href="sql/11-script-log.sql">sql/11-script-log.sql</a>, run once in release P1. Each later platform script ends with the short "log this script" block from that file and writes one row. The API login has <code>SELECT</code> only. The start-up check warns if a script of the current release is not in the table. This removes CD-04.</li>
+</ul>
+<h3>4.5 Feature switches</h3>
+<div class="table-wrap"><table>
+<tr><th>Switch</th><th>Values</th><th>Default</th><th>Module</th></tr>
+<tr><td><code>AccessMode</code></td><td><code>LogOnly</code>, <code>Enforce</code></td><td><code>LogOnly</code></td><td>6</td></tr>
+<tr><td><code>AuditMode</code></td><td><code>Client</code>, <code>Server</code></td><td><code>Client</code> (existing), <code>Server</code> (new)</td><td>9</td></tr>
+<tr><td><code>RuleMode</code></td><td><code>FirstMatch</code>, <code>MostPermissive</code></td><td><code>FirstMatch</code> (existing), <code>MostPermissive</code> (TTD, new)</td><td>4</td></tr>
+<tr><td><code>RuleDefault</code></td><td><code>Keep</code>, <code>ReadOnly</code>, <code>Hidden</code></td><td><code>Keep</code> (existing), <code>ReadOnly</code> (new)</td><td>4</td></tr>
+<tr><td><code>Enabled</code></td><td><code>true</code>, <code>false</code></td><td><code>true</code></td><td>7</td></tr>
+<tr><td><code>Load</code> (dashboard)</td><td><code>Eager</code>, <code>Lazy</code></td><td><code>Eager</code></td><td>3</td></tr>
+</table></div>
+<ul>
+<li>Each switch is in the manifest and can be overridden for each environment (4.1).</li>
+<li>A rollback of a behaviour change is a change of a switch and a restart. No new build.</li>
+<li>The start-up report lists the value of each switch for each app.</li>
+</ul>
+<h3>4.6 Logs</h3>
+<ul>
+<li>The log paths come from the settings (<code>Logging:File:Path</code>), not from fixed paths. This removes CD-06.</li>
+<li>The platform writes these log events with a fixed event name, so that support can search them: <code>Atlas.AccessDenied</code> (module 6), <code>Atlas.StartupCheck</code> (module 7), <code>Atlas.WorkflowSync</code> and <code>Atlas.WorkflowRefused</code> (module 10), <code>Atlas.AttachmentRejected</code> (module 8), <code>Atlas.AuditWriteFailed</code> (module 9).</li>
+</ul>
+<h3>4.7 Release plan</h3>
+<p>Decision 2026-10-25 (question 4): the pilot comes first. The platform is built <strong>beside</strong> the current code (a new generic form component and a generic section service), not inside it. The current Section Master component and the current services stay frozen until each app moves. A manifest setting selects the path for each app, so the rollback of an app is a change of its registration line and manifest.</p>
+<p>All releases are backward compatible: the apps that stay on the current path do not change.</p>
+<div class="table-wrap"><table>
+<tr><th>Release</th><th>Content</th><th>Modules</th></tr>
+<tr><td>P1 TTD pilot</td><td>Vertical slice for TTD only: registry and one registration line, generic section service, new form component, rules engine (<code>MostPermissive</code>, <code>Permissions</code>, <code>OwnerFields</code>), user context, active roles view, access check in <code>LogOnly</code>, shared-type data mapping, server audit with <code>Old</code>, TTD dashboard (rules before load), environment files, JSON loader, start-up check, script log. Comparison tests against the current <code>CPTTDService</code>. Not in P1: attachments, workflow adapter, relations, lazy load and server paging.</td><td>7, 1, 4, 6, 5, 9, 3, 11</td></tr>
+<tr><td>P2 First new app</td><td>The first of the 13 apps on the same path: SQL template, manifest, JSON, one registration line. Count the steps and the time.</td><td>all</td></tr>
+<tr><td>P3 Security fixes</td><td>Download from the database (H1), safe upload names (H2), no rows for hidden tabs in the current dashboard code (DB-01).</td><td>8, 3</td></tr>
+<tr><td>P4 Migrate</td><td>SQMSO, SQMSB and AIN to the new path; engine result check (H8) and engine call last (H6) on the way; CDT fixes for H6 and H8. <code>Enforce</code> for each app after its log review. Then remove the old component.</td><td>1, 10, 6</td></tr>
+<tr><td>P5 Later</td><td>Attachment service for new apps, workflow adapter for new workflow apps, <code>Lazy</code> load and server paging when the rows grow, module 2 (Step Master).</td><td>8, 10, 3, 2</td></tr>
+</table></div>
+<p>Accepted risk (decision 2026-10-25): H1 and H2 stay in production until P3, after P1 and P2. The decision owner accepted this order. Mitigation until P3: the support team checks the API log for <code>v1/Download</code> requests with <code>..</code>, <code>/</code> or <code>\</code> in <code>id</code> or <code>name</code>.</p>
+</section>
+<section id="5-backward-compatibility">
+<h2>5. Backward compatibility</h2>
+<ul>
+<li>The setting keys do not change; values move between files only.</li>
+<li>The JSON loader reads the current files with no change (4.2).</li>
+<li>The script log table is new; no existing table changes.</li>
+<li>The engine migrations are the engine's own additive migrations.</li>
+<li>Each release keeps the current behaviour until a switch changes it.</li>
+</ul>
+</section>
+<section id="6-migration-steps">
+<h2>6. Migration steps</h2>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Change</th><th>Risk</th></tr>
+<tr><td>1</td><td>Change-over to environment files (4.1.1): copy the server values into <code>appsettings.QC.json</code> and <code>appsettings.Production.json</code>; move the hosts, URLs and e-mail maps out of the base file; set <code>ASPNETCORE_ENVIRONMENT</code> in <code>web.config</code>; stop manual changes on the server.</td><td>Medium. Test each environment once; compare the start-up report.</td></tr>
+<tr><td>2</td><td>Apply the missing engine migrations at the target with an idempotent script (DBA).</td><td>Medium. Back up first.</td></tr>
+<tr><td>3</td><td>Add the script log table and the release folder rule.</td><td>Low</td></tr>
+<tr><td>4</td><td>Add the <code>--atlas-check</code> command to the release pipeline.</td><td>Low</td></tr>
+<tr><td>5</td><td>Move the log paths to the settings.</td><td>Low</td></tr>
+</table></div>
+</section>
+<section id="7-acceptance">
+<h2>7. Acceptance</h2>
+<ul>
+<li>A production start with no <code>AppSettings:HostedURL</code> stops with a clear message and does not use a test value.</li>
+<li>The base <code>appsettings.json</code> has no host name, no URL and no e-mail address.</li>
+<li>All current JSON files load with the new loader, and the result is the same as with <code>Newtonsoft.Json</code>.</li>
+<li><code>--atlas-check</code> returns 1 for a manifest with no registration line, and 0 for the current apps.</li>
+<li><code>dbo.CP_Atlas_ScriptLog</code> shows each script of a release after the DBA runs the folder.</li>
+<li>The target <code>__EFMigrationsHistory</code> lists all engine migrations of the engine version in use.</li>
+</ul>
+</section>
+<section id="8-notes">
+<h2>8. Notes</h2>
+<ul>
+<li>The client has no per-app configuration: it gets all app data from the API (modules 3, 7). Its <code>environment.ts</code> files do not change.</li>
+<li>The engine configuration (<code>Smtp:*</code>, <code>Notifications:*</code>) keeps its keys; only the files change.</li>
+</ul>
+</section>
+<section id="9-open-questions">
+<h2>9. Open questions</h2>
+<ol>
+<li>Answered (2026-10-25): today the values are changed on the server after each deployment. The team must change to environment files (4.1); the team guide and the change-over steps are in 4.1.1.</li>
+<li>Answered (2026-10-25): an idempotent SQL script from the engine migrations, run by the DBA as the first script of the release (4.4).</li>
+<li>Answered (2026-10-25): yes. <code>dbo.CP_Atlas_ScriptLog</code>, script <a href="sql/11-script-log.sql">sql/11-script-log.sql</a> (4.4).</li>
+<li>Answered (2026-10-25): changed order. TTD pilot first (P1), then the first new app (P2), then the security fixes H1, H2, DB-01 (P3), then the migration of the current apps (P4). The platform is built beside the current code (4.7).</li>
+</ol>
+</section>
+</main>
+</body>
+</html>
