@@ -1,4 +1,4 @@
-# RESUME HERE - Atlas platform specs, module 6 Security draft 2 done (not committed) - 2026-10-25
+# RESUME HERE - Atlas platform specs, module 5 draft 3 done (not committed); module 6 committed c03388d - 2026-10-25
 
 ## Current goal
 Make CP Atlas (target app, copies in target-implementation-read-only/) a reusable platform so the next 13 apps
@@ -23,10 +23,13 @@ Nested lists are not supported: keep bullets flat.)
 ## Module status (docs/atlas-platform/README.md is the index)
 - Module 1 Section Master: 01-section-master.md/.html - draft 3, ALL questions answered (Q1-Q9, T1-T4, F1-F3). Committed d992d65.
   SQL: sql/01-section-master-rowversion.sql (SQMS schema), sql/01-section-master-role-scope-check.sql (read-only, parts 1-5).
-- Module 5 Data mapping: 05-data-mapping.md/.html - draft 2, Q1-Q6 answered, NOT FINAL: waiting for target files
-  (CPSharepointContext.cs, Data/CodeTemplates/EFCore files, scaffold command or efpt.config.json, Data .csproj)
-  to finalize the scaffold steps in 6.2. Committed a73793a. SQL: sql/05-new-app-template.sql.
-- Module 6 Security: 06-security.md/.html - draft 2, ALL questions answered. Draft 1 committed 754b2dc; Q6 changes not committed (commit when user asks).
+- Module 5 Data mapping: 05-data-mapping.md/.html - draft 3 (NOT committed). Target files arrived in
+  target-implementation-read-only/Data/Data/Data extended/ (context, DbContext.t4, EntityType.t4, Data csproj).
+  New: DM-08 context hand-edited after scaffold, DM-09 Atlas context maps 19 engine tables + MockSectionData,
+  DM-10 dbo naming/old Http package; 6.2.1 scaffold settings. Q7 answered: scaffold all dbo tables except
+  the 19 engine tables + MockSectionData (script builds --table list from sys.tables). No scaffold command/efpt.config.json was given (6.2.1 proposes scaffold.ps1).
+  SQL: sql/05-new-app-template.sql.
+- Module 6 Security: 06-security.md/.html - draft 2, ALL questions answered, committed c03388d.
   Findings SE-01..SE-07. Answered: Q1 two AD groups (end users | support) in AppSettings:ADGroup, gate only, per-app
   access only from entitlement tables; Q2 IIS + Windows auth, no JWT callers -> remove JWT (M17 updated in issues doc);
   Q3 LAN ID for people (new apps) + LAN ID columns for existing tables; Q4 some apps hide records by user data ->
@@ -50,13 +53,11 @@ Nested lists are not supported: keep bullets flat.)
 - Team scaffolds all tables; will limit scaffold to dbo/SQMS/TTD/AIN; new apps use own schema + shared-type entities.
 
 ## Uncommitted at save time
-Draft 1 was committed in 754b2dc. Uncommitted Q6 changes: docs/atlas-platform/06-security.md (+ .html),
-docs/atlas-platform/README.md, sql/06-grant-revoke-role-template.sql (new), CODEX_HANDOFF.md.
+docs/atlas-platform/05-data-mapping.md (+ .html), docs/atlas-platform/README.md, CODEX_HANDOFF.md.
 
 ## Next-session prompt
-"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 6 Security is done (draft 2);
-commit it when I ask. Then start the next module (3 Dashboard unless I say otherwise). Ask one question at a time
-and keep it short."
+"Resume the CP Atlas platform specs. Read the top entry of CODEX_HANDOFF.md. Module 5 draft 3 is done; commit it
+when I ask. Then start module 3 Dashboard. One question at a time, short."
 
 ---
 # Atlas platform: module 5 Data mapping draft 2, all questions answered - 2026-10-25

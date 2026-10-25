@@ -1,6 +1,6 @@
 # Module 5: Data mapping
 
-Status: Draft 2, 2026-10-25. Questions Q1-Q6 are answered. Not final: waiting for the target files (`CPSharepointContext.cs`, `Data/CodeTemplates/EFCore` files, the scaffold command or `efpt.config.json`, the Data project `.csproj`) to confirm the scaffold steps in 6.2. Design only. No target code is changed.
+Status: Draft 3, 2026-10-25. Questions Q1-Q6 are answered. The target files arrived (context, T4 templates, Data `.csproj`); new findings DM-08 to DM-10 and the scaffold settings (6.2.1). All questions (Q1-Q7) are answered. Design only. No target code is changed.
 
 ## 1. Purpose
 
@@ -13,7 +13,9 @@ Scope: how a Section Master app stores, loads, converts and audits its record da
 ### 2.1 Data access
 
 - One EF Core context, `CPSharepointContext`, on SQL Server. A second context, `CPPBContext`, reads the PB data warehouse on Oracle (accounts). Evidence: `Atlasapp/Atlasapp/program.cs.txt:25-26`.
-- The context is database-first. The entity classes are generated from the tables (scaffold), with custom templates. Evidence: `Data/Data/CodeTemplates/EFCore`; `Data/Data/Models/*.cs.txt`. The context file is not in the copy.
+- The context is database-first. The entity classes are generated from the tables (scaffold), with custom templates. Evidence: `Data/Data/Data extended/CPSharepointContext.cs.txt`, `DbContext.t4.txt`, `EntityType.t4.txt`; `Data/Data/Models/*.cs.txt`.
+- The context maps 37 tables: `SQMS`, `TTD`, `AIN` and 28 `dbo` tables. The `dbo` tables include 19 workflow engine tables and `MockSectionData`. Evidence: `Data/Data/Data extended/CPSharepointContext.cs.txt:24-92`.
+- The context is `partial` and calls `OnModelCreatingPartial`. Evidence: `Data/Data/Data extended/CPSharepointContext.cs.txt:10, 1218-1221`.
 - Each app has its own table and its own entity class: `TTD.General` → `TTDGeneral`, `SQMS.Opportunity` → `SQMSOpportunity`, `SQMS.Bid` → `SQMSBid`, `AIN.AccountInventory` → `AccountInventory`.
 - Stored procedures run through `ExecuteDataReader` / `ExecuteNonQuery` on the context. Evidence: `Data/Data/DatabaseExtension.cs.txt:19-66`.
 
@@ -74,6 +76,25 @@ If a value cannot be converted (for example `abc` for an `int` column), `Convert
 
 Text columns for numbers and dates make sorting, totals and reports harder, and permit bad values. The platform must support the current text columns. New apps can use typed columns.
 
+### DM-08 The generated context is changed by hand after each scaffold (Medium)
+
+The context file in use is not the template output:
+
+- The constructors take `IConfiguration`, and `OnConfiguring` reads the connection with `TPAMAPIAccess`. The template makes an options-only constructor. Evidence: `Data/Data/Data extended/CPSharepointContext.cs.txt:12-22, 95-96`; `Data/Data/Data extended/DbContext.t4.txt:62-65`.
+- `EntityType.t4` names the navigation type with the `dbo` rule for all schemas (line 124). For `SQMS.Bid` it makes `OPPortunity`, but the class has `SQMSOpportunity`. Evidence: `Data/Data/Data extended/EntityType.t4.txt:124`; `Data/Data/Models/SQMSBid.cs.txt:44`.
+- `AINAccountInventory` is configured two times, with different lengths (1000 and 100). The second block wins. Evidence: `Data/Data/Data extended/CPSharepointContext.cs.txt:100, 242`.
+
+Each new scaffold overwrites these edits. A person must merge them again by hand. An error can break the build or change a mapping with no warning. The platform design (6.2) does not need a new scaffold for a new app, but the existing apps still do.
+
+### DM-09 The Atlas context maps the workflow engine tables (Medium)
+
+The scaffold of all `dbo` tables adds the 19 workflow engine tables (`Workflow*`, `Notification*`, `SlaPolicy`, `IdempotencyRecord`) and `MockSectionData` to the Atlas context. No Atlas code uses these classes. The engine has its own model for these tables. Each engine schema change makes the Atlas model old until the next scaffold, and the Atlas context could write engine tables outside the engine rules. Evidence: `Data/Data/Data extended/CPSharepointContext.cs.txt:54-92`; a search of the target code finds the classes only in `Data/Data/Models`.
+
+### DM-10 Scaffold names and packages (Low)
+
+- The `dbo` rule makes the first 3 letters capital: `WORkflowTask`, `NOTificationOutbox`, `IDEmpotencyRecord`. A `dbo` table name with fewer than 3 letters stops the scaffold (`Substring(0, 3)`). Evidence: `Data/Data/Data extended/DbContext.t4.txt:74-76`. Do not rename the existing classes (backward compatibility). New apps use their own schema, so they get `<Schema><Table>` names.
+- The Data project uses the package `Microsoft.AspNetCore.Http` 2.3.9, an old ASP.NET Core 2 package, on .NET 10. Use `<FrameworkReference Include="Microsoft.AspNetCore.App" />` if the project needs `HttpContext`. Evidence: `Data/Data/Data extended/BBH.CP.Atlas.Data.csproj.txt:10`.
+
 ## 5. Storage options
 
 The main decision of this module: how a configured app stores its record.
@@ -111,6 +132,19 @@ Use the EF Core shared-type entity type. EF Core maps a table to `Dictionary<str
 - Access: `context.Set<Dictionary<string, object>>("PBSP.General")`. The record uses the same context and the same transaction as the audit entry and the other app data.
 - Change tracking, `SaveChanges`, transactions and concurrency work as for a normal entity.
 - A new table needs a restart of the API, because EF Core builds the model one time. This is the same as today (a new entity class also needs a deployment).
+
+### 6.2.1 Scaffold settings for the existing apps
+
+The scaffold continues for the existing tables only. These settings stop the hand edits (DM-08):
+
+- Move the `IConfiguration` constructors and `OnConfiguring` to a hand-written partial file, `CPSharepointContext.Platform.cs`. In `OnConfiguring`, call `UseSqlServer` only if `!optionsBuilder.IsConfigured` (`AddDbContext` already configures it, `program.cs.txt:25`).
+- Scaffold with `--no-onconfiguring`. Then the generated file has no connection code and no parameterless constructor.
+- The same partial file holds `OnModelCreatingPartial` with the shared-type entities (6.2) and the start-up check (6.8).
+- Correct `EntityType.t4` line 124: use the same name rule as the class (schema prefix for non-`dbo`). Then `SQMSBid.Opportunity` comes out as `SQMSOpportunity` with no hand edit.
+- Remove the first `AINAccountInventory` block. Confirm the correct length (`HasMaxLength(100)`, the block that wins today) against the table.
+- Keep the scaffold to the existing schemas (`SQMS`, `TTD`, `AIN`) and to all `dbo` tables except the workflow engine tables and `MockSectionData` (decision 2026-10-25, question 7). Never include a new app schema: a new app table must not get a typed class and a shared-type entity together (section 7).
+- The EF Core scaffold has no exclude option. Thus the script reads the `dbo` tables from `sys.tables` and gives one `--table dbo.<name>` for each table that is not in the exclude list: `Workflow*`, `Notification*`, `SlaPolicy`, `IdempotencyRecord`, `MockSectionData`, `__EFMigrationsHistory`. A new `dbo` table is then included with no change to the script. The script also gives `--schema SQMS --schema TTD --schema AIN`.
+- Run the scaffold with `--force`, then build. The build must give no hand-merge step. Keep the command in a script in the Data project (for example `scaffold.ps1`), so that each person runs the same command.
 
 ### 6.3 Field binding
 
@@ -241,3 +275,4 @@ An app with special data logic still uses hooks (`OnLoad`, `OnBeforeSave`, `OnAf
 4. Answered (2026-10-25): development uses a SQL Server login with full DDL, DML, query and transaction access. QC and production use a login with read, insert, update, delete and execute (no DDL). No `VIEW DEFINITION` grant is necessary: SQL Server shows the metadata (`sys.columns`, `sys.procedures`) of the objects on which the login has a permission. Thus the start-up check works. The DBA must give the API login these permissions on each new app schema (the SQL template has a grant step).
 5. Answered (2026-10-25): yes, the field name, the old value and the new value. Only the History window of each record reads the audit; no reports. The JSON keeps the current keys `Name` and `Value` and adds `Old` (6.6), so the current History window continues to work.
 6. Answered (2026-10-25): the target team runs the script in development. The DBAs run the DDL scripts in QC and production. One schema for each app.
+7. Answered (2026-10-25): all `dbo` tables except the 19 workflow engine tables and `MockSectionData` (DM-09, 6.2.1). Other `dbo` tables are important to Atlas and stay in the scaffold. The engine tables stay only in the engine model.

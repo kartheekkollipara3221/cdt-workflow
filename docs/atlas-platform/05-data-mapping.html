@@ -45,7 +45,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 </head>
 <body>
 <main>
-<div class="eyebrow">CP Atlas reusable platform · module 5 · design only · draft 2 · waiting for target files · 2026-10-25</div>
+<div class="eyebrow">CP Atlas reusable platform · module 5 · design only · draft 3 · 2026-10-25</div>
 <h1>Data mapping: reusable design</h1>
 <p class="lead">This report examines how CP Atlas stores and maps app data. It gives a design that lets a new app store its data with a SQL script and JSON only, with no entity class.</p>
 
@@ -53,13 +53,13 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
 <p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
 <p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
-<p><strong>Status.</strong> Draft 2, 2026-10-25. Questions Q1-Q6 are answered. Not final: waiting for the target files (<code>CPSharepointContext.cs</code>, <code>Data/CodeTemplates/EFCore</code> files, the scaffold command or <code>efpt.config.json</code>, the Data project <code>.csproj</code>) to confirm the scaffold steps in 6.2. Design only. No target code is changed.</p>
+<p><strong>Status.</strong> Draft 3, 2026-10-25. Questions Q1-Q6 are answered. The target files arrived (context, T4 templates, Data <code>.csproj</code>); new findings DM-08 to DM-10 and the scaffold settings (6.2.1). All questions (Q1-Q7) are answered. Design only. No target code is changed.</p>
 <p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
 </div>
 
 <div class="kpis">
 <div class="kpi"><b>0</b><span>entity classes for a new app (today: 2 + a new scaffold)</span></div>
-<div class="kpi"><b>7</b><span>findings (DM-01 to DM-07)</span></div>
+<div class="kpi"><b>10</b><span>findings (DM-01 to DM-10)</span></div>
 <div class="kpi"><b>A</b><span>storage option chosen: typed table per app</span></div>
 <div class="kpi"><b>1</b><span>SQL template for a new app</span></div>
 </div>
@@ -75,7 +75,9 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <h3>2.1 Data access</h3>
 <ul>
 <li>One EF Core context, <code>CPSharepointContext</code>, on SQL Server. A second context, <code>CPPBContext</code>, reads the PB data warehouse on Oracle (accounts). Evidence: <code>Atlasapp/Atlasapp/program.cs.txt:25-26</code>.</li>
-<li>The context is database-first. The entity classes are generated from the tables (scaffold), with custom templates. Evidence: <code>Data/Data/CodeTemplates/EFCore</code>; <code>Data/Data/Models/*.cs.txt</code>. The context file is not in the copy.</li>
+<li>The context is database-first. The entity classes are generated from the tables (scaffold), with custom templates. Evidence: <code>Data/Data/Data extended/CPSharepointContext.cs.txt</code>, <code>DbContext.t4.txt</code>, <code>EntityType.t4.txt</code>; <code>Data/Data/Models/*.cs.txt</code>.</li>
+<li>The context maps 37 tables: <code>SQMS</code>, <code>TTD</code>, <code>AIN</code> and 28 <code>dbo</code> tables. The <code>dbo</code> tables include 19 workflow engine tables and <code>MockSectionData</code>. Evidence: <code>Data/Data/Data extended/CPSharepointContext.cs.txt:24-92</code>.</li>
+<li>The context is <code>partial</code> and calls <code>OnModelCreatingPartial</code>. Evidence: <code>Data/Data/Data extended/CPSharepointContext.cs.txt:10, 1218-1221</code>.</li>
 <li>Each app has its own table and its own entity class: <code>TTD.General</code> → <code>TTDGeneral</code>, <code>SQMS.Opportunity</code> → <code>SQMSOpportunity</code>, <code>SQMS.Bid</code> → <code>SQMSBid</code>, <code>AIN.AccountInventory</code> → <code>AccountInventory</code>.</li>
 <li>Stored procedures run through <code>ExecuteDataReader</code> / <code>ExecuteNonQuery</code> on the context. Evidence: <code>Data/Data/DatabaseExtension.cs.txt:19-66</code>.</li>
 </ul>
@@ -137,6 +139,27 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <h3><span class="badge b-low">DM-07</span>Numbers and dates are stored as text</h3>
 <p>Text columns for numbers and dates make sorting, totals and reports harder, and permit bad values. The platform must support the current text columns. New apps can use typed columns.</p>
 </div>
+<div class="issue med">
+<h3><span class="badge b-med">DM-08</span>The generated context is changed by hand after each scaffold</h3>
+<p>The context file in use is not the template output:</p>
+<ul>
+<li>The constructors take <code>IConfiguration</code>, and <code>OnConfiguring</code> reads the connection with <code>TPAMAPIAccess</code>. The template makes an options-only constructor. Evidence: <code>Data/Data/Data extended/CPSharepointContext.cs.txt:12-22, 95-96</code>; <code>Data/Data/Data extended/DbContext.t4.txt:62-65</code>.</li>
+<li><code>EntityType.t4</code> names the navigation type with the <code>dbo</code> rule for all schemas (line 124). For <code>SQMS.Bid</code> it makes <code>OPPortunity</code>, but the class has <code>SQMSOpportunity</code>. Evidence: <code>Data/Data/Data extended/EntityType.t4.txt:124</code>; <code>Data/Data/Models/SQMSBid.cs.txt:44</code>.</li>
+<li><code>AINAccountInventory</code> is configured two times, with different lengths (1000 and 100). The second block wins. Evidence: <code>Data/Data/Data extended/CPSharepointContext.cs.txt:100, 242</code>.</li>
+</ul>
+<p>Each new scaffold overwrites these edits. A person must merge them again by hand. An error can break the build or change a mapping with no warning. The platform design (6.2) does not need a new scaffold for a new app, but the existing apps still do.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">DM-09</span>The Atlas context maps the workflow engine tables</h3>
+<p>The scaffold of all <code>dbo</code> tables adds the 19 workflow engine tables (<code>Workflow*</code>, <code>Notification*</code>, <code>SlaPolicy</code>, <code>IdempotencyRecord</code>) and <code>MockSectionData</code> to the Atlas context. No Atlas code uses these classes. The engine has its own model for these tables. Each engine schema change makes the Atlas model old until the next scaffold, and the Atlas context could write engine tables outside the engine rules. Evidence: <code>Data/Data/Data extended/CPSharepointContext.cs.txt:54-92</code>; a search of the target code finds the classes only in <code>Data/Data/Models</code>.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">DM-10</span>Scaffold names and packages</h3>
+<ul>
+<li>The <code>dbo</code> rule makes the first 3 letters capital: <code>WORkflowTask</code>, <code>NOTificationOutbox</code>, <code>IDEmpotencyRecord</code>. A <code>dbo</code> table name with fewer than 3 letters stops the scaffold (<code>Substring(0, 3)</code>). Evidence: <code>Data/Data/Data extended/DbContext.t4.txt:74-76</code>. Do not rename the existing classes (backward compatibility). New apps use their own schema, so they get <code>&lt;Schema&gt;&lt;Table&gt;</code> names.</li>
+<li>The Data project uses the package <code>Microsoft.AspNetCore.Http</code> 2.3.9, an old ASP.NET Core 2 package, on .NET 10. Use <code>&lt;FrameworkReference Include="Microsoft.AspNetCore.App" /&gt;</code> if the project needs <code>HttpContext</code>. Evidence: <code>Data/Data/Data extended/BBH.CP.Atlas.Data.csproj.txt:10</code>.</li>
+</ul>
+</div>
 </section>
 <section id="5-storage-options">
 <h2>5. Storage options</h2>
@@ -169,6 +192,18 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <li>Access: <code>context.Set&lt;Dictionary&lt;string, object&gt;&gt;("PBSP.General")</code>. The record uses the same context and the same transaction as the audit entry and the other app data.</li>
 <li>Change tracking, <code>SaveChanges</code>, transactions and concurrency work as for a normal entity.</li>
 <li>A new table needs a restart of the API, because EF Core builds the model one time. This is the same as today (a new entity class also needs a deployment).</li>
+</ul>
+<h3>6.2.1 Scaffold settings for the existing apps</h3>
+<p>The scaffold continues for the existing tables only. These settings stop the hand edits (DM-08):</p>
+<ul>
+<li>Move the <code>IConfiguration</code> constructors and <code>OnConfiguring</code> to a hand-written partial file, <code>CPSharepointContext.Platform.cs</code>. In <code>OnConfiguring</code>, call <code>UseSqlServer</code> only if <code>!optionsBuilder.IsConfigured</code> (<code>AddDbContext</code> already configures it, <code>program.cs.txt:25</code>).</li>
+<li>Scaffold with <code>--no-onconfiguring</code>. Then the generated file has no connection code and no parameterless constructor.</li>
+<li>The same partial file holds <code>OnModelCreatingPartial</code> with the shared-type entities (6.2) and the start-up check (6.8).</li>
+<li>Correct <code>EntityType.t4</code> line 124: use the same name rule as the class (schema prefix for non-<code>dbo</code>). Then <code>SQMSBid.Opportunity</code> comes out as <code>SQMSOpportunity</code> with no hand edit.</li>
+<li>Remove the first <code>AINAccountInventory</code> block. Confirm the correct length (<code>HasMaxLength(100)</code>, the block that wins today) against the table.</li>
+<li>Keep the scaffold to the existing schemas (<code>SQMS</code>, <code>TTD</code>, <code>AIN</code>) and to all <code>dbo</code> tables except the workflow engine tables and <code>MockSectionData</code> (decision 2026-10-25, question 7). Never include a new app schema: a new app table must not get a typed class and a shared-type entity together (section 7).</li>
+<li>The EF Core scaffold has no exclude option. Thus the script reads the <code>dbo</code> tables from <code>sys.tables</code> and gives one <code>--table dbo.&lt;name&gt;</code> for each table that is not in the exclude list: <code>Workflow*</code>, <code>Notification*</code>, <code>SlaPolicy</code>, <code>IdempotencyRecord</code>, <code>MockSectionData</code>, <code>__EFMigrationsHistory</code>. A new <code>dbo</code> table is then included with no change to the script. The script also gives <code>--schema SQMS --schema TTD --schema AIN</code>.</li>
+<li>Run the scaffold with <code>--force</code>, then build. The build must give no hand-merge step. Keep the command in a script in the Data project (for example <code>scaffold.ps1</code>), so that each person runs the same command.</li>
 </ul>
 <h3>6.3 Field binding</h3>
 <ul>
@@ -293,6 +328,7 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <li>Answered (2026-10-25): development uses a SQL Server login with full DDL, DML, query and transaction access. QC and production use a login with read, insert, update, delete and execute (no DDL). No <code>VIEW DEFINITION</code> grant is necessary: SQL Server shows the metadata (<code>sys.columns</code>, <code>sys.procedures</code>) of the objects on which the login has a permission. Thus the start-up check works. The DBA must give the API login these permissions on each new app schema (the SQL template has a grant step).</li>
 <li>Answered (2026-10-25): yes, the field name, the old value and the new value. Only the History window of each record reads the audit; no reports. The JSON keeps the current keys <code>Name</code> and <code>Value</code> and adds <code>Old</code> (6.6), so the current History window continues to work.</li>
 <li>Answered (2026-10-25): the target team runs the script in development. The DBAs run the DDL scripts in QC and production. One schema for each app.</li>
+<li>Answered (2026-10-25): all <code>dbo</code> tables except the 19 workflow engine tables and <code>MockSectionData</code> (DM-09, 6.2.1). Other <code>dbo</code> tables are important to Atlas and stay in the scaffold. The engine tables stay only in the engine model.</li>
 </ol>
 </section>
 </main>
