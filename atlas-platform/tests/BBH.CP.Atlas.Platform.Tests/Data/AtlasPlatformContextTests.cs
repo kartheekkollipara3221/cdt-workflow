@@ -168,6 +168,52 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
         Assert.NotNull(second.Model.FindEntityType(AuditLog));
     }
 
+    [Fact]
+    public async Task An_insert_with_no_value_uses_the_database_default()
+    {
+        string name = "Defaults" + Guid.NewGuid().ToString("N")[..6];
+        await database.ScalarAsync($"""
+            CREATE TABLE TTDV2.{name} (
+                ID int IDENTITY PRIMARY KEY,
+                Status varchar(20) NOT NULL DEFAULT 'Draft',
+                Note nvarchar(50) NULL DEFAULT N'none',
+                Active bit NULL DEFAULT 1,
+                Flag bit NOT NULL DEFAULT 1);
+            """);
+        try
+        {
+            AtlasTableRegistry registry = await LoadRegistryAsync($"TTDV2.{name}");
+            AtlasTable table = registry.Get($"TTDV2.{name}");
+            Assert.True(table.Find("Status")!.UsesDatabaseDefault);
+            Assert.True(table.Find("Note")!.UsesDatabaseDefault);
+            Assert.False(table.Find("Flag")!.UsesDatabaseDefault); // false from the user must stay false
+
+            int id;
+            await using (AtlasPlatformContext context = CreateContext(registry))
+            {
+                Dictionary<string, object?> record = table.NewRecord();
+                record["Active"] = false;
+                record["Flag"] = false;
+                context.Records(table.FullName).Add(record);
+                await context.SaveChangesAsync();
+                id = (int)record["ID"]!;
+            }
+
+            await using (AtlasPlatformContext context = CreateContext(registry))
+            {
+                Dictionary<string, object?> loaded = (await context.FindActiveAsync(table.FullName, id))!;
+                Assert.Equal("Draft", loaded["Status"]);
+                Assert.Equal("none", loaded["Note"]);
+                Assert.Equal(false, loaded["Active"]);
+                Assert.Equal(false, loaded["Flag"]);
+            }
+        }
+        finally
+        {
+            await database.ScalarAsync($"DROP TABLE TTDV2.{name};");
+        }
+    }
+
     private async Task<AtlasTableRegistry> LoadRegistryAsync(params string[] tables)
     {
         AtlasTableRegistry registry = new();

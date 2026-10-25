@@ -68,7 +68,7 @@ public sealed class AtlasTableRegistry
         {
             key.Append(table.FullName).Append('(');
             foreach (AtlasColumn column in table.Columns)
-                key.Append(column.Name).Append(':').Append(column.StoreType).Append(column.IsNullable ? "?" : "").Append(',');
+                key.Append(column.Name).Append(':').Append(column.StoreType).Append(column.IsNullable ? "?" : "").Append(column.HasDefault ? "=" : "").Append(',');
             key.Append(')');
         }
 

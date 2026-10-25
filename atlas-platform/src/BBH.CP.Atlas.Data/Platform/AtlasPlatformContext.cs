@@ -59,6 +59,8 @@ public class AtlasPlatformContext : DbContext
                         property.ValueGeneratedOnAdd().UseIdentityColumn();
                     else if (column.IsComputed)
                         property.ValueGeneratedOnAddOrUpdate();
+                    else if (column.UsesDatabaseDefault)
+                        property.ValueGeneratedOnAdd(); // review DA-05: a null on insert is left out, so SQL Server uses the default
 
                     if (!column.IsNullable)
                         property.IsRequired();

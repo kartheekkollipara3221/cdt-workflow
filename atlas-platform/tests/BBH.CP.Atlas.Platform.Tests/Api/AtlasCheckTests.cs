@@ -216,6 +216,24 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains("SoftDelete names 'Category'; the platform reads only IsDeleted", report, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_not_null_bit_column_with_a_default_that_nothing_sets_is_a_warning()
+    {
+        string column = "Flag" + Guid.NewGuid().ToString("N")[..6];
+        await database.ScalarAsync($"ALTER TABLE TTDV2.General ADD {column} bit NOT NULL CONSTRAINT DF_{column} DEFAULT 1;");
+        try
+        {
+            (int code, string report) = await CheckAsync(RealConfig);
+
+            Assert.True(code == 0, report);
+            Assert.Contains($"WARNING TTDV2: the column '{column}' of TTDV2.General is NOT NULL bit with a default", report, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await database.ScalarAsync($"ALTER TABLE TTDV2.General DROP CONSTRAINT DF_{column}; ALTER TABLE TTDV2.General DROP COLUMN {column};");
+        }
+    }
+
     private void ReplaceInForm(string oldText, string newText)
     {
         string form = Path.Combine(_folder, "TTDV2.json");

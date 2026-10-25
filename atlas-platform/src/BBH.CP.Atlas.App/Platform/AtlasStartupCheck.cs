@@ -114,7 +114,10 @@ public static class AtlasStartupCheck
             if (form?.Section == null)
                 Error($"the form '{manifest.Form}' has no Section.");
             else if (table != null)
+            {
                 CheckForm(services, manifest, form, table, Error);
+                CheckDefaults(form, table, Warning);
+            }
 
             CheckDashboard(configStore, tables, manifest, Error);
             if (form != null)
@@ -187,6 +190,24 @@ public static class AtlasStartupCheck
         foreach (AtlasFormField field in fields.All.Where(x => x.Control.OptionsSource != null && !x.IsGridField))
             if (!providers.Contains(field.Control.OptionsSource!.Provider))
                 error($"control '{field.Name}' uses the option provider '{field.Control.OptionsSource.Provider}', which is not registered.");
+    }
+
+    /// <summary>
+    /// Review DA-05: a NOT NULL value-type column (for example bit NOT NULL DEFAULT 1) cannot use its database default,
+    /// because false or 0 from the user would look like "not set". If nothing sets it, each create fails.
+    /// </summary>
+    private static void CheckDefaults(CPAtlasApplicationConfig form, AtlasTable table, Action<string> warning)
+    {
+        AtlasFormFields fields = AtlasFormFields.From(form.Section!);
+        HashSet<string> set = new(fields.All.Select(x => x.Field), StringComparer.OrdinalIgnoreCase);
+        set.UnionWith(ConfigSectionService.SystemColumns);
+        set.UnionWith((IEnumerable<string>?)form.Computed?.Keys ?? []);
+        foreach (string name in (IEnumerable<string>?)form.Defaults?.Keys ?? [])
+            if (fields.Find(name) is { } field)
+                set.Add(field.Field);
+
+        foreach (AtlasColumn column in table.Columns.Where(x => x.HasDefault && !x.IsDatabaseGenerated && !x.UsesDatabaseDefault && !set.Contains(x.Name)))
+            warning($"the column '{column.Name}' of {table.FullName} is NOT NULL {column.SqlType} with a default; the platform does not use the default for this type, so a create with no value fails. Add a form field or a Defaults entry, or make the column nullable.");
     }
 
     private static void CheckDashboard(IAtlasConfigStore configStore, AtlasTableRegistry tables, AtlasAppManifest manifest, Action<string> error)

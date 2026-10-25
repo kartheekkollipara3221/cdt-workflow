@@ -2,6 +2,7 @@ namespace BBH.CP.Atlas.Data.Platform;
 
 /// <summary>One column of a registered table, read from sys.columns (spec 05, 6.2).</summary>
 /// <param name="MaxLength">Length in characters for text and binary columns; -1 = max; null for other types.</param>
+/// <param name="HasDefault">The column has a database default constraint (review DA-05).</param>
 public sealed record AtlasColumn(
     string Name,
     string SqlType,
@@ -10,7 +11,8 @@ public sealed record AtlasColumn(
     byte Precision,
     byte Scale,
     bool IsIdentity,
-    bool IsComputed)
+    bool IsComputed,
+    bool HasDefault = false)
 {
     public bool IsRowVersion => AtlasSqlTypes.IsRowVersion(SqlType);
 
@@ -22,6 +24,12 @@ public sealed record AtlasColumn(
 
     /// <summary>True if the platform writes the value, not the user (spec 05, 6.3).</summary>
     public bool IsDatabaseGenerated => IsIdentity || IsRowVersion || IsComputed;
+
+    /// <summary>
+    /// True if an insert with no value (null) must use the database default (review DA-05): a column with a default
+    /// whose type can hold null. A non-nullable value type cannot: false or 0 from the user would look like "not set".
+    /// </summary>
+    public bool UsesDatabaseDefault => HasDefault && !IsDatabaseGenerated && ClrType is { } type && (!type.IsValueType || Nullable.GetUnderlyingType(type) != null);
 }
 
 /// <summary>A registered table: "Schema.Name" and its columns.</summary>

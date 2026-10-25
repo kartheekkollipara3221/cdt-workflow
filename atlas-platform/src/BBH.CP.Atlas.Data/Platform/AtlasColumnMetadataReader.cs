@@ -12,7 +12,8 @@ public sealed class AtlasColumnMetadataReader
     private const string Query = """
         SELECT s.name AS SchemaName, t.name AS TableName, c.name AS ColumnName,
                TYPE_NAME(c.system_type_id) AS TypeName, c.is_nullable, c.max_length,
-               c.precision, c.scale, c.is_identity, c.is_computed
+               c.precision, c.scale, c.is_identity, c.is_computed,
+               CAST(CASE WHEN c.default_object_id <> 0 THEN 1 ELSE 0 END AS bit) AS HasDefault
         FROM sys.tables AS t
         INNER JOIN sys.schemas AS s ON s.schema_id = t.schema_id
         INNER JOIN sys.columns AS c ON c.object_id = t.object_id
@@ -57,7 +58,8 @@ public sealed class AtlasColumnMetadataReader
                     Precision: reader.GetByte(6),
                     Scale: reader.GetByte(7),
                     IsIdentity: reader.GetBoolean(8),
-                    IsComputed: reader.GetBoolean(9)));
+                    IsComputed: reader.GetBoolean(9),
+                    HasDefault: reader.GetBoolean(10)));
             }
 
             return columns.Count == 0 ? null : new AtlasTable(actualSchema!, actualName!, columns);
