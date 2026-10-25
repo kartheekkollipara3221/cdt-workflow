@@ -146,6 +146,11 @@ public static class AtlasStartupCheck
 
         if (form.SoftDelete != null && !table.HasColumn(form.SoftDelete.Field))
             error($"SoftDelete names '{form.SoftDelete.Field}', which is not a column of {table.FullName}.");
+        // Review DA-04: the reads, the dashboard filter and the system columns use IsDeleted (bit) only.
+        else if (form.SoftDelete != null && !string.Equals(form.SoftDelete.Field, AtlasTable.SoftDeleteColumnName, StringComparison.OrdinalIgnoreCase))
+            error($"SoftDelete names '{form.SoftDelete.Field}'; the platform reads only {AtlasTable.SoftDeleteColumnName} (a bit column), so a deleted record would stay visible.");
+        else if (form.SoftDelete != null && !table.HasSoftDelete)
+            error($"SoftDelete: the column {AtlasTable.SoftDeleteColumnName} of {table.FullName} must be a bit column (it is {table.Find(AtlasTable.SoftDeleteColumnName)!.SqlType}).");
 
         foreach ((string target, string expression) in form.Computed ?? new Dictionary<string, string>())
         {

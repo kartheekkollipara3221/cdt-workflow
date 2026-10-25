@@ -204,6 +204,18 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains("the manifest SchemaVersion 2 is newer than this platform", report, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_SoftDelete_field_other_than_IsDeleted_is_an_error()
+    {
+        CopyRealConfig();
+        ReplaceInForm("\"SoftDelete\": { \"Field\": \"IsDeleted\" }", "\"SoftDelete\": { \"Field\": \"Category\" }");
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("SoftDelete names 'Category'; the platform reads only IsDeleted", report, StringComparison.Ordinal);
+    }
+
     private void ReplaceInForm(string oldText, string newText)
     {
         string form = Path.Combine(_folder, "TTDV2.json");
