@@ -6,7 +6,7 @@ import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { PbdevDialog, PbdevLoader, PbdevSectionLabel } from '@pbdev/pbdev-core';
+import { DialogComponent, LoaderComponent, SectionComponent } from '../atlas-pbdev';
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
 import { CPApplicationControl, CPApplicationSection, CPButton, CPPageError } from '../atlas-models';
@@ -18,7 +18,7 @@ import { atlasValidators, errorText } from './atlas-validators';
 
 @Component({
   selector: 'atlas-form',
-  imports: [ReactiveFormsModule, NgComponentOutlet, PbdevLoader, PbdevSectionLabel, PbdevDialog, AtlasHistoryDialog],
+  imports: [ReactiveFormsModule, NgComponentOutlet, LoaderComponent, SectionComponent, DialogComponent, AtlasHistoryDialog],
   templateUrl: './atlas-form.component.html',
 })
 export class AtlasFormComponent implements OnInit, AtlasEffectTarget {

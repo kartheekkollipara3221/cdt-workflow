@@ -8,6 +8,7 @@ import { atlasValidators, errorText } from './form/atlas-validators';
 import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
 import { AtlasTextRenderer } from './form/renderers/atlas-renderers';
+import { toSelectOptions } from './atlas-pbdev';
 
 class Recorder implements AtlasEffectTarget {
   calls: string[] = [];
@@ -145,5 +146,16 @@ describe('renderer registry', () => {
     expect(registry.hasInput('badge')).toBe(false);
     registry.register('user', AtlasTextRenderer);
     expect(registry.hasInput('user')).toBe(true);
+  });
+});
+
+describe('@pbdev adapter', () => {
+  it('maps CPKeyValue to the label/value options of pbdev-select', () => {
+    expect(toSelectOptions([{ Label: 'Tax', Value: 'TAX_N' }, { Value: 'OTHER' }, {}])).toEqual([
+      { label: 'Tax', value: 'TAX_N' },
+      { label: 'OTHER', value: 'OTHER' },
+      { label: '', value: '' },
+    ]);
+    expect(toSelectOptions(null)).toEqual([]);
   });
 });

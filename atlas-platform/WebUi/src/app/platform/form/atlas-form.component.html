@@ -32,7 +32,7 @@
       @if (isVisible(container.Name)) {
         @if (isSection(container)) {
           <div class="atlas-panel {{ container.DivClass ?? '' }}" [attr.id]="'div_' + container.Name">
-            <pbdev-section-label [label]="container.Label">
+            <pbdev-section [title]="container.Label">
               <div class="{{ container.Class ?? 'grid grid-cols-2 gap-6 p-8' }}">
                 @for (child of container.ChildControls ?? []; track child.Name) {
                   @if (isVisible(child.Name) && registry.get(child.Type); as renderer) {
@@ -51,15 +51,15 @@
                   }
                 }
               </div>
-            </pbdev-section-label>
+            </pbdev-section>
           </div>
         } @else if (registry.get(container.Type); as renderer) {
           <div class="atlas-panel" [attr.id]="'div_' + container.Name">
-            <pbdev-section-label [label]="container.Label">
+            <pbdev-section [title]="container.Label">
               <div class="p-8">
                 <ng-container *ngComponentOutlet="renderer; inputs: { control: container, group: form }" />
               </div>
-            </pbdev-section-label>
+            </pbdev-section>
           </div>
         }
       }
@@ -78,7 +78,7 @@
 
   <atlas-history-dialog [open]="historyOpen()" [appCode]="code" [recordId]="id" (closed)="historyOpen.set(false)" />
 
-  <pbdev-dialog [open]="confirmDelete()" header="Delete record" (closed)="confirmDelete.set(false)">
+  <pbdev-dialog [visible]="confirmDelete()" header="Delete record" (visibleChange)="confirmDelete.set($event)">
     <p>Delete record {{ id }}? The record is marked as deleted and leaves the dashboard.</p>
     <div class="atlas-buttons">
       <button type="button" class="btn" (click)="confirmDelete.set(false)">Cancel</button>

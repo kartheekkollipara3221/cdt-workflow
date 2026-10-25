@@ -1,14 +1,14 @@
 // STAND-IN: do not copy to the target. The landing page of the local host: the apps of the user (v1/Application).
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { PbdevLoader } from '@pbdev/pbdev-core';
+import { LoaderComponent } from '@pbdev/pbdev-core';
 import { AtlasApiService } from '../../platform/atlas-api.service';
 import { CPApplicationRow } from '../../platform/atlas-models';
 import { problemText } from '../../platform/form/atlas-form.component';
 
 @Component({
   selector: 'standin-home',
-  imports: [RouterLink, PbdevLoader],
+  imports: [RouterLink, LoaderComponent],
   template: `
     <h1 class="atlas-title">Applications</h1>
     <p class="atlas-muted">The apps where you (or the user you act as) have a role. Platform apps show the new form type.</p>

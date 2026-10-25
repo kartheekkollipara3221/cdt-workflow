@@ -39,7 +39,7 @@
 
   <atlas-history-dialog [open]="historyRow() > 0" [appCode]="code" [recordId]="historyRow()" (closed)="historyRow.set(0)" />
 
-  <pbdev-dialog [open]="deleteRow() > 0" header="Delete record" (closed)="deleteRow.set(0)">
+  <pbdev-dialog [visible]="deleteRow() > 0" header="Delete record" (visibleChange)="!$event && deleteRow.set(0)">
     <p>Delete record {{ deleteRow() }}? The record is marked as deleted and leaves the dashboard.</p>
     <div class="atlas-buttons">
       <button type="button" class="btn" (click)="deleteRow.set(0)">Cancel</button>

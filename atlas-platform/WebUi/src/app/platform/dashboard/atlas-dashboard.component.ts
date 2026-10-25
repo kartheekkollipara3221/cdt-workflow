@@ -6,7 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AllCommunityModule, ColDef, ModuleRegistry, themeQuartz } from 'ag-grid-community';
-import { PbdevDialog, PbdevLoader } from '@pbdev/pbdev-core';
+import { DialogComponent, LoaderComponent } from '../atlas-pbdev';
 import { forkJoin } from 'rxjs';
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
@@ -20,7 +20,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 @Component({
   selector: 'atlas-dashboard',
-  imports: [AgGridAngular, PbdevLoader, PbdevDialog, AtlasHistoryDialog],
+  imports: [AgGridAngular, LoaderComponent, DialogComponent, AtlasHistoryDialog],
   templateUrl: './atlas-dashboard.component.html',
 })
 export class AtlasDashboardComponent implements OnInit {

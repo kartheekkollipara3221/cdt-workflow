@@ -2,7 +2,7 @@
 // All values are shown as text (no HTML).
 import { DatePipe } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, inject, signal } from '@angular/core';
-import { PbdevDialog, PbdevLoader } from '@pbdev/pbdev-core';
+import { DialogComponent, LoaderComponent } from './atlas-pbdev';
 import { AtlasApiService } from './atlas-api.service';
 import { CPAuditChange, CPAuditLog } from './atlas-models';
 
@@ -15,8 +15,8 @@ interface HistoryEntry {
 
 @Component({
   selector: 'atlas-history-dialog',
-  imports: [PbdevDialog, PbdevLoader, DatePipe],
-  template: `<pbdev-dialog [open]="open" [header]="'History of record ' + recordId" (closed)="closed.emit()">
+  imports: [DialogComponent, LoaderComponent, DatePipe],
+  template: `<pbdev-dialog [visible]="open" [header]="'History of record ' + recordId" (visibleChange)="!$event && closed.emit()">
     @if (loading()) {
       <pbdev-loader />
     } @else if (entries().length === 0) {

@@ -4,8 +4,17 @@
 import { Component, Directive, Input } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { NgSelectComponent } from '@ng-select/ng-select';
-import { PbdevDatePicker, PbdevInput, PbdevSelect, PbdevTextarea, PbdevCheckbox } from '@pbdev/pbdev-core';
-import { CPApplicationControl, CPGridColumn } from '../../atlas-models';
+import {
+  AtlasControlIdDirective,
+  CheckboxComponent,
+  DatePickerComponent,
+  InputComponent,
+  SelectComponent,
+  SelectOption,
+  TextareaComponent,
+  toSelectOptions,
+} from '../../atlas-pbdev';
+import { CPApplicationControl, CPGridColumn, CPKeyValue } from '../../atlas-models';
 
 @Directive()
 abstract class AtlasRenderer {
@@ -19,17 +28,29 @@ abstract class AtlasRenderer {
 
 @Component({
   selector: 'atlas-text-renderer',
-  imports: [ReactiveFormsModule, PbdevInput],
+  imports: [ReactiveFormsModule, InputComponent],
   template: `<pbdev-input inputType="string" [inputId]="'ctl_' + control.Name" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
 })
 export class AtlasTextRenderer extends AtlasRenderer {}
 
 @Component({
   selector: 'atlas-select-renderer',
-  imports: [ReactiveFormsModule, PbdevSelect],
-  template: `<pbdev-select [inputId]="'ctl_' + control.Name" [options]="control.Options" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
+  imports: [ReactiveFormsModule, SelectComponent, AtlasControlIdDirective],
+  template: `<pbdev-select [atlasControlId]="'ctl_' + control.Name" [options]="options" [formControl]="formControl" />`,
 })
-export class AtlasSelectRenderer extends AtlasRenderer {}
+export class AtlasSelectRenderer extends AtlasRenderer {
+  private source: CPKeyValue[] | null | undefined;
+  private mapped: SelectOption[] = [];
+
+  /** pbdev-select takes label/value objects; the list is mapped again only when the control gets new options. */
+  get options(): SelectOption[] {
+    if (this.control.Options !== this.source) {
+      this.source = this.control.Options;
+      this.mapped = toSelectOptions(this.source);
+    }
+    return this.mapped;
+  }
+}
 
 /** "ngselect": a select with search, as the current component (ng-select, bindLabel/bindValue). */
 @Component({
@@ -43,22 +64,22 @@ export class AtlasNgSelectRenderer extends AtlasRenderer {}
 
 @Component({
   selector: 'atlas-textarea-renderer',
-  imports: [ReactiveFormsModule, PbdevTextarea],
-  template: `<pbdev-textarea [inputId]="'ctl_' + control.Name" [rows]="control.Row ?? 3" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
+  imports: [ReactiveFormsModule, TextareaComponent, AtlasControlIdDirective],
+  template: `<pbdev-textarea [atlasControlId]="'ctl_' + control.Name" [rows]="control.Row ?? 3" [formControl]="formControl" />`,
 })
 export class AtlasTextareaRenderer extends AtlasRenderer {}
 
 @Component({
   selector: 'atlas-date-renderer',
-  imports: [ReactiveFormsModule, PbdevDatePicker],
-  template: `<pbdev-date-picker [inputId]="'ctl_' + control.Name" [formControl]="formControl" />`,
+  imports: [ReactiveFormsModule, DatePickerComponent, AtlasControlIdDirective],
+  template: `<pbdev-date-picker [atlasControlId]="'ctl_' + control.Name" [formControl]="formControl" />`,
 })
 export class AtlasDateRenderer extends AtlasRenderer {}
 
 @Component({
   selector: 'atlas-checkbox-renderer',
-  imports: [ReactiveFormsModule, PbdevCheckbox],
-  template: `<pbdev-checkbox [inputId]="'ctl_' + control.Name" [label]="control.Label" [formControl]="formControl" />`,
+  imports: [ReactiveFormsModule, CheckboxComponent, AtlasControlIdDirective],
+  template: `<pbdev-checkbox [atlasControlId]="'ctl_' + control.Name" inputLabel="" [formControl]="formControl" />`,
 })
 export class AtlasCheckboxRenderer extends AtlasRenderer {}
 
