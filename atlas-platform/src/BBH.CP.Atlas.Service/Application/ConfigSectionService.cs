@@ -297,13 +297,21 @@ namespace BBH.CP.Atlas.Service.Application
                     continue;
                 }
 
+                if (OptionError(field, value, previous.GetValueOrDefault(field.Field)) is { } optionError)
+                {
+                    errors.Add(optionError);
+                    continue;
+                }
+
                 accepted[field] = value;
             }
 
-            // 6. Validators and the Require effects (visible and enabled fields only).
+            // 6. Validators and the Require effects (visible and enabled fields only; one error for each field).
+            HashSet<string> refused = new(errors.Select(x => x.Field ?? ""), StringComparer.OrdinalIgnoreCase);
             foreach (AtlasFormField field in fields.All.Where(x => x.Visible && !x.Disabled))
             {
-                if (SystemColumns.Contains(field.Field) || computed.Contains(field.Field) || derived.Contains(field.Name))
+                if (SystemColumns.Contains(field.Field) || computed.Contains(field.Field) || derived.Contains(field.Name)
+                    || refused.Contains(field.Name))
                     continue;
 
                 string? value = accepted.TryGetValue(field, out string? sent) ? sent : previous.GetValueOrDefault(field.Field);
@@ -402,6 +410,26 @@ namespace BBH.CP.Atlas.Service.Application
                 .Where(x => table.HasColumn(x.Field))
                 .Select(x => new CPPageOutput { Name = x.Name, Value = AtlasValueConverter.ToWire(record.GetValueOrDefault(table.Find(x.Field)!.Name), table.Find(x.Field)!) })];
             return result;
+        }
+
+        /// <summary>
+        /// A changed value of a control with options (Options or OptionsSource) must be one of the options that the server
+        /// gives to this user (review SV-01). An unchanged saved value stays valid (KeepSavedValue, B10).
+        /// </summary>
+        private CPPageError? OptionError(AtlasFormField field, string? value, string? previousValue)
+        {
+            CPApplicationControl control = field.Control;
+            if (field.IsGridField || string.IsNullOrEmpty(value) || SameValue(value, previousValue)
+                || string.Equals(control.Type, "user", StringComparison.OrdinalIgnoreCase)
+                || control.OptionsSource == null && control.Options is not { Count: > 0 })
+                return null;
+
+            IReadOnlyList<CPKeyValue> options = OptionsOf(control);
+            string[] values = control.Multiple
+                ? value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                : [value];
+            bool allKnown = values.All(v => options.Any(o => string.Equals(o.Value, v, StringComparison.OrdinalIgnoreCase)));
+            return allKnown ? null : Error(field.Name, "NotInOptions", $"{field.Label ?? field.Name} must be one of the options.");
         }
 
         /// <summary>Reads the outputs. A grid control output is a JSON list; its first row gives one value for each column.</summary>

@@ -82,6 +82,9 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
     {
         JsonElement section = await GetResultAsync("v1/SectionPage?AppCode=TTDV2&ID=0");
         Assert.Equal("TTDV2", section.GetProperty("AppCode").GetString());
+        // The week and year lists follow the clock of the host, so the test sends the defaults of the loaded page.
+        string taxYear = ControlValue(section, "TaxYear");
+        string weekEnding = ControlValue(section, "WeekEnding");
 
         string input = JsonSerializer.Serialize(new
         {
@@ -90,10 +93,10 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
             Outputs = new[]
             {
                 new { Name = "Account", Value = "100100 - Smith Family Trust" },
-                new { Name = "TaxYear", Value = "2026" },
+                new { Name = "TaxYear", Value = taxYear },
                 new { Name = "Category", Value = "TAX_N" },
                 new { Name = "TaxPreparer", Value = "api.owner" },
-                new { Name = "WeekEnding", Value = "2026-10-18" },
+                new { Name = "WeekEnding", Value = weekEnding },
                 new { Name = "WeeklyHour", Value = """[{"MondayMinute":"60","TuesdayMinute":"30"}]""" }
             }
         });
@@ -148,5 +151,20 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
         string body = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, $"{url}: {(int)response.StatusCode} {body}");
         return JsonDocument.Parse(body).RootElement.GetProperty("result").Clone();
+    }
+
+    private static string ControlValue(JsonElement section, string name)
+    {
+        foreach (JsonElement control in section.GetProperty("Controls").EnumerateArray())
+        {
+            if (control.GetProperty("Name").GetString() == name)
+                return control.GetProperty("Value").GetString()!;
+            if (control.TryGetProperty("ChildControls", out JsonElement children) && children.ValueKind == JsonValueKind.Array)
+                foreach (JsonElement child in children.EnumerateArray())
+                    if (child.GetProperty("Name").GetString() == name)
+                        return child.GetProperty("Value").GetString()!;
+        }
+
+        throw new InvalidOperationException($"No control {name}.");
     }
 }

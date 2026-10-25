@@ -158,6 +158,38 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Contains(result.Errors!, x => x.Field == "Category" && x.Code == "Required");
     }
 
+    [Theory]
+    [InlineData("Category", "ANYTHING")]                       // static Options
+    [InlineData("WeekEnding", "2026-10-20")]                    // OptionsSource: not a Sunday in the list
+    [InlineData("TaxYear", "1999")]                             // OptionsSource
+    [InlineData("TaxPreparer", "t.read")]                       // a user without Prepare or Owner (an OwnerField)
+    [InlineData("Account", "999999 - Not My Account")]          // not in the PB accounts of this user
+    public void A_value_that_is_not_an_option_is_refused(string name, string value)
+    {
+        CPAtlasPage input = NewInput();
+        input.Outputs!.Single(x => x.Name == name).Value = value;
+
+        CPAtlasPage result = Svc(Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
+
+        Assert.Equal(0, result.ID);
+        CPPageError error = Assert.Single(result.Errors!);
+        Assert.Equal(name, error.Field);
+        Assert.Equal("NotInOptions", error.Code);
+    }
+
+    [Fact]
+    public async Task A_saved_value_that_is_no_longer_an_option_can_stay()
+    {
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: "gone.user", taxYear: 2019, weekEnding: "2020-01-05");
+        CPApplicationSection loaded = Svc(Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = id });
+
+        CPAtlasPage result = Svc(Owner, Ttdv2Roles.Owner).SavePage(
+            EditInput(id, loaded.Version, ("TaxPreparer", "gone.user"), ("TaxYear", "2019"), ("WeekEnding", "2020-01-05"), ("Category", "OTHER")), NoFiles);
+
+        Assert.True(result.Errors is null or { Count: 0 }, Describe(result));
+        Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
+    }
+
     [Fact]
     public async Task A_disabled_field_change_is_refused_and_server_set_values_are_ignored()
     {
