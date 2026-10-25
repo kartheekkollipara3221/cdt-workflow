@@ -44,6 +44,14 @@ public sealed class AtlasDashboardService(
             if (tabRule.Matched)
                 tab.Visible = tab.Visible && tabRule.Visible;
 
+            // Review SV-05: the rows of another app need that app enabled and its View check.
+            (AtlasAppManifest tabManifest, CPAtlasApplicationConfig? tabForm) = (manifest, form);
+            if (tab.Visible && TabApp(manifest, tab) is { } foreign)
+            {
+                (tabManifest, tabForm) = foreign;
+                tab.Visible = CanView(tabManifest, tabForm);
+            }
+
             if (!tab.Visible)
             {
                 tab.KeyValues = []; // spec 03, 4.2: no rows for a hidden tab
@@ -51,9 +59,9 @@ public sealed class AtlasDashboardService(
             }
 
             if (string.Equals(tab.Source, "Table", StringComparison.OrdinalIgnoreCase))
-                tab.KeyValues = LoadRows(manifest, dashboard, tab);
+                tab.KeyValues = LoadRows(manifest, tabManifest, tab);
 
-            tab.Menus = Menus(manifest, form, tab, ruleContext);
+            tab.Menus = Menus(tabManifest, tabForm, tab, ruleContext);
         }
 
         foreach (CPButton button in dashboard.Buttons ?? [])
@@ -76,12 +84,36 @@ public sealed class AtlasDashboardService(
         return dashboard;
     }
 
-    private List<Dictionary<string, object>> LoadRows(AtlasAppManifest manifest, CPAtlasDashboard dashboard, CPAtlasTab tab)
+    /// <summary>The app of the rows of a tab when it is not the dashboard app, or null for the dashboard app.</summary>
+    private (AtlasAppManifest Manifest, CPAtlasApplicationConfig? Form)? TabApp(AtlasAppManifest manifest, CPAtlasTab tab)
     {
-        string tabCode = string.IsNullOrWhiteSpace(tab.Code) ? manifest.Code : tab.Code;
-        AtlasAppManifest tabManifest = string.Equals(tabCode, manifest.Code, StringComparison.OrdinalIgnoreCase)
-            ? manifest
-            : configStore.FindManifest(tabCode) ?? throw new InvalidOperationException($"Dashboard tab '{tab.ID}' names the app '{tabCode}', which has no manifest.");
+        if (string.IsNullOrWhiteSpace(tab.Code) || string.Equals(tab.Code, manifest.Code, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        AtlasAppManifest tabManifest = configStore.FindManifest(tab.Code)
+            ?? throw new InvalidOperationException($"Dashboard tab '{tab.ID}' names the app '{tab.Code}', which has no manifest.");
+        return (tabManifest, tabManifest.Enabled && !string.IsNullOrWhiteSpace(tabManifest.Form) ? configStore.GetForm(tabManifest.Code) : null);
+    }
+
+    /// <summary>A disabled app (the rollback switch) shows nothing; a denied View hides the tab (Enforce) or is only logged (LogOnly).</summary>
+    private bool CanView(AtlasAppManifest tabManifest, CPAtlasApplicationConfig? tabForm)
+    {
+        if (!tabManifest.Enabled)
+            return false;
+        try
+        {
+            access.Demand(tabManifest, tabForm, AtlasOperation.View, null, 0);
+            return true;
+        }
+        catch (AtlasProblemException ex) when (ex.StatusCode == 403)
+        {
+            return false;
+        }
+    }
+
+    private List<Dictionary<string, object>> LoadRows(AtlasAppManifest manifest, AtlasAppManifest tabManifest, CPAtlasTab tab)
+    {
+        string tabCode = tabManifest.Code;
         AtlasTable table = tables.Get(tabManifest.Table ?? throw new InvalidOperationException($"App '{tabCode}' has no Table."));
 
         AtlasTabQuery query = AtlasTabQueryBuilder.Build(table, tab, value => Token(value, manifest.Code, tabCode));

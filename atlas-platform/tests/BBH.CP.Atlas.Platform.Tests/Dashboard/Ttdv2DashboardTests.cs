@@ -3,6 +3,7 @@ using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Platform.Tests.Data;
 using BBH.CP.Atlas.Platform.Tests.Sections;
 using BBH.CP.Atlas.Service.Platform;
+using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
 
 namespace BBH.CP.Atlas.Platform.Tests.Dashboard;
@@ -86,6 +87,41 @@ public sealed class Ttdv2DashboardTests(SqlServerDatabaseFixture database) : IAs
     {
         AtlasProblemException error = Assert.Throws<AtlasProblemException>(() => Load("d.nobody"));
         Assert.Equal(403, error.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(true, false, false)]  // the user has no role in the other app: hidden
+    [InlineData(true, true, true)]    // a View role in the other app: shown
+    [InlineData(false, true, false)]  // the other app is disabled (rollback switch): hidden
+    public void A_tab_with_the_rows_of_another_app_needs_that_app_enabled_and_its_View_check(bool enabled, bool hasRole, bool shown)
+    {
+        // Review SV-05: the tab CurrentTaxTimesheet reads the app OTHERAPP (the same table, AccessMode Enforce).
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.Dashboard.json" ? text
+            : text.Replace("\"ID\": \"CurrentTaxTimesheet\",\n      \"Code\": \"TTDV2\"", "\"ID\": \"CurrentTaxTimesheet\",\n      \"Code\": \"OTHERAPP\"", StringComparison.Ordinal)
+                  .Replace("\"ID\": \"CurrentTaxTimesheet\",\r\n      \"Code\": \"TTDV2\"", "\"ID\": \"CurrentTaxTimesheet\",\r\n      \"Code\": \"OTHERAPP\"", StringComparison.Ordinal));
+        File.WriteAllText(Path.Combine(folder, "OTHERAPP.app.json"), $$"""
+            { "Code": "OTHERAPP", "Form": "TTDV2.json", "Table": "TTDV2.General", "AuditTable": "TTDV2.AuditLog",
+              "AccessMode": "Enforce", "Enabled": {{(enabled ? "true" : "false")}} }
+            """);
+        Assert.Contains("\"OTHERAPP\"", File.ReadAllText(Path.Combine(folder, "TTDV2.Dashboard.json")), StringComparison.Ordinal);
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            AtlasRole[] roles = hasRole
+                ? [Ttdv2Roles.Prepare, new AtlasRole("OTHERAPP", "Prepare", IsRead: true, IsWrite: true, IsAdmin: false)]
+                : [Ttdv2Roles.Prepare];
+
+            CPAtlasDashboard dashboard = custom.Service(_registry, _me, roles).LoadDashboard();
+
+            CPAtlasTab tab = Tab(dashboard, "CurrentTaxTimesheet");
+            Assert.Equal(shown, tab.Visible);
+            Assert.Equal(shown, tab.KeyValues!.Count > 0);
+            Assert.True(Tab(dashboard, "TaxTimeAllReport").Visible); // the TTDV2 tabs are not changed
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 
     private CPAtlasDashboard Load(string lanId, params AtlasRole[] roles) => _harness.Service(_registry, lanId, roles).LoadDashboard();
