@@ -3,7 +3,8 @@
 -- DDL + DML. Development: the target team runs it. QC and production: the DBA runs it.
 -- Additive. Safe to run again: each object is made only if it does not exist.
 -- It does not change the TTD schema or any existing table, except that it makes TTDV2.General.IsDeleted
--- bit NOT NULL when an earlier run made it bit NULL (step 2a, review DA-08).
+-- bit NOT NULL (step 2a, review DA-08) and the free-text columns nvarchar (step 2b, review DA-12) when an earlier
+-- run made them bit NULL / varchar.
 -- Run in the CP Atlas database (cp_sharepoint).
 SET NOCOUNT ON;
 SET ANSI_NULLS ON;
@@ -26,12 +27,12 @@ BEGIN TRY
     IF OBJECT_ID(N'TTDV2.General', N'U') IS NULL
         EXEC(N'CREATE TABLE [TTDV2].[General] (
             [ID]               int IDENTITY(10000,1) NOT NULL,
-            [Account]          varchar(1000)  NULL,
+            [Account]          nvarchar(1000)  NULL,
             [AccountNumber]    varchar(100)   NULL,
-            [AccountName]      varchar(1000)  NULL,
+            [AccountName]      nvarchar(1000)  NULL,
             [TaxYear]          smallint       NULL,
             [Category]         varchar(200)   NULL,
-            [WorkDescription]  varchar(max)   NULL,
+            [WorkDescription]  nvarchar(max)   NULL,
             [WeekEnding]       date           NULL,
             [MondayMinute]     int            NULL,
             [TuesdayMinute]    int            NULL,
@@ -75,6 +76,20 @@ BEGIN TRY
             EXEC(N'DROP INDEX [IX_General_TaxPreparerLanId] ON [TTDV2].[General];');
         EXEC(N'ALTER TABLE [TTDV2].[General] ALTER COLUMN [IsDeleted] bit NOT NULL;');
     END
+
+    -- 2b. Review DA-12 (B60, approved 2026-10-25): free text is nvarchar, so pasted Unicode text is not stored as '?'.
+    --     An earlier run of this script made these columns varchar: alter them to nvarchar of the same length.
+    --     No data loss (each varchar value fits in nvarchar). Rollback: ALTER COLUMN back to varchar (loses the
+    --     characters that varchar cannot store).
+    IF EXISTS (SELECT 1 FROM sys.columns
+               WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'Account' AND system_type_id = TYPE_ID(N'varchar'))
+        EXEC(N'ALTER TABLE [TTDV2].[General] ALTER COLUMN [Account] nvarchar(1000) NULL;');
+    IF EXISTS (SELECT 1 FROM sys.columns
+               WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'AccountName' AND system_type_id = TYPE_ID(N'varchar'))
+        EXEC(N'ALTER TABLE [TTDV2].[General] ALTER COLUMN [AccountName] nvarchar(1000) NULL;');
+    IF EXISTS (SELECT 1 FROM sys.columns
+               WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'WorkDescription' AND system_type_id = TYPE_ID(N'varchar'))
+        EXEC(N'ALTER TABLE [TTDV2].[General] ALTER COLUMN [WorkDescription] nvarchar(max) NULL;');
 
     IF NOT EXISTS (SELECT 1 FROM sys.indexes
                    WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_CreatedBy')

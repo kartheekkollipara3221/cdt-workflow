@@ -1,20 +1,21 @@
-# RESUME HERE - atlas-platform review 13 DONE: Waves 1-3 (47 findings) fixed; DA-08 approved+done; DA-12 open; not pushed - 2026-10-25
+# RESUME HERE - atlas-platform review 13 DONE: Waves 1-3 (47 findings) fixed; DA-08 + DA-12 approved and done; not pushed - 2026-10-25
 
 ## Status
 - Wave 1 B18-B28, Wave 2 B29-B46 (7cfc8bf..4ac9b8c), Wave 3 B47-B64 (4d14cd6..be29279). Review section 12 has a
   table for each wave (commit, INTEGRATION row, result). Housekeeping abe1c6f (README phase table, Data README).
-- Tests: 268 .NET + 52 Angular; builds 0 warnings; --atlas-check 0 errors 0 warnings. Browser smoke after Wave 3 OK
+- Tests: 273 .NET + 52 Angular (after DA-08/DA-12); builds 0 warnings; --atlas-check 0 errors 0 warnings. Browser smoke after Wave 3 OK
   (form OnPush, required error + aria, save, history, tab keys, no console errors).
 
-## DA-08 done (2026-10-25, approved): TTDV2.General.IsDeleted bit NOT NULL
-- 12-ttdv2-app.sql / 040: NOT NULL DEFAULT 0; step 2a upgrades an earlier bit NULL column (THROW 55008 if a NULL row,
-  else drop the 2 filtered indexes, ALTER, make them again). Platform fix: NewRecord() gives NOT NULL value columns the
-  type default (EF crashed on null bool). Tests 271 .NET (Ttdv2AppScriptTests new). Local DB CPAtlasPlatformDev upgraded.
-  INTEGRATION B59 + review section 12 updated.
+## TTDV2 column items approved and done (2026-10-25)
+- DA-08 (747ec03): 12-ttdv2-app.sql / 040 make IsDeleted bit NOT NULL DEFAULT 0; step 2a upgrades an earlier bit NULL
+  column (THROW 55008 if a NULL row, else drop the 2 filtered indexes, ALTER, make them again). Platform fix:
+  NewRecord() gives NOT NULL value columns the type default (EF crashed on null bool).
+- DA-12 (next commit): Account/AccountName nvarchar(1000), WorkDescription nvarchar(max); step 2b alters earlier varchar.
+- Tests 273 .NET (Ttdv2AppScriptTests, Unicode round trip). --atlas-check 0/0. Local DB CPAtlasPlatformDev upgraded
+  in place with 040. INTEGRATION B59/B60, review section 12, spec 12 field map updated.
 
-## Open - needs the user's decision (compatibility rules: no change to existing TTDV2 schema without approval)
-1. DA-12 (B60): TTDV2 free-text columns (Account, AccountName, WorkDescription) varchar -> nvarchar? TTDV2 mirrors TTD.
-   Template part done. Next question to ask (one at a time).
+## Open
+- Nothing open from review 13. Waiting for the user's next feedback.
 Not done on purpose (noted in rows): SV-13 lazy Dashboards (would break the AtlasModuleServices constructor); DA-10
 async overloads (deferred by the review); NG-11 per-field view model (Low); HO-04 health check (optional); SV-07 JSON
 Schema file (optional); zone.js not installed locally (the NG-09 zone test runs at the target Karma).
@@ -26,7 +27,7 @@ Schema file (optional); zone.js not installed locally (the NG-09 zone test runs 
   AuditRefTypes, SchemaVersion, SystemTime; tab MaxRows. Log events: Service/Platform/AtlasLog.cs (INTEGRATION section 4).
 
 ## Next-session prompt
-"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Review 13 is done; DA-08 is done; decide DA-12 (TTDV2 nvarchar)."
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Review 13 is done, incl. DA-08/DA-12. Here is my next feedback: ..."
 
 ---
 

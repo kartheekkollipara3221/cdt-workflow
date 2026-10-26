@@ -142,17 +142,17 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <h3>3.1 Field map from TTD to TTDV2</h3>
 <div class="table-wrap"><table>
 <tr><th>TTD column (text)</th><th>TTDV2 column</th><th>Control</th></tr>
-<tr><td><code>Account varchar(1000)</code></td><td><code>Account varchar(1000)</code></td><td><code>Account</code> (<code>ngselect</code>, <code>PBAccounts</code>, <code>SetFromOption</code>)</td></tr>
-<tr><td><code>AccountNumber</code>, <code>AccountName</code></td><td>same, <code>varchar</code></td><td><code>AccountNumber</code>, <code>AccountName</code></td></tr>
+<tr><td><code>Account varchar(1000)</code></td><td><code>Account nvarchar(1000)</code> (review DA-12)</td><td><code>Account</code> (<code>ngselect</code>, <code>PBAccounts</code>, <code>SetFromOption</code>)</td></tr>
+<tr><td><code>AccountNumber</code>, <code>AccountName</code></td><td><code>AccountNumber varchar(100)</code>, <code>AccountName nvarchar(1000)</code> (review DA-12)</td><td><code>AccountNumber</code>, <code>AccountName</code></td></tr>
 <tr><td><code>TaxYear varchar(200)</code></td><td><code>TaxYear smallint</code></td><td><code>TaxYear</code> (<code>TaxYears</code>, default <code>{Options[1]}</code>, <code>KeepSavedValue</code>)</td></tr>
-<tr><td><code>Category</code>, <code>WorkDescription</code></td><td>same</td><td>same</td></tr>
+<tr><td><code>Category</code>, <code>WorkDescription</code></td><td><code>Category</code> same, <code>WorkDescription nvarchar(max)</code> (review DA-12)</td><td>same</td></tr>
 <tr><td><code>WeekEnding varchar(100)</code></td><td><code>WeekEnding date</code></td><td><code>WeekEnding</code> (<code>WeekEndings</code>, default <code>{Options[0]}</code>, <code>KeepSavedValue</code>)</td></tr>
 <tr><td><code>MondayMinute</code> ... <code>SundayMinute varchar(100)</code></td><td><code>int NULL</code>, <code>CHECK 0-1440</code></td><td>grid <code>WeeklyHour</code>, <code>SingleRowFields</code></td></tr>
 <tr><td><code>WeeklyTotal varchar(100)</code></td><td><code>WeeklyTotal int</code></td><td><code>Computed</code></td></tr>
 <tr><td><code>TaxPreparerName varchar(1000)</code> (display name)</td><td><code>TaxPreparerLanId nvarchar(50)</code></td><td><code>TaxPreparer</code> (<code>UsersInRoles</code> <code>["Prepare", "Owner"]</code>, default <code>{User.LanID}</code>)</td></tr>
 <tr><td><code>CreatedBy</code>, <code>ModifiedBy</code> (display name)</td><td>same, LAN ID</td><td>system</td></tr>
 <tr><td><code>CreatedDate</code>, <code>ModifiedDate</code> (local)</td><td>same, UTC</td><td>system</td></tr>
-<tr><td><code>IsDeleted</code></td><td>same</td><td>system</td></tr>
+<tr><td><code>IsDeleted</code></td><td><code>bit NOT NULL DEFAULT 0</code> (review DA-08)</td><td>system</td></tr>
 <tr><td>—</td><td><code>RowVersion rowversion</code></td><td>system</td></tr>
 </table></div>
 <h3>3.2 Dashboard tabs (<code>Source: Table</code>, no procedure)</h3>

@@ -28,9 +28,38 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
         Assert.Equal(typeof(int?), table.Find("MondayMinute")!.ClrType);
         Assert.Equal(typeof(short?), table.Find("TaxYear")!.ClrType);
         Assert.Equal("date", table.Find("WeekEnding")!.StoreType);
-        Assert.Equal("varchar(max)", table.Find("WorkDescription")!.StoreType);
+        Assert.Equal("nvarchar(max)", table.Find("WorkDescription")!.StoreType); // review DA-12
+        Assert.Equal("varchar(100)", table.Find("AccountNumber")!.StoreType);
         Assert.Equal(50, table.Find("TaxPreparerLanId")!.MaxLength);
         Assert.True(table.HasSoftDelete);
+    }
+
+    [Fact]
+    public async Task Unicode_free_text_is_stored_and_loaded_with_no_loss()
+    {
+        // Review DA-12: the free-text columns are nvarchar, so pasted Unicode text is not stored as '?'.
+        AtlasTableRegistry registry = await LoadRegistryAsync();
+        const string text = "東京 Zürich ✓ €";
+        int id;
+
+        await using (AtlasPlatformContext context = CreateContext(registry))
+        {
+            Dictionary<string, object?> record = registry.Get(General).NewRecord();
+            record["Account"] = text;
+            record["AccountName"] = text;
+            record["WorkDescription"] = text;
+            context.Records(General).Add(record);
+            await context.SaveChangesAsync();
+            id = (int)record["ID"]!;
+        }
+
+        await using (AtlasPlatformContext context = CreateContext(registry))
+        {
+            Dictionary<string, object?> loaded = (await context.FindActiveAsync(General, id))!;
+            Assert.Equal(text, loaded["Account"]);
+            Assert.Equal(text, loaded["AccountName"]);
+            Assert.Equal(text, loaded["WorkDescription"]);
+        }
     }
 
     [Fact]

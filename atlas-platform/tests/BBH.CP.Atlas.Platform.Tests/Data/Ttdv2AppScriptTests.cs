@@ -3,8 +3,8 @@ using Microsoft.Data.SqlClient;
 namespace BBH.CP.Atlas.Platform.Tests.Data;
 
 /// <summary>
-/// Review DA-08 (B59): script 040 makes TTDV2.General.IsDeleted bit NOT NULL, also in a database where an earlier
-/// run made it bit NULL. Own database (it changes the column).
+/// Review DA-08 (B59) and DA-12 (B60): script 040 makes TTDV2.General.IsDeleted bit NOT NULL and the free-text columns
+/// nvarchar, also in a database where an earlier run made them bit NULL / varchar. Own database (it changes columns).
 /// </summary>
 [Trait("Category", "SqlServer")]
 public sealed class Ttdv2AppScriptTests : IAsyncLifetime
@@ -62,6 +62,29 @@ public sealed class Ttdv2AppScriptTests : IAsyncLifetime
         Assert.Equal(1, await _db.ScalarAsync(IsNullable));
         Assert.Equal(2, await _db.ScalarAsync(FilteredIndexCount));
         Assert.Equal(1, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General WHERE IsDeleted IS NULL"));
+    }
+
+    [Fact]
+    public async Task A_run_on_the_earlier_varchar_columns_makes_them_nvarchar_and_keeps_the_text()
+    {
+        await _db.ScalarAsync("""
+            ALTER TABLE TTDV2.General ALTER COLUMN Account varchar(1000) NULL;
+            ALTER TABLE TTDV2.General ALTER COLUMN AccountName varchar(1000) NULL;
+            ALTER TABLE TTDV2.General ALTER COLUMN WorkDescription varchar(max) NULL;
+            INSERT INTO TTDV2.General (Account, AccountName, WorkDescription) VALUES ('Acct 1', 'Name 1', 'Work 1');
+            """);
+
+        await RunScriptAsync();
+
+        Assert.Equal("nvarchar(1000) nvarchar(1000) nvarchar(-1)", await _db.ScalarAsync("""
+            SELECT STRING_AGG(TYPE_NAME(system_type_id) + '(' + CAST(CASE WHEN max_length = -1 THEN -1 ELSE max_length / 2 END AS varchar(10)) + ')', ' ')
+                   WITHIN GROUP (ORDER BY name)
+            FROM sys.columns WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name IN (N'Account', N'AccountName', N'WorkDescription')
+            """));
+        Assert.Equal(1, await _db.ScalarAsync(
+            "SELECT COUNT(*) FROM TTDV2.General WHERE Account = N'Acct 1' AND AccountName = N'Name 1' AND WorkDescription = N'Work 1'"));
+
+        await RunScriptAsync(); // safe to run again
     }
 
     // The column as the script made it before DA-08: bit NULL, with the same default and filtered indexes.

@@ -83,17 +83,17 @@ TTDV2 does what TTD does (module 1, 10.1 and 10.5), with the new-app rules.
 
 | TTD column (text) | TTDV2 column | Control |
 |---|---|---|
-| `Account varchar(1000)` | `Account varchar(1000)` | `Account` (`ngselect`, `PBAccounts`, `SetFromOption`) |
-| `AccountNumber`, `AccountName` | same, `varchar` | `AccountNumber`, `AccountName` |
+| `Account varchar(1000)` | `Account nvarchar(1000)` (review DA-12) | `Account` (`ngselect`, `PBAccounts`, `SetFromOption`) |
+| `AccountNumber`, `AccountName` | `AccountNumber varchar(100)`, `AccountName nvarchar(1000)` (review DA-12) | `AccountNumber`, `AccountName` |
 | `TaxYear varchar(200)` | `TaxYear smallint` | `TaxYear` (`TaxYears`, default `{Options[1]}`, `KeepSavedValue`) |
-| `Category`, `WorkDescription` | same | same |
+| `Category`, `WorkDescription` | `Category` same, `WorkDescription nvarchar(max)` (review DA-12) | same |
 | `WeekEnding varchar(100)` | `WeekEnding date` | `WeekEnding` (`WeekEndings`, default `{Options[0]}`, `KeepSavedValue`) |
 | `MondayMinute` ... `SundayMinute varchar(100)` | `int NULL`, `CHECK 0-1440` | grid `WeeklyHour`, `SingleRowFields` |
 | `WeeklyTotal varchar(100)` | `WeeklyTotal int` | `Computed` |
 | `TaxPreparerName varchar(1000)` (display name) | `TaxPreparerLanId nvarchar(50)` | `TaxPreparer` (`UsersInRoles` `["Prepare", "Owner"]`, default `{User.LanID}`) |
 | `CreatedBy`, `ModifiedBy` (display name) | same, LAN ID | system |
 | `CreatedDate`, `ModifiedDate` (local) | same, UTC | system |
-| `IsDeleted` | same | system |
+| `IsDeleted` | `bit NOT NULL DEFAULT 0` (review DA-08) | system |
 | — | `RowVersion rowversion` | system |
 
 ### 3.2 Dashboard tabs (`Source: Table`, no procedure)
