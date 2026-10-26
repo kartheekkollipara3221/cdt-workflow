@@ -12,7 +12,8 @@
 
 
 ## State
-- Branch console-code-first-0518 pushed to origin at cf928d4 (this handoff commit is local until the next push).
+- Branch console-code-first-0518 is pushed to origin and up to date (session end 2026-10-25). Working tree: only
+  untracked files from earlier work (.agents/, docs/CDT_*, target-implementation-read-only/ ...), not part of this work.
 - atlas-platform review 13: all 47 findings fixed incl. DA-08/DA-12 (see the entry below). 273 .NET + 52 Angular tests.
   Local review STOPPED (API 5080 and UI 4200 stopped 2026-10-25). Restart: dotnet run --project
   atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; cd atlas-platform/WebUi; npm start.
