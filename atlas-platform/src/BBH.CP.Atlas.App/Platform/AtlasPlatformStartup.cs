@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace BBH.CP.Atlas.App.Platform;
 
 /// <summary>
-/// Start-up of the platform. program.cs calls it after Build and before Run:
+/// Start-up of the platform. A hosted service of AddAtlasPlatform runs it before the server takes requests (review
+/// HO-06). program.cs can still call it after Build and before Run; the second call does nothing:
 /// <code>await app.Services.StartAtlasPlatformAsync();</code>
 /// It reads the table metadata of each registered app into the table registry before the first request
 /// (spec 05, 6.2; a new table needs a restart) and runs the start-up check (spec 07, 4.8).
@@ -19,11 +20,30 @@ public static class AtlasPlatformStartup
     /// <summary>Loads the table metadata and runs the start-up check. An error stops the start-up (spec 07, 4.8).</summary>
     public static async Task StartAtlasPlatformAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<AtlasCheckItem> items = await LoadAndCheckAsync(services, cancellationToken);
-        AtlasCheckItem[] errors = [.. items.Where(x => x.Severity == AtlasCheckSeverity.Error)];
-        if (errors.Length > 0)
-            throw new InvalidOperationException("The Atlas start-up check found errors:" + Environment.NewLine
-                + string.Join(Environment.NewLine, errors.Select(x => "  " + x)));
+        ArgumentNullException.ThrowIfNull(services);
+        AtlasTableRegistry registry = services.GetRequiredService<AtlasTableRegistry>();
+        AtlasPlatformStartupGate? gate = services.GetService<AtlasPlatformStartupGate>();
+        if (registry.IsLoaded)
+            return;
+
+        if (gate != null)
+            await gate.Lock.WaitAsync(cancellationToken);
+        try
+        {
+            if (registry.IsLoaded)
+                return;
+
+            IReadOnlyList<AtlasCheckItem> items = await LoadAndCheckAsync(services, cancellationToken);
+            AtlasCheckItem[] errors = [.. items.Where(x => x.Severity == AtlasCheckSeverity.Error)];
+            if (errors.Length > 0)
+                throw new InvalidOperationException("The Atlas start-up check found errors:" + Environment.NewLine
+                    + string.Join(Environment.NewLine, errors.Select(x => "  " + x)));
+            registry.MarkLoaded();
+        }
+        finally
+        {
+            gate?.Lock.Release();
+        }
     }
 
     /// <summary>
@@ -91,4 +111,21 @@ public static class AtlasPlatformStartup
             items.Count(x => x.Severity == AtlasCheckSeverity.Error), items.Count(x => x.Severity == AtlasCheckSeverity.Warning));
         return items;
     }
+}
+
+/// <summary>One start-up at a time (the hosted service and a program.cs call).</summary>
+public sealed class AtlasPlatformStartupGate
+{
+    internal SemaphoreSlim Lock { get; } = new(1, 1);
+}
+
+/// <summary>
+/// Runs the platform start-up before the server takes requests (review HO-06), so a host that does not call
+/// StartAtlasPlatformAsync still loads the tables. The start-up token stops it when the host stops.
+/// </summary>
+public sealed class AtlasPlatformStartupService(IServiceProvider services) : IHostedService
+{
+    public Task StartAsync(CancellationToken cancellationToken) => services.StartAtlasPlatformAsync(cancellationToken);
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

@@ -76,7 +76,10 @@ public sealed class AtlasModuleResolver(
         {
             (logger ?? (ILogger)NullLogger.Instance).LogWarning(AppNotAvailable,
                 "Atlas.AppNotAvailable App={App} Table={Table} Reason=NotLoadedAtStartup", code, missing);
-            throw AtlasProblemException.NotFound($"App '{code}' is not available: the table '{missing}' was not loaded at start-up. Restart the application.");
+            string cause = tables is { IsLoaded: false }
+                ? " The platform start-up did not run (the AddAtlasPlatform hosted service or StartAtlasPlatformAsync)."
+                : " Restart the application.";
+            throw AtlasProblemException.NotFound($"App '{code}' is not available: the table '{missing}' was not loaded at start-up.{cause}");
         }
 
         IAtlasModule module = services.GetRequiredKeyedService<IAtlasModule>(code);

@@ -12,6 +12,11 @@ public sealed class AtlasTableRegistry
     private readonly Lock _lock = new();
     private string? _modelKey;
 
+    /// <summary>True after the platform start-up loaded the tables (review HO-06).</summary>
+    public bool IsLoaded { get; private set; }
+
+    public void MarkLoaded() => IsLoaded = true;
+
     public IReadOnlyCollection<AtlasTable> Tables
     {
         get

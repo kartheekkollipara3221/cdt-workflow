@@ -43,6 +43,10 @@ public static class AtlasPlatformServiceCollectionExtensions
         services.Configure<MvcOptions>(options => options.Filters.Add<AtlasProblemExceptionFilter>());
 
         AtlasPlatformServices.Add(services);
+
+        // Review HO-06: the start-up runs as a hosted service; StartAtlasPlatformAsync in program.cs stays valid.
+        services.TryAddSingleton<AtlasPlatformStartupGate>();
+        services.AddHostedService<AtlasPlatformStartupService>();
         return services;
     }
 

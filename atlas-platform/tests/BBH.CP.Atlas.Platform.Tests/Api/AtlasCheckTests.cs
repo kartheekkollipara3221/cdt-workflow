@@ -1,8 +1,10 @@
 using BBH.CP.Atlas.App.Platform;
 using BBH.CP.Atlas.App.StandIn;
+using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Platform.Tests.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BBH.CP.Atlas.Platform.Tests.Api;
 
@@ -245,6 +247,32 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
 
         Assert.Contains("WARNING TTDV2: the AuditTable TTDV2.AuditLog is shared with PBSP", report, StringComparison.Ordinal);
         Assert.DoesNotContain("WARNING PBSP: the AuditTable", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_host_loads_the_platform_when_program_cs_does_not_call_StartAtlasPlatformAsync()
+    {
+        // Review HO-06: the hosted service of AddAtlasPlatform runs the start-up; a second call does nothing.
+        await using WebApplication app = StandInHost.Create(["--environment=Development", "--urls=http://127.0.0.1:0"], builder =>
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DBConnection"] = database.ConnectionString,
+                ["AppSettings:ConfigFolder"] = RealConfig
+            }));
+        AtlasTableRegistry registry = app.Services.GetRequiredService<AtlasTableRegistry>();
+        Assert.False(registry.IsLoaded);
+
+        await app.StartAsync();
+        try
+        {
+            Assert.True(registry.IsLoaded);
+            Assert.True(registry.TryGet("TTDV2.General", out _));
+            await app.Services.StartAtlasPlatformAsync(); // the program.cs line of INTEGRATION.md stays valid
+        }
+        finally
+        {
+            await app.StopAsync();
+        }
     }
 
     private void ReplaceInForm(string oldText, string newText)
