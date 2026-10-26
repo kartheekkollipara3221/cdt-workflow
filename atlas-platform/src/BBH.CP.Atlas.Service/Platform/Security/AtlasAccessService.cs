@@ -76,9 +76,22 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
         if (form?.OwnerFields is not { Count: > 0 } fields)
             return false;
 
-        return fields.Any(field => record.TryGetValue(field, out object? value)
-            && value is string text
+        return fields.Any(field => ValueOf(record, field) is string text
             && string.Equals(text.Trim(), user.LanId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// The value of a column, with the name in any case (review SV-09): the record keys are the SQL column names, and
+    /// the start-up check also ignores case, so "TaxPreparerLanID" must find "TaxPreparerLanId".
+    /// </summary>
+    private static object? ValueOf(IReadOnlyDictionary<string, object?> record, string field)
+    {
+        if (record.TryGetValue(field, out object? value))
+            return value;
+        foreach ((string key, object? item) in record)
+            if (string.Equals(key, field, StringComparison.OrdinalIgnoreCase))
+                return item;
+        return null;
     }
 
     public CPUserPermissions UserPermissions(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, IReadOnlyDictionary<string, object?>? record) =>

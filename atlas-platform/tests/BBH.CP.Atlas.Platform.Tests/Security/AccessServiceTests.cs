@@ -65,6 +65,17 @@ public class AccessServiceTests
     }
 
     [Fact]
+    public void An_owner_field_name_in_another_case_still_finds_the_column()
+    {
+        // Review SV-09: the start-up check ignores case, so the access check must too.
+        CPAtlasApplicationConfig form = new() { OwnerFields = ["TaxPreparerLanID"], Permissions = Form.Permissions };
+        Dictionary<string, object?> record = new() { ["CreatedBy"] = "other", ["TaxPreparerLanId"] = "me" };
+
+        Assert.True(Service("Prepare").IsOwner(form, record));
+        Assert.True(Service("Prepare").Evaluate(TestManifests.Ttdv2(), form, AtlasOperation.Edit, record).Allowed);
+    }
+
+    [Fact]
     public void Roles_of_another_app_give_no_access()
     {
         AtlasAccessService service = new(new FakeUserContext("me", new AtlasRole("TTD", "Owner", true, true, true)), new ListLogger<AtlasAccessService>());
