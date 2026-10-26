@@ -272,8 +272,12 @@ namespace BBH.CP.Atlas.Service.Application
                 (field, reason) =>
                 {
                     if (reason == AtlasIgnoreReason.ServerSet)
-                        Logger.LogDebug(FieldIgnored, "Atlas.FieldIgnored App={App} Field={Field} Reason=ServerSet", manifest.Code, field.Name);
+                        AtlasLog.FieldIgnored(Logger, manifest.Code, field.Name, "ServerSet");
                 });
+
+            // Review SV-12: a refused field is a warning, so a probe or a client defect can be found in the log.
+            foreach (CPPageError refusal in errors.Where(x => x.Code is "NotAllowed" or "NotInOptions" or "InvalidGrid"))
+                AtlasLog.FieldRefused(Logger, Services.User.LanId, manifest.Code, input.ID, refusal.Field ?? "", refusal.Code);
 
             // 6. Validators and the Require effects (visible and enabled fields only; one error for each field).
             HashSet<string> refused = new(errors.Select(x => x.Field ?? ""), StringComparer.OrdinalIgnoreCase);
@@ -386,8 +390,7 @@ namespace BBH.CP.Atlas.Service.Application
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Review SV-06: a 500 here would make the user save again with ID = 0 and create a duplicate.
-                Logger.LogError(AfterSaveFailed, ex, "Atlas.AfterSaveFailed App={App} Record={Record} LanId={LanId}",
-                    manifest.Code, record[table.Key!.Name], Services.User.LanId);
+                AtlasLog.AfterSaveFailed(Logger, ex, manifest.Code, record[table.Key!.Name], Services.User.LanId);
             }
 
             result.ID = (int)record[table.Key!.Name]!;
@@ -430,7 +433,14 @@ namespace BBH.CP.Atlas.Service.Application
                 CPApplicationControl? grid = fields.Grids.FirstOrDefault(x => string.Equals(x.Name, output.Name, StringComparison.OrdinalIgnoreCase));
                 if (grid != null)
                 {
-                    foreach ((string name, string? value) in ReadGridRow(output.Value))
+                    if (ReadGridRow(output.Value) is not { } row)
+                    {
+                        // Review SV-12: grid JSON that does not parse is an error, not an empty row.
+                        errors.Add(Error(grid.Name, "InvalidGrid", $"{grid.Label ?? grid.Name} has values that are not valid."));
+                        continue;
+                    }
+
+                    foreach ((string name, string? value) in row)
                     {
                         if (fields.Find(name) is { } field && field.Control == grid)
                             values[field.Name] = value;
@@ -450,7 +460,8 @@ namespace BBH.CP.Atlas.Service.Application
             return values;
         }
 
-        private static List<(string Name, string? Value)> ReadGridRow(string? json)
+        /// <summary>The first row of a grid output; null when the text is not valid JSON.</summary>
+        private static List<(string Name, string? Value)>? ReadGridRow(string? json)
         {
             List<(string Name, string? Value)> values = [];
             if (string.IsNullOrWhiteSpace(json))
@@ -463,7 +474,7 @@ namespace BBH.CP.Atlas.Service.Application
             }
             catch (JsonException)
             {
-                return values;
+                return null;
             }
 
             // Review SV-10: the document is disposed (it uses pooled memory).
@@ -553,7 +564,7 @@ namespace BBH.CP.Atlas.Service.Application
             catch (DbUpdateException ex)
             {
                 transaction.Rollback();
-                Logger.LogError(SaveFailed, ex, "Atlas.SaveFailed App={App} LanId={LanId}", manifest.Code, Services.User.LanId);
+                AtlasLog.SaveFailed(Logger, ex, manifest.Code, Services.User.LanId);
                 errors.Add(Error("", "SaveFailed", "The record was not saved. Contact support if this occurs again."));
                 return false;
             }
@@ -604,7 +615,7 @@ namespace BBH.CP.Atlas.Service.Application
         /// <summary>The old client audit call. With AuditMode Server the server already wrote the entry (spec 01, 5.12).</summary>
         public override void AuditLog(CPAtlasPage page)
         {
-            Logger.LogDebug("Atlas.ClientAuditIgnored App={App} Mode={Mode}", Manifest.Code, Manifest.AuditMode);
+            AtlasLog.ClientAuditIgnored(Logger, Manifest.Code, Manifest.AuditMode.ToString());
         }
 
         public override List<CPAuditLog> GetAuditLog(string appCode, int refID)

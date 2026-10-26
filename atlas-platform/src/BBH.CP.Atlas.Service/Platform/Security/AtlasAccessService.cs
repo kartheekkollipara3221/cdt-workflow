@@ -62,8 +62,7 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
         if (decision.Allowed)
             return;
 
-        logger.LogWarning(AccessDenied, "Atlas.AccessDenied LanId={LanId} App={App} Record={Record} Operation={Operation} Mode={Mode} Reason={Reason}",
-            user.LanId, manifest.Code, recordId, operation, manifest.AccessMode, decision.Reason);
+        AtlasLog.AccessDenied(logger, user.LanId, manifest.Code, recordId, operation.ToString(), manifest.AccessMode.ToString(), decision.Reason);
 
         if (manifest.AccessMode == AtlasAccessMode.Enforce || operation == AtlasOperation.Delete)
             throw AtlasProblemException.Forbidden(decision.Reason);

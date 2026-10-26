@@ -126,7 +126,7 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
                     : "The app of this file is not available.";
                 string message = $"{Path.GetFileName(path)} cannot be read: {ex.Message} {result}";
                 errors.Add(message);
-                _logger.LogError(ConfigInvalid, "Atlas.ConfigInvalid File={File} Error={Error}", Path.GetFileName(path), message);
+                AtlasLog.ConfigInvalid(_logger, Path.GetFileName(path), message);
                 if (lastGood != null)
                     manifests.Add(lastGood);
             }

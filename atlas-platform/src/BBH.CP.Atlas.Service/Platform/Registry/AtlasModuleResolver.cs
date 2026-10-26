@@ -75,15 +75,13 @@ public sealed class AtlasModuleResolver(
 
         if (disabled != null && disabled.IsDisabled(code, out string reason))
         {
-            (logger ?? (ILogger)NullLogger.Instance).LogWarning(AppNotAvailable,
-                "Atlas.AppNotAvailable App={App} Reason=StartupCheck", code);
+            AtlasLog.AppDisabledByCheck(logger ?? (ILogger)NullLogger.Instance, code);
             throw AtlasProblemException.NotFound($"App '{code}' is not available: the start-up check found errors ({reason}).");
         }
 
         if (MissingTable(manifest) is { } missing)
         {
-            (logger ?? (ILogger)NullLogger.Instance).LogWarning(AppNotAvailable,
-                "Atlas.AppNotAvailable App={App} Table={Table} Reason=NotLoadedAtStartup", code, missing);
+            AtlasLog.AppNotLoaded(logger ?? (ILogger)NullLogger.Instance, code, missing);
             string cause = tables is { IsLoaded: false }
                 ? " The platform start-up did not run (the AddAtlasPlatform hosted service or StartAtlasPlatformAsync)."
                 : " Restart the application.";

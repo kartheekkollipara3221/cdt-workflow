@@ -20,7 +20,7 @@ public sealed class AtlasProblemExceptionFilter(ILogger<AtlasProblemExceptionFil
             return;
 
         if (problem.IsConfigError)
-            logger.LogError(ConfigError, problem, "Atlas.ConfigError Path={Path} Detail={Detail}", context.HttpContext.Request.Path, problem.Message);
+            AtlasLog.ConfigError(logger, problem, context.HttpContext.Request.Path.ToString(), problem.Message);
 
         string title = problem.StatusCode switch
         {

@@ -417,6 +417,24 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Equal("TAX_N", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
     }
 
+    [Fact]
+    public async Task A_refused_field_is_logged_and_grid_JSON_that_does_not_parse_is_an_error()
+    {
+        // Review SV-12: Atlas.FieldRefused (Warning) for each refusal; bad grid JSON is not an empty row.
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        using ListLoggerFactory logs = new();
+        CPTTDV2Service service = new(_harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], logs)) { AppCode = "TTDV2" };
+        string? version = service.LoadPage(new CPAtlasPage { ID = id }).Version;
+        CPAtlasPage input = EditInput(id, version, ("Salary", "999999"), ("WeeklyHour", "{ not json"));
+
+        CPAtlasPage result = service.SavePage(input, NoFiles);
+
+        Assert.Equal(0, result.ID);
+        Assert.Contains(result.Errors!, x => x.Field == "WeeklyHour" && x.Code == "InvalidGrid");
+        Assert.Contains(logs.Logger.Entries, x => x.EventId.Name == "Atlas.FieldRefused" && x.Message.Contains("Field=Salary Code=NotAllowed", StringComparison.Ordinal));
+        Assert.Contains(logs.Logger.Entries, x => x.EventId.Name == "Atlas.FieldRefused" && x.Message.Contains("Field=WeeklyHour Code=InvalidGrid", StringComparison.Ordinal));
+    }
+
     private sealed class ThrowingAfterSave(AtlasModuleServices services) : CPTTDV2Service(services)
     {
         protected override void OnAfterSave(AtlasSaveContext context) => throw new InvalidOperationException("The notification failed.");

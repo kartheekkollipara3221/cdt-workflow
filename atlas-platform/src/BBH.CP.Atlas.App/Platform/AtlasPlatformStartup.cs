@@ -1,5 +1,6 @@
 using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.Platform;
+using BBH.CP.Atlas.Service.Platform;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -89,7 +90,7 @@ public static class AtlasPlatformStartup
             foreach (string code in group.Key == "*" ? all : [group.Key])
             {
                 disabled.Disable(code, reason);
-                logger.LogCritical(AppDisabled, "Atlas.AppDisabled App={App} Reason={Reason}", code, reason);
+                AtlasLog.AppDisabled(logger, code, reason);
             }
         }
     }
@@ -148,14 +149,10 @@ public static class AtlasPlatformStartup
         IReadOnlyList<AtlasCheckItem> items = AtlasStartupCheck.Run(provider);
         foreach (AtlasCheckItem item in items)
         {
-            if (item.Severity == AtlasCheckSeverity.Error)
-                logger.LogError(StartupCheck, "Atlas.StartupCheck {Item}", item.ToString());
-            else
-                logger.LogWarning(StartupCheck, "Atlas.StartupCheck {Item}", item.ToString());
+            AtlasLog.StartupCheckItem(logger, item.Severity == AtlasCheckSeverity.Error ? LogLevel.Error : LogLevel.Warning, item.ToString());
         }
 
-        logger.LogInformation(StartupCheck, "Atlas.Started Environment={Environment} Modules={Modules} Tables={Tables} Errors={Errors} Warnings={Warnings}",
-            provider.GetRequiredService<IHostEnvironment>().EnvironmentName, string.Join(",", registered), tables.Length,
+        AtlasLog.Started(logger, provider.GetRequiredService<IHostEnvironment>().EnvironmentName, string.Join(",", registered), tables.Length,
             items.Count(x => x.Severity == AtlasCheckSeverity.Error), items.Count(x => x.Severity == AtlasCheckSeverity.Warning));
         return items;
     }
