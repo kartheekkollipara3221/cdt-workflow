@@ -59,6 +59,11 @@ export class AtlasRendererRegistry {
     return this.get(type) !== null;
   }
 
+  /** The registered types (for example for a test that renders each type). */
+  types(): string[] {
+    return [...this.renderers.keys()];
+  }
+
   /** The renderer of the type, or the "unsupported" note for a type with no renderer (review NG-04). */
   resolve(type: string | null | undefined): Type<unknown> {
     return this.get(type) ?? AtlasUnsupportedRenderer;
