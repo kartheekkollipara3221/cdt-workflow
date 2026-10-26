@@ -78,6 +78,17 @@ public static class AtlasDataExtensions
     }
 
     /// <summary>
+    /// The same as <see cref="FindActive(AtlasPlatformContext, string, int)"/>; <paramref name="tracking"/> = false for a
+    /// read-only path (load, history), so the record is not kept in the change tracker (review DA-10).
+    /// </summary>
+    public static Dictionary<string, object?>? FindActive(this AtlasPlatformContext context, string tableFullName, int id, bool tracking)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        IQueryable<Dictionary<string, object?>> query = ActiveByKey(context, tableFullName, id);
+        return (tracking ? query : query.AsNoTracking()).SingleOrDefault();
+    }
+
+    /// <summary>
     /// Loads one record by its key in the database (no full table read, spec 05, 6.5). A soft-deleted record is not
     /// found. Returns null if there is no such record.
     /// </summary>

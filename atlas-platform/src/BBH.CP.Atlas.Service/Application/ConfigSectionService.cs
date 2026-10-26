@@ -132,7 +132,7 @@ namespace BBH.CP.Atlas.Service.Application
             Dictionary<string, object?>? record = null;
             if (page.ID > 0)
             {
-                record = Services.PlatformContext.FindActive(table.FullName, page.ID)
+                record = Services.PlatformContext.FindActive(table.FullName, page.ID, tracking: false)
                     ?? throw AtlasProblemException.NotFound($"Record {page.ID} of {manifest.Code} was not found.");
                 Services.Access.Demand(manifest, form, AtlasOperation.View, record, page.ID);
             }
@@ -622,7 +622,7 @@ namespace BBH.CP.Atlas.Service.Application
         {
             AtlasAppManifest manifest = Manifest;
             CPAtlasApplicationConfig form = Services.ConfigStore.GetForm(AppCode);
-            Dictionary<string, object?>? record = Services.PlatformContext.FindActive(MainTable(manifest).FullName, refID);
+            Dictionary<string, object?>? record = Services.PlatformContext.FindActive(MainTable(manifest).FullName, refID, tracking: false);
             Services.Access.Demand(manifest, form, AtlasOperation.History, record, refID);
             return Services.Audit.Read(manifest, refID);
         }

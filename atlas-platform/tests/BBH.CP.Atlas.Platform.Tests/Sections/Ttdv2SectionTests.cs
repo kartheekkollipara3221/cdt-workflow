@@ -435,6 +435,20 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Contains(logs.Logger.Entries, x => x.EventId.Name == "Atlas.FieldRefused" && x.Message.Contains("Field=WeeklyHour Code=InvalidGrid", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Load_and_history_do_not_track_the_record()
+    {
+        // Review DA-10: the read-only paths keep nothing in the change tracker.
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        AtlasModuleServices services = _harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
+        CPTTDV2Service service = new(services) { AppCode = "TTDV2" };
+
+        service.LoadPage(new CPAtlasPage { ID = id });
+        service.GetAuditLog("TTDV2", id);
+
+        Assert.Empty(services.PlatformContext.ChangeTracker.Entries());
+    }
+
     private sealed class ThrowingAfterSave(AtlasModuleServices services) : CPTTDV2Service(services)
     {
         protected override void OnAfterSave(AtlasSaveContext context) => throw new InvalidOperationException("The notification failed.");
