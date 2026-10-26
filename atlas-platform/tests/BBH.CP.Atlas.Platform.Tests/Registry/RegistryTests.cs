@@ -47,6 +47,28 @@ public sealed class RegistryTests : IDisposable
     }
 
     [Fact]
+    public void A_form_in_a_sibling_folder_with_the_same_name_prefix_is_outside_the_config_folder()
+    {
+        // Review HO-09: "..\<folder>Old\DEMO.json" starts with the folder text but is not in the folder.
+        string sibling = _folder + "Old";
+        Directory.CreateDirectory(sibling);
+        try
+        {
+            File.Copy(Path.Combine(_folder, "DEMO.json"), Path.Combine(sibling, "DEMO.json"));
+            string form = Path.Combine("..", Path.GetFileName(sibling), "DEMO.json").Replace("\\", "\\\\", StringComparison.Ordinal);
+            File.WriteAllText(Path.Combine(_folder, "SIB.app.json"), $$"""{ "Code": "SIB", "Form": "{{form}}" }""");
+
+            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => Store().GetForm("SIB"));
+
+            Assert.Contains("outside the config folder", error.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(sibling, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Environment_settings_win_over_the_manifest()
     {
         AtlasConfigStore store = Store(new()

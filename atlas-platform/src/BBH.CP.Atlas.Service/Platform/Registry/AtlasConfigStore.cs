@@ -165,7 +165,9 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
     private string Resolve(string fileName)
     {
         string path = Path.GetFullPath(Path.Combine(ConfigFolder, fileName));
-        if (!path.StartsWith(ConfigFolder, StringComparison.OrdinalIgnoreCase))
+        // Review HO-09: compare with the folder and a separator, so "..\ConfigOld\x.json" is outside "Config".
+        string folder = Path.EndsInDirectorySeparator(ConfigFolder) ? ConfigFolder : ConfigFolder + Path.DirectorySeparatorChar;
+        if (!path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException($"Config file '{fileName}' is outside the config folder.");
         if (!File.Exists(path))
             throw new FileNotFoundException($"Config file '{fileName}' was not found in {ConfigFolder}.", path);
