@@ -1,7 +1,7 @@
 // COPY to the target: WebUi/Source/App/platform/. The audit history of one record (v1/GetAuditLog, spec 09, 4.5).
 // All values are shown as text (no HTML).
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, of, switchMap } from 'rxjs';
 import { problemText } from './atlas-errors';
@@ -19,6 +19,7 @@ interface HistoryEntry {
 @Component({
   selector: 'atlas-history-dialog',
   imports: [DialogComponent, LoaderComponent, DatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11
   template: `<pbdev-dialog [visible]="open()" [header]="'History of record ' + recordId()" (visibleChange)="!$event && closed.emit()">
     @if (loading()) {
       <pbdev-loader />

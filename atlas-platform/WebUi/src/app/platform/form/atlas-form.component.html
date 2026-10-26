@@ -9,7 +9,7 @@
 } @else if (section(); as s) {
   <div class="atlas-form-header">
     <div>
-      <nav class="atlas-breadcrumb" aria-label="Breadcrumb"><a [routerLink]="dashboardLink(code)">{{ code }}</a> / {{ id ? 'Record ' + id : 'New record' }}</nav>
+      <nav class="atlas-breadcrumb" aria-label="Breadcrumb"><a [routerLink]="dashboardLink(code())">{{ code() }}</a> / {{ id() ? 'Record ' + id() : 'New record' }}</nav>
       <h1 class="atlas-title">{{ s.HeaderName }}</h1>
     </div>
     <div class="atlas-header-actions">
@@ -76,10 +76,10 @@
     }
   </div>
 
-  <atlas-history-dialog [open]="historyOpen()" [appCode]="code" [recordId]="id" (closed)="historyOpen.set(false)" />
+  <atlas-history-dialog [open]="historyOpen()" [appCode]="code()" [recordId]="id()" (closed)="historyOpen.set(false)" />
 
   <pbdev-dialog [visible]="confirmDelete()" header="Delete record" (visibleChange)="confirmDelete.set($event)">
-    <p>Delete record {{ id }}? The record is marked as deleted and leaves the dashboard.</p>
+    <p>Delete record {{ id() }}? The record is marked as deleted and leaves the dashboard.</p>
     <div class="atlas-buttons">
       <button type="button" class="btn" (click)="confirmDelete.set(false)">Cancel</button>
       <button type="button" class="btn atlas-btn-danger" id="btn_ConfirmDelete" (click)="remove()">Delete</button>

@@ -1,6 +1,6 @@
 // COPY to the target: WebUi/Source/App/platform/form/. The form model of a section: the form group, the outputs
 // for the save, and the client value of a Computed field. Plain functions, so the unit tests need no component.
-import { FormControl, FormGroup } from '@angular/forms';
+import { FormControl, FormGroup, FormRecord } from '@angular/forms';
 import { CPApplicationControl, CPApplicationSection, CPPageOutput } from '../atlas-models';
 import { atlasValidators } from './atlas-validators';
 
@@ -57,13 +57,16 @@ export function shownInvalid(section: CPApplicationSection, group: FormGroup, sh
   });
 }
 
+/** The form of a section: dynamic keys, so a FormRecord (review NG-11). A FormRecord is a FormGroup. */
+export type AtlasFormRecord = FormRecord<FormControl | FormRecord<FormControl>>;
+
 /** One form control for each value control; a nested group for each SingleRowFields grid. */
-export function buildFormGroup(section: CPApplicationSection): FormGroup {
-  const group = new FormGroup<Record<string, FormControl | FormGroup>>({});
+export function buildFormGroup(section: CPApplicationSection): AtlasFormRecord {
+  const group: AtlasFormRecord = new FormRecord<FormControl | FormRecord<FormControl>>({});
   for (const control of valueControls(section)) {
     if (isSingleRowGrid(control)) {
       const row = control.Grid?.Data?.[0] ?? {};
-      const rowGroup = new FormGroup<Record<string, FormControl>>({});
+      const rowGroup = new FormRecord<FormControl>({});
       for (const column of control.Grid?.Columns ?? []) {
         if (!column.field) {
           continue;

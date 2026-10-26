@@ -1,7 +1,7 @@
 // COPY to the target as a reference: WebUi/Source/App/platform/dashboard/. At the target, the current dashboard
 // component gets only the navigation change (formRoute first, then the current if chain) and the Columns support.
 // Locally this component is the dashboard of a platform app (route dashboard/:code).
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
@@ -22,6 +22,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   selector: 'atlas-dashboard',
   imports: [AgGridAngular, LoaderComponent, DialogComponent, AtlasHistoryDialog],
   templateUrl: './atlas-dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11
 })
 export class AtlasDashboardComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);

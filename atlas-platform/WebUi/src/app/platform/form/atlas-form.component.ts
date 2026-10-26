@@ -2,9 +2,9 @@
 // question 5), route form/:code/:id, beside the current sectionmaster component. It knows no app: the controls come
 // from the section JSON, the renderers from the registry, and the rules from the server.
 import { NgComponentOutlet } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, FormRecord } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DialogComponent, LoaderComponent, SectionComponent } from '../atlas-pbdev';
 import { AtlasApiService } from '../atlas-api.service';
@@ -14,7 +14,7 @@ import { ATLAS_DASHBOARD_LINK } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
 import { problemText } from '../atlas-errors';
 import { AtlasEffectTarget, applyEffects } from './atlas-effects';
-import { buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, valueControls } from './atlas-form-model';
+import { AtlasFormRecord, buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, valueControls } from './atlas-form-model';
 import { AtlasFieldA11yDirective } from './atlas-field-a11y.directive';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
 import { atlasValidators, errorText } from './atlas-validators';
@@ -23,6 +23,7 @@ import { atlasValidators, errorText } from './atlas-validators';
   selector: 'atlas-form',
   imports: [ReactiveFormsModule, NgComponentOutlet, RouterLink, LoaderComponent, SectionComponent, DialogComponent, AtlasHistoryDialog, AtlasFieldA11yDirective],
   templateUrl: './atlas-form.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11: the state is in signals
 })
 export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   private readonly route = inject(ActivatedRoute);
@@ -43,16 +44,17 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   readonly historyOpen = signal(false);
   readonly confirmDelete = signal(false);
 
-  code = '';
-  id = 0;
-  form = new FormGroup<Record<string, FormControl | FormGroup>>({});
+  // Review NG-11: route state as signals, so OnPush and zoneless see each change.
+  readonly code = signal('');
+  readonly id = signal(0);
+  form: AtlasFormRecord = new FormRecord<FormControl | FormRecord<FormControl>>({});
   private controlsByName = new Map<string, CPApplicationControl>();
   private containers = new Map<string, string>();
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      this.code = (params.get('code') ?? '').toUpperCase();
-      this.id = Number(params.get('id') ?? 0) || 0;
+      this.code.set((params.get('code') ?? '').toUpperCase());
+      this.id.set(Number(params.get('id') ?? 0) || 0);
       this.load();
     });
   }
@@ -61,7 +63,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     this.loading.set(true);
     this.loadError.set(null);
     this.pageErrors.set([]);
-    this.api.section(this.code, this.id).subscribe({
+    this.api.section(this.code(), this.id()).subscribe({
       next: (section) => this.build(section),
       error: (error) => {
         this.loadError.set(problemText(error));
@@ -184,22 +186,19 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     return errorText(item.errors, control.Label, control.Validator);
   }
 
-  visibleButtons(): CPButton[] {
-    return (this.section()?.Buttons ?? []).filter((x) => {
+  readonly visibleButtons = computed<CPButton[]>(() =>
+    (this.section()?.Buttons ?? []).filter((x) => {
       if (!x.Visible) {
         return false;
       }
-      const action = actionOf(x);
-      if (action === 'delete') {
-        return this.id > 0 && !!this.section()?.UserPermissions?.CanDelete;
+      if (actionOf(x) === 'delete') {
+        return this.id() > 0 && !!this.section()?.UserPermissions?.CanDelete;
       }
       return true;
-    });
-  }
+    }),
+  );
 
-  canViewHistory(): boolean {
-    return this.id > 0 && !!this.section()?.UserPermissions?.CanViewHistory;
-  }
+  readonly canViewHistory = computed(() => this.id() > 0 && !!this.section()?.UserPermissions?.CanViewHistory);
 
   // ---------- Actions ----------
 
@@ -217,7 +216,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   }
 
   close(): void {
-    this.router.navigate(this.dashboardLink(this.code));
+    this.router.navigate(this.dashboardLink(this.code()));
   }
 
   save(): void {
@@ -235,8 +234,8 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     this.saving.set(true);
     this.api
       .save({
-        AppCode: this.code,
-        ID: this.id,
+        AppCode: this.code(),
+        ID: this.id(),
         Version: section.Version ?? null,
         Outputs: buildOutputs(section, this.form, (name) => this.isShown(name)),
       })
@@ -248,7 +247,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
             return;
           }
           this.notice.show('success', `Record ${result.ID} saved.`);
-          this.router.navigate(this.dashboardLink(this.code));
+          this.router.navigate(this.dashboardLink(this.code()));
         },
         error: (error) => {
           this.saving.set(false);
@@ -259,14 +258,14 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
 
   remove(): void {
     this.confirmDelete.set(false);
-    this.api.remove(this.code, this.id).subscribe({
+    this.api.remove(this.code(), this.id()).subscribe({
       next: (result) => {
         if (result.Errors?.length) {
           this.pageErrors.set(result.Errors);
           return;
         }
-        this.notice.show('success', `Record ${this.id} deleted.`);
-        this.router.navigate(this.dashboardLink(this.code));
+        this.notice.show('success', `Record ${this.id()} deleted.`);
+        this.router.navigate(this.dashboardLink(this.code()));
       },
       error: (error) => this.pageErrors.set([{ Field: '', Code: 'Http', Message: problemText(error) }]),
     });
