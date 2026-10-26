@@ -11,6 +11,8 @@
    the filtered indexes. Platform + template part is done; TTDV2 keeps ISNULL(...) until then.
 2. DA-12 (B60): TTDV2 free-text columns (Account, AccountName, WorkDescription) varchar -> nvarchar? TTDV2 mirrors TTD.
    Template part done.
+Last question asked (no answer yet): "For DA-08, do you approve a SQL script that changes TTDV2.General.IsDeleted to
+bit NOT NULL, after a check that no row has NULL? Or should TTDV2 stay as it is?" Ask DA-12 after that (one question at a time).
 Not done on purpose (noted in rows): SV-13 lazy Dashboards (would break the AtlasModuleServices constructor); DA-10
 async overloads (deferred by the review); NG-11 per-field view model (Low); HO-04 health check (optional); SV-07 JSON
 Schema file (optional); zone.js not installed locally (the NG-09 zone test runs at the target Karma).
