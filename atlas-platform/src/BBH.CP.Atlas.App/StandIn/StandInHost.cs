@@ -33,6 +33,10 @@ public static class StandInHost
         // Authentication: "Fixed" (default) = the Windows login of the API process; "Negotiate" = Windows authentication.
         if (string.Equals(configuration["StandIn:Authentication"], "Negotiate", StringComparison.OrdinalIgnoreCase))
             builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme).AddNegotiate();
+        else if (!builder.Environment.IsDevelopment())
+            // Review HO-10: on a shared QC or demo machine each caller would be the service account, with its roles.
+            throw new InvalidOperationException(
+                $"The stand-in Fixed authentication runs only in Development (this is {builder.Environment.EnvironmentName}). Set StandIn:Authentication = Negotiate.");
         else
             builder.Services.AddAuthentication(StandInFixedUserHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, StandInFixedUserHandler>(StandInFixedUserHandler.SchemeName, null);
