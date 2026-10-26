@@ -319,6 +319,19 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         }
     }
 
+    [Fact]
+    public async Task A_current_app_taken_over_with_no_SystemTime_is_a_warning()
+    {
+        // Review DA-11: P4 moves current apps in place; their rows have local times.
+        CopyRealConfig();
+        File.WriteAllText(Path.Combine(_folder, "TTD.app.json"), """{ "Code": "TTD", "Form": "TTDV2.json", "Table": "TTDV2.General" }""");
+
+        (_, string report) = await CheckAsync(_folder);
+
+        Assert.Contains("WARNING TTD: is a current app taken over by the platform but the manifest has no SystemTime", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("WARNING TTDV2: is a current app", report, StringComparison.Ordinal);
+    }
+
     private void ReplaceInForm(string oldText, string newText)
     {
         string form = Path.Combine(_folder, "TTDV2.json");

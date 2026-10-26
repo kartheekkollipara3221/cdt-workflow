@@ -9,6 +9,17 @@ public class AtlasValueConverterTests
         bool identity = false) =>
         new("Field", type, nullable, maxLength, precision, scale, identity, IsComputed: false);
 
+    [Fact]
+    public void A_date_time_is_UTC_with_Z_by_default_and_local_with_no_Z_for_SystemTime_Local()
+    {
+        // Review DA-11.
+        DateTime value = new(2026, 10, 25, 9, 30, 0);
+
+        Assert.Equal("2026-10-25T09:30:00.000Z", AtlasValueConverter.ToWire(value, Column("datetime")));
+        Assert.Equal("2026-10-25T09:30:00.000", AtlasValueConverter.ToWire(value, Column("datetime"), utc: false));
+        Assert.Equal("2026-10-25", AtlasValueConverter.ToWire(value, Column("date"), utc: false));
+    }
+
     [Theory]
     [InlineData("decimal", "1250000.50", "1250000.5", true)]
     [InlineData("decimal", "1250000.50", "1250000.51", false)]

@@ -164,13 +164,13 @@ namespace BBH.CP.Atlas.Service.Application
             return section;
         }
 
-        private static void BindValues(AtlasFormFields fields, AtlasTable table, Dictionary<string, object?>? record)
+        private void BindValues(AtlasFormFields fields, AtlasTable table, Dictionary<string, object?>? record)
         {
             foreach (AtlasFormField field in fields.All.Where(x => !x.IsGridField))
             {
                 AtlasColumn? column = table.Find(field.Field);
                 if (record != null && column != null)
-                    field.Control.Value = AtlasValueConverter.ToWire(record.GetValueOrDefault(column.Name), column);
+                    field.Control.Value = Wire(record.GetValueOrDefault(column.Name), column);
             }
 
             foreach (CPApplicationControl grid in fields.Grids)
@@ -180,7 +180,7 @@ namespace BBH.CP.Atlas.Service.Application
                 {
                     AtlasColumn? column = table.Find(field.Field);
                     row[field.Name] = record != null && column != null
-                        ? AtlasValueConverter.ToWire(record.GetValueOrDefault(column.Name), column) ?? ""
+                        ? Wire(record.GetValueOrDefault(column.Name), column) ?? ""
                         : "";
                 }
 
@@ -344,8 +344,8 @@ namespace BBH.CP.Atlas.Service.Application
                 if (AtlasComputedFields.Compute(table, record, target, expression) is { } computeError)
                     errors.Add(computeError);
 
-            // 9. System fields: UTC from TimeProvider; people as LAN IDs.
-            DateTime now = Services.Time.GetUtcNow().UtcDateTime;
+            // 9. System fields: UTC from TimeProvider (or local time, SystemTime Local, review DA-11); people as LAN IDs.
+            DateTime now = SystemNow();
             if (isNew)
             {
                 SetIfColumn(table, record, "CreatedBy", Services.User.LanId);
@@ -397,7 +397,7 @@ namespace BBH.CP.Atlas.Service.Application
             result.Version = VersionOf(table, record);
             result.Outputs = [.. fields.All
                 .Where(x => table.HasColumn(x.Field))
-                .Select(x => new CPPageOutput { Name = x.Name, Value = AtlasValueConverter.ToWire(record.GetValueOrDefault(table.Find(x.Field)!.Name), table.Find(x.Field)!) })];
+                .Select(x => new CPPageOutput { Name = x.Name, Value = Wire(record.GetValueOrDefault(table.Find(x.Field)!.Name), table.Find(x.Field)!) })];
             return result;
         }
 
@@ -512,7 +512,7 @@ namespace BBH.CP.Atlas.Service.Application
                 errors.Add(Error(name, converted.ErrorCode!, converted.Message!));
         }
 
-        private static List<AtlasAuditChange> Changes(AtlasFormFields fields, AtlasTable table, IReadOnlyDictionary<string, string?> previous,
+        private List<AtlasAuditChange> Changes(AtlasFormFields fields, AtlasTable table, IReadOnlyDictionary<string, string?> previous,
             Dictionary<string, object?> record, bool isNew)
         {
             List<AtlasAuditChange> changes = [];
@@ -522,7 +522,7 @@ namespace BBH.CP.Atlas.Service.Application
                     continue;
 
                 string? old = previous.GetValueOrDefault(column.Name);
-                string? value = AtlasValueConverter.ToWire(record.GetValueOrDefault(column.Name), column);
+                string? value = Wire(record.GetValueOrDefault(column.Name), column);
                 if (AtlasValueConverter.SameValue(old, value, column) || (isNew && string.IsNullOrEmpty(value)))
                     continue;
 
@@ -601,7 +601,7 @@ namespace BBH.CP.Atlas.Service.Application
 
             stored[column.Name] = true;
             SetIfColumn(table, stored, "ModifiedBy", Services.User.LanId);
-            SetIfColumn(table, stored, "ModifiedDate", Services.Time.GetUtcNow().UtcDateTime);
+            SetIfColumn(table, stored, "ModifiedDate", SystemNow());
 
             List<CPPageError> errors = [];
             CPAtlasPage result = new() { AppCode = manifest.Code, ID = id, Outputs = [] };
@@ -654,15 +654,20 @@ namespace BBH.CP.Atlas.Service.Application
         private AtlasRuleContext RuleContext(AtlasAppManifest manifest, CPAtlasApplicationConfig form, IReadOnlyDictionary<string, object?>? record) =>
             new(Services.User.RolesFor(manifest.Code).Tokens, [], Services.Access.IsOwner(form, record));
 
-        private static Dictionary<string, string?> Snapshot(AtlasTable table, Dictionary<string, object?>? record)
+        private Dictionary<string, string?> Snapshot(AtlasTable table, Dictionary<string, object?>? record)
         {
             Dictionary<string, string?> values = new(StringComparer.OrdinalIgnoreCase);
             if (record == null)
                 return values;
             foreach (AtlasColumn column in table.Columns)
-                values[column.Name] = AtlasValueConverter.ToWire(record.GetValueOrDefault(column.Name), column);
+                values[column.Name] = Wire(record.GetValueOrDefault(column.Name), column);
             return values;
         }
+
+        /// <summary>A column value on the wire, with the SystemTime of the app (review DA-11).</summary>
+        private string? Wire(object? value, AtlasColumn column) => AtlasValueConverter.ToWire(value, column, Manifest.SystemTimeIsUtc);
+
+        private DateTime SystemNow() => Manifest.SystemTimeIsUtc ? Services.Time.GetUtcNow().UtcDateTime : Services.Time.GetLocalNow().DateTime;
 
         private static AtlasColumn? RowVersion(AtlasTable table) => table.Columns.FirstOrDefault(x => x.IsRowVersion);
 

@@ -449,6 +449,31 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Empty(services.PlatformContext.ChangeTracker.Entries());
     }
 
+    [Theory]
+    [InlineData(null, 10)]
+    [InlineData("Local", 5)]
+    public async Task SystemTime_decides_if_ModifiedDate_is_UTC_or_local_time(string? systemTime, int hour)
+    {
+        // Review DA-11: the clock is 10:00 UTC; the local zone is UTC-5.
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.app.json" || systemTime == null ? text
+            : text.Replace("\"Enabled\": true", $"\"Enabled\": true, \"SystemTime\": \"{systemTime}\"", StringComparison.Ordinal));
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            custom.Time.Zone = TimeZoneInfo.CreateCustomTimeZone("UTC-5", TimeSpan.FromHours(-5), "UTC-5", "UTC-5");
+
+            CPAtlasPage result = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(NewInput(), NoFiles);
+
+            Assert.True(result.ID > 0, Describe(result));
+            DateTime modified = (DateTime)(await database.ScalarAsync($"SELECT ModifiedDate FROM TTDV2.General WHERE ID = {result.ID}"))!;
+            Assert.Equal(hour, modified.Hour);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     private sealed class ThrowingAfterSave(AtlasModuleServices services) : CPTTDV2Service(services)
     {
         protected override void OnAfterSave(AtlasSaveContext context) => throw new InvalidOperationException("The notification failed.");

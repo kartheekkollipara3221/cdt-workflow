@@ -76,6 +76,10 @@ public static class AtlasStartupCheck
                 continue;
             }
 
+            // Review DA-11: a current app taken over in place has local times in its rows; mixing UTC is a silent defect.
+            if (AtlasAppCode.IsLegacy(manifest.Code) && manifest.SystemTime == null)
+                Warning("is a current app taken over by the platform but the manifest has no SystemTime: new saves write UTC while the old rows have local time. Set \"SystemTime\": \"Local\" (or \"Utc\" after a data change).");
+
             if (manifest.AccessMode == AtlasAccessMode.LogOnly && environment?.IsDevelopment() == false)
                 Warning($"AccessMode is LogOnly in {environment.EnvironmentName}: denied View, Create, Edit and History are only logged. Set Enforce after the log review.");
 

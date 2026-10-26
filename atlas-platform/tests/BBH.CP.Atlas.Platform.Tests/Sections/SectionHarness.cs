@@ -20,14 +20,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BBH.CP.Atlas.Platform.Tests.Sections;
 
-/// <summary>A fixed clock. The local time zone is UTC, so local and UTC dates are the same.</summary>
+/// <summary>A fixed clock. The local time zone is UTC (unless a test sets Zone), so local and UTC dates are the same.</summary>
 internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
 {
     public DateTimeOffset Now { get; set; } = now;
 
+    public TimeZoneInfo Zone { get; set; } = TimeZoneInfo.Utc;
+
     public override DateTimeOffset GetUtcNow() => Now;
 
-    public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+    public override TimeZoneInfo LocalTimeZone => Zone;
 }
 
 /// <summary>

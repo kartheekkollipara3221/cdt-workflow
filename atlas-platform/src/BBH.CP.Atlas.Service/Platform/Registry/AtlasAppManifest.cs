@@ -57,6 +57,16 @@ public sealed class AtlasAppManifest
 
     public AtlasAuditTime AuditTime { get; set; } = AtlasAuditTime.Utc;
 
+    /// <summary>
+    /// Review DA-11: the time of CreatedDate/ModifiedDate and of the date-time values on the wire. Null = Utc (with 'Z').
+    /// Local = server local time, no 'Z', as the current apps write (for an existing table that the platform takes over).
+    /// </summary>
+    public AtlasAuditTime? SystemTime { get; set; }
+
+    /// <summary>True unless SystemTime is Local.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool SystemTimeIsUtc => SystemTime != AtlasAuditTime.Local;
+
     public AtlasRuleMode RuleMode { get; set; } = AtlasRuleMode.MostPermissive;
 
     public AtlasRuleDefault RuleDefault { get; set; } = AtlasRuleDefault.ReadOnly;

@@ -84,8 +84,13 @@ public static class AtlasValueConverter
         };
     }
 
-    /// <summary>Converts a column value to the wire format. Null gives null.</summary>
-    public static string? ToWire(object? value, AtlasColumn column)
+    /// <summary>Converts a column value to the wire format. Null gives null. A date-time is UTC with 'Z'.</summary>
+    public static string? ToWire(object? value, AtlasColumn column) => ToWire(value, column, utc: true);
+
+    /// <summary>
+    /// The same; <paramref name="utc"/> = false writes a date-time with no 'Z' (an app with SystemTime Local, review DA-11).
+    /// </summary>
+    public static string? ToWire(object? value, AtlasColumn column, bool utc)
     {
         ArgumentNullException.ThrowIfNull(column);
         if (value is null or DBNull)
@@ -95,7 +100,7 @@ public static class AtlasValueConverter
         return value switch
         {
             DateTime date when type == "date" => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            DateTime dateTime => dateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
+            DateTime dateTime => dateTime.ToString(utc ? "yyyy-MM-dd'T'HH:mm:ss.fff'Z'" : "yyyy-MM-dd'T'HH:mm:ss.fff", CultureInfo.InvariantCulture),
             bool flag => flag ? "true" : "false",
             byte[] bytes => Convert.ToBase64String(bytes),
             Guid guid => guid.ToString("D"),

@@ -135,7 +135,7 @@ public sealed class AtlasDashboardService(
                 row[column.Name] = value switch
                 {
                     null => null!,
-                    DateTime or bool or byte[] => AtlasValueConverter.ToWire(value, column)!,
+                    DateTime or bool or byte[] => AtlasValueConverter.ToWire(value, column, tabManifest.SystemTimeIsUtc)!,
                     _ => value
                 };
             }
