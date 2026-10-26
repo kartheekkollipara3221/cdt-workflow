@@ -21,3 +21,5 @@ Notes:
   datetime2, smalldatetime, char, varchar, nchar, nvarchar, uniqueidentifier, rowversion. Other types stop the model
   build with a clear message. The start-up check reports them first, with a key that is not `int IDENTITY`, and it
   builds the model once (review DA-01).
+- A nullable or text column with a database default constraint is `ValueGeneratedOnAdd`: a null on insert is left out,
+  so SQL Server writes the default (review DA-05). A NOT NULL number or bit column does not use its default.

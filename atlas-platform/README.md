@@ -37,9 +37,10 @@ Rules: .NET 10, warnings are errors, `TimeProvider` (no `DateTime.Now`), no new 
 | C2 Config and registry | Done |
 | C3 Security | Done |
 | C4 Rules engine | Done |
-| C5 Section service and save pipeline | Not started |
-| C6 Local database, demo host, API | Not started |
-| C7 Dashboard | Not started |
-| C8 Start-up check | Not started |
-| C9 WebUi and `@pbdev` stand-in | Not started |
-| C10 Release package and acceptance | Not started |
+| C5 Section service and save pipeline | Done |
+| C6 Local database, demo host, API | Done |
+| C7 Dashboard | Done |
+| C8 Start-up check | Done |
+| C9 WebUi and `@pbdev` stand-in | Done |
+| C10 Release package and acceptance | Done |
+| Review 13, Waves 1-3 (47 findings) | Done; see `docs/atlas-platform/13-architecture-review.md` section 12 and `INTEGRATION.md` B18-B64 |
