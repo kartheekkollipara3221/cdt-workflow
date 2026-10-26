@@ -34,7 +34,8 @@ public sealed class AtlasModuleResolver(
     IAtlasConfigStore configStore,
     IEnumerable<AtlasModuleRegistration> registrations,
     AtlasTableRegistry? tables = null,
-    ILogger<AtlasModuleResolver>? logger = null) : IAtlasModuleResolver
+    ILogger<AtlasModuleResolver>? logger = null,
+    AtlasDisabledApps? disabled = null) : IAtlasModuleResolver
 {
     public static readonly EventId AppNotAvailable = new(41022, "Atlas.AppNotAvailable");
 
@@ -50,7 +51,7 @@ public sealed class AtlasModuleResolver(
 
         string code = AtlasAppCode.Normalize(appCode!);
         return _registrations.ContainsKey(code) && configStore.FindManifest(code) is { Enabled: true } manifest
-            && MissingTable(manifest) == null;
+            && MissingTable(manifest) == null && disabled?.IsDisabled(code, out _) != true;
     }
 
     /// <summary>The first table of the manifest that is not in the registry, or null (no registry: null).</summary>
@@ -71,6 +72,13 @@ public sealed class AtlasModuleResolver(
         string code = AtlasAppCode.Normalize(appCode);
         if (!_registrations.ContainsKey(code) || configStore.FindManifest(code) is not { Enabled: true } manifest)
             throw AtlasProblemException.NotFound($"App '{code}' is not registered.");
+
+        if (disabled != null && disabled.IsDisabled(code, out string reason))
+        {
+            (logger ?? (ILogger)NullLogger.Instance).LogWarning(AppNotAvailable,
+                "Atlas.AppNotAvailable App={App} Reason=StartupCheck", code);
+            throw AtlasProblemException.NotFound($"App '{code}' is not available: the start-up check found errors ({reason}).");
+        }
 
         if (MissingTable(manifest) is { } missing)
         {

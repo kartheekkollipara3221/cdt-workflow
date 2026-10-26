@@ -2,6 +2,8 @@ using BBH.CP.Atlas.App.Platform;
 using BBH.CP.Atlas.App.StandIn;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Platform.Tests.Data;
+using BBH.CP.Atlas.Service.Platform.Registry;
+using BBH.CP.Atlas.Service.Platform;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -268,6 +270,48 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
             Assert.True(registry.IsLoaded);
             Assert.True(registry.TryGet("TTDV2.General", out _));
             await app.Services.StartAtlasPlatformAsync(); // the program.cs line of INTEGRATION.md stays valid
+        }
+        finally
+        {
+            await app.StopAsync();
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Stop")]
+    [InlineData("DisableModule")]
+    [InlineData("Off")]
+    public async Task OnStartupError_decides_if_one_bad_app_stops_the_host(string? mode)
+    {
+        // Review HO-04: Stop (default) keeps spec 07, 4.8; DisableModule starts the host without the bad app.
+        CopyRealConfig();
+        ReplaceInForm("\"Field\": \"Category\"", "\"Field\": \"Kategory\"");
+        await using WebApplication app = StandInHost.Create(["--environment=Development", "--urls=http://127.0.0.1:0"], builder =>
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DBConnection"] = database.ConnectionString,
+                ["AppSettings:ConfigFolder"] = _folder,
+                [AtlasPlatformStartup.OnStartupErrorKey] = mode
+            }));
+
+        if (mode != "DisableModule")
+        {
+            InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() => app.StartAsync());
+            Assert.Contains(mode == "Off" ? "is not valid (allowed: Stop, DisableModule)" : "names the column 'Kategory'", error.Message, StringComparison.Ordinal);
+            return;
+        }
+
+        await app.StartAsync();
+        try
+        {
+            using IServiceScope scope = app.Services.CreateScope();
+            IAtlasModuleResolver resolver = scope.ServiceProvider.GetRequiredService<IAtlasModuleResolver>();
+            Assert.False(resolver.IsPlatformApp("TTDV2"));
+            AtlasProblemException error = Assert.Throws<AtlasProblemException>(() => resolver.Get<IAtlasModule>("TTDV2", "form"));
+            Assert.Equal(404, error.StatusCode);
+            Assert.Contains("the start-up check found errors", error.Message, StringComparison.Ordinal);
+            Assert.True(app.Services.GetRequiredService<AtlasDisabledApps>().IsDisabled("TTDV2", out _));
         }
         finally
         {

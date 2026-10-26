@@ -46,6 +46,7 @@ public static class AtlasPlatformServiceCollectionExtensions
 
         // Review HO-06: the start-up runs as a hosted service; StartAtlasPlatformAsync in program.cs stays valid.
         services.TryAddSingleton<AtlasPlatformStartupGate>();
+        services.TryAddSingleton<AtlasDisabledApps>();
         services.AddHostedService<AtlasPlatformStartupService>();
         return services;
     }

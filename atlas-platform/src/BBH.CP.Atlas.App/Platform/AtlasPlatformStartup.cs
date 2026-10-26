@@ -16,6 +16,10 @@ namespace BBH.CP.Atlas.App.Platform;
 public static class AtlasPlatformStartup
 {
     public static readonly EventId StartupCheck = new(41020, "Atlas.StartupCheck");
+    public static readonly EventId AppDisabled = new(41023, "Atlas.AppDisabled");
+
+    /// <summary>The setting of review HO-04: Stop (default) or DisableModule.</summary>
+    public const string OnStartupErrorKey = "AppSettings:Atlas:OnStartupError";
 
     /// <summary>Loads the table metadata and runs the start-up check. An error stops the start-up (spec 07, 4.8).</summary>
     public static async Task StartAtlasPlatformAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
@@ -33,16 +37,60 @@ public static class AtlasPlatformStartup
             if (registry.IsLoaded)
                 return;
 
-            IReadOnlyList<AtlasCheckItem> items = await LoadAndCheckAsync(services, cancellationToken);
+            AtlasStartupErrorMode mode = OnStartupError(services);
+            IReadOnlyList<AtlasCheckItem> items;
+            try
+            {
+                items = await LoadAndCheckAsync(services, cancellationToken);
+            }
+            catch (Exception ex) when (mode == AtlasStartupErrorMode.DisableModule && ex is SqlException or InvalidOperationException)
+            {
+                // Review HO-04: the metadata cannot be read (for example SQL is not available): no platform app, the host runs.
+                items = [new(AtlasCheckSeverity.Error, "*", ex.Message)];
+            }
+
             AtlasCheckItem[] errors = [.. items.Where(x => x.Severity == AtlasCheckSeverity.Error)];
-            if (errors.Length > 0)
+            if (errors.Length > 0 && mode == AtlasStartupErrorMode.Stop)
                 throw new InvalidOperationException("The Atlas start-up check found errors:" + Environment.NewLine
                     + string.Join(Environment.NewLine, errors.Select(x => "  " + x)));
+            if (errors.Length > 0)
+                DisableApps(services, errors);
             registry.MarkLoaded();
         }
         finally
         {
             gate?.Lock.Release();
+        }
+    }
+
+    private static AtlasStartupErrorMode OnStartupError(IServiceProvider services)
+    {
+        IConfiguration? configuration = services.GetService<AtlasPlatformConfiguration>()?.Configuration ?? services.GetService<IConfiguration>();
+        string? text = configuration?[OnStartupErrorKey];
+        if (string.IsNullOrWhiteSpace(text))
+            return AtlasStartupErrorMode.Stop;
+        return Enum.TryParse(text.Trim(), ignoreCase: true, out AtlasStartupErrorMode mode) && Enum.IsDefined(mode) && !int.TryParse(text, out _)
+            ? mode
+            : throw new InvalidOperationException($"The setting {OnStartupErrorKey} = '{text}' is not valid (allowed: Stop, DisableModule).");
+    }
+
+    /// <summary>DisableModule: the apps with errors are not available; an error of all apps ("*") disables all of them.</summary>
+    private static void DisableApps(IServiceProvider services, AtlasCheckItem[] errors)
+    {
+        AtlasDisabledApps disabled = services.GetRequiredService<AtlasDisabledApps>();
+        ILogger logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("BBH.CP.Atlas.Platform.Startup");
+        string[] all = [.. services.GetServices<AtlasModuleRegistration>().Select(x => x.Code)];
+        // A config file that cannot be read already removes only its own app (review HO-02), so it does not disable all.
+        HashSet<string> fileErrors = new(services.GetRequiredService<IAtlasConfigStore>().ConfigErrors, StringComparer.Ordinal);
+        foreach (IGrouping<string, AtlasCheckItem> group in errors.Where(x => !(x.App == "*" && fileErrors.Contains(x.Message)))
+            .GroupBy(x => x.App, StringComparer.OrdinalIgnoreCase))
+        {
+            string reason = string.Join(" ", group.Select(x => x.Message));
+            foreach (string code in group.Key == "*" ? all : [group.Key])
+            {
+                disabled.Disable(code, reason);
+                logger.LogCritical(AppDisabled, "Atlas.AppDisabled App={App} Reason={Reason}", code, reason);
+            }
         }
     }
 
