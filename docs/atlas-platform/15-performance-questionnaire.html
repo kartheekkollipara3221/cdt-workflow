@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas Performance Backlog Questionnaire</title>
+<style>
+/* Layout: one column of numbered question cards; a summary block at the end that the reader copies back. */
+:root{
+  --bg:#f7f8f6;--surface:#ffffff;--fg:#1d2a30;--muted:#5c6b73;--line:#d5dcd8;
+  --accent:#0f6e77;--accent-soft:#e3f1f2;--warn:#9a3b2d;--warn-soft:#f8e6e2;--ok:#3a6a3f;--ok-soft:#e4efe4;
+  --code-bg:#eef1ef;--focus:#0f6e77;
+  --font-body:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  --font-mono:Consolas,"Cascadia Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#161b1d;--surface:#1f2628;--fg:#e4e9e8;--muted:#9fadb1;--line:#36424a;
+  --accent:#5fc3cb;--accent-soft:#17393c;--warn:#f0917f;--warn-soft:#432420;--ok:#8fcb95;--ok-soft:#1f3322;
+  --code-bg:#262e31;--focus:#5fc3cb;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#161b1d;--surface:#1f2628;--fg:#e4e9e8;--muted:#9fadb1;--line:#36424a;
+  --accent:#5fc3cb;--accent-soft:#17393c;--warn:#f0917f;--warn-soft:#432420;--ok:#8fcb95;--ok-soft:#1f3322;
+  --code-bg:#262e31;--focus:#5fc3cb;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--font-body)}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;font-weight:600}
+h1{font-size:1.9rem;line-height:1.2;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:1.15rem;margin:0 0 6px;text-wrap:balance}
+h3{font-size:.95rem;margin:16px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+p,li{max-width:72ch}
+code{font:.88em var(--font-mono);background:var(--code-bg);padding:1px 5px;border-radius:3px;overflow-wrap:anywhere}
+.note{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0}
+.note p{margin:4px 0}
+.sizing{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:16px 0}
+.sizing div{border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--surface);min-width:0}
+.sizing b{display:block;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.sizing span{font-size:.85rem;color:var(--muted)}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 20px;margin:18px 0;counter-increment:q}
+.q header{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.q header::before{content:"Q" counter(q);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.tag{font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag.rec{border-color:var(--accent);color:var(--accent)}
+.rec-box{border-left:3px solid var(--accent);padding:6px 12px;margin:10px 0;color:var(--fg);background:var(--accent-soft);border-radius:0 4px 4px 0;font-size:.95rem}
+.rec-box b{color:var(--accent)}
+fieldset{border:0;padding:0;margin:10px 0 0}
+legend{font-weight:600;margin-bottom:6px}
+.opts{display:grid;gap:6px}
+.opts label{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:8px 10px;border:1px solid var(--line);border-radius:6px;cursor:pointer}
+.opts label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.opts input{margin:4px 0 0;accent-color:var(--accent)}
+.opts small{display:block;color:var(--muted);font-size:.85rem}
+textarea,input[type=text],input[type=number],select{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:6px}
+textarea{min-height:64px;resize:vertical}
+input[type=number]{max-width:160px}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.row>div{min-width:0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0 10px}
+button{font:inherit;font-weight:600;padding:10px 16px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);cursor:pointer}
+button.secondary{background:transparent;color:var(--accent)}
+button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+#status{font-size:.9rem;color:var(--muted)}
+pre#summary{background:var(--code-bg);padding:14px;border-radius:6px;overflow-x:auto;font-size:.85rem;line-height:1.5;white-space:pre-wrap;min-height:80px}
+.small{font-size:.86rem;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--code-bg)}
+.table-wrap{overflow-x:auto}
+@media (max-width:640px){h1{font-size:1.5rem}.q{padding:14px}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas reusable platform · performance backlog · questionnaire · 2026-10-25</div>
+<h1>Atlas Performance Backlog Questionnaire</h1>
+<p>Answer the questions below. Each question has my recommendation and the reason. Your answers decide which backlog items are built, in which order, and with which defaults. When you are done, click <strong>Copy answers</strong> at the end and paste the text into the chat.</p>
+<div class="note small">
+<p><strong>Language.</strong> ASD-STE100 Simplified Technical English at approximately 80%. Code names stay as in the source.</p>
+<p><strong>Source.</strong> The current-state analysis of <code>atlas-platform/</code> (session 2026-10-25) and the backlog items PF1–PF7 in <code>CODEX_HANDOFF.md</code>. PF8 and PF9 are new items from the recommendations. Design document: <code>docs/atlas-platform/14-platform-design-and-flow.html</code>.</p>
+<p><strong>Draft.</strong> Your answers are kept in this browser while you work (local storage). They are not sent anywhere. The copy button gives you the text.</p>
+</div>
+
+<h3>Sizing used for the recommendations</h3>
+<div class="sizing">
+<div><b>20</b><span>apps on the platform</span></div>
+<div><b>~800</b><span>named users (40 for each app)</span></div>
+<div><b>40–80</b><span>concurrent sessions at peak (5–10 %)</span></div>
+<div><b>2–5 /s</b><span>requests at peak</span></div>
+<div><b>30–100 ms</b><span>one request, 3–6 SQL round trips</span></div>
+<div><b>unknown</b><span>daily usage and rows for each year</span></div>
+</div>
+<p>Conclusion from these numbers: user load is not the risk; <strong>data growth is</strong>. A tab with no filter reads the whole table, and the table grows every week for years.</p>
+
+<form id="qform" autocomplete="off">
+
+<!-- Q1 -->
+<section class="q">
+<header><h2>Confirm the sizing</h2><span class="tag">context</span></header>
+<p>The recommendations below are based on the numbers above. Correct them where they are wrong.</p>
+<div class="row">
+<div><label for="q1-apps">Apps on the platform in 2 years</label><input type="number" id="q1-apps" data-q="Q1 apps" value="20" min="1"></div>
+<div><label for="q1-users">Users for each app (average)</label><input type="number" id="q1-users" data-q="Q1 users per app" value="40" min="1"></div>
+<div><label for="q1-cores">CPU cores of the web server (if known)</label><input type="number" id="q1-cores" data-q="Q1 server cores" min="1" placeholder="unknown"></div>
+</div>
+<fieldset><legend>Peak concurrent users on the whole portal</legend>
+<div class="opts">
+<label><input type="radio" name="q1-peak" data-q="Q1 peak concurrency" value="under 25"><span>Under 25</span></label>
+<label><input type="radio" name="q1-peak" data-q="Q1 peak concurrency" value="25-100" checked><span>25–100 <small>My assumption.</small></span></label>
+<label><input type="radio" name="q1-peak" data-q="Q1 peak concurrency" value="over 100"><span>Over 100</span></label>
+<label><input type="radio" name="q1-peak" data-q="Q1 peak concurrency" value="unknown"><span>Unknown</span></label>
+</div></fieldset>
+<label for="q1-rows">Rows for each app for each year, and the retention rule, if you know them (for example "TTD: about 20 000 rows a year, keep 7 years")</label>
+<textarea id="q1-rows" data-q="Q1 rows per year / retention"></textarea>
+</section>
+
+<!-- Q2 -->
+<section class="q">
+<header><h2>PF9 — Slow-request log event</h2><span class="tag rec">recommended first</span></header>
+<div class="rec-box"><b>Recommendation: build it first.</b> A new log event <code>Atlas.SlowRequest</code> (Warning) when a platform request takes longer than <code>AppSettings:Atlas:SlowRequestMs</code>. It records app, operation, LAN ID, duration and the number of SQL round trips. Reason: daily usage is unknown. This gives the numbers that decide PF1 and PF2, with no new package and no APM product.</div>
+<fieldset><legend>Decision</legend>
+<div class="opts">
+<label><input type="radio" name="q2" data-q="Q2 PF9 slow-request log" value="approve"><span>Approve as recommended</span></label>
+<label><input type="radio" name="q2" data-q="Q2 PF9 slow-request log" value="approve, also log every request at Information"><span>Approve, and also log every platform request at Information level <small>More data, more log volume.</small></span></label>
+<label><input type="radio" name="q2" data-q="Q2 PF9 slow-request log" value="reject"><span>Do not build it</span></label>
+</div></fieldset>
+<div class="row">
+<div><label for="q2-ms">Threshold in milliseconds (default 1000)</label><input type="number" id="q2-ms" data-q="Q2 threshold ms" value="1000" min="50" step="50"></div>
+</div>
+<label for="q2-notes">Notes</label><textarea id="q2-notes" data-q="Q2 notes"></textarea>
+</section>
+
+<!-- Q3 -->
+<section class="q">
+<header><h2>PF3 (config part) — Bound the dashboard tabs</h2><span class="tag rec">recommended now</span></header>
+<div class="rec-box"><b>Recommendation: JSON change only, no code.</b> Every tab without a <code>{LanId}</code> filter gets <code>MaxRows</code>, or a narrowing filter. In <code>TTDV2.Dashboard.json</code> the tab <em>Tax-Time All Report</em> has no filter and reads the whole table. The code part of PF3 (parallel or streamed tab queries) is dropped: 3 sequential SELECTs cost about 50 ms.</div>
+<fieldset><legend>Decision for the All Report tab (and the same pattern for the next apps)</legend>
+<div class="opts">
+<label><input type="radio" name="q3" data-q="Q3 PF3 unbounded tabs" value="MaxRows"><span>Add <code>MaxRows</code> only <small>The log warns (<code>Atlas.TabRowLimit</code>) when a tab is full.</small></span></label>
+<label><input type="radio" name="q3" data-q="Q3 PF3 unbounded tabs" value="filter current tax year"><span>Add a filter on the current tax year <small>Needs a new filter token, for example <code>{Year}</code>: a small code change in <code>AtlasDashboardService.Token</code>.</small></span></label>
+<label><input type="radio" name="q3" data-q="Q3 PF3 unbounded tabs" value="MaxRows and filter"><span>Both: filter on the year and <code>MaxRows</code> as the safety net</span></label>
+<label><input type="radio" name="q3" data-q="Q3 PF3 unbounded tabs" value="leave as is"><span>Leave the tab as it is</span></label>
+</div></fieldset>
+<div class="row">
+<div><label for="q3-max">MaxRows value</label>
+<select id="q3-max" data-q="Q3 MaxRows value"><option>500</option><option selected>2000</option><option>5000</option><option>10000</option></select></div>
+<div><label for="q3-rule">Should the start-up check give a warning for a tab with no filter and no MaxRows?</label>
+<select id="q3-rule" data-q="Q3 start-up warning for unbounded tab"><option>yes, warning</option><option>yes, error</option><option>no</option></select></div>
+</div>
+<label for="q3-notes">Notes</label><textarea id="q3-notes" data-q="Q3 notes"></textarea>
+</section>
+
+<!-- Q4 -->
+<section class="q">
+<header><h2>PF8 — Index check in the start-up check</h2><span class="tag rec">recommended in P2</span></header>
+<div class="rec-box"><b>Recommendation: build it with the next app.</b> The start-up check reads <code>sys.index_columns</code> and gives a <em>warning</em> when a dashboard <code>Filter</code> or <code>OrderBy</code> column has no index. The new-app SQL template gets <code>CREATE INDEX</code> lines for the example filter columns (<code>CreatedBy</code>, <code>TaxPreparerLanId</code>, <code>ModifiedDate</code>). A table scan is invisible with 500 rows and painful with 500 000; the check finds the missing index at release time for every app.</div>
+<fieldset><legend>Decision</legend>
+<div class="opts">
+<label><input type="radio" name="q4" data-q="Q4 PF8 index check" value="approve warning"><span>Approve, as a warning</span></label>
+<label><input type="radio" name="q4" data-q="Q4 PF8 index check" value="approve error"><span>Approve, as an error <small>A missing index stops <code>--atlas-check</code> (exit 1) and, with <code>OnStartupError = Stop</code>, the host.</small></span></label>
+<label><input type="radio" name="q4" data-q="Q4 PF8 index check" value="template only"><span>Only the template indexes, no check</span></label>
+<label><input type="radio" name="q4" data-q="Q4 PF8 index check" value="reject"><span>Do not build it</span></label>
+</div></fieldset>
+<fieldset><legend>Also add the indexes for TTDV2 now?</legend>
+<div class="opts">
+<label><input type="radio" name="q4-ttdv2" data-q="Q4 TTDV2 indexes" value="yes, new release script 060"><span>Yes, as a new release script <code>060</code> <small>Additive. In-place upgrade of an existing database.</small></span></label>
+<label><input type="radio" name="q4-ttdv2" data-q="Q4 TTDV2 indexes" value="yes, inside 040"><span>Yes, inside <code>040</code> (TTDV2 is not yet released) <small>Changes a script that the local review database already ran; the script is re-runnable.</small></span></label>
+<label><input type="radio" name="q4-ttdv2" data-q="Q4 TTDV2 indexes" value="no"><span>No</span></label>
+</div></fieldset>
+<label for="q4-notes">Notes</label><textarea id="q4-notes" data-q="Q4 notes"></textarea>
+</section>
+
+<!-- Q5 -->
+<section class="q">
+<header><h2>PF2 — Cache the user roles for a short time</h2><span class="tag rec">recommended in P2, default off</span></header>
+<div class="rec-box"><b>Recommendation: build it, default off.</b> New setting <code>AppSettings:Atlas:RolesCacheSeconds</code> (0 = off, as today). With a value, the roles of a LAN ID come from <code>IMemoryCache</code> and the query <code>vw_CP_Atlas_ActiveUserRole</code> runs once for each user in that time. Removes one round trip from every request. Trade-off: a grant or revoke applies after up to that many seconds.</div>
+<fieldset><legend>Decision</legend>
+<div class="opts">
+<label><input type="radio" name="q5" data-q="Q5 PF2 roles cache" value="approve, default off"><span>Approve, default 0 (off); the environment sets the value</span></label>
+<label><input type="radio" name="q5" data-q="Q5 PF2 roles cache" value="approve, default on"><span>Approve, default on with the seconds below</span></label>
+<label><input type="radio" name="q5" data-q="Q5 PF2 roles cache" value="defer until PF9 numbers"><span>Wait for the PF9 numbers</span></label>
+<label><input type="radio" name="q5" data-q="Q5 PF2 roles cache" value="reject"><span>Do not build it</span></label>
+</div></fieldset>
+<div class="row">
+<div><label for="q5-sec">Acceptable delay for a grant or revoke, in seconds</label>
+<select id="q5-sec" data-q="Q5 cache seconds"><option>30</option><option selected>60</option><option>300</option><option>900</option></select></div>
+</div>
+<label for="q5-notes">Notes</label><textarea id="q5-notes" data-q="Q5 notes"></textarea>
+</section>
+
+<!-- Q6 -->
+<section class="q">
+<header><h2>PF1 — Async I/O end to end</h2><span class="tag">recommended: defer</span></header>
+<div class="rec-box"><b>Recommendation: defer.</b> At 2–5 requests a second, synchronous I/O does not starve the thread pool. The current apps run the same way today. The change needs additive <code>...Async(CancellationToken)</code> overloads in the platform <em>and</em> async controller methods at the target (target code). Revisit when PF9 shows queueing.</div>
+<fieldset><legend>Decision</legend>
+<div class="opts">
+<label><input type="radio" name="q6" data-q="Q6 PF1 async" value="defer"><span>Defer; revisit with the PF9 numbers</span></label>
+<label><input type="radio" name="q6" data-q="Q6 PF1 async" value="build platform overloads now, controllers later"><span>Build the platform <code>...Async</code> overloads now (additive, unused until the controllers change) <small>Gives the target team the option. Doubles the public surface to keep in sync.</small></span></label>
+<label><input type="radio" name="q6" data-q="Q6 PF1 async" value="do it now end to end"><span>Do it now, end to end, including the integration steps for the controllers</span></label>
+</div></fieldset>
+<label for="q6-notes">Notes</label><textarea id="q6-notes" data-q="Q6 notes"></textarea>
+</section>
+
+<!-- Q7 -->
+<section class="q">
+<header><h2>PF5 (operational part) — Start-up after an app pool recycle</h2><span class="tag">recommended: document</span></header>
+<div class="rec-box"><b>Recommendation: no code; document the IIS settings.</b> The start-up (metadata of 40–60 tables, EF model, start-up check) runs once after each recycle. With IIS <em>Start Mode = AlwaysRunning</em> and <em>Preload Enabled</em> the first user does not wait for it. The code part (one metadata query instead of one for each table) is dropped: under a second in total.</div>
+<fieldset><legend>Decision</legend>
+<div class="opts">
+<label><input type="radio" name="q7" data-q="Q7 PF5 IIS warm-up" value="document in INTEGRATION.md section 4"><span>Add the IIS settings to <code>INTEGRATION.md</code> section 4 (settings)</span></label>
+<label><input type="radio" name="q7" data-q="Q7 PF5 IIS warm-up" value="document and also batch metadata query"><span>Document, and also build the single metadata query</span></label>
+<label><input type="radio" name="q7" data-q="Q7 PF5 IIS warm-up" value="skip"><span>Skip; the target team owns IIS</span></label>
+</div></fieldset>
+<label for="q7-notes">Notes</label><textarea id="q7-notes" data-q="Q7 notes"></textarea>
+</section>
+
+<!-- Q8 -->
+<section class="q">
+<header><h2>PF4, PF6, PF7 — Items recommended to drop</h2><span class="tag">recommended: drop</span></header>
+<div class="rec-box"><b>Recommendation: drop all three</b> (keep them in the handoff as "not planned"). PF4: option lists are re-loaded on save, but <code>PBAccounts</code> is cached 24 h at the target and <code>UsersInRoles</code> is one small query. PF6: the form JSON parse is under a millisecond. PF7: the linear scans are not measurable with 10–50 controls.</div>
+<fieldset><legend>Decision (select all that you want to KEEP in the backlog)</legend>
+<div class="opts">
+<label><input type="checkbox" name="q8" data-q="Q8 keep in backlog" value="PF4 option re-load on save"><span>Keep PF4 (option re-load on save)</span></label>
+<label><input type="checkbox" name="q8" data-q="Q8 keep in backlog" value="PF6 cached parsed JSON"><span>Keep PF6 (cache the parsed JSON graph)</span></label>
+<label><input type="checkbox" name="q8" data-q="Q8 keep in backlog" value="PF7 dictionary lookups"><span>Keep PF7 (dictionary lookups, remove the second <code>From</code>)</span></label>
+</div></fieldset>
+<label for="q8-notes">Notes</label><textarea id="q8-notes" data-q="Q8 notes"></textarea>
+</section>
+
+<!-- Q9 -->
+<section class="q">
+<header><h2>Measure before and after</h2><span class="tag">method</span></header>
+<div class="rec-box"><b>Recommendation: a local benchmark with the StandIn host.</b> A PowerShell script (no new package) sends N requests (load, save, dashboard) to the local API and reports the median and the 95th percentile. Run it before and after each item, and keep the numbers in the handoff. The test database gets a generated table of, for example, 200 000 TTDV2 rows for the dashboard tests.</div>
+<fieldset><legend>Decision</legend>
+<div class="opts">
+<label><input type="radio" name="q9" data-q="Q9 benchmark" value="approve"><span>Approve: script + 200 000-row test data</span></label>
+<label><input type="radio" name="q9" data-q="Q9 benchmark" value="approve, smaller data"><span>Approve with the row count below</span></label>
+<label><input type="radio" name="q9" data-q="Q9 benchmark" value="reject"><span>No benchmark; rely on the PF9 log at QC</span></label>
+</div></fieldset>
+<div class="row">
+<div><label for="q9-rows">Test rows in the local table</label><input type="number" id="q9-rows" data-q="Q9 test rows" value="200000" min="1000" step="1000"></div>
+<div><label for="q9-conc">Concurrent clients in the script</label><input type="number" id="q9-conc" data-q="Q9 concurrent clients" value="20" min="1"></div>
+</div>
+<label for="q9-notes">Notes</label><textarea id="q9-notes" data-q="Q9 notes"></textarea>
+</section>
+
+<!-- Q10 -->
+<section class="q">
+<header><h2>Order and working rules</h2><span class="tag">process</span></header>
+<div class="rec-box"><b>Recommended order:</b> Q3 (JSON) → Q9 (benchmark baseline) → Q2 PF9 → Q4 PF8 → Q5 PF2 → Q7 (document) → then decide PF1 from the numbers. Each item: one commit, tests added, <code>--atlas-check</code> 0 errors, backward compatible (new settings default to today's behaviour).</div>
+<fieldset><legend>Decision</legend>
+<div class="opts">
+<label><input type="radio" name="q10" data-q="Q10 order" value="as recommended"><span>Use the recommended order</span></label>
+<label><input type="radio" name="q10" data-q="Q10 order" value="custom"><span>Another order (write it in the notes)</span></label>
+</div></fieldset>
+<fieldset><legend>How do you want to work through the items?</legend>
+<div class="opts">
+<label><input type="radio" name="q10-mode" data-q="Q10 mode" value="autonomous, review at the end"><span>Autonomously: build all approved items, then one review</span></label>
+<label><input type="radio" name="q10-mode" data-q="Q10 mode" value="one item, then confirm"><span>One item at a time; confirm before the next</span></label>
+</div></fieldset>
+<fieldset><legend>Push after each commit?</legend>
+<div class="opts">
+<label><input type="radio" name="q10-push" data-q="Q10 push" value="push each commit"><span>Yes, push each commit</span></label>
+<label><input type="radio" name="q10-push" data-q="Q10 push" value="push only when asked"><span>No, push only when I ask</span></label>
+</div></fieldset>
+<label for="q10-notes">Notes, other order, or anything I have missed</label><textarea id="q10-notes" data-q="Q10 notes"></textarea>
+</section>
+
+</form>
+
+<div class="actions">
+<button type="button" id="copy">Copy answers</button>
+<button type="button" id="show" class="secondary">Show answers</button>
+<button type="button" id="clear" class="secondary">Clear draft</button>
+<span id="status" role="status" aria-live="polite"></span>
+</div>
+<pre id="summary" aria-label="Your answers as text"></pre>
+<p class="small">Paste the copied text into the chat. The answers are recorded in <code>CODEX_HANDOFF.md</code> and the approved items go into the backlog as PF decisions.</p>
+</main>
+
+<script>
+(function () {
+  var KEY = 'atlas-perf-questionnaire-v1';
+  var form = document.getElementById('qform');
+  var status = document.getElementById('status');
+  var summary = document.getElementById('summary');
+
+  function fields() { return Array.prototype.slice.call(form.querySelectorAll('[data-q]')); }
+
+  function collect() {
+    var lines = ['# Atlas performance backlog - answers (' + new Date().toISOString().slice(0, 10) + ')', ''];
+    var seen = {};
+    fields().forEach(function (el) {
+      var q = el.getAttribute('data-q');
+      if (el.type === 'radio') {
+        if (seen[q]) return;
+        var checked = form.querySelector('input[name="' + el.name + '"]:checked');
+        lines.push('- ' + q + ': ' + (checked ? checked.value : '(no answer)'));
+        seen[q] = true;
+      } else if (el.type === 'checkbox') {
+        if (seen[q]) return;
+        var all = Array.prototype.slice.call(form.querySelectorAll('input[name="' + el.name + '"]:checked')).map(function (x) { return x.value; });
+        lines.push('- ' + q + ': ' + (all.length ? all.join('; ') : 'none'));
+        seen[q] = true;
+      } else {
+        var v = (el.value || '').trim();
+        if (v) lines.push('- ' + q + ': ' + v.replace(/\r?\n/g, ' / '));
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function save() {
+    try {
+      var data = {};
+      fields().forEach(function (el) {
+        if (el.type === 'radio' || el.type === 'checkbox') data[el.name + '=' + el.value] = el.checked;
+        else data[el.id] = el.value;
+      });
+      localStorage.setItem(KEY, JSON.stringify(data));
+    } catch (e) { /* storage not available: the page still works */ }
+  }
+
+  function restore() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      fields().forEach(function (el) {
+        if (el.type === 'radio' || el.type === 'checkbox') {
+          var k = el.name + '=' + el.value;
+          if (k in data) el.checked = !!data[k];
+        } else if (el.id in data) {
+          el.value = data[el.id];
+        }
+      });
+      status.textContent = 'Draft restored from this browser.';
+    } catch (e) { /* ignore */ }
+  }
+
+  form.addEventListener('input', save);
+  form.addEventListener('change', save);
+  form.addEventListener('submit', function (e) { e.preventDefault(); });
+
+  document.getElementById('show').addEventListener('click', function () {
+    summary.textContent = collect();
+    status.textContent = 'Answers shown below.';
+  });
+
+  document.getElementById('copy').addEventListener('click', function () {
+    var text = collect();
+    summary.textContent = text;
+    function fallback() {
+      var range = document.createRange();
+      range.selectNodeContents(summary);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      status.textContent = 'Copy is not available here. The text is selected below: press Ctrl+C.';
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        status.textContent = 'Copied. Paste the text into the chat.';
+      }, fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  document.getElementById('clear').addEventListener('click', function () {
+    try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    form.reset();
+    summary.textContent = '';
+    status.textContent = 'Draft cleared.';
+  });
+
+  restore();
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,23 @@
-# RESUME HERE - NEXT IMMEDIATE GOAL: integrate the new Atlas design (atlas-platform) at the target - 2026-10-25 (session 2)
+# RESUME HERE - NEXT IMMEDIATE GOAL: atlas-platform PERFORMANCE BACKLOG (user decision 2026-10-25); integration at the target comes AFTER it
+
+## Next immediate goal (user, 2026-10-25, session 2)
+- The user chose: do the performance backlog first, not the integration. Steps:
+  1. The user answers docs/atlas-platform/15-performance-questionnaire.html (Q1-Q10; "Copy answers" gives a text block)
+     and pastes the answers into the chat. Shareable (private) link: see the artifact URL in the session notes below.
+  2. Record the answers in this file (PF decisions), then build the approved items in the agreed order, one commit each,
+     tests + --atlas-check 0 errors, backward compatible (new settings default to today's behaviour).
+  3. Recommended order (if approved): Q3 JSON MaxRows -> Q9 benchmark baseline -> PF9 slow-request log -> PF8 index check
+     -> PF2 roles cache (default off) -> Q7 document IIS AlwaysRunning/Preload -> decide PF1 from the numbers.
+- Sizing used: 20 apps x ~40 users = ~800 users; peak 40-80 concurrent, 2-5 req/s; a request = 3-6 SQL round trips,
+  30-100 ms. Conclusion: user load is not the risk at this scale, data growth is (unbounded dashboard tabs).
+- New items from the recommendations (not yet in the list below): PF8 index check (start-up check warns when a dashboard
+  Filter/OrderBy column has no index; template gets CREATE INDEX lines), PF9 Atlas.SlowRequest log event with
+  AppSettings:Atlas:SlowRequestMs (default 1000). Recommended drop: PF4, PF6, PF7. Recommended defer: PF1.
+- After the backlog: the integration walk-through (INTEGRATION.md), step 0 question 1 of 7 (B3), one question at a time.
 
 ## This session (2026-10-25, session 2)
+- Questionnaire: docs/atlas-platform/15-performance-questionnaire.html (committed). Private link:
+  https://claude.ai/artifact/4d7AGaUogSBRBw1fi7ESab
 - Added docs/atlas-platform/14-platform-design-and-flow.html (design + 7 flow diagrams + "why reusable", ASD-STE100
   ~80%). Commit f9005bd, pushed. Shareable (private) link: https://claude.ai/artifact/BhS6aA569sWm49GqTBABwm
 - Answered the performance current-state questions (sequential, passes, allocations, batching, I/O). Recorded below as
@@ -67,9 +84,9 @@ Items, in pay-off order (each needs user authorization; keep backward compatible
 - Stop the Atlas API (5080) before dotnet test in atlas-platform (it locks the App dll).
 
 ## Next-session prompt
-"Resume. Read the top entry of CODEX_HANDOFF.md. Continue the atlas-platform integration walk-through at step 0,
-question 1 of 7 (B3), one question at a time, then INTEGRATION.md sections 1-5. Performance backlog PF1-PF7 and the
-engine defects come after that."
+"Resume. Read the top entry of CODEX_HANDOFF.md. Goal: the atlas-platform performance backlog. Here are my answers to
+docs/atlas-platform/15-performance-questionnaire.html: <paste the copied answers>. Record them, then start with the
+first approved item. The integration walk-through (B3) and the engine defects come after the backlog."
 
 ---
 
