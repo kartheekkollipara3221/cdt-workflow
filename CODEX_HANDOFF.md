@@ -14,8 +14,9 @@
 ## State
 - Branch console-code-first-0518 pushed to origin at cf928d4 (this handoff commit is local until the next push).
 - atlas-platform review 13: all 47 findings fixed incl. DA-08/DA-12 (see the entry below). 273 .NET + 52 Angular tests.
-  Local review RUNNING: API 5080 (started this session), UI 4200 (ng serve from an earlier session), Chrome tab on
-  /dashboard/TTDV2. Record 10000 WorkDescription = Unicode smoke text (reset: local/setup-local-db.ps1 -Recreate).
+  Local review STOPPED (API 5080 and UI 4200 stopped 2026-10-25). Restart: dotnet run --project
+  atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; cd atlas-platform/WebUi; npm start.
+  Record 10000 WorkDescription = Unicode smoke text (reset: local/setup-local-db.ps1 -Recreate).
 - atlas-platform items waiting for the user (not defects): confirm the design choices B3/B4/B7/B9/B10/B14/B15
   (INTEGRATION.md section 6). Deliberately not done: SV-13 lazy Dashboards, DA-10 async, NG-11 per-field VM,
   SV-07 JSON Schema file, HO-04 health check part.
@@ -67,7 +68,7 @@ async overloads (deferred by the review); NG-11 per-field view model (Low); HO-0
 Schema file (optional); zone.js not installed locally (the NG-09 zone test runs at the target Karma).
 
 ## Working notes
-- API (5080) and UI (4200) are RUNNING for the review (record 10000 WorkDescription was changed to Unicode text in a smoke test). Stop the API before dotnet test.
+- API (5080) and UI (4200) are STOPPED (record 10000 WorkDescription was changed to Unicode text in a smoke test). Stop the API before dotnet test.
   Restart: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; UI: cd atlas-platform/WebUi; npm start
 - New settings since Wave 2: AppSettings:Atlas:OnStartupError (Stop|DisableModule); manifest RequireVersion,
   AuditRefTypes, SchemaVersion, SystemTime; tab MaxRows. Log events: Service/Platform/AtlasLog.cs (INTEGRATION section 4).
