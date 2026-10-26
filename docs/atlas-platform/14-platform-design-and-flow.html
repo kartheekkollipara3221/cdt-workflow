@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas Platform Design and Flow</title>
+<style>
+/* Layout: one reading column (72ch) with full-width figures; a quiet technical-manual look. */
+:root{
+  --bg:#f7f8f6;--surface:#ffffff;--fg:#1d2a30;--muted:#5c6b73;--line:#d5dcd8;
+  --accent:#0f6e77;--accent-soft:#e3f1f2;--legacy:#8a5a1f;--legacy-soft:#f6ecdd;
+  --platform:#0f6e77;--platform-soft:#e3f1f2;--config:#5a4a9c;--config-soft:#ebe7f6;
+  --db:#3a6a3f;--db-soft:#e4efe4;--warn:#9a3b2d;--warn-soft:#f8e6e2;
+  --code-bg:#eef1ef;
+  --font-body:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  --font-mono:Consolas,"Cascadia Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#161b1d;--surface:#1f2628;--fg:#e4e9e8;--muted:#9fadb1;--line:#36424a;
+  --accent:#5fc3cb;--accent-soft:#17393c;--legacy:#d9a45c;--legacy-soft:#3b2f1c;
+  --platform:#5fc3cb;--platform-soft:#17393c;--config:#b3a4e8;--config-soft:#2b2644;
+  --db:#8fcb95;--db-soft:#1f3322;--warn:#f0917f;--warn-soft:#432420;--code-bg:#262e31;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#161b1d;--surface:#1f2628;--fg:#e4e9e8;--muted:#9fadb1;--line:#36424a;
+  --accent:#5fc3cb;--accent-soft:#17393c;--legacy:#d9a45c;--legacy-soft:#3b2f1c;
+  --platform:#5fc3cb;--platform-soft:#17393c;--config:#b3a4e8;--config-soft:#2b2644;
+  --db:#8fcb95;--db-soft:#1f3322;--warn:#f0917f;--warn-soft:#432420;--code-bg:#262e31;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--font-body);padding-block:0}
+main{max-width:1080px;margin:0 auto;padding:32px 16px 64px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;font-weight:600}
+h1{font-size:2rem;line-height:1.2;margin:8px 0 10px;text-wrap:balance}
+h2{font-size:1.4rem;margin:0 0 12px;text-wrap:balance}
+h3{font-size:1.08rem;margin:22px 0 6px}
+section{border-top:1px solid var(--line);padding-top:24px;margin-top:32px}
+p,li{max-width:72ch}
+li{margin:4px 0}
+code{font:.88em var(--font-mono);background:var(--code-bg);padding:1px 5px;border-radius:3px;overflow-wrap:anywhere}
+pre{background:var(--code-bg);padding:14px;border-radius:6px;overflow-x:auto;font-size:.85rem;line-height:1.5}
+pre code{background:none;padding:0}
+a{color:var(--accent);text-underline-offset:3px}
+nav.toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:2px 24px;font-size:.92rem;margin-top:14px}
+nav.toc a{text-decoration:none;padding:2px 0}
+nav.toc a:hover{text-decoration:underline}
+.note{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p{margin:4px 0}
+.table-wrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top;text-align:left}
+th{background:var(--code-bg);font-weight:600}
+td.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+figure{margin:20px 0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px}
+figure svg{max-width:100%;height:auto;display:block;margin:0 auto;font-family:var(--font-body)}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:10px;max-width:none}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.85rem;color:var(--muted);margin:8px 0 0}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .l-legacy::before{background:var(--legacy-soft);border-color:var(--legacy)}
+.legend .l-platform::before{background:var(--platform-soft);border-color:var(--platform)}
+.legend .l-config::before{background:var(--config-soft);border-color:var(--config)}
+.legend .l-db::before{background:var(--db-soft);border-color:var(--db)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin:14px 0}
+.two>div{min-width:0;border:1px solid var(--line);border-radius:8px;padding:12px 16px;background:var(--surface)}
+.two h4{margin:0 0 8px;font-size:.95rem}
+.two.legacy-vs>div:first-child{border-top:4px solid var(--legacy)}
+.two.legacy-vs>div:last-child{border-top:4px solid var(--platform)}
+.steps{counter-reset:s;list-style:none;padding:0;max-width:none}
+.steps li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);max-width:none}
+.steps li::before{content:counter(s);display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:.85rem;font-variant-numeric:tabular-nums}
+.steps li>div{min-width:0}
+.steps b{display:block}
+.small{font-size:.86rem;color:var(--muted)}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);vertical-align:middle;margin-left:6px}
+/* SVG presentation attributes do not take var(); these rules apply the tokens to the attribute values. */
+[fill="var(--surface)"]{fill:var(--surface)}
+[fill="var(--muted)"]{fill:var(--muted)}
+[fill="var(--legacy-soft)"]{fill:var(--legacy-soft)}[stroke="var(--legacy)"]{stroke:var(--legacy)}
+[fill="var(--platform-soft)"]{fill:var(--platform-soft)}[stroke="var(--platform)"]{stroke:var(--platform)}
+[fill="var(--config-soft)"]{fill:var(--config-soft)}[stroke="var(--config)"]{stroke:var(--config)}
+[fill="var(--db-soft)"]{fill:var(--db-soft)}[stroke="var(--db)"]{stroke:var(--db)}
+[fill="var(--warn-soft)"]{fill:var(--warn-soft)}[stroke="var(--warn)"]{stroke:var(--warn)}
+[stroke="var(--warn)"]{stroke:var(--warn)}
+@media (max-width:640px){h1{font-size:1.6rem}main{padding-top:20px}}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+<div class="eyebrow">CP Atlas reusable platform · release P1 (TTDV2) · design document · 2026-10-25</div>
+<h1>Atlas Platform Design and Flow</h1>
+<p>This document shows how the <code>atlas-platform</code> code works, from start-up to the saved record. It shows the flow of each request with a diagram. It also shows why this design is more reusable than the current target implementation.</p>
+<div class="note small">
+<p><strong>Language.</strong> This document uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, file names, JSON keys and business labels stay as they are in the source.</p>
+<p><strong>Source.</strong> <code>atlas-platform/</code> on branch <code>console-code-first-0518</code> (commit <code>0c3a756</code>). The current target is described from <code>target-implementation-read-only/</code>. Related: <a href="../TARGET_ATLAS_APPLICATION_FLOW.html">TARGET_ATLAS_APPLICATION_FLOW.html</a> (the current target), <a href="../../atlas-platform/INTEGRATION.md">INTEGRATION.md</a> (the steps at the target), the specs 01 to 13 in this folder.</p>
+</div>
+<nav class="toc" aria-label="Contents">
+<a href="#summary">1. Summary: what changes</a>
+<a href="#today">2. How the target works today</a>
+<a href="#blocks">3. The platform building blocks</a>
+<a href="#startup">4. Flow: start-up</a>
+<a href="#routing">5. Flow: one request</a>
+<a href="#load">6. Flow: open a form</a>
+<a href="#save">7. Flow: save a form</a>
+<a href="#dashboard">8. Flow: dashboard</a>
+<a href="#client">9. Flow: the browser</a>
+<a href="#security">10. Security and rules</a>
+<a href="#reuse">11. Why the design is reusable</a>
+<a href="#newapp">12. What a new app needs</a>
+<a href="#ops">13. Settings, rollback and checks</a>
+<a href="#files">14. File map</a>
+</nav>
+</header>
+
+<!-- 1 -->
+<section id="summary">
+<h2>1. Summary: what changes</h2>
+<p>Today, each business app in CP Atlas is a C# class. The class loads the JSON, binds the data, applies the rules, saves the record and runs the dashboard. Five app classes share one base class, but the app code also lives in the controller, in the Angular dashboard and in the Angular form. A new app needs new C# code, new EF models, new stored procedures and new TypeScript.</p>
+<p>The platform turns this around. One generic service (<code>ConfigSectionService</code>) and one generic Angular form (<code>AtlasFormComponent</code>) run every app. The app is described in three JSON files and one SQL table. The code reads the table columns from SQL Server at start-up. A C# class is optional; TTDV2 has one class with one hook and two option providers (69 lines in total).</p>
+<figure>
+<svg viewBox="0 0 920 300" role="img" aria-label="Comparison: the current target has one C# class, EF model, stored procedures and UI branches for each app; the platform has one generic path and JSON plus SQL for each app.">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+<g font-size="12" fill="currentColor">
+<!-- left: today -->
+<text x="20" y="24" font-weight="700" font-size="13">Today: one code path for each app</text>
+<rect x="20" y="40" width="400" height="230" rx="8" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+<rect x="36" y="58" width="110" height="34" rx="5" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="91" y="79" text-anchor="middle">CPTTDService</text>
+<rect x="156" y="58" width="110" height="34" rx="5" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="211" y="79" text-anchor="middle">CPAINService</text>
+<rect x="276" y="58" width="128" height="34" rx="5" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="340" y="79" text-anchor="middle">CPSQMSOService …</text>
+<rect x="36" y="110" width="110" height="34" rx="5" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="91" y="131" text-anchor="middle">TTDGeneral (EF)</text>
+<rect x="156" y="110" width="110" height="34" rx="5" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="211" y="131" text-anchor="middle">AIN entity (EF)</text>
+<rect x="276" y="110" width="128" height="34" rx="5" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="340" y="131" text-anchor="middle">SQMS entities (EF)</text>
+<rect x="36" y="162" width="368" height="34" rx="5" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="220" y="183" text-anchor="middle">if (code == TTD) … else if (code == AIN) … in service, controller, Angular</text>
+<rect x="36" y="214" width="368" height="34" rx="5" fill="var(--db-soft)" stroke="var(--db)"/><text x="220" y="235" text-anchor="middle">one stored procedure for each dashboard tab</text>
+<text x="220" y="262" text-anchor="middle" fill="var(--muted)" font-size="11">app #17 = C# + EF + SQL procedures + TypeScript</text>
+<!-- right: platform -->
+<text x="500" y="24" font-weight="700" font-size="13">Platform: one generic path, data for each app</text>
+<rect x="500" y="40" width="400" height="230" rx="8" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+<rect x="516" y="58" width="368" height="34" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="700" y="79" text-anchor="middle">ConfigSectionService + AtlasDashboardService (generic)</text>
+<rect x="516" y="110" width="368" height="34" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="700" y="131" text-anchor="middle">AtlasPlatformContext: one EF model built from sys.columns</text>
+<rect x="516" y="162" width="118" height="34" rx="5" fill="var(--config-soft)" stroke="var(--config)"/><text x="575" y="183" text-anchor="middle">TTDV2.app.json</text>
+<rect x="641" y="162" width="118" height="34" rx="5" fill="var(--config-soft)" stroke="var(--config)"/><text x="700" y="183" text-anchor="middle">TTDV2.json</text>
+<rect x="766" y="162" width="118" height="34" rx="5" fill="var(--config-soft)" stroke="var(--config)"/><text x="825" y="183" text-anchor="middle">Dashboard.json</text>
+<rect x="516" y="214" width="180" height="34" rx="5" fill="var(--db-soft)" stroke="var(--db)"/><text x="606" y="235" text-anchor="middle">table TTDV2.General</text>
+<rect x="704" y="214" width="180" height="34" rx="5" fill="var(--platform-soft)" stroke="var(--platform)" stroke-dasharray="4 3"/><text x="794" y="235" text-anchor="middle">optional: hooks, providers</text>
+<text x="700" y="262" text-anchor="middle" fill="var(--muted)" font-size="11">app #17 = 3 JSON files + 1 SQL script + 1 registration line</text>
+<!-- arrow between -->
+<line x1="428" y1="155" x2="492" y2="155" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+</g>
+</svg>
+<figcaption>Figure 1. Today each app brings its own code in four places. The platform keeps one code path and moves the app into data. Solid teal = shared platform code; purple = JSON for the app; green = SQL; dashed = optional C# for the app.</figcaption>
+<div class="legend"><span class="l-legacy">Current target code (one copy for each app)</span><span class="l-platform">Platform code (one copy for all apps)</span><span class="l-config">JSON configuration</span><span class="l-db">SQL Server</span></div>
+</figure>
+<div class="note"><p><strong>Backward compatibility.</strong> The current apps (TTD, AIN, SQMSO, SQMSB, CDT) do not change. The platform sits next to them. The controller asks the resolver first; if the code is not a platform app, the current <code>if</code> chains run as before.</p></div>
+</section>
+
+<!-- 2 -->
+<section id="today">
+<h2>2. How the target works today</h2>
+<p>The current flow for TTD is the reference. The numbers come from the read-only copy of the target.</p>
+<ol class="steps">
+<li><div><b>Routing by enum</b><code>CPAtlasController</code> gets <code>code</code> as the enum <code>CPApplicationCode</code>. <code>CPAtlasService.LoadApplicationService(code)</code> has an <code>if</code> chain that makes <code>new CPTTDService(...)</code>, <code>new CPAINService(...)</code>, and so on. A new code needs a new enum value and a new branch.</div></li>
+<li><div><b>App class</b><code>CPTTDService</code> (274 lines) reads <code>TTD.json</code> from a path in <code>appsettings</code>, loads <code>TTDGeneral</code> with EF, copies the seven day columns into the grid by hand, fills the account list from Oracle, and saves with <code>MapData&lt;TTDGeneral&gt;</code> (reflection on property names).</div></li>
+<li><div><b>No server checks</b>The UI validates. The server does not validate again, does not check that a value is in the options, and does not check the roles on save or delete. The audit entry is sent by the browser after the save (<code>POST v1/AuditLog</code>).</div></li>
+<li><div><b>Dashboard by procedure</b>Each tab names a stored procedure. The procedure gives the rows and the column widths. A new tab is a new procedure.</div></li>
+<li><div><b>Angular branches</b><code>cp-atlas-dashboard.ts</code> has 14 references to app codes, and <code>cp-atlas-sectionmaster.ts</code> has 7. Field-change logic (for example Account → Account Number) is TypeScript for that app.</div></li>
+</ol>
+<p>Spec 01, section 2, estimates the cost of app #17 with this design: a C# class, EF models, stored procedures, enum values, and TypeScript changes in the dashboard and the form.</p>
+</section>
+
+<!-- 3 -->
+<section id="blocks">
+<h2>3. The platform building blocks</h2>
+<p>The platform is a <code>Platform/</code> folder in each of the four target projects, and a <code>platform/</code> folder in the Angular source. The folders are copied to the same paths at the target (INTEGRATION.md, section 1).</p>
+<figure>
+<svg viewBox="0 0 920 470" role="img" aria-label="Layers of the platform: Angular platform folder, App Platform folder, Service Platform folder, Data Platform folder, Config folder and SQL Server, with the main classes in each and the calls between them.">
+<g font-size="12" fill="currentColor">
+<!-- Browser -->
+<rect x="20" y="16" width="880" height="74" rx="8" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+<text x="32" y="36" font-weight="700">WebUi/src/app/platform/ (Angular, copied to WebUi/Source/App/platform/)</text>
+<rect x="32" y="46" width="150" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="107" y="66" text-anchor="middle">AtlasFormComponent</text>
+<rect x="192" y="46" width="170" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="277" y="66" text-anchor="middle">AtlasRendererRegistry</text>
+<rect x="372" y="46" width="150" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="447" y="66" text-anchor="middle">effects, validators</text>
+<rect x="532" y="46" width="170" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="617" y="66" text-anchor="middle">AtlasDashboardComponent</text>
+<rect x="712" y="46" width="176" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="800" y="66" text-anchor="middle">AtlasApiService (v1/*)</text>
+<!-- App -->
+<rect x="20" y="110" width="880" height="74" rx="8" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+<text x="32" y="130" font-weight="700">BBH.CP.Atlas.App/Platform/ (composition root)</text>
+<rect x="32" y="140" width="200" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="132" y="160" text-anchor="middle">AddAtlasPlatform / AddAtlasModule</text>
+<rect x="242" y="140" width="200" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="342" y="160" text-anchor="middle">AtlasPlatformStartup (hosted)</text>
+<rect x="452" y="140" width="200" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="552" y="160" text-anchor="middle">AtlasStartupCheck + ConfigLint</text>
+<rect x="662" y="140" width="226" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="775" y="160" text-anchor="middle">AtlasProblemExceptionFilter (RFC 7807)</text>
+<!-- Service -->
+<rect x="20" y="204" width="880" height="120" rx="8" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+<text x="32" y="224" font-weight="700">BBH.CP.Atlas.Service/Platform/ and Application/</text>
+<rect x="32" y="234" width="150" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="107" y="254" text-anchor="middle">AtlasModuleResolver</text>
+<rect x="192" y="234" width="150" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="267" y="254" text-anchor="middle">AtlasConfigStore</text>
+<rect x="352" y="234" width="170" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="437" y="254" text-anchor="middle">ConfigSectionService</text>
+<rect x="532" y="234" width="170" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="617" y="254" text-anchor="middle">AtlasDashboardService</text>
+<rect x="712" y="234" width="176" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)" stroke-dasharray="4 3"/><text x="800" y="254" text-anchor="middle">CPTTDV2Service (app)</text>
+<rect x="32" y="278" width="150" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="107" y="298" text-anchor="middle">AtlasAccessService</text>
+<rect x="192" y="278" width="150" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="267" y="298" text-anchor="middle">AtlasRuleEngine</text>
+<rect x="352" y="278" width="170" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="437" y="298" text-anchor="middle">Sections/* (save steps)</text>
+<rect x="532" y="278" width="170" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="617" y="298" text-anchor="middle">AtlasAuditWriter</text>
+<rect x="712" y="278" width="176" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="800" y="298" text-anchor="middle">Option providers</text>
+<!-- Data -->
+<rect x="20" y="344" width="560" height="74" rx="8" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+<text x="32" y="364" font-weight="700">BBH.CP.Atlas.Data/Platform/</text>
+<rect x="32" y="374" width="160" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="112" y="394" text-anchor="middle">AtlasTableRegistry</text>
+<rect x="202" y="374" width="180" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="292" y="394" text-anchor="middle">AtlasColumnMetadataReader</text>
+<rect x="392" y="374" width="176" height="32" rx="5" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="480" y="394" text-anchor="middle">AtlasPlatformContext (EF)</text>
+<!-- Config -->
+<rect x="600" y="344" width="300" height="74" rx="8" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+<text x="612" y="364" font-weight="700">App/Config/ (manifests and JSON)</text>
+<rect x="612" y="374" width="86" height="32" rx="5" fill="var(--config-soft)" stroke="var(--config)"/><text x="655" y="394" text-anchor="middle" font-size="11">*.app.json</text>
+<rect x="706" y="374" width="86" height="32" rx="5" fill="var(--config-soft)" stroke="var(--config)"/><text x="749" y="394" text-anchor="middle" font-size="11">form .json</text>
+<rect x="800" y="374" width="88" height="32" rx="5" fill="var(--config-soft)" stroke="var(--config)"/><text x="844" y="394" text-anchor="middle" font-size="11">Dashboard</text>
+<!-- DB -->
+<rect x="20" y="432" width="560" height="30" rx="5" fill="var(--db-soft)" stroke="var(--db)"/><text x="300" y="452" text-anchor="middle">SQL Server cp_sharepoint: TTDV2.General, TTDV2.AuditLog, CP_Atlas_* roles, sys.columns</text>
+<!-- arrows -->
+<line x1="460" y1="90" x2="460" y2="108" stroke="currentColor" marker-end="url(#arr)"/><text x="470" y="104" font-size="11" fill="var(--muted)">HTTP v1/SectionPage, ManagePage, Dashboard …</text>
+<line x1="460" y1="184" x2="460" y2="202" stroke="currentColor" marker-end="url(#arr)"/><text x="470" y="198" font-size="11" fill="var(--muted)">CPAtlasService → resolver.Get&lt;T&gt;(code)</text>
+<line x1="300" y1="324" x2="300" y2="342" stroke="currentColor" marker-end="url(#arr)"/><text x="310" y="338" font-size="11" fill="var(--muted)">record as Dictionary&lt;column, value&gt;</text>
+<line x1="750" y1="324" x2="750" y2="342" stroke="currentColor" marker-end="url(#arr)"/><text x="760" y="338" font-size="11" fill="var(--muted)">reads, refresh 2 s</text>
+<line x1="300" y1="418" x2="300" y2="430" stroke="currentColor" marker-end="url(#arr)"/>
+</g>
+</svg>
+<figcaption>Figure 2. The platform layers. Each box is one class or one small group of classes. Only <code>CPTTDV2Service</code> (dashed) belongs to an app; all other boxes serve every app.</figcaption>
+</figure>
+<div class="table-wrap"><table>
+<tr><th>Block</th><th>Function</th><th>Spec</th></tr>
+<tr><td><code>AtlasAppManifest</code> (<code>*.app.json</code>)</td><td>One file for each app: code, name, form file, dashboard file, table, audit table, service name, <code>AccessMode</code>, <code>AuditMode</code>, <code>RuleMode</code>, <code>Enabled</code>, and optional settings (<code>RequireVersion</code>, <code>AuditRefTypes</code>, <code>SystemTime</code>, <code>SchemaVersion</code>).</td><td>07</td></tr>
+<tr><td><code>AtlasConfigStore</code></td><td>Reads the manifests, forms and dashboards from <code>AppSettings:ConfigFolder</code>. Keeps one parsed snapshot of the manifests and looks for changes every <code>ConfigRefreshSeconds</code>. A file with an error keeps its last good version.</td><td>07, 11</td></tr>
+<tr><td><code>AtlasModuleResolver</code></td><td>Replaces the <code>if</code> chains. Gives the service of an app code, or 404 when the app is not registered, not enabled, or disabled by the start-up check.</td><td>07</td></tr>
+<tr><td><code>AtlasTableRegistry</code>, <code>AtlasColumnMetadataReader</code></td><td>Reads <code>sys.columns</code> for each table in a manifest at start-up: name, SQL type, nullable, identity, default, rowversion. The registry is a singleton.</td><td>05</td></tr>
+<tr><td><code>AtlasPlatformContext</code></td><td>One EF Core context with shared-type entities (property bags). There is no C# class for a table; the model is built from the registry. It shares the connection and transaction of <code>CPSharepointContext</code>.</td><td>05</td></tr>
+<tr><td><code>AtlasValueConverter</code></td><td>Wire text ⇄ typed column value, invariant culture. <code>SameValue</code> compares typed values, so <code>1250000.5</code> equals <code>1250000.50</code>.</td><td>05</td></tr>
+<tr><td><code>ConfigSectionService</code></td><td>The generic Section Master service: load, save, delete, history. An app class inherits it only to add option providers or hooks.</td><td>01, 12</td></tr>
+<tr><td><code>Sections/*</code></td><td>The save steps as separate classes: <code>AtlasAllowList</code>, <code>AtlasFieldValidator</code>, <code>AtlasServerEffects</code>, <code>AtlasComputedFields</code>, <code>AtlasDefaultTokens</code>, <code>AtlasFormFields</code>.</td><td>01</td></tr>
+<tr><td><code>AtlasAccessService</code>, <code>AtlasUserContext</code></td><td>Roles of the user for an app from the <code>CP_Atlas_*</code> tables; one check for each operation (View, Create, Edit, Delete, History) from the form <code>Permissions</code>.</td><td>06</td></tr>
+<tr><td><code>AtlasRuleEngine</code></td><td>Evaluates <code>CPRule</code> lists (roles, states, owner) with <code>RuleMode</code> and <code>RuleDefault</code> from the manifest.</td><td>04</td></tr>
+<tr><td><code>AtlasAuditWriter</code></td><td>Writes the audit entry on the server, in the same transaction as the record.</td><td>09</td></tr>
+<tr><td><code>AtlasDashboardService</code>, <code>AtlasTabQueryBuilder</code></td><td>A <code>Source: Table</code> tab becomes one parameterized <code>SELECT</code> with filter, order, <code>TOP</code> and the soft-delete condition. No stored procedure.</td><td>03</td></tr>
+<tr><td><code>AtlasStartupCheck</code>, <code>AtlasConfigLint</code></td><td>Checks each manifest, form and dashboard against the tables and the registrations. <code>--atlas-check</code> runs the same checks from the command line.</td><td>07, 11</td></tr>
+</table></div>
+</section>
+
+<!-- 4 -->
+<section id="startup">
+<h2>4. Flow: start-up</h2>
+<p>The target <code>program.cs</code> gets two lines before <code>Build()</code>. The platform does the rest in a hosted service, before the server takes the first request.</p>
+<pre><code>builder.Services.AddAtlasPlatform(configuration);
+builder.Services.AddAtlasModule&lt;CPTTDV2Service&gt;("TTDV2");   // one line for each app</code></pre>
+<figure>
+<svg viewBox="0 0 920 250" role="img" aria-label="Start-up flow: AddAtlasPlatform registers services; the hosted service reads the manifests, loads sys.columns into the table registry, builds the EF model, runs the start-up check, and then either stops the host or disables the apps with errors, or marks the registry loaded.">
+<g font-size="12" fill="currentColor">
+<rect x="20" y="30" width="130" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="85" y="51" text-anchor="middle">AddAtlasPlatform</text><text x="85" y="67" text-anchor="middle" font-size="11" fill="var(--muted)">registers services</text>
+<rect x="180" y="30" width="130" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="245" y="51" text-anchor="middle">Hosted service</text><text x="245" y="67" text-anchor="middle" font-size="11" fill="var(--muted)">StartAtlasPlatformAsync</text>
+<rect x="340" y="30" width="130" height="50" rx="6" fill="var(--config-soft)" stroke="var(--config)"/><text x="405" y="51" text-anchor="middle">Read manifests</text><text x="405" y="67" text-anchor="middle" font-size="11" fill="var(--muted)">Config/*.app.json</text>
+<rect x="500" y="30" width="130" height="50" rx="6" fill="var(--db-soft)" stroke="var(--db)"/><text x="565" y="51" text-anchor="middle">Load sys.columns</text><text x="565" y="67" text-anchor="middle" font-size="11" fill="var(--muted)">Table, AuditTable …</text>
+<rect x="660" y="30" width="130" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="725" y="51" text-anchor="middle">Build EF model</text><text x="725" y="67" text-anchor="middle" font-size="11" fill="var(--muted)">once, all tables</text>
+<line x1="150" y1="55" x2="178" y2="55" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="310" y1="55" x2="338" y2="55" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="470" y1="55" x2="498" y2="55" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="630" y1="55" x2="658" y2="55" stroke="currentColor" marker-end="url(#arr)"/>
+<path d="M725 80 V110 H405 V130" fill="none" stroke="currentColor" marker-end="url(#arr)"/>
+<rect x="300" y="132" width="210" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="405" y="153" text-anchor="middle">Start-up check + config lint</text><text x="405" y="169" text-anchor="middle" font-size="11" fill="var(--muted)">errors and warnings → log</text>
+<path d="M300 157 H200 V200" fill="none" stroke="currentColor" marker-end="url(#arr)"/>
+<path d="M510 157 H610 V200" fill="none" stroke="currentColor" marker-end="url(#arr)"/>
+<text x="250" y="150" text-anchor="middle" font-size="11" fill="var(--muted)">no error</text>
+<text x="560" y="150" text-anchor="middle" font-size="11" fill="var(--muted)">errors</text>
+<rect x="100" y="202" width="200" height="40" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="200" y="226" text-anchor="middle">registry.MarkLoaded() → serve</text>
+<rect x="470" y="202" width="140" height="40" rx="6" fill="var(--warn-soft)" stroke="var(--warn)"/><text x="540" y="226" text-anchor="middle">Stop (default)</text>
+<rect x="620" y="202" width="200" height="40" rx="6" fill="var(--warn-soft)" stroke="var(--warn)"/><text x="720" y="226" text-anchor="middle">DisableModule: 404 for that app</text>
+<text x="690" y="195" text-anchor="middle" font-size="11" fill="var(--muted)">AppSettings:Atlas:OnStartupError</text>
+</g>
+</svg>
+<figcaption>Figure 3. Start-up. The table metadata is read once; a new table or a changed column needs a restart. The check runs for all registered platform apps, also disabled ones. The current apps have no manifest and are not checked.</figcaption>
+</figure>
+<p>The start-up check finds these errors before a user does: a manifest code without a registration line (and the reverse), a table or column that does not exist, a form field that names no column, an unknown option provider, a column type that the platform does not support, a <code>SoftDelete</code> field that is not <code>IsDeleted</code>, a rule or default that names an unknown control, a pattern that does not compile, and a typo in a JSON property name. The same checks run with <code>BBH.CP.Atlas.App.exe --atlas-check --environment QC</code> and return exit code 0 or 1.</p>
+</section>
+
+<!-- 5 -->
+<section id="routing">
+<h2>5. Flow: one request</h2>
+<p>The controller endpoints do not change. <code>CPAtlasService</code> gets two optional constructor parameters, and each public method gets a few lines marked <code>PLATFORM</code> at its start.</p>
+<figure>
+<svg viewBox="0 0 920 300" role="img" aria-label="Request routing: the controller calls CPAtlasService; the service asks the resolver if the code is a platform app; if yes, the resolver gives ConfigSectionService from the DI container; if no, the current if chain makes the legacy app service.">
+<g font-size="12" fill="currentColor">
+<rect x="20" y="110" width="150" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="95" y="131" text-anchor="middle">CPAtlasController</text><text x="95" y="147" text-anchor="middle" font-size="11" fill="var(--muted)">v1/SectionPage?code=…</text>
+<rect x="210" y="110" width="150" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="285" y="131" text-anchor="middle">CPAtlasService</text><text x="285" y="147" text-anchor="middle" font-size="11" fill="var(--muted)">LoadSectionPage(page)</text>
+<line x1="170" y1="135" x2="208" y2="135" stroke="currentColor" marker-end="url(#arr)"/>
+<path d="M360 135 H400" fill="none" stroke="currentColor"/>
+<polygon points="400,100 470,135 400,170 330,135" fill="var(--surface)" stroke="currentColor" transform="translate(70 0)"/>
+<text x="470" y="131" text-anchor="middle" font-size="11">resolver.</text><text x="470" y="145" text-anchor="middle" font-size="11">IsPlatformApp?</text>
+<path d="M470 100 V50 H560" fill="none" stroke="currentColor" marker-end="url(#arr)"/><text x="520" y="44" text-anchor="middle" font-size="11" fill="var(--muted)">yes: TTDV2</text>
+<path d="M470 170 V230 H560" fill="none" stroke="currentColor" marker-end="url(#arr)"/><text x="520" y="224" text-anchor="middle" font-size="11" fill="var(--muted)">no: TTD, AIN, CDT …</text>
+<rect x="562" y="25" width="160" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="642" y="46" text-anchor="middle">AtlasModuleResolver</text><text x="642" y="62" text-anchor="middle" font-size="11" fill="var(--muted)">Get&lt;ISectionService&gt;(code)</text>
+<rect x="742" y="25" width="160" height="50" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="822" y="46" text-anchor="middle">ConfigSectionService</text><text x="822" y="62" text-anchor="middle" font-size="11" fill="var(--muted)">or CPTTDV2Service</text>
+<line x1="722" y1="50" x2="740" y2="50" stroke="currentColor" marker-end="url(#arr)"/>
+<text x="642" y="92" text-anchor="middle" font-size="11" fill="var(--muted)">keyed DI: IAtlasModule["TTDV2"]</text>
+<rect x="562" y="205" width="160" height="50" rx="6" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="642" y="226" text-anchor="middle">current if chain</text><text x="642" y="242" text-anchor="middle" font-size="11" fill="var(--muted)">unchanged</text>
+<rect x="742" y="205" width="160" height="50" rx="6" fill="var(--legacy-soft)" stroke="var(--legacy)"/><text x="822" y="226" text-anchor="middle">new CPTTDService(...)</text><text x="822" y="242" text-anchor="middle" font-size="11" fill="var(--muted)">as today</text>
+<line x1="722" y1="230" x2="740" y2="230" stroke="currentColor" marker-end="url(#arr)"/>
+<text x="470" y="282" text-anchor="middle" font-size="11" fill="var(--muted)">code "TTD" or 3 → AtlasAppCode.FromRequest → enum name; "TTDV2" is not in the enum and goes to the platform</text>
+</g>
+</svg>
+<figcaption>Figure 4. One request. The platform path and the current path share the controller and the service entry. Each path has its own service objects.</figcaption>
+</figure>
+<p>The resolver gives 404 with a problem body when the app is not registered, when <code>Enabled</code> is <code>false</code>, when the start-up check disabled it, or when its table was not loaded at start-up. The <code>AtlasProblemExceptionFilter</code> turns each <code>AtlasProblemException</code> into an RFC 7807 response with <code>title</code>, <code>status</code>, <code>detail</code>, <code>type</code> and <code>traceId</code>.</p>
+<p>The endpoints a platform app uses are the current ones: <code>GET v1/Application</code> (menu), <code>GET v1/Dashboard</code>, <code>GET v1/SectionPage</code>, <code>POST v1/ManagePage</code>, <code>POST v1/RemovePage</code>, <code>GET v1/GetAuditLog</code>. <code>POST v1/AuditLog</code> does nothing for a platform app, because the server writes the audit.</p>
+</section>
+
+<!-- 6 -->
+<section id="load">
+<h2>6. Flow: open a form</h2>
+<p><code>ConfigSectionService.LoadPage(page)</code> builds the <code>CPApplicationSection</code> that the browser renders. The response has the same shape as today, with optional new properties (<code>Version</code>, <code>UserPermissions</code>, <code>Computed</code>, <code>Effects</code>).</p>
+<ol class="steps">
+<li><div><b>Manifest and form</b>Get the enabled manifest of the app and a fresh copy of the form JSON from the config store.</div></li>
+<li><div><b>Record and access</b>For <code>ID &gt; 0</code>: load the row from the main table as a dictionary (no tracking), then <code>Access.Demand(View)</code>. For a new record: <code>Access.Demand(Create)</code>.</div></li>
+<li><div><b>Bind values</b><code>AtlasFormFields.From(section)</code> lists each control with a <code>Field</code>. Each value is converted to wire text by the column type. A grid with <code>BindMode: SingleRowFields</code> gets one row with one value for each column.</div></li>
+<li><div><b>Options</b>A control with <code>OptionsSource</code> asks the named provider (<code>PBAccounts</code>, <code>UsersInRoles</code>, or an app provider such as <code>TaxYears</code>). With <code>KeepSavedValue</code>, an old saved value that is no longer in the list is added at the top. A <code>user</code> control gets the display name of the LAN ID.</div></li>
+<li><div><b>Defaults</b>An empty control with a <code>Defaults</code> token gets its value: <code>{User.LanID}</code>, <code>{User.DisplayName}</code>, <code>{Today}</code>, <code>{Options[n]}</code>, or plain text.</div></li>
+<li><div><b>Hook</b><code>OnLoad(context)</code>. TTDV2 writes the dates of the selected week into the grid column headers.</div></li>
+<li><div><b>Rules</b><code>Rules.ApplyToSection</code> sets <code>Visible</code> and <code>Disabled</code> on controls and buttons from the roles, the record state and the owner, with <code>RuleMode</code> and <code>RuleDefault</code> from the manifest.</div></li>
+<li><div><b>Response</b>Header name, <code>AppCode</code>, <code>Version</code> (the rowversion as Base64), <code>UserPermissions</code> (CanCreate, CanEdit, CanDelete, CanViewHistory) and <code>Computed</code>.</div></li>
+</ol>
+</section>
+
+<!-- 7 -->
+<section id="save">
+<h2>7. Flow: save a form</h2>
+<p>The save is the part of the platform with the most rules. The browser sends <code>{AppCode, ID, Version, Outputs:[{Name, Value}]}</code>. The server trusts no value: it checks each one against the form, the rules, the options and the column type.</p>
+<figure>
+<svg viewBox="0 0 920 420" role="img" aria-label="Save pipeline: record and access, rules, read outputs, server effects, allow list, validators, version check, convert and map, defaults and computed fields, system columns, OnBeforeSave hook, save and audit in one transaction, OnAfterSave hook, response with ID and Version. Any error before the transaction returns HTTP 200 with Errors and no change.">
+<g font-size="12" fill="currentColor">
+<!-- row 1 -->
+<rect x="20" y="20" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="90" y="39" text-anchor="middle">1-2 Record + access</text><text x="90" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">Edit or Create</text>
+<rect x="180" y="20" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="250" y="39" text-anchor="middle">3 Rules → fields</text><text x="250" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">hidden-by-rule marked</text>
+<rect x="340" y="20" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="410" y="39" text-anchor="middle">Read Outputs</text><text x="410" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">unknown name = error</text>
+<rect x="500" y="20" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="570" y="39" text-anchor="middle">Server effects</text><text x="570" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">Show/Hide/Set/Clear …</text>
+<rect x="660" y="20" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="730" y="39" text-anchor="middle">4 Allow list</text><text x="730" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">hidden, disabled, options</text>
+<line x1="160" y1="43" x2="178" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="320" y1="43" x2="338" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="480" y1="43" x2="498" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="640" y1="43" x2="658" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<path d="M800 43 H840 V110 H60 V128" fill="none" stroke="currentColor" marker-end="url(#arr)"/>
+<!-- row 2 -->
+<rect x="20" y="130" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="90" y="149" text-anchor="middle">6 Validators</text><text x="90" y="165" text-anchor="middle" font-size="11" fill="var(--muted)">same rules as client</text>
+<rect x="180" y="130" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="250" y="149" text-anchor="middle">7 Version</text><text x="250" y="165" text-anchor="middle" font-size="11" fill="var(--muted)">Conflict / VersionRequired</text>
+<rect x="340" y="130" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="410" y="149" text-anchor="middle">8 Convert + map</text><text x="410" y="165" text-anchor="middle" font-size="11" fill="var(--muted)">by column type</text>
+<rect x="500" y="130" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="570" y="149" text-anchor="middle">Defaults, Computed</text><text x="570" y="165" text-anchor="middle" font-size="11" fill="var(--muted)">Sum(...) on the server</text>
+<rect x="660" y="130" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="730" y="149" text-anchor="middle">9 System columns</text><text x="730" y="165" text-anchor="middle" font-size="11" fill="var(--muted)">CreatedBy, ModifiedDate</text>
+<line x1="160" y1="153" x2="178" y2="153" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="320" y1="153" x2="338" y2="153" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="480" y1="153" x2="498" y2="153" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="640" y1="153" x2="658" y2="153" stroke="currentColor" marker-end="url(#arr)"/>
+<path d="M800 153 H840 V220 H60 V238" fill="none" stroke="currentColor" marker-end="url(#arr)"/>
+<!-- row 3 -->
+<rect x="20" y="240" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)" stroke-dasharray="4 3"/><text x="90" y="259" text-anchor="middle">OnBeforeSave</text><text x="90" y="275" text-anchor="middle" font-size="11" fill="var(--muted)">hook may add errors</text>
+<rect x="180" y="240" width="300" height="46" rx="6" fill="var(--db-soft)" stroke="var(--db)"/><text x="330" y="259" text-anchor="middle">11-12 One transaction: INSERT/UPDATE + audit row</text><text x="330" y="275" text-anchor="middle" font-size="11" fill="var(--muted)">UPDATE … WHERE RowVersion = @client</text>
+<rect x="500" y="240" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)" stroke-dasharray="4 3"/><text x="570" y="259" text-anchor="middle">OnAfterSave</text><text x="570" y="275" text-anchor="middle" font-size="11" fill="var(--muted)">errors only logged</text>
+<rect x="660" y="240" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="730" y="259" text-anchor="middle">Response</text><text x="730" y="275" text-anchor="middle" font-size="11" fill="var(--muted)">ID, Version, Outputs</text>
+<line x1="160" y1="263" x2="178" y2="263" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="480" y1="263" x2="498" y2="263" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="640" y1="263" x2="658" y2="263" stroke="currentColor" marker-end="url(#arr)"/>
+<!-- error exit -->
+<rect x="20" y="340" width="780" height="46" rx="6" fill="var(--warn-soft)" stroke="var(--warn)"/>
+<text x="410" y="359" text-anchor="middle">Any error in steps 1 to OnBeforeSave → HTTP 200 with Errors[{Field, Code, Message}], nothing written, change tracker cleared</text>
+<text x="410" y="376" text-anchor="middle" font-size="11" fill="var(--muted)">Codes: NotAllowed, NotInOptions, InvalidGrid, Required, Pattern, Min, Max, Conflict, VersionRequired, and the hook codes</text>
+<path d="M90 286 V338" fill="none" stroke="var(--warn)" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+<path d="M250 176 V220" fill="none" stroke="var(--warn)" stroke-dasharray="4 3"/>
+</g>
+</svg>
+<figcaption>Figure 5. The save pipeline of <code>ConfigSectionService.SavePage</code>. Step numbers follow spec 01, section 5.9. Dashed boxes are the optional app hooks. The field refusals are logged as <code>Atlas.FieldRefused</code> so a probe or a client defect can be found.</figcaption>
+</figure>
+<h3>The allow list in detail</h3>
+<div class="table-wrap"><table>
+<tr><th>Submitted value</th><th>Result</th></tr>
+<tr><td>A name that is not a control of this form</td><td><code>NotAllowed</code></td></tr>
+<tr><td>A hidden or disabled field with a changed value (typed compare)</td><td><code>NotAllowed</code>; the same value is ignored</td></tr>
+<tr><td>A value of a control with options that is not in the server list for this user</td><td><code>NotInOptions</code>; an unchanged saved value stays valid</td></tr>
+<tr><td>A system column, a <code>Computed</code> target, or a <code>SetFromOption</code> / <code>Set</code> / <code>Clear</code> target</td><td>Ignored; the server sets it (<code>Atlas.FieldIgnored</code>)</td></tr>
+<tr><td>Grid JSON that does not parse</td><td><code>InvalidGrid</code></td></tr>
+<tr><td>A field that a rule hid, then a client <code>Show</code> effect</td><td>Still hidden: an effect can only narrow what the rules allow</td></tr>
+</table></div>
+<p>A delete (<code>RemovePage</code>) sets <code>IsDeleted = 1</code>, <code>ModifiedBy</code> and <code>ModifiedDate</code>, and writes an audit row with event <code>Delete</code>. The Delete permission is enforced in both access modes.</p>
+</section>
+
+<!-- 8 -->
+<section id="dashboard">
+<h2>8. Flow: dashboard</h2>
+<p>A platform dashboard tab has <code>Source: Table</code>, a <code>Filter</code>, an <code>OrderBy</code> and <code>Columns</code>. The platform builds the query. The current tabs with a <code>Procedure</code> still work the same way as today.</p>
+<figure>
+<svg viewBox="0 0 920 170" role="img" aria-label="Dashboard flow: View access check, tab rules, then for each visible tab the query builder makes a parameterized SELECT with the soft-delete condition, the user directory fills display names, and menus come from the Permissions block.">
+<g font-size="12" fill="currentColor">
+<rect x="20" y="30" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="90" y="49" text-anchor="middle">Access.Demand(View)</text><text x="90" y="65" text-anchor="middle" font-size="11" fill="var(--muted)">manifest + Permissions</text>
+<rect x="180" y="30" width="140" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="250" y="49" text-anchor="middle">Tab rules</text><text x="250" y="65" text-anchor="middle" font-size="11" fill="var(--muted)">hidden tab: no query</text>
+<rect x="340" y="30" width="180" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="430" y="49" text-anchor="middle">AtlasTabQueryBuilder</text><text x="430" y="65" text-anchor="middle" font-size="11" fill="var(--muted)">SELECT TOP(@max) … WHERE</text>
+<rect x="540" y="30" width="160" height="46" rx="6" fill="var(--db-soft)" stroke="var(--db)"/><text x="620" y="49" text-anchor="middle">TTDV2.General</text><text x="620" y="65" text-anchor="middle" font-size="11" fill="var(--muted)">[IsDeleted] = 0, ORDER BY … ID DESC</text>
+<rect x="720" y="30" width="180" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="810" y="49" text-anchor="middle">KeyValues + Menus</text><text x="810" y="65" text-anchor="middle" font-size="11" fill="var(--muted)">names from one IN (...) query</text>
+<line x1="160" y1="53" x2="178" y2="53" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="320" y1="53" x2="338" y2="53" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="520" y1="53" x2="538" y2="53" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="700" y1="53" x2="718" y2="53" stroke="currentColor" marker-end="url(#arr)"/>
+<text x="460" y="120" text-anchor="middle" font-size="11" fill="var(--muted)">Filter values: {LanId} → the user; a column of type user shows the display name; a tab with Code of another app needs that app enabled and its own View check</text>
+<text x="460" y="145" text-anchor="middle" font-size="11" fill="var(--muted)">A tab with no Menus gets Edit / History / Delete from Permissions; the server checks each record again on the request</text>
+</g>
+</svg>
+<figcaption>Figure 6. The dashboard of a platform app. The rows have the column <code>Name</code> as key and always <code>ID</code>, so <code>Link: Edit</code> opens <code>form/:code/:id</code>.</figcaption>
+</figure>
+</section>
+
+<!-- 9 -->
+<section id="client">
+<h2>9. Flow: the browser</h2>
+<p>The Angular platform adds one route, <code>form/:code/:id</code>, next to the current <code>sectionmaster/:code/:id</code>. The current dashboard component gets one new line at the start of <code>onClick</code> and <code>editRow</code>: <code>formRoute(formTypeOf(apps, code), code, id)</code>. An app with <code>FormType: FORM</code> in the menu rows opens the platform form; the other apps open the current pages.</p>
+<figure>
+<svg viewBox="0 0 920 300" role="img" aria-label="Browser flow: the route form/:code/:id loads AtlasFormComponent; it calls GET v1/SectionPage, builds a FormRecord, picks a renderer for each control type from the registry, applies effects and computed fields while the user types, validates only shown controls, posts ManagePage, and maps server errors back to the fields.">
+<g font-size="12" fill="currentColor">
+<rect x="20" y="20" width="150" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="95" y="39" text-anchor="middle">route form/:code/:id</text><text x="95" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">lazy chunk, about 95 kB</text>
+<rect x="190" y="20" width="150" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="265" y="39" text-anchor="middle">AtlasFormComponent</text><text x="265" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">OnPush, signals</text>
+<rect x="360" y="20" width="150" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="435" y="39" text-anchor="middle">GET v1/SectionPage</text><text x="435" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">CPApplicationSection</text>
+<rect x="530" y="20" width="170" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="615" y="39" text-anchor="middle">buildFormGroup(section)</text><text x="615" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">FormRecord, validators</text>
+<rect x="720" y="20" width="180" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="810" y="39" text-anchor="middle">Renderer for each Type</text><text x="810" y="55" text-anchor="middle" font-size="11" fill="var(--muted)">registry.resolve(control.Type)</text>
+<line x1="170" y1="43" x2="188" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="340" y1="43" x2="358" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="510" y1="43" x2="528" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="700" y1="43" x2="718" y2="43" stroke="currentColor" marker-end="url(#arr)"/>
+<path d="M810 66 V100 H95 V118" fill="none" stroke="currentColor" marker-end="url(#arr)"/>
+<rect x="20" y="120" width="200" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="120" y="139" text-anchor="middle">While the user types</text><text x="120" y="155" text-anchor="middle" font-size="11" fill="var(--muted)">Effects, Computed, SetFromOption</text>
+<rect x="240" y="120" width="200" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="340" y="139" text-anchor="middle">Save: shownInvalid()</text><text x="340" y="155" text-anchor="middle" font-size="11" fill="var(--muted)">only shown, enabled controls</text>
+<rect x="460" y="120" width="200" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="560" y="139" text-anchor="middle">POST v1/ManagePage</text><text x="560" y="155" text-anchor="middle" font-size="11" fill="var(--muted)">buildOutputs: shown controls + Version</text>
+<rect x="680" y="120" width="220" height="46" rx="6" fill="var(--platform-soft)" stroke="var(--platform)"/><text x="790" y="139" text-anchor="middle">Errors → fields, else dashboard</text><text x="790" y="155" text-anchor="middle" font-size="11" fill="var(--muted)">field error on its input, aria-live</text>
+<line x1="220" y1="143" x2="238" y2="143" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="440" y1="143" x2="458" y2="143" stroke="currentColor" marker-end="url(#arr)"/>
+<line x1="660" y1="143" x2="678" y2="143" stroke="currentColor" marker-end="url(#arr)"/>
+<text x="460" y="205" text-anchor="middle" font-size="11" fill="var(--muted)">Renderers: text, currency, percent, select, ngselect, textarea, datetimepicker, date, checkbox, check, option, user, grid. A new type = one provideAtlasRenderers entry.</text>
+<text x="460" y="228" text-anchor="middle" font-size="11" fill="var(--muted)">All @pbdev controls are used through platform/atlas-pbdev.ts (one import file). atlas-platform.css holds the platform styles.</text>
+<text x="460" y="251" text-anchor="middle" font-size="11" fill="var(--muted)">The form knows no app: no app code, no field name and no business rule is in TypeScript.</text>
+<text x="460" y="280" text-anchor="middle" font-size="11" fill="var(--muted)">History dialog: GET v1/GetAuditLog; a new record id cancels the request before it (switchMap).</text>
+</g>
+</svg>
+<figcaption>Figure 7. The platform form in the browser. The client validators and the server validators run the same case list (<code>atlas-validator-cases.ts</code> and <code>ValidatorParityTests</code>), so a value that passes in the browser passes on the server.</figcaption>
+</figure>
+</section>
+
+<!-- 10 -->
+<section id="security">
+<h2>10. Security and rules</h2>
+<div class="two legacy-vs">
+<div><h4>Today</h4>
+<ul>
+<li>Roles set only the <code>Visible</code> and <code>Disabled</code> flags in the response.</li>
+<li>Save, delete and download do not check the roles again.</li>
+<li>The server does not validate the values.</li>
+<li>Audit entries come from the browser after the save.</li>
+<li>No version check: the last write wins.</li>
+</ul></div>
+<div><h4>Platform</h4>
+<ul>
+<li><code>Permissions</code> in the form JSON: View, Create, Edit (Own / All), Delete, History. <code>OwnerFields</code> names the LAN ID columns that make a user the owner.</li>
+<li><code>Access.Demand</code> runs before each operation on the server. <code>AccessMode: LogOnly</code> logs <code>Atlas.AccessDenied</code> and continues (P1); <code>Enforce</code> returns 403. A Delete is always enforced.</li>
+<li>The allow list, the option check and the validators run on the server (section 7).</li>
+<li>The audit row is written in the same transaction as the record. The browser cannot add or change an entry.</li>
+<li>The rowversion column gives a <code>Conflict</code> error when another user saved first.</li>
+</ul></div>
+</div>
+<h3>Role tokens</h3>
+<p>A role name in a rule or in <code>Permissions</code> is a role of the app in the <code>CP_Atlas_*</code> tables. Two tokens are platform-wide: <code>@Read</code> (any role of the app) and <code>@Admin</code> (a role named Admin). The option provider <code>UsersInRoles</code> lists the users with the named roles, so a form can give a list of people with no SQL.</p>
+<h3>Rules</h3>
+<p>A rule has criteria (<code>Roles</code>, <code>States</code>, <code>IsOwner</code>) and effects (<code>Visible</code>, <code>Disabled</code>, <code>ShowControls</code>, <code>HideControls</code>, <code>EnableControls</code>, <code>DisableControls</code>). The manifest sets <code>RuleMode</code> (<code>FirstMatch</code> as today, or <code>MostPermissive</code> for a user with more than one role) and <code>RuleDefault</code> (what happens when no rule matches: <code>ReadOnly</code> or <code>Hidden</code>). The form JSON can give app-level <code>Rules</code> as the default for all section controls.</p>
+</section>
+
+<!-- 11 -->
+<section id="reuse">
+<h2>11. Why the design is reusable</h2>
+<p>The question for each module was the same: what must change when app #17 arrives? The platform moves each answer from code to data, or to one registration point.</p>
+<div class="table-wrap"><table>
+<tr><th>Concern</th><th>Today (one change for each app)</th><th>Platform (no change, or one line)</th></tr>
+<tr><td>Find the service for a code</td><td>Enum value + <code>if</code> branch in <code>CPAtlasService</code>, the controller and the UI</td><td>One <code>AddAtlasModule&lt;T&gt;("CODE")</code> line; the manifest names the rest. No enum value.</td></tr>
+<tr><td>Load the JSON</td><td>A path key in <code>appsettings</code> for each app; the class reads the file in its constructor</td><td>One config folder; the store finds <code>CODE.app.json</code> and the files it names. A changed file is seen in 2 s.</td></tr>
+<tr><td>Table mapping</td><td>A C# entity class, a <code>DbSet</code>, <code>MapData&lt;T&gt;</code> by reflection</td><td>No class. The columns come from <code>sys.columns</code>; the record is a dictionary; the conversion follows the SQL type.</td></tr>
+<tr><td>Grid columns</td><td>Hand-written copy of each day column into a grid row class</td><td><code>BindMode: SingleRowFields</code>: each grid column is a field with a <code>Field</code> name.</td></tr>
+<tr><td>Look-up lists</td><td>Oracle and SQL calls in the app class</td><td>Option providers by name (<code>PBAccounts</code>, <code>UsersInRoles</code>, app providers). The JSON names the provider.</td></tr>
+<tr><td>Field-change logic</td><td>TypeScript in the section master for that app</td><td><code>Effects</code> in the JSON: <code>Show</code>, <code>Hide</code>, <code>Require</code>, <code>Enable</code>, <code>Disable</code>, <code>Set</code>, <code>Clear</code>, <code>SetFromOption</code>. The client and the server apply them.</td></tr>
+<tr><td>Calculated fields</td><td>UI code (TTD weekly total)</td><td><code>Computed</code> in the JSON, for example <code>Sum(...)</code>; the server saves its own value.</td></tr>
+<tr><td>Defaults</td><td>Code in <code>LoadDefaultData</code></td><td><code>Defaults</code> tokens in the JSON.</td></tr>
+<tr><td>Dashboard rows</td><td>One stored procedure for each tab</td><td><code>Source: Table</code> with <code>Filter</code>, <code>OrderBy</code>, <code>Columns</code>, <code>Sum</code>. A procedure is still possible.</td></tr>
+<tr><td>Security</td><td>Rules only set flags; no server check</td><td><code>Permissions</code> + <code>OwnerFields</code>; the same check for every app.</td></tr>
+<tr><td>Audit</td><td>Browser sends the diff</td><td>Server diff by typed value, same transaction, <code>Audit: false</code> hides a field value.</td></tr>
+<tr><td>Validation</td><td>Browser only</td><td>Browser and server, one case list for both.</td></tr>
+<tr><td>Control types</td><td>A <code>switch</code> in the Angular template</td><td>Renderer registry: <code>provideAtlasRenderers({ rating: RatingRenderer })</code>.</td></tr>
+<tr><td>Errors</td><td>Empty 500, or 400 with text</td><td>RFC 7807 problem body; field errors as <code>Errors[]</code> with a code.</td></tr>
+<tr><td>Config mistakes</td><td>Found by a user at run time</td><td>Start-up check and <code>--atlas-check</code> before the release.</td></tr>
+<tr><td>Rollback</td><td>Code deployment</td><td><code>AppSettings:Modules:CODE:Enabled = false</code>; the menu hides the app and each request gets 404.</td></tr>
+</table></div>
+<h3>Size of the TTD app, today and as TTDV2</h3>
+<div class="table-wrap"><table>
+<tr><th>Part</th><th>TTD today</th><th>TTDV2 on the platform</th></tr>
+<tr><td>App service class</td><td class="num">274 lines C#</td><td class="num">31 lines C# (one hook)</td></tr>
+<tr><td>Option code</td><td>In the class (Oracle call, date loop)</td><td class="num">38 lines C# (two providers)</td></tr>
+<tr><td>EF entity</td><td><code>TTDGeneral</code> + <code>DbSet</code> + grid row DTO</td><td>None</td></tr>
+<tr><td>Stored procedures</td><td>One for each dashboard tab</td><td>None</td></tr>
+<tr><td>Enum, <code>if</code> branches, UI branches</td><td>Yes, in 4 places</td><td>One <code>AddAtlasModule</code> line</td></tr>
+<tr><td>JSON</td><td>form + dashboard entries</td><td>manifest 19 + form 210 + dashboard 92 lines</td></tr>
+<tr><td>Shared base code</td><td><code>CPApplicationService</code> 579 lines, used by each app class</td><td>Platform folders, not changed for a new app</td></tr>
+</table></div>
+<h3>Extension points, from smallest to largest</h3>
+<ol>
+<li><strong>JSON only.</strong> Fields, options, rules, effects, defaults, computed fields, permissions, dashboard tabs. No build, no deployment of code.</li>
+<li><strong>Option provider.</strong> One class with <code>Name</code>, <code>GetOptions</code> and <code>DescribeValue</code>. The JSON names it.</li>
+<li><strong>Hooks.</strong> <code>OnLoad</code>, <code>OnBeforeSave</code> (can add errors and change the record), <code>OnAfterSave</code> (must not throw). The module reads through the contexts and writes only through the record in <code>OnBeforeSave</code>.</li>
+<li><strong>Renderer.</strong> One Angular component that extends <code>AtlasRendererBase</code>, registered by type name.</li>
+<li><strong>Platform service.</strong> Added to <code>AtlasModuleServices</code>, so no module constructor changes.</li>
+</ol>
+<div class="note"><p><strong>What is not in P1.</strong> Step Master (multi-step forms, CDT), attachments, and the workflow engine adapter are designed (specs 02, 08, 10) but not built. P1 covers the Section Master apps. The same layers take the next modules.</p></div>
+</section>
+
+<!-- 12 -->
+<section id="newapp">
+<h2>12. What a new app needs</h2>
+<p>This is the onboarding list for an app with a single-page form (the TTDV2 pattern, spec 12, section 8).</p>
+<ol class="steps">
+<li><div><b>SQL script</b>From <code>docs/atlas-platform/sql/05-new-app-template.sql</code>: schema, main table (<code>ID int IDENTITY</code>, <code>CreatedBy</code>, <code>CreatedDate</code>, <code>ModifiedBy</code>, <code>ModifiedDate</code>, <code>IsDeleted bit NOT NULL DEFAULT 0</code>, <code>RowVersion</code>), audit table, filtered indexes, grants, the app row and its roles.</div></li>
+<li><div><b><code>CODE.app.json</code></b>The manifest (figure: <code>TTDV2.app.json</code>, 19 lines).</div></li>
+<li><div><b><code>CODE.json</code></b>The form: sections, controls, validators, options, effects, rules, permissions, defaults, computed fields.</div></li>
+<li><div><b><code>CODE.Dashboard.json</code></b>The tabs and the add button.</div></li>
+<li><div><b>Role grants</b>Users to roles in the <code>CP_Atlas_*</code> tables (template <code>06-grant-revoke-role-template.sql</code>).</div></li>
+<li><div><b>One registration line</b><code>builder.Services.AddAtlasModule&lt;ConfigSectionService&gt;("CODE");</code> when the app needs no hook, or a small class that inherits <code>ConfigSectionService</code>.</div></li>
+<li><div><b>Check</b><code>--atlas-check</code> returns 0. Then set <code>Enabled</code> for the environment.</div></li>
+</ol>
+<p>No TypeScript change, no enum value, no stored procedure, no EF entity.</p>
+</section>
+
+<!-- 13 -->
+<section id="ops">
+<h2>13. Settings, rollback and checks</h2>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th>Value</th><th>Effect</th></tr>
+<tr><td><code>AppSettings:ConfigFolder</code></td><td><code>Config</code></td><td>Folder of the manifests and JSON files</td></tr>
+<tr><td><code>AppSettings:ConfigRefreshSeconds</code></td><td><code>2</code></td><td>How often the store looks for changed files</td></tr>
+<tr><td><code>AppSettings:Atlas:OnStartupError</code></td><td><code>Stop</code> or <code>DisableModule</code></td><td>A start-up error stops the host, or only disables the apps with errors (the current apps keep running)</td></tr>
+<tr><td><code>AppSettings:Modules:CODE:Enabled</code></td><td><code>true</code> / <code>false</code></td><td>The rollback switch for one app</td></tr>
+<tr><td><code>AppSettings:Modules:CODE:AccessMode</code></td><td><code>LogOnly</code> / <code>Enforce</code></td><td>Log or refuse a denied operation. A value that is not valid fails closed (<code>Enforce</code>).</td></tr>
+</table></div>
+<p>The platform reads these keys only from the configuration given to <code>AddAtlasPlatform</code>. At the target this is <code>appsettings.json</code> in the application folder. Restart the app pool after a change.</p>
+<p>Log events to search for: <code>Atlas.AccessDenied</code> (41001), <code>Atlas.FieldIgnored</code> (41010), <code>Atlas.SaveFailed</code> (41011), <code>Atlas.AfterSaveFailed</code> (41012), <code>Atlas.FieldRefused</code> (41013), <code>Atlas.TabRowLimit</code> (41015), <code>Atlas.StartupCheck</code> (41020), <code>Atlas.ConfigInvalid</code> (41021), <code>Atlas.AppNotAvailable</code> (41022), <code>Atlas.AppDisabled</code> (41023), <code>Atlas.ConfigError</code> (41024). All are in <code>Service/Platform/AtlasLog.cs</code>.</p>
+<p>Tests: 273 .NET tests (xUnit on SQL Server, incl. the release scripts, the copy script and the API) and 52 Angular tests (runner-neutral, so they also run on the target Karma). The build has 0 warnings with warnings as errors.</p>
+</section>
+
+<!-- 14 -->
+<section id="files">
+<h2>14. File map</h2>
+<div class="table-wrap"><table>
+<tr><th>Path in <code>atlas-platform/</code></th><th>What is there</th></tr>
+<tr><td><code>src/BBH.CP.Atlas.App/Platform/</code></td><td><code>AtlasPlatformServiceCollectionExtensions</code> (DI), <code>AtlasPlatformStartup</code> (hosted start-up, <code>--atlas-check</code>), <code>AtlasStartupCheck</code>, <code>AtlasConfigLint</code>, <code>AtlasProblemExceptionFilter</code>, <code>UserInfoCurrentUserSource</code></td></tr>
+<tr><td><code>src/BBH.CP.Atlas.App/Config/</code></td><td><code>TTDV2.app.json</code>, <code>TTDV2.json</code>, <code>TTDV2.Dashboard.json</code></td></tr>
+<tr><td><code>src/BBH.CP.Atlas.Service/Platform/</code></td><td><code>Registry/</code> (manifest, config store, resolver, menu, disabled apps), <code>Security/</code>, <code>Rules/</code>, <code>Sections/</code>, <code>Audit/</code>, <code>Dashboard/</code>, <code>Options/</code>, <code>AtlasJson</code>, <code>AtlasLog</code>, <code>AtlasProblemException</code></td></tr>
+<tr><td><code>src/BBH.CP.Atlas.Service/Application/</code></td><td><code>ConfigSectionService.cs</code> (generic), <code>CPTTDV2Service.cs</code>, <code>TTDV2/TTDV2OptionProviders.cs</code></td></tr>
+<tr><td><code>src/BBH.CP.Atlas.Data/Platform/</code></td><td>Table registry, metadata reader, SQL types, platform context, value converter, DI and transaction helpers, <code>Dto/CPPlatformDto.cs</code> (the partial DTO additions)</td></tr>
+<tr><td><code>WebUi/src/app/platform/</code></td><td><code>form/</code> (component, model, effects, validators, renderers, registry, a11y directive), <code>dashboard/</code> (reference component, column helpers), API service, models, navigation, errors, <code>atlas-pbdev.ts</code>, <code>atlas-platform.css</code>, routes</td></tr>
+<tr><td><code>sql/release-p1/</code></td><td><code>020</code>–<code>050</code>: platform tables, TTDV2 app, copy from TTD on the change-over day; <code>README.md</code> for the DBA</td></tr>
+<tr><td><code>*/StandIn/</code>, <code>WebUi/src/app/stand-in/</code>, <code>local/</code>, <code>tests/</code></td><td>Local copies of target parts and the test suite. Not copied to the target.</td></tr>
+<tr><td><code>INTEGRATION.md</code></td><td>Files to copy, changes to target files, SQL, settings, acceptance, and the build findings B1–B64</td></tr>
+</table></div>
+</section>
+</main>
+</body>
+</html>
