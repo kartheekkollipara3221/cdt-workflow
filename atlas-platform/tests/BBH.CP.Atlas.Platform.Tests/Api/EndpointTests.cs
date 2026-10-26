@@ -126,7 +126,12 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
         request.Headers.Add(StandInActAsMiddleware.HeaderName, "api.read");
         using HttpResponseMessage denied = await _client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
-        Assert.Contains("Create", await denied.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        string body = await denied.Content.ReadAsStringAsync();
+        Assert.Contains("Create", body, StringComparison.Ordinal);
+        // Review SV-11: the body comes from the ProblemDetailsFactory of the host (type and traceId are added).
+        Assert.Contains("\"title\":\"Access denied\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"traceId\"", body, StringComparison.Ordinal);
+        Assert.Contains("\"type\"", body, StringComparison.Ordinal);
     }
 
     [Fact]

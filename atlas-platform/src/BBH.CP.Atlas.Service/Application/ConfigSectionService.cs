@@ -142,7 +142,7 @@ namespace BBH.CP.Atlas.Service.Application
             }
 
             CPApplicationSection section = form.Section
-                ?? throw AtlasProblemException.BadRequest($"The form of {manifest.Code} has no Section.");
+                ?? throw AtlasProblemException.Config($"The form of {manifest.Code} has no Section.");
             AtlasFormFields fields = AtlasFormFields.From(section);
 
             BindValues(fields, table, record);
@@ -251,7 +251,7 @@ namespace BBH.CP.Atlas.Service.Application
 
             // 3. Effective section: rules for this user and record.
             CPApplicationSection section = form.Section
-                ?? throw AtlasProblemException.BadRequest($"The form of {manifest.Code} has no Section.");
+                ?? throw AtlasProblemException.Config($"The form of {manifest.Code} has no Section.");
             AtlasFormFields beforeRules = AtlasFormFields.From(section);
             Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, stored), manifest.RuleMode, manifest.RuleDefault);
             AtlasFormFields fields = AtlasFormFields.From(section);
@@ -586,7 +586,7 @@ namespace BBH.CP.Atlas.Service.Application
             string field = form.SoftDelete?.Field
                 ?? throw AtlasProblemException.BadRequest($"App '{manifest.Code}' has no SoftDelete setting.");
             if (table.Find(field) is not { } column)
-                throw AtlasProblemException.BadRequest($"The SoftDelete field '{field}' is not a column of {table.FullName}.");
+                throw AtlasProblemException.Config($"The SoftDelete field '{field}' is not a column of {table.FullName}.");
 
             stored[column.Name] = true;
             SetIfColumn(table, stored, "ModifiedBy", Services.User.LanId);
@@ -622,7 +622,7 @@ namespace BBH.CP.Atlas.Service.Application
 
         protected AtlasTable MainTable(AtlasAppManifest manifest) =>
             string.IsNullOrWhiteSpace(manifest.Table)
-                ? throw AtlasProblemException.BadRequest($"App '{manifest.Code}' has no Table in its manifest.")
+                ? throw AtlasProblemException.Config($"App '{manifest.Code}' has no Table in its manifest.")
                 : Services.PlatformContext.Registry.Get(manifest.Table);
 
         protected IAtlasOptionProvider Provider(string name)
@@ -632,7 +632,7 @@ namespace BBH.CP.Atlas.Service.Application
                 .ToDictionary(x => x.Key, x => x.Last(), StringComparer.OrdinalIgnoreCase);
             return _providers.TryGetValue(name, out IAtlasOptionProvider? provider)
                 ? provider
-                : throw new InvalidOperationException($"Option provider '{name}' is not registered (app {AppCode}).");
+                : throw AtlasProblemException.Config($"Option provider '{name}' is not registered (app {AppCode}).");
         }
 
         private IReadOnlyList<CPKeyValue> OptionsOf(CPApplicationControl control) =>

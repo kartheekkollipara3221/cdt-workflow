@@ -91,7 +91,7 @@ public sealed class AtlasDashboardService(
             return null;
 
         AtlasAppManifest tabManifest = configStore.FindManifest(tab.Code)
-            ?? throw new InvalidOperationException($"Dashboard tab '{tab.ID}' names the app '{tab.Code}', which has no manifest.");
+            ?? throw AtlasProblemException.Config($"Dashboard tab '{tab.ID}' names the app '{tab.Code}', which has no manifest.");
         return (tabManifest, tabManifest.Enabled && !string.IsNullOrWhiteSpace(tabManifest.Form) ? configStore.GetForm(tabManifest.Code) : null);
     }
 
@@ -114,7 +114,7 @@ public sealed class AtlasDashboardService(
     private List<Dictionary<string, object>> LoadRows(AtlasAppManifest manifest, AtlasAppManifest tabManifest, CPAtlasTab tab)
     {
         string tabCode = tabManifest.Code;
-        AtlasTable table = tables.Get(tabManifest.Table ?? throw new InvalidOperationException($"App '{tabCode}' has no Table."));
+        AtlasTable table = tables.Get(tabManifest.Table ?? throw AtlasProblemException.Config($"App '{tabCode}' has no Table."));
 
         AtlasTabQuery query = AtlasTabQueryBuilder.Build(table, tab, value => Token(value, manifest.Code, tabCode));
         HashSet<string> userColumns = new(
