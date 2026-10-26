@@ -1,6 +1,6 @@
 # Module 13: Architecture review of the atlas-platform code
 
-Status: Review 1 (2026-10-25) of commit `056be47`. Wave 1 (11 findings) and Wave 2 (18 findings) are fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.
+Status: Review 1 (2026-10-25) of commit `056be47`. Waves 1, 2 and 3 (47 findings) are fixed, one commit for each finding (section 12). Two items keep an open part for approval (DA-08, DA-12). Each finding has file:line evidence that was read and checked.
 
 ## 1. Purpose and method
 
@@ -687,4 +687,27 @@ Wave 2 is fixed (2026-10-25), one commit for each finding.
 
 Regression after Wave 2: 247 .NET tests and 47 Angular tests pass; `ng build` and `dotnet build` have 0 warnings; `--atlas-check` returns 0 errors and 0 warnings for TTDV2. Browser check: dashboard tabs and totals, History from the dashboard, edit and save (one audit row for the changed field only), new record with defaults, no console errors.
 
-Wave 3 (18 findings) is in progress.
+Wave 3 is fixed (2026-10-25), one commit for each finding. Two items keep an open part that needs the owner's approval (DA-08, DA-12: the TTDV2 columns).
+
+| Finding | Commit | INTEGRATION.md | Result |
+|---|---|---|---|
+| SV-09 | `4d14cd6` | B47 | Owner fields find the column in any case. |
+| SV-10 | `80670c6` | B48 | A failed save clears the change tracker; the grid `JsonDocument` is disposed. |
+| HO-09 | `d4143e8` | B49 | The config-folder check compares the folder with a separator. |
+| HO-10 | `fa8b112` | B50 | The stand-in Fixed authentication runs only in Development (stand-in only). |
+| NG-12 | `bc84e98` | B51 | `problemText` in `platform/atlas-errors.ts`; neutral status-0 text; the form chunk holds its own code. |
+| NG-10 | `62aed71` | B52 | History dialog: `input()`/`output()`, `switchMap` cancels the old load, an error shows its text. |
+| HO-06 | `0b98657` | B53 | The start-up runs as a hosted service; `StartAtlasPlatformAsync` is idempotent and stays valid. |
+| HO-04 | `1470f8a` | B54 | Optional `AppSettings:Atlas:OnStartupError` = `Stop` (default) or `DisableModule` (only the bad apps are off). |
+| SV-11 | `e20a7ca` | B55 | Config defects are a logged 500 (`Atlas.ConfigError`); the body comes from `ProblemDetailsFactory`. |
+| SV-12 | `63d6bd9` | B56 | One `AtlasLog` class (`[LoggerMessage]`, same IDs); `FieldIgnored` Information; new `Atlas.FieldRefused`; bad grid JSON is an error. |
+| SV-13 | `44e7024` | B57 | Module rule written: no writes through the raw contexts (no code change; lazy `Dashboards` not done, it would break the constructor). |
+| DA-10 | `83af625` | B58 | Load and history read with no tracking; async overloads deferred, as the review says. |
+| DA-08 | `4a4e977` | B59 | `[IsDeleted] = 0` for a NOT NULL column; the template has `IsDeleted` NOT NULL. **Open:** the TTDV2 column (needs approval). |
+| DA-12 | `fa92d58` | B60 | The template uses `nvarchar` for free text. **Open:** the TTDV2 `varchar` columns (needs a decision). |
+| DA-09 | `190ff5a` | B61 | `[ID] DESC` is the last order item; optional tab `MaxRows`; display names in one query. |
+| DA-11 | `7033eb8` | B62 | Optional manifest `SystemTime` `Utc` (default) or `Local`; a warning for a current app with no setting. |
+| NG-08 | `1e5f3ce` | B63 | Breadcrumb `routerLink`, grid links with `href`, field errors with `aria-live` and `aria-describedby`, WAI-ARIA tabs, one checkbox label. |
+| NG-11 | `be29279` | B64 | Route state as signals, `computed` buttons, `FormRecord`, `OnPush` (per-field view model not done, Low). |
+
+Regression after Wave 3: 268 .NET tests and 52 Angular tests pass; `ng build` and `dotnet build` have 0 warnings; `--atlas-check` returns 0 errors and 0 warnings for TTDV2. Browser check: form with `OnPush` (live Weekly Total, required error with aria links, save), history after the save (only the changed fields; no entry for a save with no change), tab keys, edit links, no console errors. Housekeeping: `atlas-platform/README.md` phase table and `Data/Platform/README.md` (commit `abe1c6f`).

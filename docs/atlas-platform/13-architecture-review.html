@@ -53,15 +53,15 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
 <p><strong>Ownership.</strong> This report reviews the atlas-platform code in this repository. The fixes are for that code. The report does not change the workflow engine or the target code.</p>
 <p><strong>Source.</strong> <code>atlas-platform/</code> at commit <code>056be47</code>. Target facts come from <code>target-implementation-read-only/</code> (<code>.txt</code> copies).</p>
-<p><strong>Status.</strong> Review 1 (2026-10-25) of commit <code>056be47</code>. Wave 1 (11 findings) and Wave 2 (18 findings) are fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.</p>
+<p><strong>Status.</strong> Review 1 (2026-10-25) of commit <code>056be47</code>. Waves 1, 2 and 3 (47 findings) are fixed, one commit for each finding (section 12). Two items keep an open part for approval (DA-08, DA-12). Each finding has file:line evidence that was read and checked.</p>
 <p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
 </div>
 
 <div class="kpis">
 <div class="kpi"><b>47</b><span>findings</span></div>
 <div class="kpi"><b>9</b><span>High</span></div>
-<div class="kpi"><b>29</b><span>fixed (Waves 1-2)</span></div>
-<div class="kpi"><b>18</b><span>open (Wave 3)</span></div>
+<div class="kpi"><b>47</b><span>fixed (Waves 1-3)</span></div>
+<div class="kpi"><b>2</b><span>open parts for approval</span></div>
 </div>
 
 <section id="1-purpose-and-method">
@@ -640,7 +640,29 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <tr><td>NG-09</td><td><code>4ac9b8c</code></td><td>B46</td><td>TestBed component tests of the form; one test with <code>provideZoneChangeDetection</code> (runs where zone.js is loaded, as at the target).</td></tr>
 </table></div>
 <p>Regression after Wave 2: 247 .NET tests and 47 Angular tests pass; <code>ng build</code> and <code>dotnet build</code> have 0 warnings; <code>--atlas-check</code> returns 0 errors and 0 warnings for TTDV2. Browser check: dashboard tabs and totals, History from the dashboard, edit and save (one audit row for the changed field only), new record with defaults, no console errors.</p>
-<p>Wave 3 (18 findings) is in progress.</p>
+<p>Wave 3 is fixed (2026-10-25), one commit for each finding. Two items keep an open part that needs the owner's approval (DA-08, DA-12: the TTDV2 columns).</p>
+<div class="table-wrap"><table>
+<tr><th>Finding</th><th>Commit</th><th>INTEGRATION.md</th><th>Result</th></tr>
+<tr><td>SV-09</td><td><code>4d14cd6</code></td><td>B47</td><td>Owner fields find the column in any case.</td></tr>
+<tr><td>SV-10</td><td><code>80670c6</code></td><td>B48</td><td>A failed save clears the change tracker; the grid <code>JsonDocument</code> is disposed.</td></tr>
+<tr><td>HO-09</td><td><code>d4143e8</code></td><td>B49</td><td>The config-folder check compares the folder with a separator.</td></tr>
+<tr><td>HO-10</td><td><code>fa8b112</code></td><td>B50</td><td>The stand-in Fixed authentication runs only in Development (stand-in only).</td></tr>
+<tr><td>NG-12</td><td><code>bc84e98</code></td><td>B51</td><td><code>problemText</code> in <code>platform/atlas-errors.ts</code>; neutral status-0 text; the form chunk holds its own code.</td></tr>
+<tr><td>NG-10</td><td><code>62aed71</code></td><td>B52</td><td>History dialog: <code>input()</code>/<code>output()</code>, <code>switchMap</code> cancels the old load, an error shows its text.</td></tr>
+<tr><td>HO-06</td><td><code>0b98657</code></td><td>B53</td><td>The start-up runs as a hosted service; <code>StartAtlasPlatformAsync</code> is idempotent and stays valid.</td></tr>
+<tr><td>HO-04</td><td><code>1470f8a</code></td><td>B54</td><td>Optional <code>AppSettings:Atlas:OnStartupError</code> = <code>Stop</code> (default) or <code>DisableModule</code> (only the bad apps are off).</td></tr>
+<tr><td>SV-11</td><td><code>e20a7ca</code></td><td>B55</td><td>Config defects are a logged 500 (<code>Atlas.ConfigError</code>); the body comes from <code>ProblemDetailsFactory</code>.</td></tr>
+<tr><td>SV-12</td><td><code>63d6bd9</code></td><td>B56</td><td>One <code>AtlasLog</code> class (<code>[LoggerMessage]</code>, same IDs); <code>FieldIgnored</code> Information; new <code>Atlas.FieldRefused</code>; bad grid JSON is an error.</td></tr>
+<tr><td>SV-13</td><td><code>44e7024</code></td><td>B57</td><td>Module rule written: no writes through the raw contexts (no code change; lazy <code>Dashboards</code> not done, it would break the constructor).</td></tr>
+<tr><td>DA-10</td><td><code>83af625</code></td><td>B58</td><td>Load and history read with no tracking; async overloads deferred, as the review says.</td></tr>
+<tr><td>DA-08</td><td><code>4a4e977</code></td><td>B59</td><td><code>[IsDeleted] = 0</code> for a NOT NULL column; the template has <code>IsDeleted</code> NOT NULL. <strong>Open:</strong> the TTDV2 column (needs approval).</td></tr>
+<tr><td>DA-12</td><td><code>fa92d58</code></td><td>B60</td><td>The template uses <code>nvarchar</code> for free text. <strong>Open:</strong> the TTDV2 <code>varchar</code> columns (needs a decision).</td></tr>
+<tr><td>DA-09</td><td><code>190ff5a</code></td><td>B61</td><td><code>[ID] DESC</code> is the last order item; optional tab <code>MaxRows</code>; display names in one query.</td></tr>
+<tr><td>DA-11</td><td><code>7033eb8</code></td><td>B62</td><td>Optional manifest <code>SystemTime</code> <code>Utc</code> (default) or <code>Local</code>; a warning for a current app with no setting.</td></tr>
+<tr><td>NG-08</td><td><code>1e5f3ce</code></td><td>B63</td><td>Breadcrumb <code>routerLink</code>, grid links with <code>href</code>, field errors with <code>aria-live</code> and <code>aria-describedby</code>, WAI-ARIA tabs, one checkbox label.</td></tr>
+<tr><td>NG-11</td><td><code>be29279</code></td><td>B64</td><td>Route state as signals, <code>computed</code> buttons, <code>FormRecord</code>, <code>OnPush</code> (per-field view model not done, Low).</td></tr>
+</table></div>
+<p>Regression after Wave 3: 268 .NET tests and 52 Angular tests pass; <code>ng build</code> and <code>dotnet build</code> have 0 warnings; <code>--atlas-check</code> returns 0 errors and 0 warnings for TTDV2. Browser check: form with <code>OnPush</code> (live Weekly Total, required error with aria links, save), history after the save (only the changed fields; no entry for a save with no change), tab keys, edit links, no console errors. Housekeeping: <code>atlas-platform/README.md</code> phase table and <code>Data/Platform/README.md</code> (commit <code>abe1c6f</code>).</p>
 </section>
 </main>
 </body>

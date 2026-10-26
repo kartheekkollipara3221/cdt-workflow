@@ -1,28 +1,28 @@
-# RESUME HERE - atlas-platform review Wave 2 DONE (18/18, 7cfc8bf..4ac9b8c); Wave 3 starting; not pushed - 2026-10-25
-
-## Instruction from the user (still active)
-"finish wave 2 then start wave 3", one commit per defect. Review docs/atlas-platform/13-architecture-review.md.
-Each finding: one commit; a row in atlas-platform/INTEGRATION.md section 6 (next: B47); tests + build green; do not push.
+# RESUME HERE - atlas-platform review 13 DONE: Waves 1-3 (47 findings) fixed, one commit each, not pushed - 2026-10-25
 
 ## Status
-- Wave 1: 11 fixed (B18-B28). Wave 2: 18 fixed (B29-B46), see review section 12 (table with commits).
-- Tests: 247 .NET + 47 Angular; builds 0 warnings; --atlas-check 0 errors 0 warnings. Browser smoke after Wave 2 OK.
-- Wave 3 (18): DA-08, DA-09, DA-10, HO-04, HO-06, NG-08, NG-10, NG-11, NG-12, SV-09, SV-10, SV-11, SV-12, SV-13,
-  DA-11, DA-12, HO-09, HO-10. Plus housekeeping: atlas-platform/README.md phase table (C5-C10 "Not started"),
-  small mistakes in INTEGRATION.md and Data/Platform/README.md:21-22 (see DA-01).
-- After Wave 3: review section 12 Wave 3 table + KPIs in the .html (hand-patched, as for Waves 1-2), INTEGRATION
-  status line, handoff, browser smoke.
+- Wave 1 B18-B28, Wave 2 B29-B46 (7cfc8bf..4ac9b8c), Wave 3 B47-B64 (4d14cd6..be29279). Review section 12 has a
+  table for each wave (commit, INTEGRATION row, result). Housekeeping abe1c6f (README phase table, Data README).
+- Tests: 268 .NET + 52 Angular; builds 0 warnings; --atlas-check 0 errors 0 warnings. Browser smoke after Wave 3 OK
+  (form OnPush, required error + aria, save, history, tab keys, no console errors).
+
+## Open - needs the user's decision (compatibility rules: no change to existing TTDV2 schema without approval)
+1. DA-08 (B59): ALTER TTDV2.General IsDeleted to bit NOT NULL (after a NULL check), so the dashboard filter can seek
+   the filtered indexes. Platform + template part is done; TTDV2 keeps ISNULL(...) until then.
+2. DA-12 (B60): TTDV2 free-text columns (Account, AccountName, WorkDescription) varchar -> nvarchar? TTDV2 mirrors TTD.
+   Template part done.
+Not done on purpose (noted in rows): SV-13 lazy Dashboards (would break the AtlasModuleServices constructor); DA-10
+async overloads (deferred by the review); NG-11 per-field view model (Low); HO-04 health check (optional); SV-07 JSON
+Schema file (optional); zone.js not installed locally (the NG-09 zone test runs at the target Karma).
 
 ## Working notes
-- API (5080) may be RUNNING (started for the smoke test); stop it before dotnet test (it locks the build output).
+- API (5080) may be RUNNING (started for the smoke test); stop it before dotnet test.
   Restart: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; UI: cd atlas-platform/WebUi; npm start
-- Angular: cd atlas-platform/WebUi; npx ng test --watch=false. zone.js is not installed locally (not added on purpose).
-- --atlas-check: dotnet run --no-build --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn -- --atlas-check
-- SectionHarness(database, mode, configFolder), SectionHarness.ConfigCopy(...), SectionHarness.ModuleServices(...),
-  ListLoggerFactory; fast step tests in tests/.../Sections/SectionStepTests.cs.
+- New settings since Wave 2: AppSettings:Atlas:OnStartupError (Stop|DisableModule); manifest RequireVersion,
+  AuditRefTypes, SchemaVersion, SystemTime; tab MaxRows. Log events: Service/Platform/AtlasLog.cs (INTEGRATION section 4).
 
 ## Next-session prompt
-"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Continue review Wave 3, one commit per defect."
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Review 13 is done; decide the open TTDV2 column items (DA-08, DA-12)."
 
 ---
 
