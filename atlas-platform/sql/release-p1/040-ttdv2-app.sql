@@ -2,7 +2,8 @@
 -- Made from the new-app template (sql/05-new-app-template.sql) for TTDV2.
 -- DDL + DML. Development: the target team runs it. QC and production: the DBA runs it.
 -- Additive. Safe to run again: each object is made only if it does not exist.
--- It does not change the TTD schema or any existing table.
+-- It does not change the TTD schema or any existing table, except that it makes TTDV2.General.IsDeleted
+-- bit NOT NULL when an earlier run made it bit NULL (step 2a, review DA-08).
 -- Run in the CP Atlas database (cp_sharepoint).
 SET NOCOUNT ON;
 SET ANSI_NULLS ON;
@@ -45,7 +46,7 @@ BEGIN TRY
             [CreatedDate]      datetime       NULL,
             [ModifiedBy]       nvarchar(50)   NULL,
             [ModifiedDate]     datetime       NULL,
-            [IsDeleted]        bit            NULL CONSTRAINT [DF_TTDV2_General_IsDeleted] DEFAULT (0),
+            [IsDeleted]        bit            NOT NULL CONSTRAINT [DF_TTDV2_General_IsDeleted] DEFAULT (0),
             [RowVersion]       rowversion     NOT NULL,
             CONSTRAINT [PK_TTDV2_General] PRIMARY KEY CLUSTERED ([ID] ASC),
             CONSTRAINT [CK_TTDV2_General_Minutes] CHECK (
@@ -57,6 +58,23 @@ BEGIN TRY
                 AND ([SaturdayMinute]  IS NULL OR [SaturdayMinute]  BETWEEN 0 AND 1440)
                 AND ([SundayMinute]    IS NULL OR [SundayMinute]    BETWEEN 0 AND 1440))
         );');
+
+    -- 2a. Review DA-08 (B59, approved 2026-10-25): IsDeleted is bit NOT NULL, so the dashboard filter [IsDeleted] = 0
+    --     can seek the filtered indexes. An earlier run of this script made it bit NULL: stop if a row has NULL
+    --     (no data is changed), else drop the 2 filtered indexes (they block ALTER COLUMN), alter the column and
+    --     make the indexes again below. No data loss. Rollback: ALTER COLUMN [IsDeleted] bit NULL (drop and make
+    --     the indexes again in the same way).
+    IF EXISTS (SELECT 1 FROM sys.columns
+               WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IsDeleted' AND is_nullable = 1)
+    BEGIN
+        IF EXISTS (SELECT 1 FROM [TTDV2].[General] WHERE [IsDeleted] IS NULL)
+            THROW 55008, 'TTDV2.General has rows with IsDeleted NULL. Check them (NULL means not deleted), set them to 0, then run the script again.', 1;
+        IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_CreatedBy')
+            EXEC(N'DROP INDEX [IX_General_CreatedBy] ON [TTDV2].[General];');
+        IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_TaxPreparerLanId')
+            EXEC(N'DROP INDEX [IX_General_TaxPreparerLanId] ON [TTDV2].[General];');
+        EXEC(N'ALTER TABLE [TTDV2].[General] ALTER COLUMN [IsDeleted] bit NOT NULL;');
+    END
 
     IF NOT EXISTS (SELECT 1 FROM sys.indexes
                    WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_CreatedBy')

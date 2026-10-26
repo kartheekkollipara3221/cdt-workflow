@@ -54,7 +54,10 @@ public static class AtlasDataExtensions
         return transaction;
     }
 
-    /// <summary>A new record with a key for each column: identity key = 0 (EF Core makes the value), others null.</summary>
+    /// <summary>
+    /// A new record with a key for each column: identity key = 0 (EF Core makes the value), a NOT NULL value column =
+    /// the type default (for example IsDeleted = 0; review DA-08: EF Core cannot read null for a bool property), others null.
+    /// </summary>
     public static Dictionary<string, object?> NewRecord(this AtlasTable table)
     {
         ArgumentNullException.ThrowIfNull(table);
@@ -62,8 +65,8 @@ public static class AtlasDataExtensions
         foreach (AtlasColumn column in table.Columns)
         {
             Type? clrType = column.ClrType;
-            record[column.Name] = column.IsIdentity && clrType is { IsValueType: true }
-                ? Activator.CreateInstance(Nullable.GetUnderlyingType(clrType) ?? clrType)
+            record[column.Name] = clrType is { IsValueType: true } && Nullable.GetUnderlyingType(clrType) == null
+                ? Activator.CreateInstance(clrType)
                 : null;
         }
 

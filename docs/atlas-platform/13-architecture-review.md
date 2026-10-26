@@ -1,6 +1,6 @@
 # Module 13: Architecture review of the atlas-platform code
 
-Status: Review 1 (2026-10-25) of commit `056be47`. Waves 1, 2 and 3 (47 findings) are fixed, one commit for each finding (section 12). Two items keep an open part for approval (DA-08, DA-12). Each finding has file:line evidence that was read and checked.
+Status: Review 1 (2026-10-25) of commit `056be47`. Waves 1, 2 and 3 (47 findings) are fixed, one commit for each finding (section 12). One item keeps an open part for a decision (DA-12); DA-08 was approved and done. Each finding has file:line evidence that was read and checked.
 
 ## 1. Purpose and method
 
@@ -703,7 +703,7 @@ Wave 3 is fixed (2026-10-25), one commit for each finding. Two items keep an ope
 | SV-12 | `63d6bd9` | B56 | One `AtlasLog` class (`[LoggerMessage]`, same IDs); `FieldIgnored` Information; new `Atlas.FieldRefused`; bad grid JSON is an error. |
 | SV-13 | `44e7024` | B57 | Module rule written: no writes through the raw contexts (no code change; lazy `Dashboards` not done, it would break the constructor). |
 | DA-10 | `83af625` | B58 | Load and history read with no tracking; async overloads deferred, as the review says. |
-| DA-08 | `4a4e977` | B59 | `[IsDeleted] = 0` for a NOT NULL column; the template has `IsDeleted` NOT NULL. **Open:** the TTDV2 column (needs approval). |
+| DA-08 | `4a4e977` | B59 | `[IsDeleted] = 0` for a NOT NULL column; the template has `IsDeleted` NOT NULL. TTDV2 column: approved 2026-10-25, done in `040` (B59). |
 | DA-12 | `fa92d58` | B60 | The template uses `nvarchar` for free text. **Open:** the TTDV2 `varchar` columns (needs a decision). |
 | DA-09 | `190ff5a` | B61 | `[ID] DESC` is the last order item; optional tab `MaxRows`; display names in one query. |
 | DA-11 | `7033eb8` | B62 | Optional manifest `SystemTime` `Utc` (default) or `Local`; a warning for a current app with no setting. |

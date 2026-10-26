@@ -1,4 +1,4 @@
-# RESUME HERE - atlas-platform review 13 DONE: Waves 1-3 (47 findings) fixed, one commit each, not pushed - 2026-10-25
+# RESUME HERE - atlas-platform review 13 DONE: Waves 1-3 (47 findings) fixed; DA-08 approved+done; DA-12 open; not pushed - 2026-10-25
 
 ## Status
 - Wave 1 B18-B28, Wave 2 B29-B46 (7cfc8bf..4ac9b8c), Wave 3 B47-B64 (4d14cd6..be29279). Review section 12 has a
@@ -6,25 +6,27 @@
 - Tests: 268 .NET + 52 Angular; builds 0 warnings; --atlas-check 0 errors 0 warnings. Browser smoke after Wave 3 OK
   (form OnPush, required error + aria, save, history, tab keys, no console errors).
 
+## DA-08 done (2026-10-25, approved): TTDV2.General.IsDeleted bit NOT NULL
+- 12-ttdv2-app.sql / 040: NOT NULL DEFAULT 0; step 2a upgrades an earlier bit NULL column (THROW 55008 if a NULL row,
+  else drop the 2 filtered indexes, ALTER, make them again). Platform fix: NewRecord() gives NOT NULL value columns the
+  type default (EF crashed on null bool). Tests 271 .NET (Ttdv2AppScriptTests new). Local DB CPAtlasPlatformDev upgraded.
+  INTEGRATION B59 + review section 12 updated.
+
 ## Open - needs the user's decision (compatibility rules: no change to existing TTDV2 schema without approval)
-1. DA-08 (B59): ALTER TTDV2.General IsDeleted to bit NOT NULL (after a NULL check), so the dashboard filter can seek
-   the filtered indexes. Platform + template part is done; TTDV2 keeps ISNULL(...) until then.
-2. DA-12 (B60): TTDV2 free-text columns (Account, AccountName, WorkDescription) varchar -> nvarchar? TTDV2 mirrors TTD.
-   Template part done.
-Last question asked (no answer yet): "For DA-08, do you approve a SQL script that changes TTDV2.General.IsDeleted to
-bit NOT NULL, after a check that no row has NULL? Or should TTDV2 stay as it is?" Ask DA-12 after that (one question at a time).
+1. DA-12 (B60): TTDV2 free-text columns (Account, AccountName, WorkDescription) varchar -> nvarchar? TTDV2 mirrors TTD.
+   Template part done. Next question to ask (one at a time).
 Not done on purpose (noted in rows): SV-13 lazy Dashboards (would break the AtlasModuleServices constructor); DA-10
 async overloads (deferred by the review); NG-11 per-field view model (Low); HO-04 health check (optional); SV-07 JSON
 Schema file (optional); zone.js not installed locally (the NG-09 zone test runs at the target Karma).
 
 ## Working notes
-- API (5080) may be RUNNING (started for the smoke test); stop it before dotnet test.
+- API (5080) is STOPPED (stopped for dotnet test).
   Restart: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; UI: cd atlas-platform/WebUi; npm start
 - New settings since Wave 2: AppSettings:Atlas:OnStartupError (Stop|DisableModule); manifest RequireVersion,
   AuditRefTypes, SchemaVersion, SystemTime; tab MaxRows. Log events: Service/Platform/AtlasLog.cs (INTEGRATION section 4).
 
 ## Next-session prompt
-"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Review 13 is done; decide the open TTDV2 column items (DA-08, DA-12)."
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Review 13 is done; DA-08 is done; decide DA-12 (TTDV2 nvarchar)."
 
 ---
 
