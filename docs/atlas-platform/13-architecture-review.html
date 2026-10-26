@@ -53,15 +53,15 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
 <p><strong>Ownership.</strong> This report reviews the atlas-platform code in this repository. The fixes are for that code. The report does not change the workflow engine or the target code.</p>
 <p><strong>Source.</strong> <code>atlas-platform/</code> at commit <code>056be47</code>. Target facts come from <code>target-implementation-read-only/</code> (<code>.txt</code> copies).</p>
-<p><strong>Status.</strong> Review 1 (2026-10-25) of commit <code>056be47</code>. Wave 1 (11 findings) is fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.</p>
+<p><strong>Status.</strong> Review 1 (2026-10-25) of commit <code>056be47</code>. Wave 1 (11 findings) and Wave 2 (18 findings) are fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.</p>
 <p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
 </div>
 
 <div class="kpis">
 <div class="kpi"><b>47</b><span>findings</span></div>
 <div class="kpi"><b>9</b><span>High</span></div>
-<div class="kpi"><b>11</b><span>fixed (Wave 1)</span></div>
-<div class="kpi"><b>36</b><span>open</span></div>
+<div class="kpi"><b>29</b><span>fixed (Waves 1-2)</span></div>
+<div class="kpi"><b>18</b><span>open (Wave 3)</span></div>
 </div>
 
 <section id="1-purpose-and-method">
@@ -617,7 +617,30 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <tr><td>HO-08</td><td><code>e40f9cb</code></td><td>B28</td><td><code>TryAddSingleton(TimeProvider.System)</code>. A duplicate module code is refused at the line.</td></tr>
 </table></div>
 <p>Regression: 169 .NET tests and 16 Angular tests pass; <code>ng build</code> and <code>dotnet build</code> have 0 warnings; <code>--atlas-check</code> returns 0. Browser check: load, save, history, dialogs and the dashboard link work; in <code>LogOnly</code>, a delete by Read, Prepare or a user with no role gets 403 and the record stays.</p>
-<p>Wave 2 and Wave 3 are not started.</p>
+<p>Wave 2 is fixed (2026-10-25), one commit for each finding.</p>
+<div class="table-wrap"><table>
+<tr><th>Finding</th><th>Commit</th><th>INTEGRATION.md</th><th>Result</th></tr>
+<tr><td>HO-07</td><td><code>7cfc8bf</code></td><td>B29</td><td>One parsed manifest snapshot; the folder is checked at most every <code>AppSettings:ConfigRefreshSeconds</code> (default 2).</td></tr>
+<tr><td>HO-02</td><td><code>a27adc6</code></td><td>B30</td><td>A bad manifest file keeps its last good version or removes only its app; <code>Atlas.ConfigInvalid</code> (41021); start-up error.</td></tr>
+<tr><td>HO-05</td><td><code>c0605d3</code></td><td>B31</td><td>Tables are loaded for all registered manifests; an app whose table is not loaded gives 404 (<code>Atlas.AppNotAvailable</code> 41022).</td></tr>
+<tr><td>NG-03</td><td><code>07634a6</code></td><td>B32</td><td>The client validates and sends only shown controls (<code>isShown</code>, <code>shownInvalid</code>, <code>buildOutputs</code>).</td></tr>
+<tr><td>NG-04</td><td><code>dae24ea</code></td><td>B33</td><td><code>check</code> and <code>option</code> renderers; other types show a note and are not sent; <code>provideAtlasRenderers</code>; start-up warning.</td></tr>
+<tr><td>SV-03</td><td><code>01fe65f</code></td><td>B34</td><td>An effect cannot show a field that a rule hid (<code>HiddenByRule</code>).</td></tr>
+<tr><td>SV-04</td><td><code>4c2bca3</code></td><td>B35</td><td>The server applies <code>Enable</code>/<code>Disable</code>/<code>Set</code>/<code>Clear</code>; one validator rule set on both sides (<code>AtlasFieldValidator</code>, shared cases).</td></tr>
+<tr><td>SV-07</td><td><code>854277b</code></td><td>B36</td><td><code>AtlasConfigLint</code>: unknown JSON properties are warnings with the path; unknown names, tokens, patterns and actions are errors; optional <code>SchemaVersion</code>.</td></tr>
+<tr><td>DA-04</td><td><code>68313dc</code></td><td>B37</td><td><code>SoftDelete.Field</code> must be the <code>IsDeleted</code> bit column (start-up error).</td></tr>
+<tr><td>DA-05</td><td><code>a8fa3e6</code></td><td>B38</td><td>Nullable and reference columns with a database default use it on insert; a warning for NOT NULL value-type defaults that nothing sets.</td></tr>
+<tr><td>DA-02</td><td><code>9d4a7fb</code></td><td>B39</td><td>An update with no <code>Version</code> gets <code>VersionRequired</code>; the rowversion column is found by type; manifest <code>RequireVersion</code> (default true).</td></tr>
+<tr><td>DA-03</td><td><code>8fa4f19</code></td><td>B40</td><td>History filters <code>RefType</code> (<code>AuditRefTypes</code>, or <code>Code</code> when <code>Parent</code> is set); warning for a shared audit table.</td></tr>
+<tr><td>DA-06</td><td><code>b104c86</code></td><td>B41</td><td>The allow list and the audit diff compare typed values (<code>AtlasValueConverter.SameValue</code>).</td></tr>
+<tr><td>SV-05</td><td><code>2d49e67</code></td><td>B42</td><td>A tab of another app needs that app enabled and its View check; its menus use that app's permissions.</td></tr>
+<tr><td>NG-07</td><td><code>630c0ba</code></td><td>B43</td><td>Dashboard History and Delete use the app of the tab (<code>AtlasRowRef</code>).</td></tr>
+<tr><td>SV-06</td><td><code>4784f7c</code></td><td>B44</td><td>An <code>OnAfterSave</code> exception is logged (<code>Atlas.AfterSaveFailed</code> 41012) and the save returns the ID.</td></tr>
+<tr><td>SV-08</td><td><code>d8842e5</code></td><td>B45</td><td>Save steps moved to <code>Platform/Sections</code> (<code>AtlasComputedFields</code>, <code>AtlasDefaultTokens</code>, <code>AtlasServerEffects</code>, <code>AtlasAllowList</code>); same public surface.</td></tr>
+<tr><td>NG-09</td><td><code>4ac9b8c</code></td><td>B46</td><td>TestBed component tests of the form; one test with <code>provideZoneChangeDetection</code> (runs where zone.js is loaded, as at the target).</td></tr>
+</table></div>
+<p>Regression after Wave 2: 247 .NET tests and 47 Angular tests pass; <code>ng build</code> and <code>dotnet build</code> have 0 warnings; <code>--atlas-check</code> returns 0 errors and 0 warnings for TTDV2. Browser check: dashboard tabs and totals, History from the dashboard, edit and save (one audit row for the changed field only), new record with defaults, no console errors.</p>
+<p>Wave 3 (18 findings) is in progress.</p>
 </section>
 </main>
 </body>

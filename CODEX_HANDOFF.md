@@ -1,45 +1,28 @@
-# RESUME HERE - atlas-platform review Wave 2 IN PROGRESS: 16 of 18 committed (7cfc8bf..4784f7c), not pushed - 2026-10-25
+# RESUME HERE - atlas-platform review Wave 2 DONE (18/18, 7cfc8bf..4ac9b8c); Wave 3 starting; not pushed - 2026-10-25
 
 ## Instruction from the user (still active)
-"start with wave 2, one commit per defect" (review docs/atlas-platform/13-architecture-review.md, section 10).
-Same rules as Wave 1: one commit for each finding; a row in atlas-platform/INTEGRATION.md section 6 (next: B45);
-tests + build green before each commit; do not push.
+"finish wave 2 then start wave 3", one commit per defect. Review docs/atlas-platform/13-architecture-review.md.
+Each finding: one commit; a row in atlas-platform/INTEGRATION.md section 6 (next: B47); tests + build green; do not push.
 
-## Wave 2 status
-Done (commit, INTEGRATION row):
-- HO-07 7cfc8bf B29, HO-02 a27adc6 B30, HO-05 c0605d3 B31, NG-03 07634a6 B32, NG-04 dae24ea B33, SV-03 01fe65f B34,
-  SV-04 4c2bca3 B35 (see the earlier entry for details)
-- SV-07 854277b B36 (App/Platform/AtlasConfigLint.cs: unknown JSON properties = warnings with path; names, tokens,
-  patterns, duplicates, button actions = errors; manifest SchemaVersion; no JSON Schema file delivered)
-- DA-04 68313dc B37 (start-up error: SoftDelete.Field must be IsDeleted bit)
-- DA-05 a8fa3e6 B38 (AtlasColumn.HasDefault/UsesDatabaseDefault -> ValueGeneratedOnAdd; warning for NOT NULL value-type
-  default columns that nothing sets)
-- DA-02 9d4a7fb B39 (VersionRequired on update; rowversion found by type; manifest RequireVersion default true)
-- DA-03 8fa4f19 B40 (manifest AuditRefTypes; RefType = Code when Parent; warning for a shared AuditTable)
-- DA-06 b104c86 B41 (AtlasValueConverter.SameValue typed compare; allow list + audit diff)
-- SV-05 2d49e67 B42 (foreign dashboard tab: app enabled + View check of that app; its menus from its permissions)
-- NG-07 630c0ba B43 (dashboard History/Delete use AtlasRowRef { code, id } from the tab Code; TestBed spec)
-- SV-06 4784f7c B44 (OnAfterSave try/catch, Atlas.AfterSaveFailed 41012; spec 01 note; SectionHarness.ModuleServices,
-  ListLoggerFactory)
-
-Remaining Wave 2: SV-08 (split ConfigSectionService into Platform/Sections steps; one list of computed functions and
-tokens shared with the start-up check; AtlasFieldValidator already done), NG-09 (TestBed component tests, one with
-provideZoneChangeDetection). Then: update review section 12 (Wave 2 table), INTEGRATION status line test counts,
-regenerate review HTML with docs/atlas-platform/tools/md2report.py (then fix the Ownership/Source note lines as in
-Wave 1), handoff, restart API+UI, browser smoke test.
+## Status
+- Wave 1: 11 fixed (B18-B28). Wave 2: 18 fixed (B29-B46), see review section 12 (table with commits).
+- Tests: 247 .NET + 47 Angular; builds 0 warnings; --atlas-check 0 errors 0 warnings. Browser smoke after Wave 2 OK.
+- Wave 3 (18): DA-08, DA-09, DA-10, HO-04, HO-06, NG-08, NG-10, NG-11, NG-12, SV-09, SV-10, SV-11, SV-12, SV-13,
+  DA-11, DA-12, HO-09, HO-10. Plus housekeeping: atlas-platform/README.md phase table (C5-C10 "Not started"),
+  small mistakes in INTEGRATION.md and Data/Platform/README.md:21-22 (see DA-01).
+- After Wave 3: review section 12 Wave 3 table + KPIs in the .html (hand-patched, as for Waves 1-2), INTEGRATION
+  status line, handoff, browser smoke.
 
 ## Working notes
-- Tests now: 227 .NET (dotnet test atlas-platform/AtlasPlatform.slnx) + 41 Angular (cd atlas-platform/WebUi; npx ng test --watch=false).
-- Stop the API (port 5080) before dotnet test; it is STOPPED now.
-  Restart: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; cd atlas-platform/WebUi; npm start
+- API (5080) may be RUNNING (started for the smoke test); stop it before dotnet test (it locks the build output).
+  Restart: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; UI: cd atlas-platform/WebUi; npm start
+- Angular: cd atlas-platform/WebUi; npx ng test --watch=false. zone.js is not installed locally (not added on purpose).
 - --atlas-check: dotnet run --no-build --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn -- --atlas-check
-  (TTDV2: 0 errors, 0 warnings).
-- INTEGRATION rows were added with small python scripts (insert after the previous B row).
-- SectionHarness(database, mode, configFolder) + SectionHarness.ConfigCopy((file, text) => ...) make a changed copy of
-  the real Config for a test.
+- SectionHarness(database, mode, configFolder), SectionHarness.ConfigCopy(...), SectionHarness.ModuleServices(...),
+  ListLoggerFactory; fast step tests in tests/.../Sections/SectionStepTests.cs.
 
 ## Next-session prompt
-"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Continue review Wave 2 from SV-08, one commit per defect."
+"Resume atlas-platform. Read the top entry of CODEX_HANDOFF.md. Continue review Wave 3, one commit per defect."
 
 ---
 

@@ -1,6 +1,6 @@
 # Module 13: Architecture review of the atlas-platform code
 
-Status: Review 1 (2026-10-25) of commit `056be47`. Wave 1 (11 findings) is fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.
+Status: Review 1 (2026-10-25) of commit `056be47`. Wave 1 (11 findings) and Wave 2 (18 findings) are fixed, one commit for each finding (section 12). Each finding has file:line evidence that was read and checked.
 
 ## 1. Purpose and method
 
@@ -662,4 +662,29 @@ Wave 1 is fixed (2026-10-25). Each finding has its own commit and a row in `atla
 
 Regression: 169 .NET tests and 16 Angular tests pass; `ng build` and `dotnet build` have 0 warnings; `--atlas-check` returns 0. Browser check: load, save, history, dialogs and the dashboard link work; in `LogOnly`, a delete by Read, Prepare or a user with no role gets 403 and the record stays.
 
-Wave 2 and Wave 3 are not started.
+Wave 2 is fixed (2026-10-25), one commit for each finding.
+
+| Finding | Commit | INTEGRATION.md | Result |
+|---|---|---|---|
+| HO-07 | `7cfc8bf` | B29 | One parsed manifest snapshot; the folder is checked at most every `AppSettings:ConfigRefreshSeconds` (default 2). |
+| HO-02 | `a27adc6` | B30 | A bad manifest file keeps its last good version or removes only its app; `Atlas.ConfigInvalid` (41021); start-up error. |
+| HO-05 | `c0605d3` | B31 | Tables are loaded for all registered manifests; an app whose table is not loaded gives 404 (`Atlas.AppNotAvailable` 41022). |
+| NG-03 | `07634a6` | B32 | The client validates and sends only shown controls (`isShown`, `shownInvalid`, `buildOutputs`). |
+| NG-04 | `dae24ea` | B33 | `check` and `option` renderers; other types show a note and are not sent; `provideAtlasRenderers`; start-up warning. |
+| SV-03 | `01fe65f` | B34 | An effect cannot show a field that a rule hid (`HiddenByRule`). |
+| SV-04 | `4c2bca3` | B35 | The server applies `Enable`/`Disable`/`Set`/`Clear`; one validator rule set on both sides (`AtlasFieldValidator`, shared cases). |
+| SV-07 | `854277b` | B36 | `AtlasConfigLint`: unknown JSON properties are warnings with the path; unknown names, tokens, patterns and actions are errors; optional `SchemaVersion`. |
+| DA-04 | `68313dc` | B37 | `SoftDelete.Field` must be the `IsDeleted` bit column (start-up error). |
+| DA-05 | `a8fa3e6` | B38 | Nullable and reference columns with a database default use it on insert; a warning for NOT NULL value-type defaults that nothing sets. |
+| DA-02 | `9d4a7fb` | B39 | An update with no `Version` gets `VersionRequired`; the rowversion column is found by type; manifest `RequireVersion` (default true). |
+| DA-03 | `8fa4f19` | B40 | History filters `RefType` (`AuditRefTypes`, or `Code` when `Parent` is set); warning for a shared audit table. |
+| DA-06 | `b104c86` | B41 | The allow list and the audit diff compare typed values (`AtlasValueConverter.SameValue`). |
+| SV-05 | `2d49e67` | B42 | A tab of another app needs that app enabled and its View check; its menus use that app's permissions. |
+| NG-07 | `630c0ba` | B43 | Dashboard History and Delete use the app of the tab (`AtlasRowRef`). |
+| SV-06 | `4784f7c` | B44 | An `OnAfterSave` exception is logged (`Atlas.AfterSaveFailed` 41012) and the save returns the ID. |
+| SV-08 | `d8842e5` | B45 | Save steps moved to `Platform/Sections` (`AtlasComputedFields`, `AtlasDefaultTokens`, `AtlasServerEffects`, `AtlasAllowList`); same public surface. |
+| NG-09 | `4ac9b8c` | B46 | TestBed component tests of the form; one test with `provideZoneChangeDetection` (runs where zone.js is loaded, as at the target). |
+
+Regression after Wave 2: 247 .NET tests and 47 Angular tests pass; `ng build` and `dotnet build` have 0 warnings; `--atlas-check` returns 0 errors and 0 warnings for TTDV2. Browser check: dashboard tabs and totals, History from the dashboard, edit and save (one audit row for the changed field only), new record with defaults, no console errors.
+
+Wave 3 (18 findings) is in progress.
