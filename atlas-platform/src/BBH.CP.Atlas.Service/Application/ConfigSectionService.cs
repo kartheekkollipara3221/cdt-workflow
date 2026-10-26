@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Application.Interfaces;
@@ -218,24 +217,8 @@ namespace BBH.CP.Atlas.Service.Application
         }
 
         /// <summary>Default tokens (spec 01, 10.2): {User.LanID}, {User.DisplayName}, {Today}, {Options[n]}; else the text.</summary>
-        protected string? ResolveDefault(string token, IReadOnlyList<CPKeyValue>? options)
-        {
-            if (string.Equals(token, "{User.LanID}", StringComparison.OrdinalIgnoreCase))
-                return Services.User.LanId;
-            if (string.Equals(token, "{User.DisplayName}", StringComparison.OrdinalIgnoreCase))
-                return Services.User.DisplayName;
-            if (string.Equals(token, "{Today}", StringComparison.OrdinalIgnoreCase))
-                return Services.Time.GetLocalNow().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-
-            Match match = OptionsToken().Match(token);
-            if (match.Success)
-            {
-                int index = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-                return options != null && index < options.Count ? options[index].Value : null;
-            }
-
-            return token;
-        }
+        protected string? ResolveDefault(string token, IReadOnlyList<CPKeyValue>? options) =>
+            AtlasDefaultTokens.Resolve(token, Services.User.LanId, Services.User.DisplayName, Services.Time.GetLocalNow(), options);
 
         #endregion Load
 
@@ -279,38 +262,18 @@ namespace BBH.CP.Atlas.Service.Application
                 submitted.TryGetValue(field.Name, out string? value) ? value : previous.GetValueOrDefault(field.Field);
 
             // Server part of Effects (Show, Hide, Require, Unrequire) and the SetFromOption targets.
-            HashSet<string> derived = ApplyServerEffects(fields, Current);
+            HashSet<string> derived = AtlasServerEffects.Apply(fields, Current);
             HashSet<string> computed = new((IEnumerable<string>?)form.Computed?.Keys ?? [], StringComparer.OrdinalIgnoreCase);
 
             // 4. Allow list.
-            Dictionary<AtlasFormField, string?> accepted = [];
-            foreach ((string name, string? value) in submitted)
-            {
-                AtlasFormField field = fields.Find(name)!;
-                if (SystemColumns.Contains(field.Field) || computed.Contains(field.Field) || derived.Contains(field.Name))
+            Dictionary<AtlasFormField, string?> accepted = AtlasAllowList.Check(submitted, fields, table, previous,
+                field => SystemColumns.Contains(field.Field) || computed.Contains(field.Field) || derived.Contains(field.Name),
+                OptionError, errors,
+                (field, reason) =>
                 {
-                    Logger.LogDebug(FieldIgnored, "Atlas.FieldIgnored App={App} Field={Field} Reason=ServerSet", manifest.Code, name);
-                    continue;
-                }
-
-                if (!field.Visible || field.Disabled)
-                {
-                    // Review DA-06: a typed compare, so "1250000.5" for a stored 1250000.50 is no change.
-                    if (AtlasValueConverter.SameValue(value, previous.GetValueOrDefault(field.Field), table.Find(field.Field)))
-                        continue;
-
-                    errors.Add(Error(field.Name, "NotAllowed", $"{field.Label ?? field.Name} cannot be changed."));
-                    continue;
-                }
-
-                if (OptionError(field, value, previous.GetValueOrDefault(field.Field)) is { } optionError)
-                {
-                    errors.Add(optionError);
-                    continue;
-                }
-
-                accepted[field] = value;
-            }
+                    if (reason == AtlasIgnoreReason.ServerSet)
+                        Logger.LogDebug(FieldIgnored, "Atlas.FieldIgnored App={App} Field={Field} Reason=ServerSet", manifest.Code, field.Name);
+                });
 
             // 6. Validators and the Require effects (visible and enabled fields only; one error for each field).
             HashSet<string> refused = new(errors.Select(x => x.Field ?? ""), StringComparer.OrdinalIgnoreCase);
@@ -353,9 +316,10 @@ namespace BBH.CP.Atlas.Service.Application
             foreach ((AtlasFormField field, string? value) in accepted.Where(x => !invalid.Contains(x.Key.Name)))
                 Map(table, record, field.Name, field.Field, value, errors);
 
-            foreach ((string target, string? value) in DerivedValues(fields, Current, derived))
-                if (fields.Find(target) is { } field)
-                    Map(table, record, field.Name, field.Field, value, errors);
+            if (derived.Count > 0)
+                foreach ((string target, string? value) in AtlasServerEffects.Values(fields, Current, OptionsOf))
+                    if (fields.Find(target) is { } field)
+                        Map(table, record, field.Name, field.Field, value, errors);
 
             if (isNew && form.Defaults != null)
             {
@@ -373,7 +337,8 @@ namespace BBH.CP.Atlas.Service.Application
 
             // Computed fields (spec 01, 10.2).
             foreach ((string target, string expression) in form.Computed ?? new Dictionary<string, string>())
-                Compute(table, record, target, expression, errors);
+                if (AtlasComputedFields.Compute(table, record, target, expression) is { } computeError)
+                    errors.Add(computeError);
 
             // 9. System fields: UTC from TimeProvider; people as LAN IDs.
             DateTime now = Services.Time.GetUtcNow().UtcDateTime;
@@ -515,97 +480,6 @@ namespace BBH.CP.Atlas.Service.Application
             }
         }
 
-        /// <summary>
-        /// Applies Show/Hide/Require/Unrequire/Enable/Disable (the same actions as the client, review SV-04). An effect
-        /// cannot show a field that a rule hid or enable a field that a rule disabled. Returns the names that the
-        /// server sets: the SetFromOption targets, and the Set and Clear targets of a matching effect.
-        /// </summary>
-        private static HashSet<string> ApplyServerEffects(AtlasFormFields fields, Func<AtlasFormField, string?> current)
-        {
-            HashSet<string> derived = new(StringComparer.OrdinalIgnoreCase);
-            foreach (AtlasFormField source in fields.All.Where(x => x.Control.Effects is { Count: > 0 } && !x.IsGridField))
-            {
-                string? value = current(source);
-                foreach (CPEffect effect in source.Control.Effects!)
-                {
-                    foreach (string target in effect.SetFromOption?.Keys ?? Enumerable.Empty<string>())
-                        derived.Add(target);
-
-                    if (!Matches(effect.When, value))
-                        continue;
-
-                    foreach (AtlasFormField target in Targets(fields, effect.Show).Where(x => !x.HiddenByRule)) target.Visible = true;
-                    foreach (AtlasFormField target in Targets(fields, effect.Hide)) target.Visible = false;
-                    foreach (AtlasFormField target in Targets(fields, effect.Require)) target.Required = true;
-                    foreach (AtlasFormField target in Targets(fields, effect.Unrequire)) target.Required = false;
-                    foreach (AtlasFormField target in Targets(fields, effect.Enable).Where(x => !x.DisabledByRule)) target.Disabled = false;
-                    foreach (AtlasFormField target in Targets(fields, effect.Disable)) target.Disabled = true;
-                    foreach (string target in (effect.Set?.Keys ?? Enumerable.Empty<string>()).Concat(effect.Clear ?? []))
-                        derived.Add(target);
-                }
-            }
-
-            return derived;
-        }
-
-        /// <summary>
-        /// The server-set values: SetFromOption from the Data of the selected option (spec 01, 5.2), and the Set and
-        /// Clear values of a matching effect (review SV-04). Later effects win, as on the client.
-        /// </summary>
-        private IEnumerable<(string Target, string? Value)> DerivedValues(AtlasFormFields fields, Func<AtlasFormField, string?> current,
-            HashSet<string> derived)
-        {
-            if (derived.Count == 0)
-                yield break;
-
-            foreach (AtlasFormField source in fields.All.Where(x => x.Control.Effects is { Count: > 0 } && !x.IsGridField))
-            {
-                string? value = current(source);
-                foreach (CPEffect effect in source.Control.Effects!)
-                {
-                    if (!Matches(effect.When, value))
-                        continue;
-
-                    foreach ((string target, string text) in effect.Set ?? [])
-                        yield return (target, text);
-                    foreach (string target in effect.Clear ?? [])
-                        yield return (target, null);
-                    if (effect.SetFromOption is not { Count: > 0 })
-                        continue;
-
-                    CPKeyValue? option = source.Control.OptionsSource == null
-                        ? null
-                        : OptionsOf(source.Control).FirstOrDefault(x => string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase));
-                    foreach ((string target, string key) in effect.SetFromOption!)
-                    {
-                        if (option?.Data != null && option.Data.TryGetValue(key, out string? data))
-                            yield return (target, data);
-                        else if (string.IsNullOrEmpty(value))
-                            yield return (target, null);
-                    }
-                }
-            }
-        }
-
-        private static IEnumerable<AtlasFormField> Targets(AtlasFormFields fields, IEnumerable<string>? names) =>
-            (names ?? []).SelectMany(name => fields.Find(name) is { } field ? new[] { field } : fields.FieldsOf(name));
-
-        internal static bool Matches(CPEffectCondition? when, string? value)
-        {
-            if (when == null)
-                return true;
-            bool hasValue = !string.IsNullOrEmpty(value);
-            if (when.HasValue != null && when.HasValue.Value != hasValue)
-                return false;
-            if (when.Equals != null && !string.Equals(when.Equals, value, StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (when.NotEquals != null && string.Equals(when.NotEquals, value, StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (when.In != null && !when.In.Contains(value ?? "", StringComparer.OrdinalIgnoreCase))
-                return false;
-            return true;
-        }
-
         private static void Map(AtlasTable table, Dictionary<string, object?> record, string name, string fieldName, string? value, List<CPPageError> errors)
         {
             AtlasColumn? column = table.Find(fieldName);
@@ -617,38 +491,6 @@ namespace BBH.CP.Atlas.Service.Application
                 record[column.Name] = converted.Value;
             else
                 errors.Add(Error(name, converted.ErrorCode!, converted.Message!));
-        }
-
-        private static void Compute(AtlasTable table, Dictionary<string, object?> record, string target, string expression, List<CPPageError> errors)
-        {
-            AtlasColumn? column = table.Find(target);
-            Match match = ComputedExpression().Match(expression);
-            if (column == null || !match.Success)
-            {
-                errors.Add(Error("", "ComputedInvalid", $"Computed field '{target}' has the expression '{expression}', which is not valid."));
-                return;
-            }
-
-            decimal?[] values = [.. match.Groups[2].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(name => table.Find(name) is { } source && record.GetValueOrDefault(source.Name) is { } value
-                    ? Convert.ToDecimal(value, CultureInfo.InvariantCulture)
-                    : (decimal?)null)];
-            decimal[] present = [.. values.Where(x => x != null).Select(x => x!.Value)];
-
-            decimal? result = match.Groups[1].Value.ToLowerInvariant() switch
-            {
-                "sum" => present.Sum(),
-                "count" => present.Length,
-                "min" => present.Length == 0 ? null : present.Min(),
-                "max" => present.Length == 0 ? null : present.Max(),
-                _ => null
-            };
-
-            AtlasConversionResult converted = AtlasValueConverter.FromWire(result?.ToString(CultureInfo.InvariantCulture), column);
-            if (converted.Success)
-                record[column.Name] = converted.Value;
-            else
-                errors.Add(Error(target, converted.ErrorCode!, converted.Message!));
         }
 
         private static List<AtlasAuditChange> Changes(AtlasFormFields fields, AtlasTable table, IReadOnlyDictionary<string, string?> previous,
@@ -834,13 +676,6 @@ namespace BBH.CP.Atlas.Service.Application
             result.Errors = errors;
             return result;
         }
-
-        [GeneratedRegex(@"^\{Options\[(\d+)\]\}$", RegexOptions.IgnoreCase)]
-        private static partial Regex OptionsToken();
-
-        [GeneratedRegex(@"^\s*(Sum|Count|Min|Max)\s*\((.*)\)\s*$", RegexOptions.IgnoreCase)]
-        private static partial Regex ComputedExpression();
-
 
         #endregion Helpers
     }

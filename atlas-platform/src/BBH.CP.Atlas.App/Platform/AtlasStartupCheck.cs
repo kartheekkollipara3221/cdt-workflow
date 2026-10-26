@@ -160,15 +160,14 @@ public static class AtlasStartupCheck
         {
             if (!table.HasColumn(target))
                 error($"Computed field '{target}' is not a column of {table.FullName}.");
-            int open = expression.IndexOf('('), close = expression.LastIndexOf(')');
-            string function = open > 0 ? expression[..open].Trim() : "";
-            if (open < 0 || close < open || function.ToLowerInvariant() is not ("sum" or "count" or "min" or "max"))
+            // Review SV-08: the same function table as the save.
+            if (!AtlasComputedFields.TryParse(expression, out _, out IReadOnlyList<string> sources))
             {
-                error($"Computed field '{target}' has the expression '{expression}' (use Sum, Count, Min or Max).");
+                error($"Computed field '{target}' has the expression '{expression}' (use {string.Join(", ", AtlasComputedFields.Functions)}).");
                 continue;
             }
 
-            foreach (string source in expression[(open + 1)..close].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            foreach (string source in sources)
                 if (!table.HasColumn(source))
                     error($"Computed field '{target}' uses '{source}', which is not a column of {table.FullName}.");
         }

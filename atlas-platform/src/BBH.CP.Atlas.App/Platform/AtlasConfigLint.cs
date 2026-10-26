@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Service.Platform.Registry;
+using BBH.CP.Atlas.Service.Platform.Sections;
 
 namespace BBH.CP.Atlas.App.Platform;
 
@@ -22,7 +23,6 @@ public static partial class AtlasConfigLint
     private static readonly JsonDocumentOptions DocumentOptions = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
     private static readonly string[] ActionTypes = ["Save", "Close", "Delete", "Execute", "Navigate"];
     private static readonly string[] ClientActionTypes = ["Save", "Close", "Delete"];
-    private static readonly string[] Tokens = ["{User.LanID}", "{User.DisplayName}", "{Today}"];
 
     /// <summary>Unknown properties of a JSON file, as warnings: "file: path is not a property of Type".</summary>
     public static void CheckUnknownProperties(string path, Type type, Action<string> warning)
@@ -101,8 +101,8 @@ public static partial class AtlasConfigLint
         foreach ((string name, string token) in form.Defaults ?? new Dictionary<string, string>())
         {
             Names("Defaults", [name]);
-            if (token.StartsWith('{') && !Tokens.Contains(token, StringComparer.OrdinalIgnoreCase) && !OptionsToken().IsMatch(token))
-                error($"the default token '{token}' of '{name}' is not known (known: {string.Join(", ", Tokens)}, {{Options[n]}}).");
+            if (!AtlasDefaultTokens.IsValid(token))
+                error($"the default token '{token}' of '{name}' is not known (known: {string.Join(", ", AtlasDefaultTokens.Fixed)}, {{Options[n]}}).");
         }
 
         foreach (CPButton button in form.Section?.Buttons ?? [])
@@ -188,7 +188,4 @@ public static partial class AtlasConfigLint
 
     private static bool IsDtoOrCollection(Type type) =>
         type.Namespace?.StartsWith("BBH.CP.Atlas", StringComparison.Ordinal) == true || (type.IsGenericType && typeof(IEnumerable).IsAssignableFrom(type) && type != typeof(string));
-
-    [GeneratedRegex(@"^\{Options\[\d+\]\}$", RegexOptions.IgnoreCase)]
-    private static partial Regex OptionsToken();
 }
