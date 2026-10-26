@@ -13,7 +13,7 @@ import { AtlasHistoryDialog } from '../atlas-history-dialog';
 import { CPApplicationRow, CPAtlasDashboard, CPAtlasTab, CPButton } from '../atlas-models';
 import { formRoute, formTypeOf } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
-import { problemText } from '../form/atlas-form.component';
+import { problemText } from '../atlas-errors';
 import { columnDefs, sumsRow } from './atlas-dashboard-columns';
 
 ModuleRegistry.registerModules([AllCommunityModule]);

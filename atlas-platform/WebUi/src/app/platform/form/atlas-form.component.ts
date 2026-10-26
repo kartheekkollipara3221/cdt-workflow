@@ -12,6 +12,7 @@ import { AtlasHistoryDialog } from '../atlas-history-dialog';
 import { CPApplicationControl, CPApplicationSection, CPButton, CPPageError } from '../atlas-models';
 import { ATLAS_DASHBOARD_LINK } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
+import { problemText } from '../atlas-errors';
 import { AtlasEffectTarget, applyEffects } from './atlas-effects';
 import { buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, valueControls } from './atlas-form-model';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
@@ -317,16 +318,5 @@ function flatten(values: Record<string, unknown>): Record<string, unknown> {
   return result;
 }
 
-export function problemText(error: unknown): string {
-  const response = error as { status?: number; error?: { detail?: string; title?: string } };
-  if (response?.status === 403) {
-    return response.error?.detail ? `Access denied: ${response.error.detail}` : 'Access denied.';
-  }
-  if (response?.status === 404) {
-    return response.error?.detail ?? 'Not found.';
-  }
-  if (response?.status === 0) {
-    return 'The API is not available. Start the API (see atlas-platform/local/README.md).';
-  }
-  return response?.error?.detail ?? response?.error?.title ?? 'The request failed.';
-}
+/** Kept for callers that import it from here; the function is in platform/atlas-errors.ts (review NG-12). */
+export { problemText };

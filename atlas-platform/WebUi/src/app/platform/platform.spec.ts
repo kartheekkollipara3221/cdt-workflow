@@ -12,6 +12,7 @@ import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
 import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
 import { toSelectOptions } from './atlas-pbdev';
+import { problemText } from './atlas-errors';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AtlasApiService } from './atlas-api.service';
@@ -278,5 +279,14 @@ describe('dashboard rows of another app (review NG-07)', () => {
     component.confirmRemove();
     expect(removed).toEqual(['OTHERAPP 7']);
     expect(component.deleteRow()).toBeNull();
+  });
+});
+
+describe('problemText (review NG-12)', () => {
+  it('gives the user a text for each HTTP error, with no developer hint', () => {
+    expect(problemText({ status: 0 })).toBe('The service is not available. Try again later.');
+    expect(problemText({ status: 403, error: { detail: 'No role.' } })).toBe('Access denied: No role.');
+    expect(problemText({ status: 404 })).toBe('Not found.');
+    expect(problemText({ status: 500, error: { title: 'Server error' } })).toBe('Server error');
   });
 });

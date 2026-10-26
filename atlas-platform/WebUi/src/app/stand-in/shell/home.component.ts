@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { LoaderComponent } from '@pbdev/pbdev-core';
 import { AtlasApiService } from '../../platform/atlas-api.service';
 import { CPApplicationRow } from '../../platform/atlas-models';
-import { problemText } from '../../platform/form/atlas-form.component';
+import { problemText } from '../../platform/atlas-errors';
 
 @Component({
   selector: 'standin-home',
