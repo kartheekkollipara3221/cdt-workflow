@@ -1,4 +1,15 @@
-# RESUME HERE - defect status 2026-10-25: atlas-platform caught up and pushed; workflow ENGINE defects still open
+# RESUME HERE - NEXT IMMEDIATE GOAL: integrate the new Atlas design (atlas-platform) at the target - 2026-10-25
+
+## Next immediate goal (user, 2026-10-25)
+- Integrate the new design (atlas-platform/, release P1 = TTDV2) into the target app. This comes BEFORE the engine
+  defects below.
+- Guide: atlas-platform/INTEGRATION.md (files to copy, target file changes, SQL release folder sql/release-p1 020-050,
+  settings, acceptance checks, copy notes in rows B18-B64). @pbdev level-set: atlas-platform/PBDEV.md.
+- Target code belongs to the target team: state what the target must change as integration steps; the user does the
+  copy and wiring. Keep backward compatibility (TTD and other apps untouched).
+- Before integration, confirm with the user the open build design choices B3/B4/B7/B9/B10/B14/B15 (INTEGRATION.md
+  section 6), one question at a time.
+
 
 ## State
 - Branch console-code-first-0518 pushed to origin at cf928d4 (this handoff commit is local until the next push).
@@ -9,7 +20,7 @@
   (INTEGRATION.md section 6). Deliberately not done: SV-13 lazy Dashboards, DA-10 async, NG-11 per-field VM,
   SV-07 JSON Schema file, HO-04 health check part.
 
-## Workflow engine - OPEN defects (no engine code changed this session)
+## Workflow engine - OPEN defects (AFTER the integration; no engine code changed this session)
 1. SaveDraft race (High, scan 2026-10-18): WorkflowExecutionService.cs ~582/613 - SaveDraft skips the version-guarded
    instance update and can commit Draft data/audit after a concurrent transition. Needs user approval. RECOMMENDED FIRST.
 2. D06 sync engine / no CancellationToken (Major): .planning/defects/D06-*.md - owner choice on post-commit cancellation.
@@ -28,8 +39,8 @@
 - Stop the Atlas API (5080) before dotnet test in atlas-platform (it locks the App dll).
 
 ## Next-session prompt
-"Resume. Read the top entry of CODEX_HANDOFF.md. Start the workflow engine defects: first the SaveDraft race - show
-me the fix plan and ask for approval, then reconcile D02 with the outbox commits."
+"Resume. Read the top entry of CODEX_HANDOFF.md. Next goal: integrate the new Atlas design at the target. Walk me
+through atlas-platform/INTEGRATION.md step by step (one step at a time). Engine defects come after that."
 
 ---
 
