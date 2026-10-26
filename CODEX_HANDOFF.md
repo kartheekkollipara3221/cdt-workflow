@@ -1,4 +1,30 @@
-# RESUME HERE - NEXT IMMEDIATE GOAL: integrate the new Atlas design (atlas-platform) at the target - 2026-10-25
+# RESUME HERE - NEXT IMMEDIATE GOAL: integrate the new Atlas design (atlas-platform) at the target - 2026-10-25 (session 2)
+
+## This session (2026-10-25, session 2)
+- Added docs/atlas-platform/14-platform-design-and-flow.html (design + 7 flow diagrams + "why reusable", ASD-STE100
+  ~80%). Commit f9005bd, pushed. Shareable (private) link: https://claude.ai/artifact/BhS6aA569sWm49GqTBABwm
+- Answered the performance current-state questions (sequential, passes, allocations, batching, I/O). Recorded below as
+  the atlas-platform performance backlog. No code changed.
+- Integration walk-through: started; question 1 of 7 (B3) was asked, not yet answered.
+
+## atlas-platform performance backlog (current state 2026-10-25; none needed for TTDV2 load; matter with ~16 apps)
+Facts: all request I/O synchronous (target controllers are sync); no threads spawned; no parallelism inside a request;
+3-6 SQL round trips per request; form JSON parsed on every call (text cached, graph not); records are
+Dictionary<string, object?> with boxed values; AtlasTable.Find and AtlasFormFields.Find are linear scans.
+Items, in pay-off order (each needs user authorization; keep backward compatible):
+- PF1 Async I/O end to end: additive ...Async(CancellationToken) overloads (review DA-10 deferred). Needs the target
+  controller methods to become async (target code). Trade-off: thread-pool starvation under load vs target change.
+- PF2 Cache user roles per LAN ID for a short time (for example 60 s, IMemoryCache). Removes the vw_CP_Atlas_ActiveUserRole
+  query from most requests. Trade-off: a grant/revoke applies after up to 60 s.
+- PF3 Dashboard: tabs are queried one after the other (TTDV2 = 3 SELECTs). Options: one connection per tab in parallel
+  (latency only; costs pool connections, loses shared transaction) or stream rows (changes response shape; user-column
+  names need the full row set first).
+- PF4 Save re-loads the option lists to check NotInOptions (same provider calls as load). Cache per request/user.
+- PF5 Start-up metadata: one sys.columns query per table (~40 with 16 apps). One query with (schema, table) IN (...).
+- PF6 Cache the parsed form/dashboard graph + deep clone (or immutable DTO) instead of deserializing per call.
+- PF7 AtlasTable.Find / AtlasFormFields.Find -> dictionary lookups; drop the second AtlasFormFields.From in SavePage.
+  Only measurable with hundreds of controls/columns.
+- Not planned: early exit on first save error (all errors are collected on purpose); pooling/Span (not the bottleneck).
 
 ## Next immediate goal (user, 2026-10-25)
 - Integrate the new design (atlas-platform/, release P1 = TTDV2) into the target app. This comes BEFORE the engine
@@ -41,8 +67,9 @@
 - Stop the Atlas API (5080) before dotnet test in atlas-platform (it locks the App dll).
 
 ## Next-session prompt
-"Resume. Read the top entry of CODEX_HANDOFF.md. Next goal: integrate the new Atlas design at the target. Walk me
-through atlas-platform/INTEGRATION.md step by step (one step at a time). Engine defects come after that."
+"Resume. Read the top entry of CODEX_HANDOFF.md. Continue the atlas-platform integration walk-through at step 0,
+question 1 of 7 (B3), one question at a time, then INTEGRATION.md sections 1-5. Performance backlog PF1-PF7 and the
+engine defects come after that."
 
 ---
 
