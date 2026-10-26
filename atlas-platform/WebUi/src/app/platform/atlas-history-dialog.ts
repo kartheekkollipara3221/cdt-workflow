@@ -1,7 +1,10 @@
 // COPY to the target: WebUi/Source/App/platform/. The audit history of one record (v1/GetAuditLog, spec 09, 4.5).
 // All values are shown as text (no HTML).
 import { DatePipe } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { EMPTY, catchError, of, switchMap } from 'rxjs';
+import { problemText } from './atlas-errors';
 import { DialogComponent, LoaderComponent } from './atlas-pbdev';
 import { AtlasApiService } from './atlas-api.service';
 import { CPAuditChange, CPAuditLog } from './atlas-models';
@@ -16,9 +19,11 @@ interface HistoryEntry {
 @Component({
   selector: 'atlas-history-dialog',
   imports: [DialogComponent, LoaderComponent, DatePipe],
-  template: `<pbdev-dialog [visible]="open" [header]="'History of record ' + recordId" (visibleChange)="!$event && closed.emit()">
+  template: `<pbdev-dialog [visible]="open()" [header]="'History of record ' + recordId()" (visibleChange)="!$event && closed.emit()">
     @if (loading()) {
       <pbdev-loader />
+    } @else if (error()) {
+      <p class="atlas-error" role="alert">{{ error() }}</p>
     } @else if (entries().length === 0) {
       <p>No history.</p>
     } @else {
@@ -44,31 +49,47 @@ interface HistoryEntry {
     }
   </pbdev-dialog>`,
 })
-export class AtlasHistoryDialog implements OnChanges {
-  @Input() open = false;
-  @Input({ required: true }) appCode = '';
-  @Input({ required: true }) recordId = 0;
-  @Output() closed = new EventEmitter<void>();
+export class AtlasHistoryDialog {
+  // Review NG-10: signal inputs (the bindings of the callers do not change) and one load at a time: a new record or a
+  // close cancels the request before it, so a late answer for record 5 cannot show under record 7.
+  readonly open = input(false);
+  readonly appCode = input.required<string>();
+  readonly recordId = input.required<number>();
+  readonly closed = output<void>();
 
   private readonly api = inject(AtlasApiService);
   readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
   readonly entries = signal<HistoryEntry[]>([]);
 
-  ngOnChanges(): void {
-    if (!this.open || !this.recordId) {
-      return;
-    }
-    this.loading.set(true);
-    this.api.auditLog(this.appCode, this.recordId).subscribe({
-      next: (logs) => {
-        this.entries.set(logs.map((x) => toEntry(x)));
+  private readonly request = computed(() => (this.open() && this.recordId() ? { code: this.appCode(), id: this.recordId() } : null));
+
+  constructor() {
+    toObservable(this.request)
+      .pipe(
+        switchMap((request) => {
+          if (!request) {
+            this.loading.set(false);
+            return EMPTY;
+          }
+          this.loading.set(true);
+          this.error.set(null);
+          this.entries.set([]);
+          return this.api.auditLog(request.code, request.id).pipe(
+            catchError((error: unknown) => {
+              this.error.set(problemText(error));
+              return of(null);
+            }),
+          );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((logs) => {
+        if (logs) {
+          this.entries.set(logs.map((x) => toEntry(x)));
+        }
         this.loading.set(false);
-      },
-      error: () => {
-        this.entries.set([]);
-        this.loading.set(false);
-      },
-    });
+      });
   }
 }
 

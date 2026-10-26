@@ -11,6 +11,7 @@ import { of } from 'rxjs';
 import { CPApplicationControl, CPApplicationSection } from './atlas-models';
 import { ATLAS_DASHBOARD_LINK } from './atlas-navigation';
 import { AtlasFormComponent } from './form/atlas-form.component';
+import { AtlasHistoryDialog } from './atlas-history-dialog';
 import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
 
 declare const Zone: unknown;
@@ -177,5 +178,40 @@ describe('AtlasFormComponent (review NG-09)', () => {
 
     expect(savedOutputs(http).map((x) => x.Name)).toEqual(['Name']);
     expect(navigated).toEqual([['/home', 'TTDV2']]);
+  });
+});
+
+describe('AtlasHistoryDialog (review NG-10)', () => {
+  function dialog() {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const fixture = TestBed.createComponent(AtlasHistoryDialog);
+    fixture.componentRef.setInput('appCode', 'TTDV2');
+    fixture.componentRef.setInput('recordId', 5);
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+    return { fixture, http: TestBed.inject(HttpTestingController) };
+  }
+
+  it('cancels the load of the record before, so a late answer is not shown', () => {
+    const { fixture, http } = dialog();
+    const first = http.expectOne((r) => r.url === 'v1/GetAuditLog' && r.params.get('refID') === '5');
+
+    fixture.componentRef.setInput('recordId', 7);
+    fixture.detectChanges();
+    const second = http.expectOne((r) => r.url === 'v1/GetAuditLog' && r.params.get('refID') === '7');
+
+    expect(first.cancelled).toBe(true);
+    second.flush({ result: [{ AppCode: 'TTDV2', RefID: 7, CreatedBy: 'Seven', CreatedDate: '2026-10-25 10:00:00', Event: 'Create', LogMessage: [] }] });
+    fixture.detectChanges();
+    expect(fixture.componentInstance.entries().map((x) => x.by)).toEqual(['Seven']);
+  });
+
+  it('shows the error text, not "No history", when the load fails', () => {
+    const { fixture, http } = dialog();
+
+    http.expectOne((r) => r.url === 'v1/GetAuditLog').flush({ detail: 'No History permission.' }, { status: 403, statusText: 'Forbidden' });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.error()).toBe('Access denied: No History permission.');
   });
 });
