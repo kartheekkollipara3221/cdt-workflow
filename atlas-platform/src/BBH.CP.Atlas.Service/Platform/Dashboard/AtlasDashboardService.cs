@@ -5,6 +5,9 @@ using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Rules;
 using BBH.CP.Atlas.Service.Platform.Security;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace BBH.CP.Atlas.Service.Platform.Dashboard;
 
 /// <summary>
@@ -24,7 +27,8 @@ public sealed class AtlasDashboardService(
     IAtlasUserContext user,
     IAtlasUserDirectory directory,
     IAtlasAccessService access,
-    IAtlasRuleEngine rules) : IAtlasDashboardService
+    IAtlasRuleEngine rules,
+    ILogger<AtlasDashboardService>? logger = null) : IAtlasDashboardService
 {
     public CPAtlasDashboard Load(string appCode)
     {
@@ -140,10 +144,19 @@ public sealed class AtlasDashboardService(
         }, [.. query.Parameters]);
 
         // Type "user": the display name from the user cache (after the read: one open reader for each connection).
-        foreach (Dictionary<string, object> row in rows)
-            foreach (string name in userColumns)
-                if (row.TryGetValue(name, out object? value) && value is string lanId)
-                    row[name] = directory.DisplayName(lanId);
+        if (userColumns.Count > 0)
+        {
+            // Review DA-09: one query for the names of all rows, not one for each LAN ID.
+            IReadOnlyDictionary<string, string> names = directory.DisplayNames(
+                rows.SelectMany(row => userColumns.Select(name => row.GetValueOrDefault(name) as string)).OfType<string>());
+            foreach (Dictionary<string, object> row in rows)
+                foreach (string name in userColumns)
+                    if (row.TryGetValue(name, out object? value) && value is string lanId)
+                        row[name] = names.GetValueOrDefault(lanId) ?? lanId;
+        }
+
+        if (tab.MaxRows is { } maxRows && rows.Count >= maxRows)
+            AtlasLog.TabRowLimit(logger ?? (ILogger)NullLogger.Instance, tabCode, tab.ID ?? "", maxRows);
 
         return rows;
     }

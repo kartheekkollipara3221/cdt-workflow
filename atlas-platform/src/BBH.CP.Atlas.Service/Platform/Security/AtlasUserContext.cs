@@ -31,6 +31,11 @@ public interface IAtlasUserDirectory
     /// <summary>The display name from CP_Atlas_User, or the LAN ID if the user is not found.</summary>
     string DisplayName(string? lanId);
 
+    /// <summary>The display names of many LAN IDs (review DA-09). The default asks one at a time.</summary>
+    IReadOnlyDictionary<string, string> DisplayNames(IEnumerable<string> lanIds) =>
+        lanIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x, DisplayName, StringComparer.OrdinalIgnoreCase);
+
     IReadOnlyList<(string LanId, string DisplayName)> UsersInRoles(string appCode, IEnumerable<string> roles);
 }
 
@@ -90,6 +95,43 @@ public sealed class AtlasUserDirectory(CPSharepointContext context, IMemoryCache
                 new SqlParameter("@LanId", System.Data.SqlDbType.NVarChar, 50) { Value = lanId }).FirstOrDefault();
             return string.IsNullOrWhiteSpace(name) ? lanId : name;
         })!;
+    }
+
+    /// <summary>The names that are not in the cache come from one query for each 500 LAN IDs (review DA-09).</summary>
+    public IReadOnlyDictionary<string, string> DisplayNames(IEnumerable<string> lanIds)
+    {
+        ArgumentNullException.ThrowIfNull(lanIds);
+        Dictionary<string, string> names = new(StringComparer.OrdinalIgnoreCase);
+        List<string> missing = [];
+        foreach (string lanId in lanIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (cache.TryGetValue("atlas:user:" + lanId.ToUpperInvariant(), out string? cached) && cached != null)
+                names[lanId] = cached;
+            else
+                missing.Add(lanId);
+        }
+
+        foreach (string[] chunk in missing.Chunk(500))
+        {
+            List<SqlParameter> parameters = [.. chunk.Select((x, i) => new SqlParameter("@L" + i, System.Data.SqlDbType.NVarChar, 50) { Value = x })];
+            Dictionary<string, string> found = new(StringComparer.OrdinalIgnoreCase);
+            foreach ((string lanId, string? name) in AtlasSql.Query(context,
+                $"SELECT LanID, DisplayName FROM dbo.CP_Atlas_User WHERE LanID IN ({string.Join(", ", parameters.Select(x => x.ParameterName))}) AND ISNULL(IsDeleted, 0) = 0;",
+                reader => (reader.GetString(0), reader.NullableString(1)), [.. parameters]))
+            {
+                if (!string.IsNullOrWhiteSpace(name))
+                    found.TryAdd(lanId, name);
+            }
+
+            foreach (string lanId in chunk)
+            {
+                string name = found.GetValueOrDefault(lanId) ?? lanId;
+                cache.Set("atlas:user:" + lanId.ToUpperInvariant(), name, CacheTime);
+                names[lanId] = name;
+            }
+        }
+
+        return names;
     }
 
     public IReadOnlyList<(string LanId, string DisplayName)> UsersInRoles(string appCode, IEnumerable<string> roles)

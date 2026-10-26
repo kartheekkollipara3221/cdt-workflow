@@ -129,8 +129,11 @@ namespace BBH.CP.Atlas.Data.DTO
 
         public List<CPTabFilter>? Filter { get; set; }
 
-        /// <summary>For example ["ModifiedDate DESC", "CreatedDate DESC"]. Default "ID DESC".</summary>
+        /// <summary>For example ["ModifiedDate DESC", "CreatedDate DESC"]. Default "ID DESC". ID DESC is always the last item.</summary>
         public List<string>? OrderBy { get; set; }
+
+        /// <summary>Optional upper limit of rows for the tab (review DA-09): TOP (MaxRows); a full tab is logged.</summary>
+        public int? MaxRows { get; set; }
     }
 
     public partial class CPMenu

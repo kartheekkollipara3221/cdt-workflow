@@ -37,7 +37,7 @@ public class TabQueryBuilderTests
 
         Assert.Equal(
             "SELECT [ID], [AccountNumber], [TaxYear] FROM [TTDV2].[General] WHERE ISNULL([IsDeleted], 0) = 0 " +
-            "AND ([CreatedBy] = @p0 OR [TaxPreparerLanId] = @p1) AND [TaxYear] IN (@p2, @p3) ORDER BY [ModifiedDate] DESC;",
+            "AND ([CreatedBy] = @p0 OR [TaxPreparerLanId] = @p1) AND [TaxYear] IN (@p2, @p3) ORDER BY [ModifiedDate] DESC, [ID] DESC;",
             query.Sql);
         Assert.Equal(["jdoe", "jdoe", (short)2025, (short)2026], query.Parameters.Select(x => x.Value));
         Assert.Equal(System.Data.SqlDbType.NVarChar, query.Parameters[0].SqlDbType);
@@ -57,6 +57,20 @@ public class TabQueryBuilderTests
 
         Assert.Contains("WHERE [IsDeleted] = 0", AtlasTabQueryBuilder.Build(notNull, tab, x => x).Sql, StringComparison.Ordinal);
         Assert.Contains("WHERE ISNULL([IsDeleted], 0) = 0", AtlasTabQueryBuilder.Build(Table, tab, x => x).Sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_order_ends_with_the_key_and_MaxRows_gives_TOP_with_a_parameter()
+    {
+        // Review DA-09: a stable order, and an optional row limit.
+        CPAtlasTab tab = new() { ID = "All", Columns = [new() { Name = "TaxYear" }], OrderBy = ["TaxYear"], MaxRows = 500 };
+
+        AtlasTabQuery query = AtlasTabQueryBuilder.Build(Table, tab, x => x);
+
+        Assert.Equal("SELECT TOP (@max) [ID], [TaxYear] FROM [TTDV2].[General] WHERE ISNULL([IsDeleted], 0) = 0 ORDER BY [TaxYear] ASC, [ID] DESC;", query.Sql);
+        Assert.Equal(500, query.Parameters.Single(x => x.ParameterName == "@max").Value);
+        Assert.EndsWith("ORDER BY [ID] ASC;", AtlasTabQueryBuilder.Build(Table, new() { ID = "Id", Columns = [new() { Name = "TaxYear" }], OrderBy = ["ID ASC"] }, x => x).Sql, StringComparison.Ordinal);
+        Assert.Throws<InvalidOperationException>(() => AtlasTabQueryBuilder.Build(Table, new() { ID = "Bad", Columns = [new() { Name = "TaxYear" }], MaxRows = 0 }, x => x));
     }
 
     [Fact]

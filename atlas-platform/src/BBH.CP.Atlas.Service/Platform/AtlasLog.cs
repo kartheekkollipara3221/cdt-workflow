@@ -36,6 +36,10 @@ public static partial class AtlasLog
         Message = "Atlas.ClientAuditIgnored App={App} Mode={Mode}")]
     public static partial void ClientAuditIgnored(ILogger logger, string app, string mode);
 
+    [LoggerMessage(EventId = 41015, EventName = "Atlas.TabRowLimit", Level = LogLevel.Warning,
+        Message = "Atlas.TabRowLimit App={App} Tab={Tab} MaxRows={MaxRows}")]
+    public static partial void TabRowLimit(ILogger logger, string app, string tab, int maxRows);
+
     [LoggerMessage(EventId = 41020, EventName = "Atlas.StartupCheck", Message = "Atlas.StartupCheck {Item}")]
     public static partial void StartupCheckItem(ILogger logger, LogLevel level, string item);
 

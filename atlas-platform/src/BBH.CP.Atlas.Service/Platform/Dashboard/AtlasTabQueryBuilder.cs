@@ -62,7 +62,16 @@ public static class AtlasTabQueryBuilder
         }
 
         StringBuilder sql = new();
-        sql.Append("SELECT ").Append(string.Join(", ", columns.Select(x => Quote(x.Name))));
+        sql.Append("SELECT ");
+        if (tab.MaxRows is { } maxRows)
+        {
+            if (maxRows <= 0)
+                throw Invalid(tab, $"has MaxRows {maxRows} (use a number greater than 0, or leave it out)");
+            parameters.Add(new SqlParameter("@max", SqlDbType.Int) { Value = maxRows });
+            sql.Append("TOP (@max) ");
+        }
+
+        sql.Append(string.Join(", ", columns.Select(x => Quote(x.Name))));
         sql.Append(" FROM ").Append(Quote(table.Schema)).Append('.').Append(Quote(table.Name));
         if (conditions.Count > 0)
             sql.Append(" WHERE ").Append(string.Join(" AND ", conditions));
@@ -125,10 +134,12 @@ public static class AtlasTabQueryBuilder
 
     private static string OrderBy(AtlasTable table, CPAtlasTab tab)
     {
+        string key = $"{Quote(AtlasTable.KeyColumnName)} DESC";
         if (tab.OrderBy is not { Count: > 0 })
-            return $"{Quote(AtlasTable.KeyColumnName)} DESC";
+            return key;
 
         List<string> items = [];
+        bool hasKey = false;
         foreach (string entry in tab.OrderBy)
         {
             string[] parts = entry.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -137,9 +148,14 @@ public static class AtlasTabQueryBuilder
             string direction = parts.Length == 2 ? parts[1].ToUpperInvariant() : "ASC";
             if (direction is not ("ASC" or "DESC"))
                 throw Invalid(tab, $"has the OrderBy direction '{parts[1]}', which is not valid");
-            items.Add($"{Quote(Column(table, tab, parts[0]).Name)} {direction}");
+            AtlasColumn column = Column(table, tab, parts[0]);
+            hasKey |= string.Equals(column.Name, AtlasTable.KeyColumnName, StringComparison.OrdinalIgnoreCase);
+            items.Add($"{Quote(column.Name)} {direction}");
         }
 
+        // Review DA-09: a unique last item, so the order is stable (paging later gives no duplicate or missing rows).
+        if (!hasKey && table.Key != null)
+            items.Add(key);
         return string.Join(", ", items);
     }
 

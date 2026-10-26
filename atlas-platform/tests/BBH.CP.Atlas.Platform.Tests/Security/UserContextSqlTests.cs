@@ -56,6 +56,25 @@ public class UserContextSqlTests(SqlServerDatabaseFixture database)
         Assert.Equal("nobody", directory.DisplayName("nobody"));
     }
 
+    [Fact]
+    public async Task Display_names_of_many_users_come_from_one_query_and_fill_the_cache()
+    {
+        // Review DA-09: a dashboard with 200 preparers must not make 200 round trips.
+        await database.SeedUserAsync("uc.many1", "Many One", "TTDV2", "Read");
+        await database.SeedUserAsync("uc.many2", "Many Two", "TTDV2", "Read");
+        await using CPSharepointContext context = Context();
+        MemoryCache cache = new(new MemoryCacheOptions());
+        AtlasUserDirectory directory = new(context, cache);
+
+        IReadOnlyDictionary<string, string> names = directory.DisplayNames(["uc.many1", "UC.MANY2", "uc.unknown", "uc.many1"]);
+
+        Assert.Equal("Many One", names["uc.many1"]);
+        Assert.Equal("Many Two", names["uc.many2"]);
+        Assert.Equal("uc.unknown", names["uc.unknown"]);
+        Assert.Equal(3, cache.Count);
+        Assert.Equal("Many Two", directory.DisplayName("uc.many2")); // from the cache
+    }
+
     private CPSharepointContext Context() =>
         new(new DbContextOptionsBuilder<CPSharepointContext>().UseSqlServer(database.ConnectionString).Options,
             new ConfigurationBuilder().Build());
