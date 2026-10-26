@@ -1,3 +1,38 @@
+# RESUME HERE - defect status 2026-10-25: atlas-platform caught up and pushed; workflow ENGINE defects still open
+
+## State
+- Branch console-code-first-0518 pushed to origin at cf928d4 (this handoff commit is local until the next push).
+- atlas-platform review 13: all 47 findings fixed incl. DA-08/DA-12 (see the entry below). 273 .NET + 52 Angular tests.
+  Local review RUNNING: API 5080 (started this session), UI 4200 (ng serve from an earlier session), Chrome tab on
+  /dashboard/TTDV2. Record 10000 WorkDescription = Unicode smoke text (reset: local/setup-local-db.ps1 -Recreate).
+- atlas-platform items waiting for the user (not defects): confirm the design choices B3/B4/B7/B9/B10/B14/B15
+  (INTEGRATION.md section 6). Deliberately not done: SV-13 lazy Dashboards, DA-10 async, NG-11 per-field VM,
+  SV-07 JSON Schema file, HO-04 health check part.
+
+## Workflow engine - OPEN defects (no engine code changed this session)
+1. SaveDraft race (High, scan 2026-10-18): WorkflowExecutionService.cs ~582/613 - SaveDraft skips the version-guarded
+   instance update and can commit Draft data/audit after a concurrent transition. Needs user approval. RECOMMENDED FIRST.
+2. D06 sync engine / no CancellationToken (Major): .planning/defects/D06-*.md - owner choice on post-commit cancellation.
+3. D09 seed updates v1 in place (Major): .planning/defects/D09-*.md - 4 owner decisions pending.
+4. D10 no logging/health/metrics (Major): .planning/defects/D10-*.md - 5 owner decisions pending.
+5. D02 email in request: file says "Open, deferred", but outbox commits 7350a4a + d881c15 cover part of its plan
+   (batch size, retry schedule, starvation). Reconcile the file with those commits; update its status.
+6. F07/F08/F09 from the earlier audit (.planning/audits/2026-10-11-final/): open on 2026-10-11, no closing commit found.
+- Ordered backlog WP1-WP8: .planning/paused/engine-defect-fixes/.continue-here.md (each WP needs user authorization).
+- Engine rules: AGENTS.md (backward compatible, TimeProvider, no new packages, regression run + completion summary).
+  Settled, do not re-raise: D1 auth, D7 IDs, D8 Draft names, no parallel approvals, timers never move state,
+  no condition expressions in the engine.
+
+## How to work
+- One question at a time, short plain answers (user preference). Commit each fix separately; push only when asked.
+- Stop the Atlas API (5080) before dotnet test in atlas-platform (it locks the App dll).
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. Start the workflow engine defects: first the SaveDraft race - show
+me the fix plan and ask for approval, then reconcile D02 with the outbox commits."
+
+---
+
 # RESUME HERE - atlas-platform review 13 DONE: Waves 1-3 (47 findings) fixed; DA-08 + DA-12 approved and done; not pushed - 2026-10-25
 
 ## Status
