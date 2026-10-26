@@ -400,6 +400,23 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Contains(logs.Logger.Entries, x => x.EventId.Name == "Atlas.AfterSaveFailed" && x.Message.Contains($"Record={result.ID}", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task A_failed_save_leaves_no_changed_entity_in_the_change_tracker()
+    {
+        // Review SV-10: Category is mapped onto the tracked record before the MondayMinute error stops the save.
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        AtlasModuleServices services = _harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
+        CPTTDV2Service service = new(services) { AppCode = "TTDV2" };
+        string? version = service.LoadPage(new CPAtlasPage { ID = id }).Version;
+
+        CPAtlasPage result = service.SavePage(EditInput(id, version, ("Category", "OTHER"), ("MondayMinute", "1441")), NoFiles);
+
+        Assert.Equal(0, result.ID);
+        Assert.Empty(services.PlatformContext.ChangeTracker.Entries());
+        services.PlatformContext.SaveChanges();
+        Assert.Equal("TAX_N", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
+    }
+
     private sealed class ThrowingAfterSave(AtlasModuleServices services) : CPTTDV2Service(services)
     {
         protected override void OnAfterSave(AtlasSaveContext context) => throw new InvalidOperationException("The notification failed.");

@@ -450,34 +450,42 @@ namespace BBH.CP.Atlas.Service.Application
             return values;
         }
 
-        private static IEnumerable<(string Name, string? Value)> ReadGridRow(string? json)
+        private static List<(string Name, string? Value)> ReadGridRow(string? json)
         {
+            List<(string Name, string? Value)> values = [];
             if (string.IsNullOrWhiteSpace(json))
-                yield break;
+                return values;
 
-            JsonElement root;
+            JsonDocument document;
             try
             {
-                root = JsonDocument.Parse(json).RootElement;
+                document = JsonDocument.Parse(json);
             }
             catch (JsonException)
             {
-                yield break;
+                return values;
             }
 
-            JsonElement row = root.ValueKind == JsonValueKind.Array ? root.EnumerateArray().FirstOrDefault() : root;
-            if (row.ValueKind != JsonValueKind.Object)
-                yield break;
-
-            foreach (JsonProperty property in row.EnumerateObject())
+            // Review SV-10: the document is disposed (it uses pooled memory).
+            using (document)
             {
-                yield return (property.Name, property.Value.ValueKind switch
+                JsonElement root = document.RootElement;
+                JsonElement row = root.ValueKind == JsonValueKind.Array ? root.EnumerateArray().FirstOrDefault() : root;
+                if (row.ValueKind != JsonValueKind.Object)
+                    return values;
+
+                foreach (JsonProperty property in row.EnumerateObject())
                 {
-                    JsonValueKind.String => property.Value.GetString(),
-                    JsonValueKind.Null or JsonValueKind.Undefined => null,
-                    _ => property.Value.GetRawText()
-                });
+                    values.Add((property.Name, property.Value.ValueKind switch
+                    {
+                        JsonValueKind.String => property.Value.GetString(),
+                        JsonValueKind.Null or JsonValueKind.Undefined => null,
+                        _ => property.Value.GetRawText()
+                    }));
+                }
             }
+
+            return values;
         }
 
         private static void Map(AtlasTable table, Dictionary<string, object?> record, string name, string fieldName, string? value, List<CPPageError> errors)
@@ -669,8 +677,13 @@ namespace BBH.CP.Atlas.Service.Application
         private static CPPageError Conflict() =>
             Error("", "Conflict", "Another user changed this record after you opened it. Open the record again and repeat your change.");
 
-        private static CPAtlasPage Failed(CPAtlasPage result, List<CPPageError> errors)
+        /// <summary>
+        /// A save that stops. The mapping may have changed the tracked record already, so the change tracker is cleared:
+        /// a later SaveChanges in the same request (a hook, a future feature) cannot write refused values (review SV-10).
+        /// </summary>
+        private CPAtlasPage Failed(CPAtlasPage result, List<CPPageError> errors)
         {
+            Services.PlatformContext.ChangeTracker.Clear();
             result.ID = 0;
             result.Outputs = [];
             result.Errors = errors;
