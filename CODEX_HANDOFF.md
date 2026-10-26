@@ -21,7 +21,7 @@ async overloads (deferred by the review); NG-11 per-field view model (Low); HO-0
 Schema file (optional); zone.js not installed locally (the NG-09 zone test runs at the target Karma).
 
 ## Working notes
-- API (5080) is STOPPED (stopped for dotnet test).
+- API (5080) and UI (4200) are RUNNING for the review (record 10000 WorkDescription was changed to Unicode text in a smoke test). Stop the API before dotnet test.
   Restart: dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn ; UI: cd atlas-platform/WebUi; npm start
 - New settings since Wave 2: AppSettings:Atlas:OnStartupError (Stop|DisableModule); manifest RequireVersion,
   AuditRefTypes, SchemaVersion, SystemTime; tab MaxRows. Log events: Service/Platform/AtlasLog.cs (INTEGRATION section 4).
