@@ -44,6 +44,22 @@ public class TabQueryBuilderTests
     }
 
     [Fact]
+    public void A_NOT_NULL_IsDeleted_column_gives_a_condition_that_matches_the_filtered_index()
+    {
+        // Review DA-08: "[IsDeleted] = 0" implies the index filter; ISNULL(...) is kept for a nullable column.
+        AtlasTable notNull = new("APP", "General",
+        [
+            new AtlasColumn("ID", "int", false, null, 10, 0, true, false),
+            new AtlasColumn("CreatedBy", "nvarchar", true, 50, 0, 0, false, false),
+            new AtlasColumn("IsDeleted", "bit", false, null, 1, 0, false, false, HasDefault: true)
+        ]);
+        CPAtlasTab tab = new() { ID = "Mine", Columns = [new() { Name = "CreatedBy" }] };
+
+        Assert.Contains("WHERE [IsDeleted] = 0", AtlasTabQueryBuilder.Build(notNull, tab, x => x).Sql, StringComparison.Ordinal);
+        Assert.Contains("WHERE ISNULL([IsDeleted], 0) = 0", AtlasTabQueryBuilder.Build(Table, tab, x => x).Sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_value_with_SQL_text_stays_a_parameter()
     {
         CPAtlasTab tab = new()

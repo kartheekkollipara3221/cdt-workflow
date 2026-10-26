@@ -52,7 +52,8 @@ BEGIN TRY
             [CreatedDate]   datetime       NULL,
             [ModifiedBy]    nvarchar(50)   NULL,
             [ModifiedDate]  datetime       NULL,
-            [IsDeleted]     bit            NULL CONSTRAINT [DF_' + @Schema + N'_General_IsDeleted] DEFAULT (0),
+            -- NOT NULL (review DA-08): the dashboard filter is then [IsDeleted] = 0, which can use the filtered indexes.
+            [IsDeleted]     bit            NOT NULL CONSTRAINT [DF_' + @Schema + N'_General_IsDeleted] DEFAULT (0),
             [RowVersion]    rowversion     NOT NULL,
             CONSTRAINT [PK_' + @Schema + N'_General] PRIMARY KEY CLUSTERED ([ID] ASC)
         );');

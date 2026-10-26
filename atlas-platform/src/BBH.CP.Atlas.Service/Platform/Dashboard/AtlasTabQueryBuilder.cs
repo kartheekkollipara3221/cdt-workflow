@@ -40,7 +40,12 @@ public static class AtlasTabQueryBuilder
         List<SqlParameter> parameters = [];
         List<string> conditions = [];
         if (table.HasSoftDelete)
-            conditions.Add($"ISNULL({Quote(AtlasTable.SoftDeleteColumnName)}, 0) = 0");
+        {
+            // Review DA-08: "= 0" on a NOT NULL column matches the filtered indexes (WHERE [IsDeleted] = 0) and can seek;
+            // a nullable column keeps ISNULL, because NULL also means "not deleted" there.
+            string deleted = Quote(AtlasTable.SoftDeleteColumnName);
+            conditions.Add(table.Find(AtlasTable.SoftDeleteColumnName)!.IsNullable ? $"ISNULL({deleted}, 0) = 0" : $"{deleted} = 0");
+        }
 
         foreach (CPTabFilter filter in tab.Filter ?? [])
         {
