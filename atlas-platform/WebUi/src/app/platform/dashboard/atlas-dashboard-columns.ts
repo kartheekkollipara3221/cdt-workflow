@@ -81,8 +81,12 @@ function columnDef(column: CPTabColumn, actions: AtlasRowActions): ColDef {
       }
       const link = document.createElement('a');
       link.className = 'atlas-link';
+      link.href = '#'; // review NG-08: a link with href takes the focus and opens with Enter
       link.textContent = params.value === null || params.value === undefined || params.value === '' ? '(open)' : String(params.value);
-      link.addEventListener('click', () => actions.edit(params.data as Record<string, unknown>));
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        actions.edit(params.data as Record<string, unknown>);
+      });
       return link;
     };
   }

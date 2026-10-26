@@ -34,7 +34,9 @@ export class AtlasRendererRegistry {
   ]);
 
   /** Types that render no input with the id "ctl_" + Name, so the form label gets no "for" attribute. */
-  private readonly noInput = new Set<string>(['user', 'grid']);
+  // A checkbox has its own (empty) label inside the library control; a second label "for" it gives two labels
+  // (review NG-08), so the form uses aria-labelledby for it.
+  private readonly noInput = new Set<string>(['user', 'grid', 'checkbox', 'check']);
 
   register(type: string, component: Type<unknown>, hasInput = true): void {
     const key = type.toLowerCase();

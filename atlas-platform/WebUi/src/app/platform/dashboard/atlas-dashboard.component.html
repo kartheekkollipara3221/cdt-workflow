@@ -20,17 +20,17 @@
     </div>
   </div>
 
-  <div class="atlas-tabs" role="tablist">
+  <div class="atlas-tabs" role="tablist" aria-label="Lists" (keydown)="onTabKey($event)">
     @for (t of tabs(); track t.ID; let i = $index) {
       <button type="button" role="tab" class="atlas-tab" [class.atlas-tab-active]="i === tabIndex()" [attr.aria-selected]="i === tabIndex()"
-        [attr.id]="'tab_' + t.ID" (click)="tabIndex.set(i)">
+        [attr.id]="'tab_' + t.ID" aria-controls="tabpanel" [attr.tabindex]="i === tabIndex() ? 0 : -1" (click)="tabIndex.set(i)">
         {{ t.Label }} <span class="atlas-count">{{ t.KeyValues?.length ?? 0 }}</span>
       </button>
     }
   </div>
 
   @if (tab(); as t) {
-    <div class="atlas-panel atlas-grid-panel">
+    <div class="atlas-panel atlas-grid-panel" role="tabpanel" id="tabpanel" [attr.aria-labelledby]="'tab_' + t.ID" tabindex="0">
       <ag-grid-angular class="atlas-grid" [theme]="theme" [rowData]="rows()" [columnDefs]="columns()"
         [pinnedBottomRowData]="totals()" [pagination]="true" [paginationPageSize]="20" [paginationPageSizeSelector]="[20, 50, 100]"
         [overlayNoRowsTemplate]="'No records'" [domLayout]="'autoHeight'" />

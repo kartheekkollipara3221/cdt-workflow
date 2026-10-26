@@ -290,3 +290,36 @@ describe('problemText (review NG-12)', () => {
     expect(problemText({ status: 500, error: { title: 'Server error' } })).toBe('Server error');
   });
 });
+
+describe('dashboard tabs keyboard (review NG-08)', () => {
+  it('moves between the tabs with the arrow keys, Home and End', () => {
+    const api = {
+      applications: () => of([]),
+      dashboard: () => of({ Name: 'D', Tabs: ['A', 'B', 'C'].map((x) => ({ ID: x, Label: x, Visible: true, KeyValues: [], Columns: [] })), Buttons: [] }),
+      remove: () => of({ Errors: [] }),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: AtlasApiService, useValue: api },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ code: 'ttdv2' })) } },
+      ],
+    });
+    const component = TestBed.createComponent(AtlasDashboardComponent).componentInstance;
+    component.ngOnInit();
+    const key = (k: string) => component.onTabKey(new KeyboardEvent('keydown', { key: k }));
+
+    key('ArrowRight');
+    expect(component.tabIndex()).toBe(1);
+    key('End');
+    expect(component.tabIndex()).toBe(2);
+    key('ArrowRight');
+    expect(component.tabIndex()).toBe(0);
+    key('ArrowLeft');
+    expect(component.tabIndex()).toBe(2);
+    key('Home');
+    expect(component.tabIndex()).toBe(0);
+    key('a');
+    expect(component.tabIndex()).toBe(0);
+  });
+});

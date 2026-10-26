@@ -92,6 +92,25 @@ export class AtlasDashboardComponent implements OnInit {
     this.navigate(target.AppCode, target.Id);
   }
 
+  /** Review NG-08 (WAI-ARIA tabs): arrow keys, Home and End move between the tabs; the new tab gets the focus. */
+  onTabKey(event: KeyboardEvent): void {
+    const count = this.tabs().length;
+    const current = this.tabIndex();
+    const next =
+      event.key === 'ArrowRight' ? (current + 1) % count
+      : event.key === 'ArrowLeft' ? (current - 1 + count) % count
+      : event.key === 'Home' ? 0
+      : event.key === 'End' ? count - 1
+      : -1;
+    if (count === 0 || next < 0) {
+      return;
+    }
+    event.preventDefault();
+    this.tabIndex.set(next);
+    const id = this.tabs()[next]?.ID;
+    queueMicrotask(() => document.getElementById('tab_' + id)?.focus());
+  }
+
   open(row: Record<string, unknown>): void {
     const ref = this.rowRef(row);
     this.navigate(ref.code, ref.id);

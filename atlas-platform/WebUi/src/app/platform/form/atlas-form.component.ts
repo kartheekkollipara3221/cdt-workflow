@@ -5,7 +5,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DialogComponent, LoaderComponent, SectionComponent } from '../atlas-pbdev';
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
@@ -15,18 +15,19 @@ import { AtlasNoticeService } from '../atlas-notice.service';
 import { problemText } from '../atlas-errors';
 import { AtlasEffectTarget, applyEffects } from './atlas-effects';
 import { buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, valueControls } from './atlas-form-model';
+import { AtlasFieldA11yDirective } from './atlas-field-a11y.directive';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
 import { atlasValidators, errorText } from './atlas-validators';
 
 @Component({
   selector: 'atlas-form',
-  imports: [ReactiveFormsModule, NgComponentOutlet, LoaderComponent, SectionComponent, DialogComponent, AtlasHistoryDialog],
+  imports: [ReactiveFormsModule, NgComponentOutlet, RouterLink, LoaderComponent, SectionComponent, DialogComponent, AtlasHistoryDialog, AtlasFieldA11yDirective],
   templateUrl: './atlas-form.component.html',
 })
 export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly dashboardLink = inject(ATLAS_DASHBOARD_LINK);
+  readonly dashboardLink = inject(ATLAS_DASHBOARD_LINK);
   private readonly api = inject(AtlasApiService);
   private readonly notice = inject(AtlasNoticeService);
   private readonly destroyRef = inject(DestroyRef);

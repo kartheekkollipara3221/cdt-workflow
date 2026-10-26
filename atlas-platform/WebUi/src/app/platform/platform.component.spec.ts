@@ -167,6 +167,22 @@ describe('AtlasFormComponent (review NG-09)', () => {
     http.verify();
   });
 
+  it('links the error, the required state and the label to the input (review NG-08)', () => {
+    const { fixture, http } = setup(section([text('Name', { Validator: { Required: true } }), text('Done', { Type: 'checkbox' })]));
+
+    click(fixture, '#btn_Submit');
+    fixture.detectChanges();
+
+    const input = element(fixture, '#ctl_Name')!;
+    expect(input.getAttribute('aria-required')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('err_Name');
+    expect(element(fixture, '#err_Name')?.getAttribute('aria-live')).toBe('polite');
+    expect(element(fixture, '#div_Done label')?.getAttribute('for')).toBeNull();
+    expect(element(fixture, '#div_Done input')?.getAttribute('aria-labelledby')).toBe('lbl_Done');
+    expect(element(fixture, '.atlas-breadcrumb a')?.getAttribute('href')).toBe('/home/TTDV2');
+    http.verify();
+  });
+
   it('saves in the change detection mode of the target (provideZoneChangeDetection)', () => {
     if (typeof Zone === 'undefined') {
       expect(true).toBe(true); // zone.js is not loaded (local Vitest); the target Karma runs this test

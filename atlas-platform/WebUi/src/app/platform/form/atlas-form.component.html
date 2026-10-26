@@ -9,7 +9,7 @@
 } @else if (section(); as s) {
   <div class="atlas-form-header">
     <div>
-      <div class="atlas-breadcrumb"><a (click)="close()">{{ code }}</a> / {{ id ? 'Record ' + id : 'New record' }}</div>
+      <nav class="atlas-breadcrumb" aria-label="Breadcrumb"><a [routerLink]="dashboardLink(code)">{{ code }}</a> / {{ id ? 'Record ' + id : 'New record' }}</nav>
       <h1 class="atlas-title">{{ s.HeaderName }}</h1>
     </div>
     <div class="atlas-header-actions">
@@ -36,17 +36,17 @@
               <div class="{{ container.Class ?? 'grid grid-cols-2 gap-6 p-8' }}">
                 @for (child of container.ChildControls ?? []; track child.Name) {
                   @if (isVisible(child.Name) && registry.resolve(child.Type); as renderer) {
-                    <div class="atlas-field {{ child.DivClass ?? '' }}" [attr.id]="'div_' + child.Name">
+                    <div class="atlas-field {{ child.DivClass ?? '' }}" [attr.id]="'div_' + child.Name"
+                      [atlasFieldA11y]="child.Name" [required]="isRequired(child.Name)" [invalid]="!!error(child)"
+                      [labelledBy]="!registry.hasInput(child.Type)">
                       <label class="atlas-label" [attr.for]="registry.hasInput(child.Type) ? 'ctl_' + child.Name : null">
-                        <span>{{ child.Label }}</span>
+                        <span [attr.id]="'lbl_' + child.Name">{{ child.Label }}</span>
                         @if (isRequired(child.Name)) {
-                          <span class="required-indicator">*</span>
+                          <span class="required-indicator" aria-hidden="true">*</span>
                         }
                       </label>
                       <ng-container *ngComponentOutlet="renderer; inputs: { control: child, group: form }" />
-                      @if (error(child); as message) {
-                        <span class="atlas-error">{{ message }}</span>
-                      }
+                      <span class="atlas-error" [attr.id]="'err_' + child.Name" aria-live="polite">{{ error(child) ?? '' }}</span>
                     </div>
                   }
                 }
