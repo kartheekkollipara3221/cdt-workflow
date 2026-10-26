@@ -39,9 +39,12 @@ BEGIN TRY
     IF OBJECT_ID(QUOTENAME(@Schema) + N'.[General]', N'U') IS NULL
         EXEC(N'CREATE TABLE ' + N'[' + @Schema + N'].[General] (
             [ID]            int IDENTITY(10000,1) NOT NULL,
-            -- Business columns. Prefer typed columns (spec 05, open question 3). Examples:
+            -- Business columns. Prefer typed columns (spec 05, open question 3). Use nvarchar for text that a user
+            -- types or pastes (names, descriptions): varchar stores other characters as ? with no error (review DA-12).
+            -- varchar is right only for codes (status, category, account number). Examples:
             -- [AccountNumber] varchar(100)   NULL,
-            -- [AccountName]   varchar(1000)  NULL,
+            -- [AccountName]   nvarchar(1000) NULL,
+            -- [Description]   nvarchar(4000) NULL,
             -- [Amount]        decimal(19,2)  NULL,
             -- [EffectiveDate] date           NULL,
             -- Child app only: link to the parent record.
