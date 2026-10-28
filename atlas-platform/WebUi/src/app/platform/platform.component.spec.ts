@@ -14,6 +14,34 @@ import { ATLAS_DASHBOARD_LINK } from './atlas-navigation';
 import { AtlasFormComponent } from './form/atlas-form.component';
 import { AtlasHistoryDialog } from './atlas-history-dialog';
 import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
+import { provideAtlasGridComponents } from './form/atlas-grid-components';
+import { Component } from '@angular/core';
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
+
+// As the target main.ts (it registers AllEnterpriseModule): the grids use the registered modules.
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+/** A cell component as the target NumericEditor: an input with the id ctrlname_row that calls params.setValue on blur. */
+@Component({
+  selector: 'test-numeric-cell',
+  template: `<input [id]="id" [value]="value" [disabled]="disabled" (input)="value = $any($event.target).value" (blur)="params.setValue(value)" />`,
+})
+class TestNumericCell {
+  params!: { value: unknown; disabled?: boolean; ctrlname: string; node: { rowIndex: number }; setValue: (v: unknown) => void };
+  value = '';
+  id = '';
+  disabled = false;
+  agInit(params: TestNumericCell['params']): void {
+    this.params = params;
+    this.value = String(params.value ?? '');
+    this.id = params.ctrlname + '_' + params.node.rowIndex;
+    this.disabled = !!params.disabled;
+  }
+  refresh(params: TestNumericCell['params']): boolean {
+    this.agInit(params);
+    return true;
+  }
+}
 
 declare const Zone: unknown;
 
@@ -273,6 +301,69 @@ describe('AtlasFormComponent with the real pbdev value behaviour (review R2)', (
     fixture.detectChanges();
 
     expect(fixture.componentInstance.form.get('Amount')?.value).toBe('');
+  });
+});
+
+describe('AtlasFormComponent grid with ag-grid and the cell components (review R4)', () => {
+  const day = (field: string, extra: Record<string, unknown> = {}) => ({
+    headerName: field, field, cellRenderer: 'NumericEditor', cellRendererParams: { disabled: false, code: 'TTDV2', ctrlname: field, ...extra },
+  });
+  const grid = () =>
+    ({
+      Name: 'WeeklyHour', Label: 'Weekly Hours', Type: 'grid', Visible: true,
+      Validator: { Integer: true, Min: 0, Max: 1440, Message: 'Enter whole minutes from 0 to 1440.' },
+      Grid: { BindMode: 'SingleRowFields', Columns: [day('Mon'), day('Tue'), day('Total', { disabled: true })], Data: [{ Mon: '60', Tue: '', Total: '60' }] },
+    }) as CPApplicationControl;
+  const page = () => ({ ...section([text('Name')]), Computed: { Total: 'Sum(Mon, Tue)' }, Controls: [...section([text('Name')]).Controls!, grid()] });
+
+  async function ready(fixture: ComponentFixture<AtlasFormComponent>): Promise<void> {
+    for (let i = 0; i < 5 && !element(fixture, '#Mon_0'); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      fixture.detectChanges();
+    }
+  }
+
+  /** ag-grid-angular sends grid events after the current task. */
+  async function type(fixture: ComponentFixture<AtlasFormComponent>, id: string, value: string): Promise<void> {
+    const input = element(fixture, id) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+    for (let i = 0; i < 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      fixture.detectChanges();
+    }
+  }
+
+  it('renders the row with the named cell component, in the ag-theme-pbdev grid', async () => {
+    const { fixture } = setup(page(), 5, [provideAtlasGridComponents({ NumericEditor: TestNumericCell })]);
+    await ready(fixture);
+
+    const host = element(fixture, '#div_WeeklyHour ag-grid-angular');
+    expect(host === null).toBe(false);
+    expect((element(fixture, '#Mon_0') as HTMLInputElement).value).toBe('60');
+    expect((element(fixture, '#Total_0') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('puts a cell value in the form, shows the Computed total, and saves one JSON row', async () => {
+    const { fixture, http } = setup(page(), 5, [provideAtlasGridComponents({ NumericEditor: TestNumericCell })]);
+    await ready(fixture);
+
+    await type(fixture, '#Tue_0', '30');
+
+    expect(fixture.componentInstance.form.get('WeeklyHour.Tue')?.value).toBe('30');
+    expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('90');
+    click(fixture, '#btn_Submit');
+    expect(JSON.parse(savedOutputs(http).find((x) => x.Name === 'WeeklyHour')!.Value!)).toEqual([{ Mon: '60', Tue: '30' }]);
+  });
+
+  it('shows a cell error under the grid', async () => {
+    const { fixture } = setup(page(), 5, [provideAtlasGridComponents({ NumericEditor: TestNumericCell })]);
+    await ready(fixture);
+
+    await type(fixture, '#Mon_0', '2000');
+
+    expect(element(fixture, '#div_WeeklyHour .atlas-error')?.textContent?.trim()).toBe('Mon: Enter whole minutes from 0 to 1440.');
   });
 });
 

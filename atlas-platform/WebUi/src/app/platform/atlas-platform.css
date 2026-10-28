@@ -40,10 +40,6 @@
 .atlas-alert-error { background: #fdecea; border: 1px solid #f5c2bd; color: #7a1c13; }
 .atlas-link { color: var(--atlas-brand-2); text-decoration: underline; cursor: pointer; }
 
-.atlas-grid-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-.atlas-grid-cell { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
-.atlas-grid-header { font-size: 0.78rem; font-weight: 600; color: #334055; min-height: 2.2em; }
-.atlas-number { text-align: right; }
 
 .atlas-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--atlas-line); margin-bottom: 0.75rem; flex-wrap: wrap; }
 .atlas-tab {

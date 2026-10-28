@@ -5,7 +5,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
-import { AllCommunityModule, ColDef, ModuleRegistry, themeQuartz } from 'ag-grid-community';
+import { ColDef, themeQuartz } from 'ag-grid-community';
 import { DialogComponent, LoaderComponent } from '../atlas-pbdev';
 import { forkJoin } from 'rxjs';
 import { AtlasApiService } from '../atlas-api.service';
@@ -15,8 +15,6 @@ import { formRoute, formTypeOf } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
 import { problemText } from '../atlas-errors';
 import { columnDefs, sumsRow } from './atlas-dashboard-columns';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 @Component({
   selector: 'atlas-dashboard',

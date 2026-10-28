@@ -8,13 +8,13 @@ import {
   AtlasRendererBase,
   AtlasUnsupportedRenderer,
   AtlasDateRenderer,
-  AtlasGridRowRenderer,
   AtlasNgSelectRenderer,
   AtlasSelectRenderer,
   AtlasTextRenderer,
   AtlasTextareaRenderer,
   AtlasUserRenderer,
 } from './renderers/atlas-renderers';
+import { AtlasGridRenderer } from './renderers/atlas-grid-renderer';
 
 @Injectable({ providedIn: 'root' })
 export class AtlasRendererRegistry {
@@ -31,7 +31,7 @@ export class AtlasRendererRegistry {
     ['check', AtlasCheckboxRenderer],
     ['option', AtlasRadioRenderer],
     ['user', AtlasUserRenderer],
-    ['grid', AtlasGridRowRenderer],
+    ['grid', AtlasGridRenderer],
   ]);
 
   /** Types that render no input with the id "ctl_" + Name, so the form label gets no "for" attribute. */

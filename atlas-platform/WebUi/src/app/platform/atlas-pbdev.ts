@@ -5,6 +5,7 @@ import { AfterViewInit, Directive, ElementRef, Input, inject } from '@angular/co
 import { CPKeyValue } from './atlas-models';
 
 export {
+  AgLoadingOverlayComponent,
   CheckboxComponent,
   DatePickerComponent,
   DialogComponent,

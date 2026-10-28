@@ -16,7 +16,7 @@ import {
   TextareaComponent,
   toSelectOptions,
 } from '../../atlas-pbdev';
-import { CPApplicationControl, CPGridColumn, CPKeyValue } from '../../atlas-models';
+import { CPApplicationControl, CPKeyValue } from '../../atlas-models';
 import { errorText } from '../atlas-validators';
 
 /**
@@ -154,45 +154,6 @@ export class AtlasUserRenderer extends AtlasRendererBase {
       return '—';
     }
     return this.control.Options?.find((x) => x.Value === value)?.Label ?? value;
-  }
-}
-
-/**
- * Grid with BindMode "SingleRowFields" (spec 01, 10.2): one row; each column is a field of the record.
- * The form group of the grid has one control for each column field.
- */
-@Component({
-  selector: 'atlas-grid-row-renderer',
-  imports: [ReactiveFormsModule],
-  template: `@if (rowGroup) {
-  <div class="atlas-grid-row" [formGroup]="rowGroup">
-    @for (column of columns; track column.field) {
-      <label class="atlas-grid-cell" [style.min-width.px]="(column.width ?? 120) * 0.7">
-        <span class="atlas-grid-header">{{ column.headerName }}</span>
-        <input class="pbdev-control atlas-number" inputmode="numeric" [formControlName]="column.field!" [attr.id]="'ctl_' + column.field" />
-        @if (rowGroup.get(column.field!)?.invalid && rowGroup.get(column.field!)?.touched) {
-          <span class="atlas-error">{{ cellError(column) }}</span>
-        }
-      </label>
-    }
-  </div>
-  } @else {
-    <div class="atlas-unsupported" role="note">The grid "{{ control.Name }}" needs Grid.BindMode "SingleRowFields".</div>
-  }`,
-})
-export class AtlasGridRowRenderer extends AtlasRendererBase {
-  get rowGroup(): FormGroup | null {
-    const item = this.group.get(this.control.Name);
-    return item instanceof FormGroup ? item : null;
-  }
-
-  get columns(): CPGridColumn[] {
-    return (this.control.Grid?.Columns ?? []).filter((x) => !!x.field);
-  }
-
-  cellError(column: CPGridColumn): string {
-    const errors = this.rowGroup?.get(column.field!)?.errors ?? {};
-    return errors['server'] ?? this.control.Validator?.Message ?? 'Not valid.';
   }
 }
 

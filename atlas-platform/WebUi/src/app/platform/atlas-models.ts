@@ -38,17 +38,23 @@ export interface CPEffect {
   SetFromOption?: Record<string, string> | null;
 }
 
+/** An ag-grid column of the JSON (the target sends ag-grid ColDef fields as they are). */
 export interface CPGridColumn {
   headerName?: string | null;
   width?: number;
   field?: string | null;
-  cellRendererParams?: { disabled?: boolean } | null;
+  wrapHeaderText?: boolean;
+  autoHeaderHeight?: boolean;
+  /** The name of a cell component (NumericEditor, TextEditor, SelectEditor at the target). */
+  cellRenderer?: string | null;
+  cellRendererParams?: { disabled?: boolean; code?: string; ctrlname?: string; [key: string]: unknown } | null;
 }
 
 export interface CPGrid {
   Columns?: CPGridColumn[] | null;
   Data?: Record<string, string>[] | null;
   BindMode?: string | null;
+  Paginate?: boolean | null;
 }
 
 export interface CPApplicationControl {
