@@ -230,12 +230,12 @@ describe('AtlasFormComponent with the real pbdev value behaviour (review R2)', (
   it('gives the date picker a Date and sends yyyy-MM-dd', () => {
     const { fixture, http } = setup(section([text('WeekEnding', { Type: 'datetimepicker', Value: '2026-10-25' })]));
 
-    const input = element(fixture, '#ctl_WeekEnding') as HTMLInputElement;
-    expect(input.value).toBe('2026-10-25');
-    input.value = '2026-11-01';
-    input.dispatchEvent(new Event('change'));
+    // The text format of the input belongs to the library (PrimeNG at the target shows 10/25/2026): check the value.
+    expect(element(fixture, '#ctl_WeekEnding') === null).toBe(false);
+    const control = fixture.componentInstance.form.get('WeekEnding');
+    expect(control?.value instanceof Date && control.value.getFullYear() * 10000 + (control.value.getMonth() + 1) * 100 + control.value.getDate()).toBe(20261025);
+    control?.setValue(new Date(2026, 10, 1));
     fixture.detectChanges();
-    expect(fixture.componentInstance.form.get('WeekEnding')?.value instanceof Date).toBe(true);
 
     click(fixture, '#btn_Submit');
     expect(savedOutputs(http).find((x) => x.Name === 'WeekEnding')?.Value).toBe('2026-11-01');
@@ -288,7 +288,8 @@ describe('AtlasFormComponent with the real pbdev value behaviour (review R2)', (
     expect(element(fixture, '.center-container h1')?.textContent?.trim()).toBe('Tax Time Database');
     expect(element(fixture, '.header-container h1.header-title.headline-3')?.textContent?.trim()).toBe('Test form');
     expect(element(fixture, '#div_Main .section.section-blue') === null).toBe(false);
-    expect(element(fixture, '#btn_Close')?.className).toBe('header-btn btn btn--primary');
+    // The real library adds Angular classes (ng-star-inserted) when animations are on: check our classes only.
+    expect(['header-btn', 'btn', 'btn--primary'].every((x) => element(fixture, '#btn_Close')?.classList.contains(x))).toBe(true);
     expect(element(fixture, '#div_Name label .label-text')?.textContent?.trim()).toBe('Name');
   });
 

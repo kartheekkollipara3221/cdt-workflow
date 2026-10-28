@@ -1,4 +1,34 @@
-# RESUME HERE - Rework R0-R8 DONE (2026-10-27, not pushed). OPEN QUESTION TO THE USER: run the integration dry run before the performance backlog?
+# RESUME HERE - Integration dry run (option 1) DONE (2026-10-27, not pushed). NEXT: integration walk-through, B3 first
+
+## Broad goal (unchanged)
+Seamless integration at the target; platform generic and simple (16+ apps by metadata). Look and control usage follow
+the target; behaviour stays metadata-driven. See the entry below for the full rule.
+
+## Dry run result (user chose option 1)
+- Scratch copy of WebUi (session scratchpad, NOT in the repo) built against the REAL pbdev-core source (transcribed
+  .txt -> .ts) + primeng 21.0.4, @maskito 3.x, uuid 9, animations; real pbdev-core.min.css / ag-theme-pbdev.min.css via
+  styles.scss as the target. Only pbdev-select stayed stand-in (source not supplied).
+- ng build 0 errors; ng test 66/66; browser smoke OK (form 10000, grid 150->195 => total 375, save + toastr, dashboard
+  375, restored 330; new record -> real pbdev-dialog mandatory modal + field errors; no console errors).
+- NO platform code change needed. Two tests made library-neutral (date text format, ng-star-inserted class).
+- Findings in atlas-platform/PBDEV.md section 6: host needs provideAnimations() + providePrimeNG (target already has
+  both); transcription gaps only (disabledDates typing, dialog scss, UNREADABLE diamonds/fonts); @ag-grid-community 32
+  peer types vs ag-grid 33 (target already resolves); dashboard btn-primary = Bootstrap, same as target.
+- Repo regression after the change: dotnet build 0 warnings; dotnet test 273 passed; --atlas-check 0/0; ng test 66;
+  ng build 0 warnings (391 kB). API/UI stopped.
+
+## Remaining before go-live
+1. Integration walk-through, B3 first, one question at a time (INTEGRATION.md section 6: B3/B4/B7/B9/B10/B14/B15).
+2. Option 2 at the target (user runs it) is still the final proof for pbdev-select and the exact installed version.
+3. Performance backlog PF1-PF9 (questionnaire answers), then the engine defects.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. The dry run is done. Start the integration walk-through with B3, one
+question at a time. Keep the broad goal: seamless integration at the target, platform generic and simple."
+
+---
+
+# EARLIER: Rework R0-R8 DONE (2026-10-27). The open question (dry run first?) was answered: yes, option 1.
 
 ## Why the user asked for the rework (broad goal - do not lose it)
 - Goal: integrate the new design (atlas-platform, P1 = TTDV2) at the target SEAMLESSLY, while the platform stays

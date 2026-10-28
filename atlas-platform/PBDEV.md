@@ -74,3 +74,38 @@ Sass entry (`stylePreprocessorOptions.includePaths`); at the target the package 
 | `SectionComponent.title` | Confirmed (`<p class="section-header--title">`) | `variant="blue"` added (R3) |
 | `pbdev-input` `placeholder` | Confirmed | none |
 | `{ label, value }` options | Confirmed (`value` is generic) | none |
+
+## 6. Dry run with the real source (2026-10-27, option 1)
+
+The platform was built and tested once against the real pbdev-core source, in a scratch copy of `WebUi` (outside the
+repo; no target library code is committed). The scratch copy pointed `@pbdev/pbdev-core` at the transcribed source
+(`.txt` -> `.ts`, path R) with primeng 21.0.4, @maskito/* 3.x, uuid 9, @angular/animations, and loaded the real
+`pbdev-core.min.css` and `ag-theme-pbdev.min.css` from `styles.scss` as the target does.
+
+Real: input, textarea, date picker (PrimeNG), checkbox, section, loader, dialog (PrimeNG), ag-loading-overlay,
+control-errors, input-label, input-messages, the value-accessor directive, validators, masks.
+Still stand-in: `pbdev-select` only (source not supplied, section 3).
+
+| Check | Result |
+|---|---|
+| `ng build` | 0 errors, 0 warnings in platform code. One local budget warning (initial 725 kB > 500 kB): real global CSS, animations and the PrimeNG theme are in the initial bundle. The target already loads all three. |
+| `ng test` | 66 / 66 after two test changes (below). No platform code change. |
+| Browser smoke (StandIn API, Olive Owner) | Form 10000 renders with the real controls and real `btn--primary` buttons; grid edit 150 -> 195 gives Weekly Total 375; Save -> toastr -> dashboard 375; restored to 330. New record + Save -> real `pbdev-dialog` "Please make sure all the mandatory fields are filled." + field errors. No console errors. |
+
+What the dry run found:
+1. The real `pbdev-section` uses Angular animations (`@expand`). The host must call `provideAnimations()` (and
+   `providePrimeNG(...)` for the PrimeNG controls). The target `app.config.ts` already does both: no target change.
+   The local stand-in host does not need them.
+2. The real date picker shows the PrimeNG default text (`10/25/2026`), not `yyyy-MM-dd`. The form value is still a
+   `Date` and the server still gets `yyyy-MM-dd`. A test read the input text; it now checks the form value.
+3. With animations on, Angular adds `ng-star-inserted` to elements in `@if` blocks. A test compared the full
+   `className`; it now checks the platform classes only.
+4. Transcription gaps (not platform issues): `date-picker.component.html` binds `disabledDates` (`Date[] | undefined`)
+   to a `Date[]` input and fails strict templates, most likely a misread (dry run used `disabledDates ?? []`);
+   `dialog.component.scss` is missing; the diamonds background (`_diamonds-page-background.scss`) and two base64 fonts
+   in `ag-theme-pbdev.css` are UNREADABLE. The installed package at the target has none of these gaps.
+5. pbdev-core declares `@ag-grid-community/*` 32.0.2 as peers (types only, for `ag-loading-overlay`); the platform
+   uses `ag-grid-angular`/`ag-grid-community` 33 as the target does. The target already installs the library with
+   these peers, so nothing changes; the dry run mapped the two type imports to the v33 packages.
+6. The dashboard "Add New" button uses `btn btn-primary` (one dash), the same as the target dashboard. Bootstrap styles
+   it at the target; it is not a pbdev class.
