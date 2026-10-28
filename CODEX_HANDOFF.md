@@ -1,5 +1,12 @@
 # RESUME HERE - Review 2: AR-01, AR-02, AR-05 FIXED (B73-B75, 2026-10-28). NEXT: one-time integration in dev (option 2, AR-03 smoke test)
 
+## Target package (2026-10-28)
+- atlas-platform/local/make-target-package.py -> one self-extracting .ps1 (88 files, ~251 kB, commit 04205ea):
+  copy/ (INTEGRATION.md section 1, target layout), reference/ (INTEGRATION.md, PBDEV.md, StandIn CPAtlasService,
+  controller, Program.cs, app.routes/app.config), MANIFEST.txt. Extracts to a NEW folder only; SHA-256 check.
+  Tested on Windows PowerShell 5.1. Rebuild after each fix: python atlas-platform/local/make-target-package.py <out.ps1>
+  (refuses when atlas-platform has uncommitted changes).
+
 ## Update (2026-10-28, later)
 - AR-02 row rule: user said "Proceed" = option A (spec 07 4.6 stays). Target check: list CP_Atlas_Application codes.
 - B75 AR-05: TTDV2.Dashboard.json TaxTimeAllReport MaxRows 5000; 040/12-ttdv2-app.sql index IX_General_ModifiedBy.
