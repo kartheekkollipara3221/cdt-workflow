@@ -5,10 +5,10 @@ namespace BBH.CP.Atlas.Service.Platform.Registry;
 /// <summary>What the host does when the start-up check finds errors (review HO-04).</summary>
 public enum AtlasStartupErrorMode
 {
-    /// <summary>The host does not start (the default, spec 07, 4.8).</summary>
+    /// <summary>The host does not start (spec 07, 4.8). Set it explicitly; the default is DisableModule (review AR-01).</summary>
     Stop,
 
-    /// <summary>The host starts; only the apps with errors are not available (404, not in the menu).</summary>
+    /// <summary>The default (review AR-01). The host starts; only the apps with errors are not available (404, not in the menu).</summary>
     DisableModule
 }
 

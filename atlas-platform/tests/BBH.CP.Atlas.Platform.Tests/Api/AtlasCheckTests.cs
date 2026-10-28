@@ -284,7 +284,9 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
     [InlineData("Off")]
     public async Task OnStartupError_decides_if_one_bad_app_stops_the_host(string? mode)
     {
-        // Review HO-04: Stop (default) keeps spec 07, 4.8; DisableModule starts the host without the bad app.
+        // Review HO-04 and AR-01: DisableModule is the default and starts the host without the bad app, so the current
+        // apps in the same host keep working. Only an explicit Stop keeps spec 07, 4.8. A value that is not valid also
+        // starts the host and gives an error for all platform apps.
         CopyRealConfig();
         ReplaceInForm("\"Field\": \"Category\"", "\"Field\": \"Kategory\"");
         await using WebApplication app = StandInHost.Create(["--environment=Development", "--urls=http://127.0.0.1:0"], builder =>
@@ -295,10 +297,10 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
                 [AtlasPlatformStartup.OnStartupErrorKey] = mode
             }));
 
-        if (mode != "DisableModule")
+        if (mode == "Stop")
         {
             InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() => app.StartAsync());
-            Assert.Contains(mode == "Off" ? "is not valid (allowed: Stop, DisableModule)" : "names the column 'Kategory'", error.Message, StringComparison.Ordinal);
+            Assert.Contains("names the column 'Kategory'", error.Message, StringComparison.Ordinal);
             return;
         }
 
@@ -311,12 +313,51 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
             AtlasProblemException error = Assert.Throws<AtlasProblemException>(() => resolver.Get<IAtlasModule>("TTDV2", "form"));
             Assert.Equal(404, error.StatusCode);
             Assert.Contains("the start-up check found errors", error.Message, StringComparison.Ordinal);
+            Assert.True(app.Services.GetRequiredService<AtlasDisabledApps>().IsDisabled("TTDV2", out string? reason));
+            if (mode == "Off")
+                Assert.Contains("is not valid (allowed: DisableModule, Stop)", reason, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await app.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task A_start_up_failure_that_is_not_a_check_error_does_not_stop_the_host_by_default()
+    {
+        // Review AR-01: with no setting, a failure while the metadata loads (here: no database) disables the platform
+        // apps; the host starts, so the current apps in the same process keep working.
+        CopyRealConfig();
+        await using WebApplication app = StandInHost.Create(["--environment=Development", "--urls=http://127.0.0.1:0"], builder =>
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DBConnection"] = "Server=127.0.0.1,1;Database=none;User Id=x;Password=x;Connect Timeout=1;Encrypt=False",
+                ["AppSettings:ConfigFolder"] = _folder
+            }));
+
+        await app.StartAsync();
+        try
+        {
+            using IServiceScope scope = app.Services.CreateScope();
+            Assert.False(scope.ServiceProvider.GetRequiredService<IAtlasModuleResolver>().IsPlatformApp("TTDV2"));
             Assert.True(app.Services.GetRequiredService<AtlasDisabledApps>().IsDisabled("TTDV2", out _));
         }
         finally
         {
             await app.StopAsync();
         }
+    }
+
+    [Fact]
+    public async Task A_setting_OnStartupError_that_is_not_valid_is_a_check_error()
+    {
+        CopyRealConfig();
+
+        (int code, string report) = await CheckAsync(_folder, new() { [AtlasPlatformStartup.OnStartupErrorKey] = "Off" });
+
+        Assert.Equal(1, code);
+        Assert.Contains("is not valid (allowed: DisableModule, Stop)", report, StringComparison.Ordinal);
     }
 
     [Fact]

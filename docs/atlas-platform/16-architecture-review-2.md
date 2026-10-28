@@ -1,6 +1,6 @@
 # Module 16: Architecture review 2 of the atlas-platform code
 
-Status: Review 2 (2026-10-28) of commit `493a25e` (after review 1 Waves 1-3, the target-alignment rework R0-R8 and the real-library dry run). Target region: development only; nothing goes live before integration, testing and the fixes are complete. The performance backlog (PF1-PF9) stays deferred by user decision: this review maps scale gaps to it and does not reopen it. No code is changed by this review.
+Status: Review 2 (2026-10-28) of commit `493a25e` (after review 1 Waves 1-3, the target-alignment rework R0-R8 and the real-library dry run). Target region: development only; nothing goes live before integration, testing and the fixes are complete. The performance backlog (PF1-PF9) stays deferred by user decision: this review maps scale gaps to it and does not reopen it. No code is changed by this review. Fixed after the review: AR-01 (B73) and the guard part of AR-02 (B74), 2026-10-28; the row rule of AR-02 is an open question (section 10).
 
 ## 1. Purpose and method
 
@@ -76,6 +76,8 @@ Effort for one new app:
 **Guidance.** Backward compatibility (AGENTS.md): existing response JSON must stay the same for existing callers. Fault isolation.
 
 **Impact.** A target `CP_Atlas_Application` row with a code that is not in the enum (for example a family row or a new app of the target team) disappears from the menu with no error. A platform defect removes the whole menu, also for users of the current apps only.
+
+**Note (2026-10-28).** The row rule is the approved design of spec 07, 4.6: it hides the rows of codes that the API cannot open (target defect RG-06: such an item opens a dashboard that fails). The guard part is fixed (B74). The row rule stays until the user decides (section 10).
 
 **Fix.** Remove only rows whose code has a manifest and is not available (disabled, not registered, start-up errors). Keep every other row unchanged. Wrap the call: on an exception, log `Atlas.ConfigError` and return the rows of the procedure unchanged. Add a test with a row code that is not in the enum. At the target, list the codes of `CP_Atlas_Application` to confirm. Effort S.
 
@@ -206,3 +208,11 @@ Effort S.
 - Microsoft Learn, "SQL Server index architecture and design guide": learn.microsoft.com/sql/relational-databases/sql-server-index-design-guide
 - angular.dev: style guide, signals, lazy loading, programmatically rendering components, accessibility
 - Module 13 (review 1), INTEGRATION.md, PBDEV.md, module 15 (performance questionnaire)
+
+## 10. Fix status and open question
+
+| Item | Status |
+|---|---|
+| AR-01 | Fixed (B73): `DisableModule` is the default; any start-up failure keeps the host running; a bad setting value is a check error. |
+| AR-02 guard | Fixed (B74): an error in the menu step gives the rows unchanged and is logged. |
+| AR-02 row rule | Open. Option A: keep spec 07, 4.6 (hide rows that the API cannot open, fixes RG-06; changes the current menu when such rows exist). Option B: keep unknown rows unchanged (the current menu exactly as today; RG-06 stays). |

@@ -1,4 +1,13 @@
-# RESUME HERE - Architecture review 2 DONE (2026-10-28). NEXT: user picks the first fix (AR-01/AR-02 recommended)
+# RESUME HERE - Review 2: AR-01 + AR-02 guard FIXED (B73, B74, 2026-10-28). NEXT: user answers AR-02 row rule (A/B), then AR-05
+
+## Fixes done (2026-10-28)
+- B73 AR-01: OnStartupError default = DisableModule; any start-up exception keeps the host up; invalid value =
+  DisableModule + check error. B74 AR-02 guard: Enrich returns rows unchanged on error, logs Atlas.ConfigError
+  (optional logger on Enrich and CPAtlasService). Regression: dotnet build 0 warnings; dotnet test 277 passed;
+  --atlas-check 0/0; ng test 66 passed.
+- Open: AR-02 row rule. A = keep spec 07 4.6 (hide non-enum non-platform rows, RG-06 fix). B = keep unknown rows
+  unchanged (menu exactly as today). Asked the user. Then AR-05 (MaxRows value for All Report; ModifiedBy index).
+
 
 ## User answers (2026-10-28)
 - All work is in the target DEVELOPMENT region. Nothing goes live until integration, testing, architecture fixes and

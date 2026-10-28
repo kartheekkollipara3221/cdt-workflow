@@ -19,10 +19,16 @@ public static class AtlasPlatformStartup
     public static readonly EventId StartupCheck = new(41020, "Atlas.StartupCheck");
     public static readonly EventId AppDisabled = new(41023, "Atlas.AppDisabled");
 
-    /// <summary>The setting of review HO-04: Stop (default) or DisableModule.</summary>
+    /// <summary>
+    /// The setting of review HO-04: DisableModule (default since review 2, AR-01) or Stop. The platform runs in the
+    /// process of the current apps, so by default a platform error must not stop them.
+    /// </summary>
     public const string OnStartupErrorKey = "AppSettings:Atlas:OnStartupError";
 
-    /// <summary>Loads the table metadata and runs the start-up check. An error stops the start-up (spec 07, 4.8).</summary>
+    /// <summary>
+    /// Loads the table metadata and runs the start-up check. With DisableModule (default) an error removes only the
+    /// platform apps with errors; with Stop an error stops the start-up (spec 07, 4.8).
+    /// </summary>
     public static async Task StartAtlasPlatformAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -38,17 +44,20 @@ public static class AtlasPlatformStartup
             if (registry.IsLoaded)
                 return;
 
-            AtlasStartupErrorMode mode = OnStartupError(services);
+            (AtlasStartupErrorMode mode, string? settingError) = OnStartupError(services);
             IReadOnlyList<AtlasCheckItem> items;
             try
             {
                 items = await LoadAndCheckAsync(services, cancellationToken);
             }
-            catch (Exception ex) when (mode == AtlasStartupErrorMode.DisableModule && ex is SqlException or InvalidOperationException)
+            catch (Exception ex) when (mode == AtlasStartupErrorMode.DisableModule && ex is not OperationCanceledException)
             {
-                // Review HO-04: the metadata cannot be read (for example SQL is not available): no platform app, the host runs.
+                // Review HO-04, AR-01: any start-up failure (for example SQL is not available): no platform app, the host runs.
                 items = [new(AtlasCheckSeverity.Error, "*", ex.Message)];
             }
+
+            if (settingError != null)
+                items = [.. items, new(AtlasCheckSeverity.Error, "*", settingError)];
 
             AtlasCheckItem[] errors = [.. items.Where(x => x.Severity == AtlasCheckSeverity.Error)];
             if (errors.Length > 0 && mode == AtlasStartupErrorMode.Stop)
@@ -64,15 +73,20 @@ public static class AtlasPlatformStartup
         }
     }
 
-    private static AtlasStartupErrorMode OnStartupError(IServiceProvider services)
+    /// <summary>
+    /// The mode, and an error text when the value is not valid. Review AR-01: no value = DisableModule; a value that
+    /// is not valid also gives DisableModule (the host runs) and an error for all platform apps, so a typo does not
+    /// stop the current apps and is seen in the log and in --atlas-check.
+    /// </summary>
+    private static (AtlasStartupErrorMode Mode, string? Error) OnStartupError(IServiceProvider services)
     {
         IConfiguration? configuration = services.GetService<AtlasPlatformConfiguration>()?.Configuration ?? services.GetService<IConfiguration>();
         string? text = configuration?[OnStartupErrorKey];
         if (string.IsNullOrWhiteSpace(text))
-            return AtlasStartupErrorMode.Stop;
+            return (AtlasStartupErrorMode.DisableModule, null);
         return Enum.TryParse(text.Trim(), ignoreCase: true, out AtlasStartupErrorMode mode) && Enum.IsDefined(mode) && !int.TryParse(text, out _)
-            ? mode
-            : throw new InvalidOperationException($"The setting {OnStartupErrorKey} = '{text}' is not valid (allowed: Stop, DisableModule).");
+            ? (mode, null)
+            : (AtlasStartupErrorMode.DisableModule, $"The setting {OnStartupErrorKey} = '{text}' is not valid (allowed: DisableModule, Stop).");
     }
 
     /// <summary>DisableModule: the apps with errors are not available; an error of all apps ("*") disables all of them.</summary>
@@ -112,6 +126,9 @@ public static class AtlasPlatformStartup
             await output.WriteLineAsync("ERROR *: " + ex.Message);
             return 1;
         }
+
+        if (OnStartupError(services).Error is { } settingError)
+            items = [.. items, new(AtlasCheckSeverity.Error, "*", settingError)];
 
         string environment = services.GetRequiredService<IHostEnvironment>().EnvironmentName;
         await output.WriteLineAsync($"Atlas check ({environment}): {items.Count(x => x.Severity == AtlasCheckSeverity.Error)} error(s), "

@@ -15,7 +15,7 @@ namespace BBH.CP.Atlas.App.Controllers.V1
     [Authorize]
     [ApiController]
     public class CPAtlasController(CPSharepointContext context, IConfiguration configuration, IUserInfo userInfo,
-        IAtlasModuleResolver resolver, IAtlasConfigStore configStore) : ControllerBase
+        IAtlasModuleResolver resolver, IAtlasConfigStore configStore, ILogger<CPAtlasController> logger) : ControllerBase
     {
         [HttpGet]
         [Route("v1/Application")]
@@ -68,6 +68,6 @@ namespace BBH.CP.Atlas.App.Controllers.V1
         }
 
         private CPAtlasService Service() =>
-            new(context, null, configuration, userInfo.GetCurrentUser(), resolver, configStore);
+            new(context, null, configuration, userInfo.GetCurrentUser(), resolver, configStore, logger);
     }
 }

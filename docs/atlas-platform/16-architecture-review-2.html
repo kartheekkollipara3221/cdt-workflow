@@ -53,7 +53,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
 <p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
 <p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
-<p><strong>Status.</strong> Review 2 (2026-10-28) of commit <code>493a25e</code> (after review 1 Waves 1-3, the target-alignment rework R0-R8 and the real-library dry run). Target region: development only; nothing goes live before integration, testing and the fixes are complete. The performance backlog (PF1-PF9) stays deferred by user decision: this review maps scale gaps to it and does not reopen it. No code is changed by this review.</p>
+<p><strong>Status.</strong> Review 2 (2026-10-28) of commit <code>493a25e</code> (after review 1 Waves 1-3, the target-alignment rework R0-R8 and the real-library dry run). Target region: development only; nothing goes live before integration, testing and the fixes are complete. The performance backlog (PF1-PF9) stays deferred by user decision: this review maps scale gaps to it and does not reopen it. No code is changed by this review. Fixed after the review: AR-01 (B73) and the guard part of AR-02 (B74), 2026-10-28; the row rule of AR-02 is an open question (section 10).</p>
 <p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
 </div>
 
@@ -134,6 +134,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Evidence.</strong> <code>AtlasApplicationMenu.cs:18-31</code>: a row is kept only when its code is a platform app or a <code>CPApplicationCode</code> enum name; each other row is removed. The call in <code>GetApplication</code> (<code>StandIn/CPAtlasService.cs:28-30</code>, copied to the target) has no try/catch, so an exception in <code>Enrich</code> (a manifest lookup, a resolver error) fails <code>v1/Application</code> for each user.</p>
 <p><strong>Guidance.</strong> Backward compatibility (AGENTS.md): existing response JSON must stay the same for existing callers. Fault isolation.</p>
 <p><strong>Impact.</strong> A target <code>CP_Atlas_Application</code> row with a code that is not in the enum (for example a family row or a new app of the target team) disappears from the menu with no error. A platform defect removes the whole menu, also for users of the current apps only.</p>
+<p><strong>Note (2026-10-28).</strong> The row rule is the approved design of spec 07, 4.6: it hides the rows of codes that the API cannot open (target defect RG-06: such an item opens a dashboard that fails). The guard part is fixed (B74). The row rule stays until the user decides (section 10).</p>
 <p><strong>Fix.</strong> Remove only rows whose code has a manifest and is not available (disabled, not registered, start-up errors). Keep every other row unchanged. Wrap the call: on an exception, log <code>Atlas.ConfigError</code> and return the rows of the procedure unchanged. Add a test with a row code that is not in the enum. At the target, list the codes of <code>CP_Atlas_Application</code> to confirm. Effort S.</p>
 </div>
 <div class="issue med">
@@ -251,6 +252,15 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <li>angular.dev: style guide, signals, lazy loading, programmatically rendering components, accessibility</li>
 <li>Module 13 (review 1), INTEGRATION.md, PBDEV.md, module 15 (performance questionnaire)</li>
 </ul>
+</section>
+<section id="10-fix-status-and-open-question">
+<h2>10. Fix status and open question</h2>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Status</th></tr>
+<tr><td>AR-01</td><td>Fixed (B73): <code>DisableModule</code> is the default; any start-up failure keeps the host running; a bad setting value is a check error.</td></tr>
+<tr><td>AR-02 guard</td><td>Fixed (B74): an error in the menu step gives the rows unchanged and is logged.</td></tr>
+<tr><td>AR-02 row rule</td><td>Open. Option A: keep spec 07, 4.6 (hide rows that the API cannot open, fixes RG-06; changes the current menu when such rows exist). Option B: keep unknown rows unchanged (the current menu exactly as today; RG-06 stays).</td></tr>
+</table></div>
 </section>
 </main>
 </body>

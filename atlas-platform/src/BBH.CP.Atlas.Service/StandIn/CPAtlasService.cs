@@ -12,11 +12,12 @@ using BBH.CP.Atlas.Service.Platform.Registry;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace BBH.CP.Atlas.Service
 {
     public class CPAtlasService(CPSharepointContext context, CPPBContext? pbContext, IConfiguration configuration, CPUser user,
-        IAtlasModuleResolver? resolver = null, IAtlasConfigStore? configStore = null)
+        IAtlasModuleResolver? resolver = null, IAtlasConfigStore? configStore = null, ILogger? logger = null)
     {
         public List<Dictionary<string, object>> GetApplication()
         {
@@ -25,9 +26,10 @@ namespace BBH.CP.Atlas.Service
             dt.Load(context.ExecuteDataReader("dbo.Get_Application", parameters));
             List<Dictionary<string, object>> result = dt.ToDictionaryList();
 
-            // PLATFORM: FormType and HasDashboard; hide apps that are not registered (spec 07, 4.6).
+            // PLATFORM: FormType and HasDashboard; hide apps that are not registered (spec 07, 4.6). An error in this step
+            // gives the rows unchanged (review AR-02).
             if (resolver != null && configStore != null)
-                result = AtlasApplicationMenu.Enrich(result, resolver, configStore);
+                result = AtlasApplicationMenu.Enrich(result, resolver, configStore, logger);
 
             return result;
         }
