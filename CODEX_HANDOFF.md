@@ -1,4 +1,44 @@
-# RESUME HERE - Target-alignment rework R0-R8 DONE (2026-10-27, not pushed). NEXT: the performance backlog (questionnaire)
+# RESUME HERE - Rework R0-R8 DONE (2026-10-27, not pushed). OPEN QUESTION TO THE USER: run the integration dry run before the performance backlog?
+
+## Why the user asked for the rework (broad goal - do not lose it)
+- Goal: integrate the new design (atlas-platform, P1 = TTDV2) at the target SEAMLESSLY, while the platform stays
+  generic and simpler than the target (16+ more apps by metadata, no TypeScript per app).
+- Rule kept in R1-R6: LOOK and CONTROL USAGE follow the target (layout, classes, pbdev controls, messages, toastr,
+  ag-grid setup); BEHAVIOUR stays metadata-driven (Effects, Computed, button Actions, renderer and grid-component
+  registries). Never copy target hardcoding (if Name === 'Account', ClientRelationshipLeavingBBH show/hide, SQMSO
+  redirects, WeeklyHour field lists).
+
+## Assessment given to the user (2026-10-27): how far from seamless integration
+| Area | State | Left |
+|---|---|---|
+| pbdev controls | Close | Real inputs, value types, error display. Left: pbdev-select source not supplied, exact version unknown, nothing compiled against the real package yet |
+| Angular host (routes, toastr, ag-grid modules, styles) | Close | Small documented edits: app.routes.ts, app.config.ts (provideAtlasGridComponents), angular.json |
+| Grid cell editors | Close | Target NumericEditor/TextEditor/SelectEditor by name; their TTD-only branch does not run for TTDV2 |
+| Dashboard | Reference only | INTEGRATION keeps the target dashboard (+ navigation change + column helper); R5 mostly improves the local preview |
+| Server (DTO partial, CPAtlasService PLATFORM lines, controller code string, program.cs) | Documented, invasive | ~8 target files; largest seam, not pbdev-related |
+| Design choices B3/B4/B7/B9/B10/B14/B15 | Not started | Before go-live (INTEGRATION.md section 6) |
+| SQL release-p1 | Ready | 020-050 |
+Complexity added by the rework (watch): two-way grid <-> form-group sync, value-kind conversion layer, hidden form error
+text next to the library text (accessibility). Each small and justified.
+
+## Recommended next step (waiting for the user's yes/no)
+- Integration dry run BEFORE the performance backlog:
+  Option 1 (local, recommended, ~1 session): build the real pbdev-core source (target-implementation-read-only/
+  PB-DEV-COMPONENTS, .txt files -> .ts) in a SCRATCH folder with primeng ^21.0.4, @maskito/* ^3.2, uuid; point the
+  WebUi tsconfig path at it for one build + ng test (+ browser smoke) instead of the stand-in. Do NOT commit the target
+  library code. Proves the PrimeNG date picker, real error display, real classes.
+  Option 2 (at the target, user runs it): copy platform/ into a target branch, ng build + dotnet build once.
+- Then: integration walk-through (B3 first, one question at a time), then the performance backlog (questionnaire
+  answers), then the engine defects. None of PF1-PF9 blocks integration at TTDV2 scale.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. The rework R0-R8 is done. Answer: <yes, run the local real-library
+dry run (option 1) | no, go to the performance backlog with these questionnaire answers: ...>. Keep the broad goal:
+seamless integration at the target, platform generic and simple."
+
+---
+
+# EARLIER: Target-alignment rework R0-R8 DONE (2026-10-27, not pushed). NEXT: the performance backlog (questionnaire)
 
 ## Result (R1-R8)
 - Commits: R0 9f83b7c, R1 63aa2e1, R2 73f5d30, R3 72e29cc, R4 25eb48c, R5 385cf52, R6 a4e0f83 + 561766a, R7 1ff9327,
