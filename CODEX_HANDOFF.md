@@ -1,4 +1,74 @@
-# RESUME HERE - NEXT IMMEDIATE GOAL: atlas-platform PERFORMANCE BACKLOG (user decision 2026-10-25); integration at the target comes AFTER it
+# RESUME HERE - PREREQUISITE (user, 2026-10-27): rework atlas-platform to stay close to the real target code; THEN the performance backlog
+
+## Why
+- The user added the target's section master as of 10/27 (target-implementation-read-only/section-master-asof10272026/)
+  and the real pbdev-core 6.0.1 source (target-implementation-read-only/PB-DEV-COMPONENTS/Pb-common-components/).
+  The new app (TTDV2) must work like the source truly works. Plan first, approval, then execute.
+- Status: plan APPROVED (user, 2026-10-27). R0 done (baseline + snapshot below). Next: R1 stand-in = real pbdev API.
+
+## Findings (gap analysis 2026-10-27)
+- Breaks at the target: AR:36 binds [inputId] (a field, not an @Input) -> NG8002; the real date-picker is PrimeNG and gives
+  a JS Date (we send String(Date)); the real checkbox gives a boolean ('false' string = checked); pbdev input/textarea/
+  date-picker draw their own pbdev-input-messages (double error text; keys other than required/email show "Error");
+  the stand-in hides all of this (it turns every value into a string; declares maskF/inputId/required).
+- Behaviour differs from the target section master: grid = ag-grid-angular + ag-theme-pbdev + target cell editors
+  NumericEditor/TextEditor/SelectEditor (ours = plain inputs); mandatory check = NgbModal confirmation; save = toastr
+  "Record saved successfully" + redirect; title/description block + headline-3 header; all buttons btn btn--primary
+  header-btn; pbdev-section variant="blue"; ngselect lowercase label/value, clearable=false; hidden controls are not in
+  the form group; dashboard = legacy ag-theme-pbdev + AgLoadingOverlayComponent; pbdev Sass colours/typography.
+- Generic design stays: the target's hardcoded field logic (Account split, show/hide, SQMSO redirects) remains the
+  rules engine/metadata. The server API and SQL do not change.
+- Missing from the supplied files: pbdev select.component.ts + select-option.interface.ts (Select/ holds selectable-tile);
+  exact pbdev-core version from the target package-lock (package.json says ^6.0.0).
+
+## Decisions (user, 2026-10-27)
+- D1 currency/percent: like the target, NO mask (the target's maskF="amount" is not a pbdev input). Keep the "$ " clear.
+- D2 validation: the target's modal on save AND the error under each field (through the pbdev control customErrorMessages).
+- D3 ngselect: keep ng-select with the target settings (lowercase label/value, clearable=false, virtualScroll).
+- D4 styles: switch fully to pbdev (Sass colours, headline-*/font-body classes, target section-master SCSS); drop --atlas-*.
+
+## Rework steps (one commit each; build 0 warnings, tests, --atlas-check 0/0; TTDV2 regression + browser smoke each step)
+- R0 baseline: record test counts/--atlas-check; snapshot open items (PF1-PF9, Q1-Q10, B3/B4/B7/B9/B10/B14/B15,
+  SV-13, DA-10, NG-11, SV-07, HO-04).
+- R1 stand-in = real pbdev API (selectors, inputs, value types, bind-through value accessor).
+- R2 renderers: atlasControlId on text; Date <-> yyyy-MM-dd; boolean <-> 'true'/'false'; no mask (D1); customErrorMessages.
+- R3 form page = section master (header, variant blue, label layout, buttons, modal + field errors (D2), toastr, ngselect
+  (D3), hidden controls out of the form group).
+- R4 grid = ag-grid + ag-theme-pbdev + target cell editors; server SingleRowFields binding unchanged.
+- R5 dashboard = legacy theme ag-theme-pbdev + AgLoadingOverlayComponent.
+- R6 packages (primeng, @maskito/*, ngx-toastr, uuid at target versions) + pbdev styles (D4).
+- R7 docs: PBDEV.md, INTEGRATION.md rows B65+, spec 01/12.
+- R8 re-tag every open item against the reworked code (valid / changed / obsolete, new file:line) in this file.
+- After R8: performance questionnaire (entry below), then integration (B3), then engine defects.
+
+## R0 baseline (2026-10-27, before any rework; HEAD 36b7b8a)
+- dotnet build atlas-platform/AtlasPlatform.slnx: 0 warnings 0 errors. dotnet test: 273 passed.
+- WebUi: npx ng test --watch=false 52 passed (2 files); npx ng build OK, no warnings.
+- --atlas-check (StandIn): 0 error(s), 0 warning(s), Modules=TTDV2 Tables=2.
+
+## R0 open-item snapshot (R8 re-checks each one; "touched by" = rework step that can change it)
+| Item | Area | Touched by | Note for R8 |
+|---|---|---|---|
+| PF1 / DA-10 async I/O | server | - | UI rework does not change it |
+| PF2 roles cache, PF5 start-up metadata, PF8 index check, PF9 slow log | server | - | - |
+| PF3 dashboard tab queries | server | R5 (client only) | check the client still reads the same tab shape |
+| PF4 save re-loads option lists | server | R3 (ngselect value) | the value sent must stay the option Value |
+| PF6 parsed graph cache, PF7 Find -> dictionary | server | R4 (grid columns) | re-check if grid metadata gains fields |
+| Q1-Q10 questionnaire (Q3 MaxRows, Q7 IIS, Q9 benchmark) | perf | R5 (Q3 display) | questions stay valid; re-read Q3 text after R5 |
+| B3 rule disable/enable of JSON-disabled control | rules | R3 | hidden/disabled controls now follow the section master |
+| B4 button rules RuleDefault Hidden | rules | R3 (buttons) | button look changes, rule meaning must not |
+| B7 allow list (hidden/disabled values) | server save | R3 (hidden controls out of the form group) | client now sends fewer outputs; server rule unchanged |
+| B9 ModifiedBy/Date on create | server | - | - |
+| B10 SetFromOption targets | rules | R3 (ngselect lowercase label/value) | Data of the option must still reach the server |
+| B14 dashboard rules, B15 row shape (dates as text) | dashboard | R5, R2 (dates) | grid theme/overlay only; date text unchanged |
+| SV-13 lazy Dashboards, HO-04 health check | server | - | - |
+| NG-11 per-field view model | client form | R2/R3 | may become obsolete or change shape |
+| SV-07 JSON Schema file | metadata | R4 | grid cell-editor names join the schema list |
+| Engine defects (SaveDraft race, D06, D09, D10, D02, F07-F09) | engine | - | engine is not touched by this rework |
+
+---
+
+# EARLIER: NEXT IMMEDIATE GOAL: atlas-platform PERFORMANCE BACKLOG (user decision 2026-10-25); integration at the target comes AFTER it
 
 ## Next immediate goal (user, 2026-10-25, session 2)
 - The user chose: do the performance backlog first, not the integration. Steps:
