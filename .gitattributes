@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Self-extracting target package: keep the exact bytes (no line-ending change)
+atlas-platform/local/package/*.ps1 -text

@@ -61,3 +61,16 @@ dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandI
 ```
 
 Stand-ins: PB accounts = 5 sample accounts; Active Directory = the Windows login + `StandIn:Users` settings; TPAM = the local connection string.
+
+## Target package
+
+`package/atlas-target-package.ps1` is one self-extracting Windows PowerShell file (5.1 or later) with the files of
+INTEGRATION.md section 1 (`copy\`) and the hand-edit references (`reference\`). No Python is needed at the target:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\atlas-target-package.ps1 -Destination C:\temp\atlas-package
+```
+
+It extracts to a new folder only and checks each file with SHA-256. The commit of the files is in the first line
+and in `MANIFEST.txt`. To make it again after a change (here, with Python): commit, then
+`python atlas-platform/local/make-target-package.py atlas-platform/local/package/atlas-target-package.ps1`.
