@@ -1,3 +1,28 @@
+# RESUME HERE - Architecture review 2 DONE (2026-10-28). NEXT: user picks the first fix (AR-01/AR-02 recommended)
+
+## User answers (2026-10-28)
+- All work is in the target DEVELOPMENT region. Nothing goes live until integration, testing, architecture fixes and
+  other fixes are done. So 050 (copy + TTD role revoke) is not a risk now; decide at go-live (AR-11).
+- Performance gaps stay deferred until after the one-time integration and the review with the target team.
+- Absolute rules for integration: the new design must scale, and it must not break the existing system.
+
+## Review 2 result (docs/atlas-platform/16-architecture-review-2.md/.html)
+- 11 findings: High AR-01 (OnStartupError default Stop stops the shared host), AR-02 (menu Enrich drops non-enum rows,
+  no fault guard). Medium AR-03 seam edits + smoke test, AR-04 sync I/O shared pool (PF1/PF9), AR-05 TTDV2 tabs scan
+  (All Report no MaxRows; OR on ModifiedBy with no index), AR-08 owner + author guide/JSON Schema, AR-09 feature table
+  of the 16 apps, AR-10 pbdev-select/version (option 2). Low AR-06 one EF model, AR-07 form parse per call, AR-11 050.
+- No code changed.
+
+## Recommended order (section 8 of module 16)
+1. Fix AR-01, AR-02 (+ AR-05 config/index). 2. One-time integration in dev (option 2) with current-app smoke test.
+3. B3-B15 walk-through. 4. Target team review. 5. Perf backlog (PF9 first), engine defects. 6. Feature table before P2.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. Review 2 is done. <Approve AR-01/AR-02 fixes | other choice>.
+Keep the broad goal: seamless integration at the target, platform generic and simple, nothing breaks the existing system."
+
+---
+
 # RESUME HERE - Integration dry run (option 1) DONE (2026-10-27, pushed to origin/console-code-first-0518). NEXT: integration walk-through, B3 first
 
 ## Broad goal (unchanged)

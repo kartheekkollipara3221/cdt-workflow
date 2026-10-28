@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture review 2</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas platform · module 16</div>
+<h1>Architecture review 2</h1>
+<p class="lead">Review of the atlas-platform code after the rework and the real-library dry run: ease for the next apps, scale, and risk to the existing system at the target.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Review 2 (2026-10-28) of commit <code>493a25e</code> (after review 1 Waves 1-3, the target-alignment rework R0-R8 and the real-library dry run). Target region: development only; nothing goes live before integration, testing and the fixes are complete. The performance backlog (PF1-PF9) stays deferred by user decision: this review maps scale gaps to it and does not reopen it. No code is changed by this review.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>11</b><span>findings</span></div>
+<div class="kpi"><b>2</b><span>High (host seam)</span></div>
+<div class="kpi"><b>0</b><span>target table or contract changes</span></div>
+<div class="kpi"><b>1</b><span>registration line per app</span></div>
+</div>
+
+<section id="1-purpose-and-method">
+<h2>1. Purpose and method</h2>
+<p>The user asked three questions:</p>
+<ol>
+<li>How does the new design make the remaining apps (about 16) easier to build than the target implementation?</li>
+<li>When the code goes into the target, can the new design scale?</li>
+<li>Can the new design break the existing system (TTD, CDT, SQMS, SQMSO, SQMSB, AIN)?</li>
+</ol>
+<p>Method:</p>
+<ul>
+<li>Read the platform code (<code>atlas-platform/src</code>, <code>WebUi/src/app/platform</code>, <code>sql/release-p1</code>) and the target copy (<code>target-implementation-read-only/</code>).</li>
+<li>Compare each item with published guidance: Microsoft ASP.NET Core performance best practices, ASP.NET Core in-process hosting on IIS, EF Core performance and property-bag entity types, SQL Server index design; angular.dev (signals, style guide, lazy loading, dynamic components, accessibility).</li>
+<li>Count the work for one app in the target design and in the new design.</li>
+<li>Check the results of review 1 (module 13) and of the dry run. A finding of review 1 that is fixed is not repeated.</li>
+</ul>
+<p>ID prefix: <code>AR</code> (review 2). Out of scope: authentication (IIS Windows authentication at the target) and the workflow engine.</p>
+</section>
+<section id="2-verdict">
+<h2>2. Verdict</h2>
+<div class="table-wrap"><table>
+<tr><th>Question</th><th>Answer</th><th>Condition</th></tr>
+<tr><td>Easier for the remaining apps?</td><td><strong>Yes.</strong> An app is SQL from the template, three JSON files and one registration line. No TypeScript, no enum value, no <code>if</code> branch.</td><td>Only for apps whose features are in the platform (AR-09).</td></tr>
+<tr><td>Can it scale?</td><td><strong>Yes for the expected load, not yet proven by numbers.</strong> The design has no step that grows per request with the number of apps. Two config items read whole tables (AR-05). The platform shares the thread pool of the target host (AR-04).</td><td>AR-05 fixed by config. PF9 numbers during integration testing.</td></tr>
+<tr><td>Can it break the existing system?</td><td><strong>Not through data or contracts.</strong> All target changes are additive, and TTDV2 has its own schema. <strong>Yes through the shared host,</strong> in two places: a start-up error stops all apps (AR-01), and the menu step changes and can fail the shared menu (AR-02).</td><td>AR-01 and AR-02 fixed before the copy to the target.</td></tr>
+</table></div>
+<p>The design is sound. Two High findings, both small and inside platform code or settings. No finding needs a change to a target table or to a public contract.</p>
+<div class="table-wrap"><table>
+<tr><th>Severity</th><th>Count</th><th>Meaning</th></tr>
+<tr><td>High</td><td>2</td><td>Can stop or change an existing app at the target. Fix before the copy to the target.</td></tr>
+<tr><td>Medium</td><td>6</td><td>Limits scale or the "config only" promise for the next apps. Fix before app #2, or decide.</td></tr>
+<tr><td>Low</td><td>3</td><td>Watch items.</td></tr>
+</table></div>
+</section>
+<section id="3-what-is-better-than-the-target-implementation">
+<h2>3. What is better than the target implementation</h2>
+<div class="table-wrap"><table>
+<tr><th>Area</th><th>Target today (TTD as the example)</th><th>New design (TTDV2)</th><th>Why it matters</th></tr>
+<tr><td>Server code for each app</td><td>Enum value in <code>CPApplicationCode</code>; 13 <code>if</code> branches in <code>CPAtlasService</code> (<code>CPAtlasService.cs.txt:129-180</code>); <code>CPTTDService</code> 323 lines; EF entity and DTO</td><td>One <code>AddAtlasModule&lt;T&gt;("CODE")</code> line; optional hook class (<code>CPTTDV2Service.cs</code>, 31 lines) and option providers (38 lines)</td><td>App #17 does not change shared code, so it cannot break app #3.</td></tr>
+<tr><td>Client code for each app</td><td>App and field branches in the section master: <code>code == 'SQMSO'</code> (3), <code>'SQMSB'</code> (3), <code>'AIN'</code>, <code>Name === 'Account'</code>, <code>'WeekEnding'</code>, <code>'ClientRelationshipLeavingBBH'</code>, <code>'FundConsideredSecondarySale'</code> ... (<code>cp-atlas-sectionmaster.ts.txt</code>)</td><td>No TypeScript. Show, hide, enable, set and computed values are JSON <code>Effects</code>, <code>Rules</code> and <code>Computed</code></td><td>The shared component does not grow with each app.</td></tr>
+<tr><td>Trust</td><td>Rules run in the browser only</td><td>The server runs the rules again on save, applies the effects, checks the allow list and the option lists, and sets system and computed columns itself</td><td>A direct API call cannot save a hidden field, a value that is not an option, or another owner.</td></tr>
+<tr><td>Data</td><td>Text columns, display names for people, last write wins</td><td>Typed columns, LAN IDs, <code>rowversion</code> (save conflict detected), audit row in the same transaction</td><td>Reports and joins work; no lost updates; history is complete.</td></tr>
+<tr><td>Mistakes</td><td>Found by users in production</td><td><code>--atlas-check</code> before the deployment: names, tokens, patterns, tables, column types, registration (exit code 0/1)</td><td>A bad config does not reach users.</td></tr>
+<tr><td>Switch off one app</td><td>Code change and deployment</td><td><code>AppSettings:Modules:&lt;CODE&gt;:Enabled = false</code></td><td>Rollback in minutes.</td></tr>
+<tr><td>Look and controls</td><td>-</td><td>Same as the target: pbdev controls, section master layout, ag-grid with the target cell editors, toastr, modal (rework R1-R6; dry run against the real pbdev-core source: 0 errors, 66 tests)</td><td>Users see one product.</td></tr>
+</table></div>
+<p>Effort for one new app:</p>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Target design</th><th>New design</th></tr>
+<tr><td>Table</td><td>Hand-written DDL, EF entity, DbSet, DTO</td><td>Template <code>05-new-app-template.sql</code> (DDL + app row + roles)</td></tr>
+<tr><td>Form</td><td>JSON + section master branches + service class</td><td>JSON (<code>&lt;CODE&gt;.json</code>)</td></tr>
+<tr><td>Dashboard</td><td>JSON + dashboard component branches + procedure</td><td>JSON (<code>&lt;CODE&gt;.Dashboard.json</code>), <code>Source: Table</code> (no procedure)</td></tr>
+<tr><td>Wiring</td><td>Enum + <code>if</code> chains in service and controller</td><td>Manifest (<code>&lt;CODE&gt;.app.json</code>) + one registration line</td></tr>
+<tr><td>Test</td><td>Manual</td><td><code>--atlas-check</code> + the platform tests</td></tr>
+</table></div>
+</section>
+<section id="4-findings-risk-to-the-existing-system">
+<h2>4. Findings: risk to the existing system</h2>
+
+<div class="issue">
+<h3><span class="badge b-high">AR-01</span>A platform start-up error stops the whole host, also the current apps <span class="area">host</span></h3>
+<p><strong>Evidence.</strong> <code>AtlasPlatformStartup.cs:67-72</code>: with no setting, <code>OnStartupError</code> is <code>Stop</code>. In <code>Stop</code> mode any start-up check error (one bad TTDV2 field, SQL not available when the app pool starts) throws, and the host does not start. The platform runs in the target process (<code>program.cs</code>, INTEGRATION.md section 2).</p>
+<p><strong>Guidance.</strong> ASP.NET Core in-process hosting on IIS: one app in one app pool; a start-up exception gives 500.30 for all requests, and IIS Rapid-Fail Protection can stop the pool after repeated failures. Fault isolation (bulkhead): a fault in one part must not stop the other parts.</p>
+<p><strong>Impact.</strong> In the shared development region, a TTDV2 config mistake stops TTD, CDT and SQMS for the target team. In production the same occurs for all users.</p>
+<p><strong>Fix.</strong> Set <code>AppSettings:Atlas:OnStartupError = DisableModule</code> in the target <code>appsettings.json</code> (setting only, B54). Recommended also: make <code>DisableModule</code> the default outside Development (the code is not at the target yet, so no current caller changes). <code>--atlas-check</code> still returns 1 for the release check. Effort S.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">AR-02</span>The menu step removes rows that it does not know, and an error in it fails the shared menu <span class="area">service</span></h3>
+<p><strong>Evidence.</strong> <code>AtlasApplicationMenu.cs:18-31</code>: a row is kept only when its code is a platform app or a <code>CPApplicationCode</code> enum name; each other row is removed. The call in <code>GetApplication</code> (<code>StandIn/CPAtlasService.cs:28-30</code>, copied to the target) has no try/catch, so an exception in <code>Enrich</code> (a manifest lookup, a resolver error) fails <code>v1/Application</code> for each user.</p>
+<p><strong>Guidance.</strong> Backward compatibility (AGENTS.md): existing response JSON must stay the same for existing callers. Fault isolation.</p>
+<p><strong>Impact.</strong> A target <code>CP_Atlas_Application</code> row with a code that is not in the enum (for example a family row or a new app of the target team) disappears from the menu with no error. A platform defect removes the whole menu, also for users of the current apps only.</p>
+<p><strong>Fix.</strong> Remove only rows whose code has a manifest and is not available (disabled, not registered, start-up errors). Keep every other row unchanged. Wrap the call: on an exception, log <code>Atlas.ConfigError</code> and return the rows of the procedure unchanged. Add a test with a row code that is not in the enum. At the target, list the codes of <code>CP_Atlas_Application</code> to confirm. Effort S.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">AR-03</span>The seam into the target is about 8 hand edits <span class="area">integration</span></h3>
+<p><strong>Evidence.</strong> INTEGRATION.md section 2: <code>partial</code> on 22 DTO classes, <code>program.cs</code> (3 lines), <code>CPAtlasService.cs</code> (PLATFORM lines in 7 methods + 2 constructor parameters), <code>CPAtlasController.cs</code>, <code>app.routes.ts</code>, <code>cp-atlas-dashboard.ts</code>, <code>angular.json</code>, <code>app.config.ts</code>, the menu component.</p>
+<p><strong>Guidance.</strong> Backward compatibility rule: run regression coverage that proves the existing apps still work.</p>
+<p><strong>Impact.</strong> Most of the integration risk is in these edits, not in the platform files. A missed PLATFORM line gives a 404 for TTDV2 only (safe). An error in an existing <code>if</code> chain breaks a current app.</p>
+<p><strong>Fix.</strong> One integration change (one branch at the target) with a checklist from INTEGRATION.md section 2. Before and after the change, run a smoke test of each current app (menu, dashboard, load, save) in the development region. Keep <code>Modules:TTDV2:Enabled = false</code> until the smoke test passes. Effort S.</p>
+</div>
+</section>
+<section id="5-findings-scale">
+<h2>5. Findings: scale</h2>
+
+<div class="issue med">
+<h3><span class="badge b-med">AR-04</span>The platform shares the thread pool and the database of the target, and its I/O is synchronous <span class="area">host; PF1, PF9 deferred</span></h3>
+<p><strong>Evidence.</strong> All platform database calls are synchronous (<code>AtlasSql.cs:25</code> <code>ExecuteReader()</code>, <code>FindActive</code>, <code>SaveChanges</code>), the same as the target <code>CPApplicationService</code>. <code>AtlasPlatformContext</code> uses the connection of <code>CPSharepointContext</code> (<code>AtlasDataExtensions.cs:19-20</code>).</p>
+<p><strong>Guidance.</strong> Microsoft "ASP.NET Core best practices": avoid blocking calls; a blocked thread cannot serve other requests (thread pool starvation).</p>
+<p><strong>Impact.</strong> At the expected load (2-5 requests a second, questionnaire) there is no problem, and the current apps work the same way. With 16 apps in one pool, heavy platform use also slows the current apps. There are no usage numbers yet.</p>
+<p><strong>Fix.</strong> No code change now (PF1 deferred). During integration testing, measure: PF9 (slow-request log event) is the lowest-risk way to get the numbers. Decide PF1 with these numbers. Effort: none now.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">AR-05</span>Two TTDV2 dashboard tabs read the whole table <span class="area">config and SQL; PF3, PF8</span></h3>
+<p><strong>Evidence.</strong> <code>TTDV2.Dashboard.json:33-38</code>: tab <code>TaxTimeAllReport</code> has no <code>Filter</code> and no <code>MaxRows</code>. Tab <code>CurrentTaxTimesheet</code> (<code>:11-18</code>) filters <code>CreatedBy OR TaxPreparerLanId OR ModifiedBy</code>; <code>040-ttdv2-app.sql:94-99</code> indexes <code>CreatedBy</code> and <code>TaxPreparerLanId</code> only.</p>
+<p><strong>Guidance.</strong> Microsoft "ASP.NET Core best practices": return large collections in pages. SQL Server index design: an <code>OR</code> over different columns can use an index union only when each column has an index; with one column not indexed, the optimizer scans.</p>
+<p><strong>Impact.</strong> Each dashboard open scans <code>TTDV2.General</code> once for each of these tabs, and sends all rows of the "All Report" tab to the browser. The cost grows with the data, and each app made from the same pattern gets it.</p>
+<p><strong>Fix.</strong> Config and SQL only, no platform code:</p>
+<ul>
+<li>Give <code>TaxTimeAllReport</code> a <code>MaxRows</code> (and, if the business agrees, a tax-year filter).</li>
+<li>Add <code>IX_General_ModifiedBy ... WHERE [IsDeleted] = 0</code> in <code>040</code>, or remove <code>ModifiedBy</code> from the <code>Any</code> list.</li>
+<li>Optional (PF8): <code>--atlas-check</code> warns for a tab with no <code>{LanId}</code> filter and no <code>MaxRows</code>, and for a filter column with no index.</li>
+</ul>
+<p>Effort S.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">AR-06</span>One EF Core model holds all platform tables <span class="area">data</span></h3>
+<p><strong>Evidence.</strong> <code>AtlasPlatformContext.cs:29, 75</code>: one model for all registered tables, keyed on the table signature. Tables load once at start-up (B31), so the model is built once for each process.</p>
+<p><strong>Guidance.</strong> EF Core: property-bag (shared-type) entity types and a custom <code>IModelCacheKeyFactory</code> are supported. A compiled model is not possible for a model made at run time, so the build cost is paid at the first use.</p>
+<p><strong>Impact.</strong> Start-up time grows a little with each app. The start-up check already builds the model, so a bad table is found before requests (B25). No effect per request.</p>
+<p><strong>Fix.</strong> None now. Measure the start-up time at the target with TTDV2 and record it as the baseline (PF5). Effort: none.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">AR-07</span>The form JSON is parsed again on each call <span class="area">service; PF6</span></h3>
+<p><strong>Evidence.</strong> <code>AtlasConfigStore.cs:142</code> <code>GetForm</code> returns a new copy on each call (by design: the request changes it, review 1 section 3).</p>
+<p><strong>Impact.</strong> Small CPU cost per request; it does not grow with the number of apps (only with the size of one form).</p>
+<p><strong>Fix.</strong> PF6 (parsed graph cache + clone) when the PF9 numbers show a need. Effort: none now.</p>
+</div>
+</section>
+<section id="6-findings-the-config-only-promise-for-the-remaining-apps">
+<h2>6. Findings: the "config only" promise for the remaining apps</h2>
+
+<div class="issue med">
+<h3><span class="badge b-med">AR-08</span>The platform is a framework that a team must own <span class="area">maintainability</span></h3>
+<p><strong>Evidence.</strong> Platform code: about 4,300 lines of C# (<code>src/**/Platform</code>) and 2,100 lines of TypeScript (<code>WebUi/src/app/platform</code>, without specs). 273 .NET and 66 Angular tests. The JSON contract has a lint (<code>AtlasConfigLint</code>, B36) but no JSON Schema and no author guide.</p>
+<p><strong>Guidance.</strong> Single owner for shared code; a published contract for metadata authors.</p>
+<p><strong>Impact.</strong> Without an owner, each new app request becomes a platform change by a different developer, and the shared code drifts back to app branches.</p>
+<p><strong>Fix.</strong> Agree with the target team who owns <code>Platform/</code> folders. Before app #2: one author guide (manifest, form, dashboard, rules, effects, tokens) and a JSON Schema file for editor help (SV-07, optional in review 1). Effort M.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">AR-09</span>Features of the remaining apps that the platform does not have yet <span class="area">scope</span></h3>
+<p><strong>Evidence.</strong> Not in P1: attachments (module 8), workflow adapter (module 10), multi-row grids (<code>Grid.Data</code>, N5), stepper forms, dashboard row actions of the target <code>ActionMenuComponent</code> (N4). The current CDT and SQMS apps use some of these.</p>
+<p><strong>Impact.</strong> An app that needs one of these features cannot go config-only, and a developer may add an app branch to the platform to get it.</p>
+<p><strong>Fix.</strong> Before P2: a feature table of the 16 apps (which features each one uses) to order P2-P5 and to find the apps that can go config-only now. A missing feature is added once, as metadata, never as an app branch. Effort S (inventory).</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">AR-10</span>pbdev-select and the exact pbdev-core version are not proven <span class="area">integration; N1, N2</span></h3>
+<p><strong>Evidence.</strong> The dry run built against the real pbdev-core source, except <code>pbdev-select</code> (source not supplied; stand-in). Target <code>package.json</code> says <code>^6.0.0</code>; the source read is <code>6.0.1-0</code>.</p>
+<p><strong>Fix.</strong> Option 2 at the target (the user runs <code>ng build</code> with the copied <code>platform/</code>): it closes both. Effort S.</p>
+</div>
+<div class="issue low">
+<h3><span class="badge b-low">AR-11</span>The TTD change-over script copies and revokes in one run <span class="area">SQL; development region</span></h3>
+<p><strong>Evidence.</strong> <code>050-ttdv2-copy-from-ttd.sql:7, 18</code>: part 2 copies the data and revokes all TTD roles in one transaction.</p>
+<p><strong>Impact.</strong> None in the development region. At go-live, the business cannot copy the data and keep TTD open in parallel for a trial period.</p>
+<p><strong>Fix.</strong> Decide at go-live. Option: split the revoke into its own script (<code>060</code>), so the copy can run first and TTD stops only on the chosen day. Effort S.</p>
+</div>
+</section>
+<section id="7-check-against-the-published-guidance">
+<h2>7. Check against the published guidance</h2>
+<div class="table-wrap"><table>
+<tr><th>Guidance</th><th>Platform</th><th>Result</th></tr>
+<tr><td>ASP.NET Core: start-up work in an <code>IHostedService</code>; options from the given configuration; <code>TryAdd</code> in libraries; <code>ProblemDetailsFactory</code></td><td><code>AtlasPlatformStartupService</code> (B53), <code>AtlasPlatformConfiguration</code> (B27), <code>TryAddSingleton(TimeProvider.System)</code> (B28), problem filter (B55)</td><td>Follows</td></tr>
+<tr><td>ASP.NET Core: high-performance logging <code>[LoggerMessage]</code></td><td><code>AtlasLog.cs</code> (B56)</td><td>Follows</td></tr>
+<tr><td>ASP.NET Core: avoid blocking calls</td><td>Synchronous, as the target</td><td>Gap, deferred (AR-04, PF1)</td></tr>
+<tr><td>EF Core: no-tracking for read-only queries</td><td><code>FindActive(..., tracking: false)</code> (B58)</td><td>Follows</td></tr>
+<tr><td>EF Core: optimistic concurrency with a row version</td><td><code>rowversion</code>, <code>VersionRequired</code> (B39)</td><td>Follows</td></tr>
+<tr><td>EF Core / SQL: parameters, no SQL text from users</td><td>Identifiers from <code>sys.columns</code>, typed parameters</td><td>Follows</td></tr>
+<tr><td>SQL Server: sargable predicates, filtered indexes</td><td><code>[IsDeleted] = 0</code> (B59)</td><td>Follows; one <code>OR</code> gap (AR-05)</td></tr>
+<tr><td>angular.dev: standalone components, <code>inject()</code>, signals, <code>computed</code>, <code>OnPush</code></td><td>Form, dashboard, history dialog (B64)</td><td>Follows</td></tr>
+<tr><td>angular.dev: lazy loading with <code>loadComponent</code></td><td><code>atlas-platform.routes.ts</code></td><td>Follows</td></tr>
+<tr><td>angular.dev: dynamic components through a registry and DI</td><td><code>provideAtlasRenderers</code>, <code>provideAtlasGridComponents</code> (B33, B69)</td><td>Follows</td></tr>
+<tr><td>angular.dev: accessibility (labels, ARIA, keyboard)</td><td>B63</td><td>Follows</td></tr>
+<tr><td>angular.dev style guide: no logic in templates</td><td>Some per-field template calls (NG-11 remainder)</td><td>Low gap</td></tr>
+</table></div>
+</section>
+<section id="8-recommended-order">
+<h2>8. Recommended order</h2>
+<ol>
+<li>Fix AR-01 and AR-02 in the platform (small, with tests). Add the AR-05 config and index items.</li>
+<li>One-time integration in the development region (option 2): copy, the hand edits of AR-03, the smoke test of the current apps, then TTDV2 on. This also closes AR-10.</li>
+<li>Integration walk-through B3, B4, B7, B9, B10, B14, B15 (one question at a time).</li>
+<li>Review with the target team: this report, module 13, INTEGRATION.md. Agree AR-08 (owner) there.</li>
+<li>Performance backlog with the numbers from integration testing (PF9 first), then the engine defects.</li>
+<li>Before P2: the feature table (AR-09). At go-live: the AR-11 decision.</li>
+</ol>
+</section>
+<section id="9-references">
+<h2>9. References</h2>
+<ul>
+<li>Microsoft Learn, "ASP.NET Core best practices": learn.microsoft.com/aspnet/core/fundamentals/best-practices</li>
+<li>Microsoft Learn, "In-process hosting with IIS and ASP.NET Core": learn.microsoft.com/aspnet/core/host-and-deploy/iis/in-process-hosting</li>
+<li>Microsoft Learn, "Health checks in ASP.NET Core": learn.microsoft.com/aspnet/core/host-and-deploy/health-checks</li>
+<li>Microsoft Learn, "EF Core performance": learn.microsoft.com/ef/core/performance/</li>
+<li>Microsoft Learn, "Shadow and indexer properties (property-bag entity types)": learn.microsoft.com/ef/core/modeling/shadow-properties</li>
+<li>Microsoft Learn, "Handling concurrency conflicts": learn.microsoft.com/ef/core/saving/concurrency</li>
+<li>Microsoft Learn, "SQL Server index architecture and design guide": learn.microsoft.com/sql/relational-databases/sql-server-index-design-guide</li>
+<li>angular.dev: style guide, signals, lazy loading, programmatically rendering components, accessibility</li>
+<li>Module 13 (review 1), INTEGRATION.md, PBDEV.md, module 15 (performance questionnaire)</li>
+</ul>
+</section>
+</main>
+</body>
+</html>
