@@ -1,49 +1,61 @@
+<!-- The page layout and classes follow cp-atlas-dashboard.html as of 2026-10-27 (review R5). -->
 @if (loading()) {
-  <div class="atlas-center"><pbdev-loader /></div>
+<div class="absolute flex h-full w-full items-center justify-center">
+  <pbdev-loader />
+</div>
 } @else if (error()) {
-  <div class="atlas-panel atlas-alert atlas-alert-error" role="alert">
-    <strong>The dashboard cannot open.</strong>
-    <p>{{ error() }}</p>
-  </div>
+<div class="atlas-alert atlas-alert-error" role="alert">
+  <strong>The dashboard cannot open.</strong>
+  <p>{{ error() }}</p>
+</div>
 } @else if (dashboard(); as d) {
-  <div class="atlas-form-header">
-    <div>
-      <div class="atlas-breadcrumb">Dashboard</div>
-      <h1 class="atlas-title">{{ d.Name }}</h1>
-    </div>
-    <div class="atlas-header-actions">
+<div>
+  <div class="header-container">
+    <h1 class="header-title headline3">{{ d.Name }}</h1>
+    <div class="button-container">
       @for (button of visibleButtons(); track button.Name) {
-        <button type="button" class="btn btn--primary" [attr.id]="'btn_' + button.Name" [disabled]="button.Disabled" (click)="onButton(button)">
+        <button type="button" class="header-btn btn btn-primary" [attr.id]="'btn_' + button.Name" [disabled]="button.Disabled" (click)="onButton(button)">
+          <i class="btn-icon pbdev_icon_add" aria-hidden="true"></i>
           {{ button.Label }}
         </button>
       }
     </div>
   </div>
-
-  <div class="atlas-tabs" role="tablist" aria-label="Lists" (keydown)="onTabKey($event)">
-    @for (t of tabs(); track t.ID; let i = $index) {
-      <button type="button" role="tab" class="atlas-tab" [class.atlas-tab-active]="i === tabIndex()" [attr.aria-selected]="i === tabIndex()"
-        [attr.id]="'tab_' + t.ID" aria-controls="tabpanel" [attr.tabindex]="i === tabIndex() ? 0 : -1" (click)="tabIndex.set(i)">
-        {{ t.Label }} <span class="atlas-count">{{ t.KeyValues?.length ?? 0 }}</span>
-      </button>
-    }
+  <div class="tabs-container">
+    <ul class="nav nav-tabs tabs" role="tablist" aria-label="Lists" (keydown)="onTabKey($event)">
+      @for (t of tabs(); track t.ID; let i = $index) {
+        <li class="nav-item" role="presentation">
+          <a class="nav-link" role="tab" [class.active]="i === tabIndex()" [attr.aria-selected]="i === tabIndex()" [attr.aria-current]="i === tabIndex() ? 'page' : null"
+            [attr.id]="'tab_' + t.ID" aria-controls="tabpanel" [attr.tabindex]="i === tabIndex() ? 0 : -1" (click)="selectTab(i)">{{ t.Label }}</a>
+        </li>
+      }
+    </ul>
+    <div class="tabs-content">
+      @if (tab(); as t) {
+        <div role="tabpanel" id="tabpanel" [attr.aria-labelledby]="'tab_' + t.ID">
+          <p>{{ t.Description }}</p>
+          <div class="search-container">
+            <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
+            <input type="text" id="txt_Search" placeholder="Search here..." aria-label="Search" [value]="search()" (input)="onSearchChange($event)" />
+          </div>
+          <ag-grid-angular class="ag-theme-quartz" style="height: 40rem;" [modules]="modules" [defaultColDef]="defaultColDef"
+            [rowData]="rows()" [columnDefs]="columns()" [pinnedTopRowData]="totals()" [getRowClass]="rowClass"
+            [pagination]="true" [paginationPageSize]="20" [paginationPageSizeSelector]="[20, 50, 100]" [rowHeight]="28"
+            [loadingOverlayComponent]="loadingOverlayComponent" [quickFilterText]="search()" [overlayNoRowsTemplate]="'No records'" />
+        </div>
+      }
+    </div>
   </div>
+</div>
 
-  @if (tab(); as t) {
-    <div class="atlas-panel atlas-grid-panel" role="tabpanel" id="tabpanel" [attr.aria-labelledby]="'tab_' + t.ID" tabindex="0">
-      <ag-grid-angular class="atlas-grid" [theme]="theme" [rowData]="rows()" [columnDefs]="columns()"
-        [pinnedBottomRowData]="totals()" [pagination]="true" [paginationPageSize]="20" [paginationPageSizeSelector]="[20, 50, 100]"
-        [overlayNoRowsTemplate]="'No records'" [domLayout]="'autoHeight'" />
-    </div>
-  }
+<atlas-history-dialog [open]="!!historyRow()" [appCode]="historyRow()?.code ?? code" [recordId]="historyRow()?.id ?? 0" (closed)="historyRow.set(null)" />
 
-  <atlas-history-dialog [open]="!!historyRow()" [appCode]="historyRow()?.code ?? code" [recordId]="historyRow()?.id ?? 0" (closed)="historyRow.set(null)" />
-
-  <pbdev-dialog [visible]="!!deleteRow()" header="Delete record" (visibleChange)="!$event && deleteRow.set(null)">
-    <p>Delete record {{ deleteRow()?.id }}? The record is marked as deleted and leaves the dashboard.</p>
-    <div class="atlas-buttons">
-      <button type="button" class="btn" (click)="deleteRow.set(null)">Cancel</button>
-      <button type="button" class="btn atlas-btn-danger" (click)="confirmRemove()">Delete</button>
-    </div>
-  </pbdev-dialog>
+<!-- As CPAtlasConfirmation in confirmDelete() of the target dashboard. -->
+<pbdev-dialog [visible]="!!deleteRow()" (visibleChange)="!$event && deleteRow.set(null)">
+  <div class="modal-confirm-body">Are you sure you want to delete the record?</div>
+  <div class="modal-confirm-footer">
+    <button type="button" class="modal-confirm-no-btn" (click)="deleteRow.set(null)">No</button>
+    <button type="button" class="modal-confirm-yes-btn" id="btn_ConfirmDelete" (click)="confirmRemove()">Yes</button>
+  </div>
+</pbdev-dialog>
 }

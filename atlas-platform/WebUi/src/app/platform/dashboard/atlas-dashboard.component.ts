@@ -5,8 +5,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
-import { ColDef, themeQuartz } from 'ag-grid-community';
-import { DialogComponent, LoaderComponent } from '../atlas-pbdev';
+import { ClientSideRowModelModule, ColDef, Module, RowClassParams } from 'ag-grid-community';
+import { AgLoadingOverlayComponent, DialogComponent, LoaderComponent } from '../atlas-pbdev';
 import { forkJoin } from 'rxjs';
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
@@ -29,7 +29,24 @@ export class AtlasDashboardComponent implements OnInit {
   private readonly notice = inject(AtlasNoticeService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly theme = themeQuartz.withParams({ headerFontWeight: 600, fontSize: 13, spacing: 6 });
+  // As cp-atlas-dashboard.ts: the modules (the app registers the others), defaultColDef and the loading overlay.
+  protected readonly modules: Module[] = [ClientSideRowModelModule];
+  protected readonly defaultColDef: ColDef = {
+    sortable: true,
+    resizable: false,
+    suppressMovable: true,
+    filter: 'agTextColumnFilter',
+    suppressHeaderMenuButton: true,
+    floatingFilter: false,
+    floatingFilterComponentParams: { suppressFilterButton: true },
+    filterParams: { buttons: ['apply', 'reset'] },
+    unSortIcon: true,
+  };
+  protected readonly loadingOverlayComponent = AgLoadingOverlayComponent;
+  /** The total row is at the top with the class grand-total-row (target: grandTotalRow 'top', an Enterprise feature). */
+  protected readonly rowClass = (params: RowClassParams) => (params.node.rowPinned === 'top' ? 'grand-total-row' : '');
+  /** The text of the search box (target onSearchChange: quick filter). */
+  readonly search = signal('');
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly dashboard = signal<CPAtlasDashboard | null>(null);
@@ -58,6 +75,7 @@ export class AtlasDashboardComponent implements OnInit {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.code = (params.get('code') ?? '').toUpperCase();
       this.tabIndex.set(0);
+      this.search.set('');
       this.load();
     });
   }
@@ -91,6 +109,15 @@ export class AtlasDashboardComponent implements OnInit {
     this.navigate(target.AppCode, target.Id);
   }
 
+  selectTab(index: number): void {
+    this.tabIndex.set(index);
+    this.search.set('');
+  }
+
+  onSearchChange(event: Event): void {
+    this.search.set((event.target as HTMLInputElement).value);
+  }
+
   /** Review NG-08 (WAI-ARIA tabs): arrow keys, Home and End move between the tabs; the new tab gets the focus. */
   onTabKey(event: KeyboardEvent): void {
     const count = this.tabs().length;
@@ -105,7 +132,7 @@ export class AtlasDashboardComponent implements OnInit {
       return;
     }
     event.preventDefault();
-    this.tabIndex.set(next);
+    this.selectTab(next);
     const id = this.tabs()[next]?.ID;
     queueMicrotask(() => document.getElementById('tab_' + id)?.focus());
   }
@@ -133,7 +160,7 @@ export class AtlasDashboardComponent implements OnInit {
           this.notice.show('error', result.Errors.map((x) => x.Message).join(' '));
           return;
         }
-        this.notice.show('success', `Record ${recordId} deleted.`);
+        this.notice.show('success', 'Record deleted successfully');
         this.load();
       },
       error: (error) => this.notice.show('error', problemText(error)),

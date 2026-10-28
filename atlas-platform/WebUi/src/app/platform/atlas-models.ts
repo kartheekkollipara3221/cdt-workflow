@@ -157,6 +157,8 @@ export interface CPAtlasTab {
   ID?: string | null;
   Code?: string | null;
   Label?: string | null;
+  /** Shown above the grid (cp-atlas-dashboard.html). */
+  Description?: string | null;
   Visible?: boolean;
   KeyValues?: Record<string, unknown>[] | null;
   Columns?: CPTabColumn[] | null;

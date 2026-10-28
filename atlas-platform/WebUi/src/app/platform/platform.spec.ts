@@ -327,6 +327,41 @@ describe('dashboard tabs keyboard (review NG-08)', () => {
   });
 });
 
+describe('dashboard as cp-atlas-dashboard (review R5)', () => {
+  it('uses the target layout, search box and delete message', () => {
+    const api = {
+      applications: () => of([]),
+      dashboard: () => of({ Name: 'Tax Time Database', Tabs: [{ ID: 'A', Label: 'All', Description: 'All records', Visible: true, KeyValues: [{ ID: 7 }], Columns: [] }], Buttons: [] }),
+      remove: () => of({ Errors: [] }),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideToastr(),
+        { provide: AtlasApiService, useValue: api },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ code: 'ttdv2' })) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(AtlasDashboardComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('.header-container h1.header-title')?.textContent?.trim()).toBe('Tax Time Database');
+    expect(root.querySelector('ul.nav.nav-tabs a.nav-link.active')?.textContent?.trim()).toBe('All');
+    expect(root.querySelector('.tabs-content p')?.textContent?.trim()).toBe('All records');
+    const search = root.querySelector('#txt_Search') as HTMLInputElement;
+    search.value = 'abc';
+    search.dispatchEvent(new Event('input'));
+    expect(fixture.componentInstance.search()).toBe('abc');
+    fixture.componentInstance.selectTab(0);
+    expect(fixture.componentInstance.search()).toBe('');
+
+    fixture.componentInstance.deleteRow.set({ code: 'TTDV2', id: 7 });
+    fixture.detectChanges();
+    expect(root.querySelector('.modal-confirm-body')?.textContent?.trim()).toBe('Are you sure you want to delete the record?');
+  });
+});
+
 describe('value kinds of the real pbdev controls (review R2)', () => {
   const date = { Name: 'D', Label: 'D', Type: 'datetimepicker' } as CPApplicationControl;
   const check = { Name: 'C', Label: 'C', Type: 'check' } as CPApplicationControl;
