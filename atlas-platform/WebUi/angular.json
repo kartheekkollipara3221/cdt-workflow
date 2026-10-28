@@ -25,9 +25,12 @@
               }
             ],
             "styles": [
-              "src/styles.css",
-              "src/app/platform/atlas-platform.css"
-            ]
+              "src/styles.scss",
+              "src/app/platform/atlas-platform.scss"
+            ],
+            "stylePreprocessorOptions": {
+              "includePaths": ["src/app/stand-in/sass"]
+            }
           },
           "configurations": {
             "production": {

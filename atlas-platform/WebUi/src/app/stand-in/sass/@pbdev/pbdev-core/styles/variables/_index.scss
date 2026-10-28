@@ -1,0 +1,56 @@
+// STAND-IN: do not copy to the target. The Sass entry @pbdev/pbdev-core/styles/variables of the real library
+// (styles/variables: colors, constants, icons, typography). Only colour and size variables, with the values of
+// pbdev-core 6.0.x. angular.json (stylePreprocessorOptions.includePaths) finds this folder locally; at the target the
+// same @use finds the package in node_modules.
+
+// primary
+$primary-red: #c8102e;
+$primary-black: #42403e;
+$primary-white: #ffffff;
+
+// secondary
+$secondary-black: #000000;
+$secondary-dark-blue: #22536e;
+$secondary-dark-blue-2: #00446a;
+$secondary-blue: #4c7494;
+$secondary-light-blue: #99c1e1;
+
+// neutrals
+$gray-900: #3f3f3f;
+$gray-800: #6d6d6d;
+$gray-700: #919191;
+$gray-600: #adadad;
+$gray-500: #d5d6d8;
+$gray-400: #e0e0e0;
+$gray-300: #ebebeb;
+$gray-200: #f5f5f5;
+$gray-100: #f5f7f8;
+
+// text
+$text-primary: $primary-black;
+$text-secondary: $secondary-dark-blue;
+$text-gray: #949494;
+$text-black: $secondary-black;
+$text-white: $primary-white;
+
+// status
+$status-blue: #0070d1;
+$status-green: #008a07;
+$status-red: #e01a00;
+$status-orange: #eab44e;
+$status-disabled: #c9c9c9;
+
+// reds, blues, greens
+$red-main: $status-red;
+$red-dark: #910a20;
+$red-fill: #fdeceb;
+$blue-main: $secondary-dark-blue;
+$blue-dark: #0e2e40;
+$blue-fill-3: #e9f5fe;
+$green-main: $status-green;
+$green-dark: #1e4620;
+$green-fill: #edf7ee;
+
+// constants
+$navbar-height: 4rem;
+$footer-height: 3.75rem;

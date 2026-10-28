@@ -1,0 +1,369 @@
+// STAND-IN: do not copy to the target. Local look-alikes of what the target already has (review R6):
+// - the global rules of the target styles.scss (html font size, body colour, toast, modal-confirm, search box);
+// - the classes of pbdev-core.min.css that the platform uses (btn, headline-*, section, controls, dialog, loader);
+// - the Tailwind classes of the templates and the form JSON;
+// - the local shell and home page.
+// The platform styles are in src/app/platform/atlas-platform.scss (copied).
+@use '@pbdev/pbdev-core/styles/variables';
+@use '@ng-select/ng-select/themes/default.theme.css';
+@use 'ngx-toastr/toastr';
+
+// ---------- target styles.scss ----------
+html {
+  font-size: 11px;
+
+  @media (min-width: 1536px) {
+    font-size: 14px;
+  }
+}
+
+body {
+  margin: 0;
+  background-color: variables.$gray-100;
+  font-family: Arial, Helvetica, sans-serif;
+  color: variables.$text-primary;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.toast-container .ngx-toastr {
+  width: 600px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(0, 0, 0, 1);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.1) !important;
+  padding: 16px 16px 16px 45px !important;
+  opacity: 0.95;
+  font-size: 1rem;
+  color: variables.$text-primary;
+}
+
+.toast-container .toast-title {
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.toast-container .toast-success {
+  background-color: #e9fce9 !important;
+  border-left: 5px solid #1b5e20;
+}
+
+.toast-container .toast-info {
+  background-color: #f0f8ff !important;
+  border-left: 5px solid #0096ff;
+}
+
+.toast-container .toast-error {
+  background-color: #ffe6e6 !important;
+  border-left: 5px solid #b71c1c;
+}
+
+.modal-confirm-no-btn {
+  border-radius: 20px;
+  border: 2px solid red;
+  background: #fff;
+  width: 150px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.modal-confirm-yes-btn {
+  border-radius: 20px;
+  border: 0;
+  background-color: #c8102e;
+  color: white;
+  width: 150px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.modal-confirm-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 70px;
+  gap: 15px;
+}
+
+.modal-confirm-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+  font-weight: bold;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  width: 400px;
+  max-width: 100%;
+  border: 2px solid #ccc;
+  border-radius: 25px;
+  padding: 6px 15px;
+  background-color: #fff;
+  margin-left: auto;
+  margin-bottom: 20px;
+}
+
+.search-container:focus-within {
+  border-color: navy;
+}
+
+.search-container input[type='text'] {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 16px;
+  color: #333;
+}
+
+.grand-total-row {
+  font-weight: bold;
+  background-color: #f5f5f5;
+}
+
+// ---------- pbdev-core.min.css look-alikes ----------
+.headline-3,
+.headline3 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: variables.$text-secondary;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid variables.$secondary-dark-blue;
+  background: variables.$primary-white;
+  color: variables.$secondary-dark-blue;
+  border-radius: 4px;
+  padding: 0.6rem 1.2rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn--primary,
+.btn-primary {
+  background: variables.$secondary-dark-blue;
+  border-color: variables.$secondary-dark-blue;
+  color: variables.$primary-white;
+}
+
+.btn:disabled {
+  background: variables.$status-disabled;
+  border-color: variables.$status-disabled;
+  color: variables.$primary-white;
+  cursor: not-allowed;
+}
+
+.section {
+  background: variables.$primary-white;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.section-blue {
+  border-top: 4px solid variables.$secondary-dark-blue;
+}
+
+.section-header {
+  padding: 1rem 1.5rem 0;
+}
+
+.section-header--title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: variables.$text-secondary;
+}
+
+pbdev-input,
+pbdev-select,
+pbdev-textarea,
+pbdev-date-picker {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.3rem;
+}
+
+pbdev-input input,
+pbdev-select select,
+pbdev-textarea textarea,
+pbdev-date-picker input {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid variables.$gray-600;
+  border-radius: 4px;
+  font: inherit;
+  background: variables.$primary-white;
+  color: variables.$text-primary;
+}
+
+pbdev-input.error input,
+pbdev-select.error select,
+pbdev-textarea.error textarea,
+pbdev-date-picker.error input {
+  border-color: variables.$status-red;
+}
+
+pbdev-input input:disabled,
+pbdev-select select:disabled,
+pbdev-textarea textarea:disabled,
+pbdev-date-picker input:disabled {
+  border-style: dashed;
+  color: variables.$text-gray;
+}
+
+.pbdev-control-errors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: variables.$status-red;
+  font-size: 0.9rem;
+}
+
+.helper-text {
+  margin: 0;
+  color: variables.$gray-800;
+}
+
+.loader-2 {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 4px solid variables.$gray-400;
+  border-top-color: variables.$primary-red;
+  border-radius: 50%;
+  animation: pbdev-spin 0.8s linear infinite;
+}
+
+@keyframes pbdev-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pbdev-dialog-mask {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 40%);
+  z-index: 40;
+}
+
+.pbdev-dialog {
+  position: fixed;
+  z-index: 41;
+  top: 10vh;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 94vw;
+  max-height: 80vh;
+  overflow: auto;
+  background: variables.$primary-white;
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 25%);
+}
+
+.pbdev-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+}
+
+.pbdev-dialog-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: variables.$text-secondary;
+}
+
+.pbdev-dialog-close {
+  border: 0;
+  background: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.pbdev-dialog-content {
+  padding: 0 1.25rem 1rem;
+}
+
+// ---------- Tailwind classes of the templates and the form JSON ----------
+.absolute { position: absolute; }
+.flex { display: flex; }
+.block { display: block; }
+.grid { display: grid; }
+.h-full { height: 100%; }
+.w-full { width: 100%; }
+.items-center { align-items: center; }
+.items-start { align-items: start; }
+.justify-center { justify-content: center; }
+.justify-right { justify-content: flex-end; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.col-span-3 { grid-column: span 3 / span 3; }
+.col-span-12 { grid-column: span 12 / span 12; }
+.gap-6 { gap: 1.5rem; }
+.p-8 { padding: 2rem; }
+.pb-2 { padding-bottom: 0.5rem; }
+.pt-14 { padding-top: 3.5rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.bg-white { background: #fff; }
+.border-b { border-bottom: 1px solid; }
+.border-gray-200 { border-color: #e5e7eb; }
+.text-sm { font-size: 0.875rem; }
+.font-semibold { font-weight: 600; }
+.text-gray-700 { color: #374151; }
+
+// ---------- Shell and home (stand-in) ----------
+.shell-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0 1.25rem;
+  height: variables.$navbar-height;
+  background: variables.$secondary-dark-blue;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.shell-brand { color: #fff; font-weight: 700; font-size: 1.3rem; text-decoration: none; white-space: nowrap; }
+.shell-tag { font-weight: 400; font-size: 0.9rem; opacity: 0.75; margin-left: 0.4rem; }
+.shell-nav { display: flex; gap: 1rem; flex: 1; }
+.shell-link { color: #dbe7f5; text-decoration: none; }
+.shell-link:hover { color: #fff; text-decoration: underline; }
+.shell-user { display: flex; align-items: center; gap: 1rem; }
+.shell-roles { opacity: 0.75; margin-left: 0.25rem; }
+.shell-actas { display: flex; align-items: center; gap: 0.4rem; }
+.shell-actas select { padding: 0.25rem 0.4rem; border-radius: 4px; border: 0; max-width: 260px; }
+.shell-main { position: relative; max-width: 1280px; margin: 0 auto; padding: 1.25rem; }
+.shell-banner { margin: 1rem 1.25rem 0; }
+
+.atlas-title { margin: 0.5rem 0; color: variables.$text-secondary; }
+.atlas-muted { color: variables.$gray-800; }
+.atlas-panel { background: #fff; padding: 1rem; border-radius: 4px; }
+.atlas-alert { padding: 0.75rem 1rem; border-radius: 4px; }
+.atlas-alert-error { background: variables.$red-fill; border: 1px solid variables.$status-red; color: variables.$red-dark; }
+.atlas-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.atlas-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border: 1px solid variables.$gray-400;
+  border-radius: 4px;
+  text-decoration: none;
+  color: variables.$text-primary;
+}
+.atlas-card:hover { border-color: variables.$secondary-dark-blue; }
+.atlas-card-code { font-weight: 700; color: variables.$primary-red; letter-spacing: 0.05em; }
+.atlas-card-name { font-size: 1.2rem; font-weight: 600; }
