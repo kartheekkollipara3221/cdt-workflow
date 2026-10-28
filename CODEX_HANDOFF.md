@@ -1,4 +1,4 @@
-# RESUME HERE - Integration dry run (option 1) DONE (2026-10-27, not pushed). NEXT: integration walk-through, B3 first
+# RESUME HERE - Integration dry run (option 1) DONE (2026-10-27, pushed to origin/console-code-first-0518). NEXT: integration walk-through, B3 first
 
 ## Broad goal (unchanged)
 Seamless integration at the target; platform generic and simple (16+ apps by metadata). Look and control usage follow
