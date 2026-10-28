@@ -1,4 +1,51 @@
-# RESUME HERE - PREREQUISITE (user, 2026-10-27): rework atlas-platform to stay close to the real target code; THEN the performance backlog
+# RESUME HERE - Target-alignment rework R0-R8 DONE (2026-10-27, not pushed). NEXT: the performance backlog (questionnaire)
+
+## Result (R1-R8)
+- Commits: R0 9f83b7c, R1 63aa2e1, R2 73f5d30, R3 72e29cc, R4 25eb48c, R5 385cf52, R6 a4e0f83 + 561766a, R7 1ff9327,
+  R8 (this handoff). Branch console-code-first-0518, NOT pushed.
+- Regression after R7: dotnet build 0 warnings; dotnet test 273 passed; --atlas-check 0/0; ng test 66 passed (52 -> 66);
+  ng build 0 warnings, initial bundle 391 kB.
+- Browser smoke (StandIn, Olive Owner): form 10000 in section-master layout; grid = ag-grid with NumericEditor cells
+  (Monday_0 ...), WeeklyTotal disabled, Computed total live (330 -> 375); save -> toastr "Record saved successfully" ->
+  dashboard shows 375; restored to 330. New record + Save -> modal "Please make sure all the mandatory fields are
+  filled." + field errors (pbdev text for Category, form text for Account). No console errors. API/UI STOPPED.
+- Correction to the plan: the target does NOT use the ag-grid legacy theme. It registers AllEnterpriseModule in main.ts
+  and puts CSS theme classes on the grids; with ag-grid 33 those classes have no effect (Theming API). Platform does
+  the same (B72). The target main.ts has an ag-grid license key: never copy it.
+
+## R8 open-item re-tag (against the reworked code)
+| Item | Status after rework | Where now |
+|---|---|---|
+| PF1 / DA-10 async I/O | Valid, unchanged (server) | Service/Platform (sync I/O) |
+| PF2 roles cache, PF5 start-up metadata, PF8 index check, PF9 slow log | Valid, unchanged (server) | - |
+| PF3 dashboard tab queries | Valid. Client reads the same tab shape; it adds a client quick filter (search box) and page size 20 | WebUi platform/dashboard/atlas-dashboard.component.html |
+| PF4 save re-loads option lists | Valid. ng-select still sends the option Value (bindValue "value" mapped from Value) | renderers/atlas-renderers.ts AtlasNgSelectRenderer |
+| PF6 parsed graph cache, PF7 Find -> dictionary | Valid. Grid columns now carry cellRenderer/params and Grid.Paginate through to the client; server unchanged | form/renderers/atlas-grid-renderer.ts columnDef |
+| Q1-Q10 questionnaire | Valid as written. Q3 (MaxRows): the dashboard pages 20 rows and filters on the client; the server limit is still the question | docs/atlas-platform/15-performance-questionnaire.html |
+| B3 rule enable of JSON-disabled control | Valid, unchanged (model and rules not changed) | AtlasRuleEngine.ApplyToSection |
+| B4 button rules RuleDefault Hidden | Valid. Only the button look changed (header-btn btn btn--primary) | atlas-form.component.html |
+| B7 allow list | Valid. Client outputs unchanged (hidden controls kept in the group, not sent) | atlas-form-model.ts buildOutputs |
+| B9 ModifiedBy/Date on create | Valid, unchanged | - |
+| B10 SetFromOption | Valid. optionData still reads control.Options (CPKeyValue with Data); browser smoke filled AccountNumber/Name | form/atlas-effects.ts |
+| B14 dashboard rules, B15 row shape | Valid, unchanged (dates still text) | - |
+| SV-13 lazy Dashboards, HO-04 health check | Valid, unchanged (server) | - |
+| NG-11 per-field view model | Valid (Low); the template adds one more per-field call (registry.drawsMessages) | atlas-form.component.html |
+| SV-07 JSON Schema file | Changed: a schema should also list the cellRenderer names (the app gives them with provideAtlasGridComponents) and Grid.Paginate | atlas-models.ts CPGridColumn/CPGrid |
+| Engine defects (SaveDraft race, D06, D09, D10, D02, F07-F09) | Valid, unchanged (engine not touched) | entry below |
+| NEW N1 pbdev-select source not supplied | Open: stand-in select from stories/select-alt; check at the target | PBDEV.md section 3 |
+| NEW N2 exact pbdev-core version | Open: target package.json ^6.0.0, source read 6.0.1-0; need package-lock line | PBDEV.md section 3 |
+| NEW N3 hidden controls stay in the form group | Kept on purpose (result same as section master; rules can show again). User may ask for exact target behaviour | INTEGRATION B67 |
+| NEW N4 dashboard row actions | Platform buttons kept; target uses its ActionMenuComponent (target code). Could be given like the grid components | INTEGRATION B70 |
+| NEW N5 grid BindMode | Only SingleRowFields; the target section master also shows multi-row Grid.Data grids (not in P1) | atlas-grid-renderer.ts |
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. The target-alignment rework R0-R8 is done. Goal: the atlas-platform
+performance backlog. Here are my answers to docs/atlas-platform/15-performance-questionnaire.html: <paste>. Record
+them, then start with the first approved item. Integration walk-through (B3) and engine defects come after."
+
+---
+
+# EARLIER: PREREQUISITE (user, 2026-10-27): rework atlas-platform to stay close to the real target code; THEN the performance backlog
 
 ## Why
 - The user added the target's section master as of 10/27 (target-implementation-read-only/section-master-asof10272026/)
