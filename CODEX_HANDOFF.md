@@ -1,4 +1,35 @@
-# RESUME HERE - Review 2: AR-01, AR-02, AR-05 FIXED (B73-B75, 2026-10-28). NEXT: one-time integration in dev (option 2, AR-03 smoke test)
+# RESUME HERE - 2026-10-28 session end. Review 2 fixes done (B73-B75), target package pushed, local preview = target shell (c10b593). User is reviewing the local look.
+
+## State at save (2026-10-28)
+- Branch console-code-first-0518, pushed. Last code commits: e0dfc28 (AR-01/AR-02), 4e16bbb (AR-05), 46dc83d
+  (target package .ps1), c10b593 (local shell = target layout + global styles).
+- Regression at save: dotnet build 0 warnings; dotnet test 277 passed; --atlas-check 0/0; ng build 0 warnings;
+  ng test 66 passed. Browser check of dashboard, form, sidebar hover, user menu: no console errors.
+- Local preview was left running for the user (API 5080 StandIn, UI 4200). Restart: see local/README.md.
+- Target package: atlas-platform/local/package/atlas-target-package.ps1 (files of 4a1c16b; still current: the
+  changes after it are local-only stand-in/WebUi shell files, not in the copy list). Rebuild after any platform/,
+  Config, Service/Application or sql change: python atlas-platform/local/make-target-package.py <out.ps1>.
+
+## Open items, in order
+1. User feedback on the local look (c10b593). Offered, not answered: optional local step that builds the real
+   pbdev-core Sass source (target-implementation-read-only/PB-DEV-COMPONENTS) and loads it instead of the look-alikes.
+2. One-time integration in the target DEV region (user runs it with the .ps1): INTEGRATION.md section 1 copy,
+   section 2 hand edits, smoke test current apps before/after, TTDV2 Enabled=false until it passes, list
+   CP_Atlas_Application codes (AR-02 check). Also closes AR-10 (pbdev-select, exact version). Errors -> fix here,
+   rebuild package.
+3. Walk-through of the 7 design choices B3, B4, B7, B9, B10, B14, B15 (INTEGRATION.md section 6), one at a time.
+4. Review with the target team (module 16, module 13, INTEGRATION.md); agree AR-08 owner + author guide.
+5. Performance backlog (PF9 first, questionnaire 15), then engine defects. Before P2: AR-09 feature table.
+6. Confirm MaxRows 5000 on TaxTimeAllReport (picked by me, user not asked a number yet).
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <My feedback on the local look: ... | Integration result at the
+target: ... | Start the B3 walk-through>. Keep the broad goal: seamless integration at the target, platform generic
+and simple, nothing breaks the existing system."
+
+---
+
+# EARLIER: Review 2: AR-01, AR-02, AR-05 FIXED (B73-B75, 2026-10-28). NEXT: one-time integration in dev (option 2, AR-03 smoke test)
 
 ## Local look = target shell (2026-10-28)
 - User asked why the local build has no sidebar and other styles. Cause: the stand-in shell was a test harness.
