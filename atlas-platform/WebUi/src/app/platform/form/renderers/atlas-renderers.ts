@@ -32,8 +32,8 @@ export abstract class AtlasRendererBase {
 
 @Component({
   selector: 'atlas-text-renderer',
-  imports: [ReactiveFormsModule, InputComponent],
-  template: `<pbdev-input inputType="string" [inputId]="'ctl_' + control.Name" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
+  imports: [ReactiveFormsModule, InputComponent, AtlasControlIdDirective],
+  template: `<pbdev-input inputType="string" [atlasControlId]="'ctl_' + control.Name" [placeholder]="control.PlaceHolder ?? ''" [formControl]="formControl" />`,
 })
 export class AtlasTextRenderer extends AtlasRendererBase {}
 
