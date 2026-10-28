@@ -2,11 +2,10 @@
 // - the global rules of the target styles.scss (html font size, body colour, toast, modal-confirm, search box);
 // - the classes of pbdev-core.min.css that the platform uses (btn, headline-*, section, controls, dialog, loader);
 // - the Tailwind classes of the templates and the form JSON;
-// - the local shell and home page.
+// - the pbdev navbar, user menu, help and footer rules, and the home page.
 // The platform styles are in src/app/platform/atlas-platform.scss (copied).
 @use '@pbdev/pbdev-core/styles/variables';
-@use '@ng-select/ng-select/themes/default.theme.css';
-@use 'ngx-toastr/toastr';
+// ng-select theme, bootstrap, material, fontawesome and toastr come from angular.json, in the order of the target.
 
 // ---------- target styles.scss ----------
 html {
@@ -321,32 +320,156 @@ pbdev-date-picker input:disabled {
 .font-semibold { font-weight: 600; }
 .text-gray-700 { color: #374151; }
 
-// ---------- Shell and home (stand-in) ----------
-.shell-header {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0 1.25rem;
-  height: variables.$navbar-height;
-  background: variables.$secondary-dark-blue;
-  color: #fff;
-  position: sticky;
+// ---------- pbdev navbar, user menu, help, footer (look-alikes of the real component styles) ----------
+.pbdev-navbar {
+  position: fixed;
   top: 0;
-  z-index: 20;
+  left: 0;
+  height: variables.$navbar-height;
+  width: 100%;
+  z-index: 30;
+  color: variables.$text-black;
+  background-color: variables.$primary-white;
+  box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: row;
+
+  &-flag-spacer {
+    height: 100%;
+    width: variables.$side-nav-width;
+  }
+
+  &-title {
+    display: flex;
+    flex-grow: 1;
+    align-items: center;
+    padding: 0 1.875rem;
+    user-select: none;
+  }
+
+  &-items {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 }
 
-.shell-brand { color: #fff; font-weight: 700; font-size: 1.3rem; text-decoration: none; white-space: nowrap; }
-.shell-tag { font-weight: 400; font-size: 0.9rem; opacity: 0.75; margin-left: 0.4rem; }
-.shell-nav { display: flex; gap: 1rem; flex: 1; }
-.shell-link { color: #dbe7f5; text-decoration: none; }
-.shell-link:hover { color: #fff; text-decoration: underline; }
-.shell-user { display: flex; align-items: center; gap: 1rem; }
-.shell-roles { opacity: 0.75; margin-left: 0.25rem; }
-.shell-actas { display: flex; align-items: center; gap: 0.4rem; }
-.shell-actas select { padding: 0.25rem 0.4rem; border-radius: 4px; border: 0; max-width: 260px; }
-.shell-main { position: relative; max-width: 1280px; margin: 0 auto; padding: 1.25rem; }
-.shell-banner { margin: 1rem 1.25rem 0; }
+.pbdev-navbar-user-menu,
+.pbdev-navbar-help {
+  position: relative;
+  display: flex;
+}
 
+.navbar-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0 1.5rem;
+  cursor: pointer;
+  user-select: none;
+  height: 100%;
+  box-shadow: -1px 0 0 0 #c9dbe9;
+
+  i {
+    color: variables.$secondary-blue;
+  }
+}
+
+.navbar-menu {
+  overflow: hidden;
+  box-sizing: border-box;
+  min-width: 12.5rem;
+  max-width: 18rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  white-space: nowrap;
+
+  p {
+    margin: 0;
+  }
+
+  &--name {
+    font-weight: 600;
+  }
+
+  &--subtitle {
+    font-size: 0.75rem;
+    color: variables.$gray-800;
+  }
+}
+
+.pbdev-menu-popup,
+.navbar-popover-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  background: variables.$primary-white;
+  border: 1px solid variables.$gray-500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.pbdev-menu-popup {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+
+  li {
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+
+    &:hover {
+      background: variables.$gray-100;
+    }
+  }
+
+  .p-menuitem-bold {
+    font-weight: 700;
+  }
+}
+
+.help {
+  width: 20rem;
+  padding: 0.375rem 0.625rem 1rem;
+
+  &--title {
+    font-weight: 800;
+    letter-spacing: 0.025em;
+    padding-bottom: 1rem;
+  }
+
+  &--content {
+    color: variables.$gray-800;
+    line-height: 1.8;
+  }
+}
+
+pbdev-footer footer {
+  display: flex;
+  height: variables.$footer-height;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid variables.$gray-500;
+  color: variables.$gray-800;
+  font-size: 0.75rem;
+  user-select: none;
+
+  .version {
+    font-weight: 300;
+    color: variables.$gray-700;
+  }
+}
+
+// ---------- Home page (stand-in) ----------
 .atlas-title { margin: 0.5rem 0; color: variables.$text-secondary; }
 .atlas-muted { color: variables.$gray-800; }
 .atlas-panel { background: #fff; padding: 1rem; border-radius: 4px; }

@@ -42,7 +42,7 @@ npm install        # first time only
 npm start          # ng serve on http://localhost:4200
 ```
 
-Open http://localhost:4200. The header has the app menu and the **Act as** switch (test users; Development only).
+Open http://localhost:4200. The shell has the layout of the target `app.component` (navbar, sidebar with the app menu on hover, footer) and loads the same global styles in the same order as the target `angular.json` (ng-select theme, bootstrap, material indigo-pink, fontawesome, `styles.scss`, toastr). The **Act as** switch (test users; Development only) is in the user menu at the top right. Not the same as the target: the pbdev styles are look-alikes (the real `pbdev-core.min.css` is not in the repo), the sidebar logo is text (`Logo-white.png` not supplied), and the select controls are plain HTML (PrimeNG at the target).
 
 What to try:
 

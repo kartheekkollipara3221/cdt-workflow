@@ -1,5 +1,16 @@
 # RESUME HERE - Review 2: AR-01, AR-02, AR-05 FIXED (B73-B75, 2026-10-28). NEXT: one-time integration in dev (option 2, AR-03 smoke test)
 
+## Local look = target shell (2026-10-28)
+- User asked why the local build has no sidebar and other styles. Cause: the stand-in shell was a test harness.
+- Done: WebUi stand-in shell rebuilt on the target app.component (pbdev-navbar + user menu with Act as + help,
+  sidebar from v1/Application, home-wrapper, pbdev-footer, logout dialog; app.scss = target app.component.scss).
+  Stand-in pbdev-core: NavbarComponent, NavbarUserMenuComponent, NavbarHelpComponent, FooterComponent, MenuItem.
+  angular.json styles in the target order (ng-select theme, bootstrap 5.3.8, material indigo-pink, fontawesome 7,
+  styles.scss, toastr, atlas-platform.scss); budget 4mb/8mb as the target. Local packages only; platform/ unchanged.
+- Gaps kept: real pbdev-core css (not supplied; only Sass source -> dry-run route), Logo-white.png, PrimeNG selects.
+- Seen: the target app.component.scss sets `.ag-header { color: #fff }` on #e5f0f8 -> grid header text is white on
+  light blue (also at the target unless something there overrides it). Told the user; not changed.
+
 ## Target package (2026-10-28)
 - atlas-platform/local/make-target-package.py -> one self-extracting .ps1 (88 files, ~251 kB, commit 04205ea):
   copy/ (INTEGRATION.md section 1, target layout), reference/ (INTEGRATION.md, PBDEV.md, StandIn CPAtlasService,

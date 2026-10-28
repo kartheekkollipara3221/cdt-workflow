@@ -10,7 +10,7 @@
 //  - inputId is a field (a generated id), not an @Input;
 //  - pbdev-dialog does not change its own "visible"; it emits visibleChange(false).
 // Plain HTML instead of PrimeNG and Maskito. The look is checked at the target (INTEGRATION.md).
-import { KeyValuePipe, NgClass } from '@angular/common';
+import { KeyValuePipe, NgClass, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import {
   Component,
   Directive,
@@ -490,3 +490,97 @@ export class AgLoadingOverlayComponent implements ILoadingOverlayAngularComp {
     return;
   }
 }
+
+/** The PrimeNG MenuItem members that the target shell uses (target: import { MenuItem } from 'primeng/api'). */
+export interface MenuItem {
+  label?: string;
+  styleClass?: string;
+  command?: (event?: unknown) => void;
+}
+
+/**
+ * Real: src/components/navbar. A fixed top bar: flag spacer, title, items (row-reverse). The real spacer width
+ * follows the side-nav state (animation); the target shell has its own sidebar, so the stand-in spacer is fixed.
+ */
+@Component({
+  selector: 'pbdev-navbar',
+  template: `<nav class="pbdev-navbar">
+    <div class="pbdev-navbar-flag-spacer"></div>
+    <div class="pbdev-navbar-title">{{ title }}</div>
+    <ul class="pbdev-navbar-items"><ng-content /></ul>
+  </nav>`,
+})
+export class NavbarComponent {
+  @Input() title?: string;
+}
+
+/** Real: src/components/navbar/navbar-user-menu (PrimeNG p-menu popup). Icons: fontawesome here, pbdev_icon-* at the target. */
+@Component({
+  selector: 'pbdev-navbar-user-menu',
+  imports: [TitleCasePipe, UpperCasePipe],
+  template: `<li class="navbar-item navbar-menu" (click)="open = !open" (keyup.enter)="open = !open" tabindex="0">
+      <i id="user_icon" class="fas fa-user"></i>
+      <div class="user-info">
+        <p class="user-info--name">{{ userName | titlecase }}</p>
+        <p class="user-info--subtitle">{{ subtitle | uppercase }}</p>
+      </div>
+      <i id="chevron_down" class="fas fa-chevron-down"></i>
+    </li>
+    @if (open) {
+      <ul class="pbdev-menu-popup navbar-menu" role="menu">
+        @for (item of menuItems; track $index) {
+          <li role="menuitem" tabindex="0" [class]="item.styleClass ?? ''" (click)="run(item)" (keyup.enter)="run(item)">{{ item.label }}</li>
+        }
+      </ul>
+    }`,
+})
+export class NavbarUserMenuComponent {
+  @Input({ required: true }) userName!: string;
+  @Input() subtitle?: string;
+  @Input({ required: true }) menuItems!: MenuItem[];
+  protected open = false;
+
+  @HostBinding('class.pbdev-navbar-user-menu') readonly hostClass = true;
+
+  protected run(item: MenuItem): void {
+    this.open = false;
+    item.command?.();
+  }
+}
+
+/** Real: src/components/navbar/navbar-help (PrimeNG p-popover). */
+@Component({
+  selector: 'pbdev-navbar-help',
+  imports: [UpperCasePipe],
+  template: `<li class="navbar-item" (click)="open = !open" (keyup.enter)="open = !open" tabindex="0" aria-label="Help">
+      <i id="help_icon" class="fas fa-circle-question"></i>
+    </li>
+    @if (open) {
+      <div class="navbar-popover-panel">
+        <div class="help">
+          <div class="help--title"><p>{{ title | uppercase }}</p></div>
+          <div class="help--content"><ng-content /></div>
+        </div>
+      </div>
+    }`,
+})
+export class NavbarHelpComponent {
+  @Input({ required: true }) title: string = 'Need help?';
+  protected open = false;
+
+  @HostBinding('class.pbdev-navbar-help') readonly hostClass = true;
+}
+
+/** Real: src/components/footer. */
+@Component({
+  selector: 'pbdev-footer',
+  template: `<footer>
+    <span>© {{ year }} Brown Brothers Harriman. All Rights Reserved</span>
+    <span class="version">Version: {{ versionNumber }}</span>
+  </footer>`,
+})
+export class FooterComponent {
+  @Input({ required: true }) versionNumber!: string;
+  year: number = new Date().getFullYear();
+}
+

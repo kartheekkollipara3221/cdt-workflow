@@ -1,36 +1,75 @@
-<header class="shell-header">
-  <a class="shell-brand" routerLink="/">CP Atlas <span class="shell-tag">platform preview · local</span></a>
-  <nav class="shell-nav">
-    @for (app of apps(); track app.ID) {
-      <a [routerLink]="['/dashboard', app.Code]" class="shell-link">{{ app.Name }}</a>
-    }
-  </nav>
-  <div class="shell-user">
-    @if (user(); as u) {
-      <span class="shell-who" [attr.title]="'Roles: ' + (u.Roles?.join(', ') || 'none')">
-        {{ u.DisplayName }} <span class="shell-roles">{{ u.Roles?.join(', ') || 'no role' }}</span>
-      </span>
-    }
-    @if (testUsers().length > 0) {
-      <label class="shell-actas">
-        Act as
-        <select id="actAs" [value]="actAs()" (change)="changeUser($any($event.target).value)">
-          <option value="">me (Windows login)</option>
-          @for (t of testUsers(); track t.LanId) {
-            <option [value]="t.LanId" [selected]="t.LanId === actAs()">{{ t.DisplayName }} · {{ t.Note }}</option>
-          }
-        </select>
-      </label>
-    }
+<!-- STAND-IN shell: do not copy. Same layout as the target app.component.html (navbar, sidebar, home-wrapper, footer). -->
+@if (loadingMenu()) {
+  <div class="absolute flex h-full w-full items-center justify-center">
+    <pbdev-loader />
   </div>
-</header>
+} @else {
+  <pbdev-navbar [title]="title">
+    <pbdev-navbar-user-menu [userName]="userName()" [subtitle]="subtitle()" [menuItems]="userMenuItems()" />
+    <pbdev-navbar-help [title]="helpTitle">
+      <p>
+        If you have any questions about CP Atlas, please contact the tech team at
+        <a class="text-status-blue" [href]="'mailto:' + supportEmail">{{ supportEmail }}</a>
+      </p>
+    </pbdev-navbar-help>
+  </pbdev-navbar>
 
-@if (apiDown()) {
-  <div class="atlas-alert atlas-alert-error shell-banner">
-    The API at http://localhost:5080 is not available. Start it (atlas-platform/local/README.md) and reload.
+  <div class="app-container">
+    <div class="sidebar" [ngClass]="{ 'sidebar-collapsed': isSidebarCollapsed }">
+      <div class="sidebar-flag">
+        <a class="sidebar-logo sidebar-logo-text" routerLink="/" aria-label="CP Atlas home">CP</a>
+      </div>
+      <div class="sidebar-menu">
+        <ul>
+          @for (item of menuItems(); track item.label) {
+            <li class="sidebar-menu-item">
+              <a
+                [routerLink]="item.url"
+                class="sidebar-item"
+                [ngClass]="{ 'has-children': item.children, 'menu-item-active': item.isOpen }"
+                (click)="toggleMenuItem(item)"
+              >
+                <i [class]="item.icon" style="padding-left: 40px"></i>
+                <span class="sidebar-item-text">{{ item.label }}</span>
+                @if (item.children && !isSidebarCollapsed) {
+                  <i class="fas fa-chevron-down sidebar-item-arrow" [ngClass]="{ rotated: item.isOpen }"></i>
+                }
+              </a>
+              @if (item.children && !isSidebarCollapsed && item.isOpen) {
+                <ul class="sidebar-submenu">
+                  @for (child of item.children; track child.path) {
+                    <li>
+                      <a [routerLink]="child.path" class="sidebar-item sidebar-subitem">
+                        <i [class]="child.icon"></i>
+                        <span class="sidebar-item-text">{{ child.label }}</span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <pbdev-dialog [(visible)]="dialogVisible" [header]="'Are you sure you want to logout?'">
+    <div class="mt-8 flex flex-col content-stretch gap-3.5">
+      <button class="btn btn-outline btn-large" (click)="hideDialog()">Not Now</button>
+      <button class="btn btn-primary btn-large" (click)="logout()">Logout</button>
+    </div>
+  </pbdev-dialog>
+
+  <div class="home-wrapper">
+    @if (apiDown()) {
+      <div class="atlas-alert atlas-alert-error shell-banner">
+        The API at http://localhost:5080 is not available. Start it (atlas-platform/local/README.md) and reload.
+      </div>
+    }
+    <router-outlet />
+    <div [ngClass]="{ 'px-8': !reducePadding, 'px-6': reducePadding }">
+      <pbdev-footer [versionNumber]="version" />
+    </div>
   </div>
 }
-
-<main class="shell-main">
-  <router-outlet />
-</main>
