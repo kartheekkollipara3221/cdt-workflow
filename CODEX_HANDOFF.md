@@ -17,14 +17,24 @@ the target; behaviour stays metadata-driven. See the entry below for the full ru
 - Repo regression after the change: dotnet build 0 warnings; dotnet test 273 passed; --atlas-check 0/0; ng test 66;
   ng build 0 warnings (391 kB). API/UI stopped.
 
+## Session state at save (2026-10-27)
+- The user looked at the look and feel of the real-library build locally (API 5080 StandIn + scratch UI 4200).
+- The scratch copy lives in the session scratchpad (...\scratchpad\dry\WebUi) and may be deleted. It is NOT in the
+  repo. Extra in scratch only: bootstrap 5.3.8 in angular.json styles (as the target), so the dashboard "Add New"
+  (btn btn-primary) is visible. The target also loads @angular/material indigo-pink and fontawesome; scratch does not
+  (the ADD NEW icon is missing locally).
+- To rebuild the dry run later: offered a script atlas-platform/local/dryrun-real-pbdev.ps1 (not written yet; user did
+  not answer). Steps are in PBDEV.md section 6.
+- Branch pushed: origin/console-code-first-0518 at b7ced3b (plus this handoff commit if pushed).
+
 ## Remaining before go-live
 1. Integration walk-through, B3 first, one question at a time (INTEGRATION.md section 6: B3/B4/B7/B9/B10/B14/B15).
 2. Option 2 at the target (user runs it) is still the final proof for pbdev-select and the exact installed version.
 3. Performance backlog PF1-PF9 (questionnaire answers), then the engine defects.
 
 ## Next-session prompt
-"Resume. Read the top entry of CODEX_HANDOFF.md. The dry run is done. Start the integration walk-through with B3, one
-question at a time. Keep the broad goal: seamless integration at the target, platform generic and simple."
+"Resume. Read the top entry of CODEX_HANDOFF.md. The dry run is done and pushed. Start the integration walk-through
+with B3, one question at a time. Keep the broad goal: seamless integration at the target, platform generic and simple."
 
 ---
 
