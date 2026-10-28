@@ -16,7 +16,7 @@ public sealed class Ttdv2AppScriptTests : IAsyncLifetime
         "SELECT CAST(is_nullable AS int) FROM sys.columns WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IsDeleted'";
     private const string FilteredIndexCount =
         "SELECT COUNT(*) FROM sys.indexes WHERE object_id = OBJECT_ID(N'TTDV2.General') AND has_filter = 1 " +
-        "AND name IN (N'IX_General_CreatedBy', N'IX_General_TaxPreparerLanId')";
+        "AND name IN (N'IX_General_CreatedBy', N'IX_General_TaxPreparerLanId', N'IX_General_ModifiedBy')";
 
     public Task InitializeAsync() => _db.InitializeAsync();
 
@@ -26,7 +26,7 @@ public sealed class Ttdv2AppScriptTests : IAsyncLifetime
     public async Task A_new_database_gets_IsDeleted_NOT_NULL_with_the_filtered_indexes()
     {
         Assert.Equal(0, await _db.ScalarAsync(IsNullable));
-        Assert.Equal(2, await _db.ScalarAsync(FilteredIndexCount));
+        Assert.Equal(3, await _db.ScalarAsync(FilteredIndexCount));
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public sealed class Ttdv2AppScriptTests : IAsyncLifetime
         await RunScriptAsync();
 
         Assert.Equal(0, await _db.ScalarAsync(IsNullable));
-        Assert.Equal(2, await _db.ScalarAsync(FilteredIndexCount));
+        Assert.Equal(3, await _db.ScalarAsync(FilteredIndexCount));
         Assert.Equal(1, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General WHERE ID = 20001 AND IsDeleted = 0"));
         Assert.Equal(1, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General WHERE ID = 20002 AND IsDeleted = 1"));
 
@@ -60,7 +60,7 @@ public sealed class Ttdv2AppScriptTests : IAsyncLifetime
 
         Assert.Equal(55008, error.Number);
         Assert.Equal(1, await _db.ScalarAsync(IsNullable));
-        Assert.Equal(2, await _db.ScalarAsync(FilteredIndexCount));
+        Assert.Equal(2, await _db.ScalarAsync(FilteredIndexCount)); // the earlier 2 indexes; nothing added
         Assert.Equal(1, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General WHERE IsDeleted IS NULL"));
     }
 
@@ -91,6 +91,7 @@ public sealed class Ttdv2AppScriptTests : IAsyncLifetime
     private Task MakeEarlierSchemaAsync() => _db.ScalarAsync("""
         DROP INDEX IX_General_CreatedBy ON TTDV2.General;
         DROP INDEX IX_General_TaxPreparerLanId ON TTDV2.General;
+        DROP INDEX IF EXISTS IX_General_ModifiedBy ON TTDV2.General; -- not in the earlier schema (review 2 AR-05)
         ALTER TABLE TTDV2.General ALTER COLUMN IsDeleted bit NULL;
         CREATE INDEX IX_General_CreatedBy ON TTDV2.General (CreatedBy) WHERE IsDeleted = 0;
         CREATE INDEX IX_General_TaxPreparerLanId ON TTDV2.General (TaxPreparerLanId) WHERE IsDeleted = 0;

@@ -35,6 +35,7 @@
       "Code": "TTDV2",
       "Label": "Tax-Time All Report",
       "Source": "Table",
+      "MaxRows": 5000,
       "OrderBy": [ "CreatedBy", "WeekEnding DESC" ],
       "Columns": [
         { "Name": "ID", "Hidden": true },

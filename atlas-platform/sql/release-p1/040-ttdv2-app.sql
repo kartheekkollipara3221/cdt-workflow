@@ -4,7 +4,7 @@
 -- Additive. Safe to run again: each object is made only if it does not exist.
 -- It does not change the TTD schema or any existing table, except that it makes TTDV2.General.IsDeleted
 -- bit NOT NULL (step 2a, review DA-08) and the free-text columns nvarchar (step 2b, review DA-12) when an earlier
--- run made them bit NULL / varchar.
+-- run made them bit NULL / varchar. A rerun adds the index IX_General_ModifiedBy (review 2 AR-05; no data change).
 -- Run in the CP Atlas database (cp_sharepoint).
 SET NOCOUNT ON;
 SET ANSI_NULLS ON;
@@ -74,6 +74,8 @@ BEGIN TRY
             EXEC(N'DROP INDEX [IX_General_CreatedBy] ON [TTDV2].[General];');
         IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_TaxPreparerLanId')
             EXEC(N'DROP INDEX [IX_General_TaxPreparerLanId] ON [TTDV2].[General];');
+        IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_ModifiedBy')
+            EXEC(N'DROP INDEX [IX_General_ModifiedBy] ON [TTDV2].[General];');
         EXEC(N'ALTER TABLE [TTDV2].[General] ALTER COLUMN [IsDeleted] bit NOT NULL;');
     END
 
@@ -97,6 +99,11 @@ BEGIN TRY
     IF NOT EXISTS (SELECT 1 FROM sys.indexes
                    WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_TaxPreparerLanId')
         EXEC(N'CREATE INDEX [IX_General_TaxPreparerLanId] ON [TTDV2].[General] ([TaxPreparerLanId]) WHERE [IsDeleted] = 0;');
+    -- Review 2 AR-05 (2026-10-28): the "Current Tax Timesheet" tab filters CreatedBy OR TaxPreparerLanId OR ModifiedBy.
+    -- An OR can use an index union only when each column has an index; without this one the tab scans the table.
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes
+                   WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_ModifiedBy')
+        EXEC(N'CREATE INDEX [IX_General_ModifiedBy] ON [TTDV2].[General] ([ModifiedBy]) WHERE [IsDeleted] = 0;');
 
     -- 3. Audit table (standard shape, spec 05, 6.6) + CreatedByLanId (spec 09, 4.2). UTC.
     IF OBJECT_ID(N'TTDV2.AuditLog', N'U') IS NULL

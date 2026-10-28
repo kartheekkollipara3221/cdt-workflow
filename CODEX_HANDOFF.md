@@ -1,4 +1,12 @@
-# RESUME HERE - Review 2: AR-01 + AR-02 guard FIXED (B73, B74, 2026-10-28). NEXT: user answers AR-02 row rule (A/B), then AR-05
+# RESUME HERE - Review 2: AR-01, AR-02, AR-05 FIXED (B73-B75, 2026-10-28). NEXT: one-time integration in dev (option 2, AR-03 smoke test)
+
+## Update (2026-10-28, later)
+- AR-02 row rule: user said "Proceed" = option A (spec 07 4.6 stays). Target check: list CP_Atlas_Application codes.
+- B75 AR-05: TTDV2.Dashboard.json TaxTimeAllReport MaxRows 5000; 040/12-ttdv2-app.sql index IX_General_ModifiedBy.
+  Local DB upgraded. Regression: build 0 warnings; dotnet test 277; --atlas-check 0/0.
+- Next (module 16 section 8): step 2 one-time integration in dev (user runs option 2; INTEGRATION.md copy list +
+  section 2 edits; smoke test current apps before/after; TTDV2 Enabled=false until smoke passes). Then B3 walk-through.
+
 
 ## Fixes done (2026-10-28)
 - B73 AR-01: OnStartupError default = DisableModule; any start-up exception keeps the host up; invalid value =
