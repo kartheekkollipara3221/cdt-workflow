@@ -2,6 +2,7 @@
 // uses only describe/it/expect/TestBed and matchers that Jasmine (Karma, the target runner) and Vitest (the local
 // runner, globals on) both have. No runner import. The last test runs with provideZoneChangeDetection, as the target
 // app.config.ts; it needs zone.js (loaded by Karma at the target; not installed locally, so it returns early there).
+import { provideToastr } from 'ngx-toastr';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -47,6 +48,7 @@ function setup(page: CPApplicationSection, id = 5, providers: unknown[] = []): S
     providers: [
       ...(providers as never[]),
       provideHttpClient(),
+      provideToastr(),
       provideHttpClientTesting(),
       provideRouter([]),
       { provide: ATLAS_DASHBOARD_LINK, useValue: (code: string) => ['/home', code] },
@@ -179,7 +181,6 @@ describe('AtlasFormComponent (review NG-09)', () => {
     expect(element(fixture, '#err_Name')?.getAttribute('aria-live')).toBe('polite');
     expect(element(fixture, '#div_Done label')?.getAttribute('for')).toBeNull();
     expect(element(fixture, '#div_Done input')?.getAttribute('aria-labelledby')).toBe('lbl_Done');
-    expect(element(fixture, '.atlas-breadcrumb a')?.getAttribute('href')).toBe('/home/TTDV2');
     http.verify();
   });
 
@@ -240,6 +241,27 @@ describe('AtlasFormComponent with the real pbdev value behaviour (review R2)', (
     const shown = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('#div_Name pbdev-control-errors li')).map((x) => x.textContent?.trim());
     expect(shown).toEqual(['Name is required.']);
     expect(element(fixture, '#err_Name')?.classList.contains('atlas-sr-only')).toBe(true);
+  });
+
+  it('shows the mandatory-field modal of the section master and does not save', () => {
+    const { fixture, http } = setup(section([text('Name', { Validator: { Required: true } })]));
+
+    click(fixture, '#btn_Submit');
+
+    expect(element(fixture, '#msg_Invalid')?.textContent?.trim()).toBe('Please make sure all the mandatory fields are filled.');
+    http.expectNone((r) => r.url === 'v1/ManagePage');
+    click(fixture, '#btn_InvalidOk');
+    expect(element(fixture, '#msg_Invalid')).toBeNull();
+  });
+
+  it('uses the page layout and button classes of the section master', () => {
+    const { fixture } = setup(section([text('Name')], { Name: 'Tax Time Database', Description: 'Weekly hours' }));
+
+    expect(element(fixture, '.center-container h1')?.textContent?.trim()).toBe('Tax Time Database');
+    expect(element(fixture, '.header-container h1.header-title.headline-3')?.textContent?.trim()).toBe('Test form');
+    expect(element(fixture, '#div_Main .section.section-blue') === null).toBe(false);
+    expect(element(fixture, '#btn_Close')?.className).toBe('header-btn btn btn--primary');
+    expect(element(fixture, '#div_Name label .label-text')?.textContent?.trim()).toBe('Name');
   });
 
   it('clears a currency value of only the currency sign', () => {

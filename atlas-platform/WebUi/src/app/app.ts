@@ -4,7 +4,6 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { AtlasApiService } from './platform/atlas-api.service';
 import { CPApplicationRow } from './platform/atlas-models';
-import { AtlasNoticeService } from './platform/atlas-notice.service';
 import { ACT_AS_KEY, readActAs } from './stand-in/shell/stand-in.interceptor';
 
 interface TestUser {
@@ -28,7 +27,6 @@ interface CurrentUser {
 export class App implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly api = inject(AtlasApiService);
-  readonly notice = inject(AtlasNoticeService);
 
   readonly user = signal<CurrentUser | null>(null);
   readonly testUsers = signal<TestUser[]>([]);

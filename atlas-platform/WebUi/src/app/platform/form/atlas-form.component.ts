@@ -5,7 +5,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, FormRecord } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DialogComponent, LoaderComponent, SectionComponent } from '../atlas-pbdev';
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
@@ -21,7 +21,7 @@ import { atlasValidators, errorText } from './atlas-validators';
 
 @Component({
   selector: 'atlas-form',
-  imports: [ReactiveFormsModule, NgComponentOutlet, RouterLink, LoaderComponent, SectionComponent, DialogComponent, AtlasHistoryDialog, AtlasFieldA11yDirective],
+  imports: [ReactiveFormsModule, NgComponentOutlet, LoaderComponent, SectionComponent, DialogComponent, AtlasHistoryDialog, AtlasFieldA11yDirective],
   templateUrl: './atlas-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11: the state is in signals
 })
@@ -43,6 +43,9 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   readonly required = signal<Record<string, boolean>>({});
   readonly historyOpen = signal(false);
   readonly confirmDelete = signal(false);
+  /** The mandatory-field message of the section master (validate(), CPAtlasConfirmation) - decision D2. */
+  readonly invalidOpen = signal(false);
+  readonly invalidMessage = 'Please make sure all the mandatory fields are filled.';
 
   // Review NG-11: route state as signals, so OnPush and zoneless see each change.
   readonly code = signal('');
@@ -228,7 +231,8 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     this.form.markAllAsTouched();
     this.pageErrors.set([]);
     if (shownInvalid(section, this.form, (name) => this.isShown(name))) {
-      this.pageErrors.set([{ Field: '', Code: 'Invalid', Message: 'Correct the marked fields.' }]);
+      // As the section master: the modal; the fields also show their errors (all are touched) - decision D2.
+      this.invalidOpen.set(true);
       return;
     }
 
@@ -247,7 +251,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
             this.showErrors(result.Errors);
             return;
           }
-          this.notice.show('success', `Record ${result.ID} saved.`);
+          this.notice.show('success', 'Record saved successfully');
           this.router.navigate(this.dashboardLink(this.code()));
         },
         error: (error) => {
@@ -265,7 +269,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
           this.pageErrors.set(result.Errors);
           return;
         }
-        this.notice.show('success', `Record ${this.id()} deleted.`);
+        this.notice.show('success', 'Record deleted successfully');
         this.router.navigate(this.dashboardLink(this.code()));
       },
       error: (error) => this.pageErrors.set([{ Field: '', Code: 'Http', Message: problemText(error) }]),

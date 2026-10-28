@@ -2,6 +2,7 @@
    form JSON, the btn / btn--primary classes of pbdev-core.min.css, the pbdev-* controls, and the local shell.
    The platform styles are in src/app/platform/atlas-platform.css (copied). */
 @import '@ng-select/ng-select/themes/default.theme.css';
+@import 'ngx-toastr/toastr';
 
 :root {
   --ink: #1d2433;
@@ -52,11 +53,6 @@ a { color: var(--brand-2); cursor: pointer; }
 .shell-actas select { padding: 0.25rem 0.4rem; border-radius: 6px; border: 0; max-width: 260px; }
 .shell-main { max-width: 1280px; margin: 0 auto; padding: 1.25rem; }
 .shell-banner { margin: 1rem 1.25rem 0; }
-.shell-toast {
-  position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 50; padding: 0.75rem 1rem; border-radius: var(--radius);
-  background: var(--accent); color: #fff; box-shadow: 0 6px 20px rgb(0 0 0 / 18%); cursor: pointer;
-}
-.shell-toast-error { background: var(--danger); }
 
 .btn {
   border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 6px; padding: 0.5rem 1rem;

@@ -30,9 +30,6 @@
     The API at http://localhost:5080 is not available. Start it (atlas-platform/local/README.md) and reload.
   </div>
 }
-@if (notice.current(); as n) {
-  <div class="shell-toast" [class.shell-toast-error]="n.kind === 'error'" role="status" (click)="notice.clear()">{{ n.text }}</div>
-}
 
 <main class="shell-main">
   <router-outlet />

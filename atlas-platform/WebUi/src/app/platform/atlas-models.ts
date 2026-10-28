@@ -98,7 +98,11 @@ export interface CPUserPermissions {
 
 export interface CPApplicationSection {
   Name?: string | null;
+  /** Shown under the name (cp-atlas-sectionmaster.html center-container). */
+  Description?: string | null;
   HeaderName?: string | null;
+  /** The class of the form (cp-atlas-sectionmaster.ts formClass). */
+  StepClass?: string | null;
   AppCode?: string | null;
   Version?: string | null;
   UserPermissions?: CPUserPermissions | null;

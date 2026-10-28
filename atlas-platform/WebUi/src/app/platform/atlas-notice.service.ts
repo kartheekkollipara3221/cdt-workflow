@@ -1,26 +1,18 @@
-// COPY to the target: WebUi/Source/App/platform/. A short message after a save or a delete. At the target the
-// shell can show it with ngx-toastr; locally the stand-in shell shows it in a banner.
-import { Injectable, signal } from '@angular/core';
-
-export interface AtlasNotice {
-  kind: 'success' | 'error';
-  text: string;
-}
+// COPY to the target: WebUi/Source/App/platform/. A short message after a save or a delete. As the section master
+// (cp-atlas-sectionmaster.ts onSave: toastr.info("Record saved successfully", "Info")), it uses ngx-toastr, which the
+// target app already provides (provideToastr) and styles (styles.scss .toast-container). Review R3.
+import { Injectable, inject } from '@angular/core';
+import { ToastrService } from 'ngx-toastr';
 
 @Injectable({ providedIn: 'root' })
 export class AtlasNoticeService {
-  readonly current = signal<AtlasNotice | null>(null);
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly toastr = inject(ToastrService);
 
-  show(kind: AtlasNotice['kind'], text: string): void {
-    this.current.set({ kind, text });
-    if (this.timer) {
-      clearTimeout(this.timer);
+  show(kind: 'success' | 'error', text: string): void {
+    if (kind === 'error') {
+      this.toastr.error(text, 'Error');
+    } else {
+      this.toastr.info(text, 'Info');
     }
-    this.timer = setTimeout(() => this.current.set(null), 5000);
-  }
-
-  clear(): void {
-    this.current.set(null);
   }
 }

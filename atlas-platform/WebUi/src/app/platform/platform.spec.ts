@@ -15,6 +15,7 @@ import { toSelectOptions } from './atlas-pbdev';
 import { problemText } from './atlas-errors';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { provideToastr } from 'ngx-toastr';
 import { AtlasApiService } from './atlas-api.service';
 import { AtlasDashboardComponent } from './dashboard/atlas-dashboard.component';
 
@@ -264,6 +265,7 @@ describe('dashboard rows of another app (review NG-07)', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        provideToastr(),
         { provide: AtlasApiService, useValue: api },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ code: 'ttdv2' })) } },
       ],
@@ -301,6 +303,7 @@ describe('dashboard tabs keyboard (review NG-08)', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        provideToastr(),
         { provide: AtlasApiService, useValue: api },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ code: 'ttdv2' })) } },
       ],
