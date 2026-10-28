@@ -197,6 +197,63 @@ describe('AtlasFormComponent (review NG-09)', () => {
   });
 });
 
+describe('AtlasFormComponent with the real pbdev value behaviour (review R2)', () => {
+  it('gives the date picker a Date and sends yyyy-MM-dd', () => {
+    const { fixture, http } = setup(section([text('WeekEnding', { Type: 'datetimepicker', Value: '2026-10-25' })]));
+
+    const input = element(fixture, '#ctl_WeekEnding') as HTMLInputElement;
+    expect(input.value).toBe('2026-10-25');
+    input.value = '2026-11-01';
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.form.get('WeekEnding')?.value instanceof Date).toBe(true);
+
+    click(fixture, '#btn_Submit');
+    expect(savedOutputs(http).find((x) => x.Name === 'WeekEnding')?.Value).toBe('2026-11-01');
+  });
+
+  it('shows a stored "false" as not checked and sends true/false', () => {
+    const { fixture, http } = setup(section([text('Done', { Type: 'check', Value: 'false' })]));
+
+    const box = element(fixture, '#div_Done input[type=checkbox]') as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    box.click();
+    fixture.detectChanges();
+
+    click(fixture, '#btn_Submit');
+    expect(savedOutputs(http).find((x) => x.Name === 'Done')?.Value).toBe('true');
+  });
+
+  it('joins a multiple ng-select value with #$# as the section master', () => {
+    const { fixture, http } = setup(section([text('Tags', { Type: 'ngselect', Multiple: true, Value: 'A#$#B', Options: [{ Label: 'A', Value: 'A' }, { Label: 'B', Value: 'B' }] })]));
+
+    expect(fixture.componentInstance.form.get('Tags')?.value).toEqual(['A', 'B']);
+    click(fixture, '#btn_Submit');
+    expect(savedOutputs(http).find((x) => x.Name === 'Tags')?.Value).toBe('A#$#B');
+  });
+
+  it('shows the error text once, in the pbdev control, with the platform text', () => {
+    const { fixture } = setup(section([text('Name', { Validator: { Required: true } })]));
+
+    click(fixture, '#btn_Submit');
+
+    const shown = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('#div_Name pbdev-control-errors li')).map((x) => x.textContent?.trim());
+    expect(shown).toEqual(['Name is required.']);
+    expect(element(fixture, '#err_Name')?.classList.contains('atlas-sr-only')).toBe(true);
+  });
+
+  it('clears a currency value of only the currency sign', () => {
+    const { fixture } = setup(section([text('Amount', { Type: 'currency' })]));
+
+    const input = element(fixture, '#ctl_Amount') as HTMLInputElement;
+    input.value = '$ ';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.get('Amount')?.value).toBe('');
+  });
+});
+
 describe('AtlasHistoryDialog (review NG-10)', () => {
   function dialog() {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });

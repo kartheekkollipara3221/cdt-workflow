@@ -14,7 +14,7 @@ import { ATLAS_DASHBOARD_LINK } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
 import { problemText } from '../atlas-errors';
 import { AtlasEffectTarget, applyEffects } from './atlas-effects';
-import { AtlasFormRecord, buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, valueControls } from './atlas-form-model';
+import { AtlasFormRecord, buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, toModelValue, toOutputValue, valueControls } from './atlas-form-model';
 import { AtlasFieldA11yDirective } from './atlas-field-a11y.directive';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
 import { atlasValidators, errorText } from './atlas-validators';
@@ -101,11 +101,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
         continue;
       }
       const item = this.form.get(control.Name);
-      item?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => applyEffects(control, value, this));
+      item?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => applyEffects(control, toOutputValue(control, value), this));
     }
     for (const control of this.controlsByName.values()) {
       if (control.Effects?.length) {
-        applyEffects(control, this.form.get(control.Name)?.value, this);
+        applyEffects(control, toOutputValue(control, this.form.get(control.Name)?.value), this);
       }
     }
 
@@ -158,7 +158,8 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   }
 
   setValue(name: string, value: string | null): void {
-    this.form.get(name)?.setValue(value ?? '');
+    const control = this.controlsByName.get(name);
+    this.form.get(name)?.setValue(control ? toModelValue(control, value) : (value ?? ''));
   }
 
   // ---------- Template helpers ----------

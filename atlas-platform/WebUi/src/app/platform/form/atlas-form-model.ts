@@ -14,6 +14,66 @@ export function isSingleRowGrid(control: CPApplicationControl): boolean {
   return (control.Grid?.BindMode ?? '').toLowerCase() === SINGLE_ROW_FIELDS.toLowerCase();
 }
 
+/**
+ * The value kind of a control (review R2, real pbdev-core): pbdev-date-picker holds a JS Date, pbdev-checkbox a
+ * boolean, a multiple ng-select a string list. The server keeps text: yyyy-MM-dd, 'true'/'false', and a list
+ * joined with '#$#' (as cp-atlas-sectionmaster.ts).
+ */
+export type AtlasValueKind = 'text' | 'date' | 'bool' | 'list';
+
+export const LIST_SEPARATOR = '#$#';
+
+export function valueKind(control: CPApplicationControl): AtlasValueKind {
+  const type = (control.Type ?? '').toLowerCase();
+  if (type === 'datetimepicker' || type === 'date') {
+    return 'date';
+  }
+  if (type === 'check' || type === 'checkbox') {
+    return 'bool';
+  }
+  if (type === 'ngselect' && control.Multiple) {
+    return 'list';
+  }
+  return 'text';
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** The form value of a server text (the JSON Value, a Set effect, a server answer). */
+export function toModelValue(control: CPApplicationControl, text: string | null | undefined): unknown {
+  switch (valueKind(control)) {
+    case 'date': {
+      const match = /^(\d{4})-(\d{2})-(\d{2})/.exec((text ?? '').trim());
+      return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+    }
+    case 'bool':
+      return ['true', 'yes', '1'].includes((text ?? '').trim().toLowerCase());
+    case 'list':
+      return text ? text.split(LIST_SEPARATOR) : [];
+    default:
+      return text ?? '';
+  }
+}
+
+/** The server text of a form value (null when empty). */
+export function toOutputValue(control: CPApplicationControl, value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return valueKind(control) === 'bool' ? 'false' : null;
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  if (Array.isArray(value)) {
+    return value.length ? value.map((x) => String(x)).join(LIST_SEPARATOR) : null;
+  }
+  return value === '' ? null : String(value);
+}
+
 /** The value controls of a section: the section-level controls and the children of "section" containers. */
 export function valueControls(section: CPApplicationSection): CPApplicationControl[] {
   const list: CPApplicationControl[] = [];
@@ -86,8 +146,8 @@ export function buildFormGroup(section: CPApplicationSection): AtlasFormRecord {
     } else {
       group.addControl(
         control.Name,
-        new FormControl<string | null>(
-          { value: control.Value ?? '', disabled: !!control.Disabled },
+        new FormControl<unknown>(
+          { value: toModelValue(control, control.Value), disabled: !!control.Disabled },
           atlasValidators(control.Validator, !!control.Validator?.Required),
         ),
       );
@@ -119,8 +179,7 @@ export function buildOutputs(section: CPApplicationSection, group: FormGroup, vi
       }
       outputs.push({ Name: control.Name, Value: JSON.stringify([row]) });
     } else {
-      const value = item.value;
-      outputs.push({ Name: control.Name, Value: value === null || value === undefined || value === '' ? null : String(value) });
+      outputs.push({ Name: control.Name, Value: toOutputValue(control, item.value) });
     }
   }
   return outputs;

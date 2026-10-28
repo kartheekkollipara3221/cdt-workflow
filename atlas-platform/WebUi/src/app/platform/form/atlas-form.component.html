@@ -46,7 +46,7 @@
                         }
                       </label>
                       <ng-container *ngComponentOutlet="renderer; inputs: { control: child, group: form }" />
-                      <span class="atlas-error" [attr.id]="'err_' + child.Name" aria-live="polite">{{ error(child) ?? '' }}</span>
+                      <span class="atlas-error" [class.atlas-sr-only]="registry.drawsMessages(child.Type)" [attr.id]="'err_' + child.Name" aria-live="polite">{{ error(child) ?? '' }}</span>
                     </div>
                   }
                 }

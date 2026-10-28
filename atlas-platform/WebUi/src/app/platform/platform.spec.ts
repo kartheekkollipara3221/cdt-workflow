@@ -5,7 +5,7 @@ import { CPApplicationControl, CPApplicationSection } from './atlas-models';
 import { TestBed } from '@angular/core/testing';
 import { ATLAS_DASHBOARD_LINK, formRoute, formTypeOf } from './atlas-navigation';
 import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atlas-effects';
-import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid } from './form/atlas-form-model';
+import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid, toModelValue, toOutputValue } from './form/atlas-form-model';
 import { atlasValidators, errorCode, errorText } from './form/atlas-validators';
 import { ATLAS_VALIDATOR_CASES } from './form/atlas-validator-cases';
 import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
@@ -321,5 +321,31 @@ describe('dashboard tabs keyboard (review NG-08)', () => {
     expect(component.tabIndex()).toBe(0);
     key('a');
     expect(component.tabIndex()).toBe(0);
+  });
+});
+
+describe('value kinds of the real pbdev controls (review R2)', () => {
+  const date = { Name: 'D', Label: 'D', Type: 'datetimepicker' } as CPApplicationControl;
+  const check = { Name: 'C', Label: 'C', Type: 'check' } as CPApplicationControl;
+  const list = { Name: 'L', Label: 'L', Type: 'ngselect', Multiple: true } as CPApplicationControl;
+
+  it('reads a date as a local Date and writes yyyy-MM-dd', () => {
+    const value = toModelValue(date, '2026-02-28') as Date;
+    expect([value.getFullYear(), value.getMonth(), value.getDate()]).toEqual([2026, 1, 28]);
+    expect(toOutputValue(date, value)).toBe('2026-02-28');
+    expect(toModelValue(date, '')).toBeNull();
+    expect(toOutputValue(date, null)).toBeNull();
+  });
+
+  it('reads true/yes/1 as checked and writes true/false', () => {
+    expect(['true', 'Yes', '1', 'false', '', null].map((x) => toModelValue(check, x))).toEqual([true, true, true, false, false, false]);
+    expect([true, false, null].map((x) => toOutputValue(check, x))).toEqual(['true', 'false', 'false']);
+  });
+
+  it('splits and joins a list with #$#', () => {
+    expect(toModelValue(list, 'A#$#B')).toEqual(['A', 'B']);
+    expect(toModelValue(list, null)).toEqual([]);
+    expect(toOutputValue(list, ['A', 'B'])).toBe('A#$#B');
+    expect(toOutputValue(list, [])).toBeNull();
   });
 });

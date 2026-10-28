@@ -2,6 +2,7 @@
 // component. A new control type is one provideAtlasRenderers entry (or register() call); the form does not change.
 import { EnvironmentProviders, Injectable, Type, inject, provideEnvironmentInitializer } from '@angular/core';
 import {
+  AtlasAmountRenderer,
   AtlasCheckboxRenderer,
   AtlasRadioRenderer,
   AtlasRendererBase,
@@ -19,8 +20,8 @@ import {
 export class AtlasRendererRegistry {
   private readonly renderers = new Map<string, Type<unknown>>([
     ['text', AtlasTextRenderer],
-    ['currency', AtlasTextRenderer],
-    ['percent', AtlasTextRenderer],
+    ['currency', AtlasAmountRenderer],
+    ['percent', AtlasAmountRenderer],
     ['select', AtlasSelectRenderer],
     ['ngselect', AtlasNgSelectRenderer],
     ['textarea', AtlasTextareaRenderer],
@@ -38,9 +39,18 @@ export class AtlasRendererRegistry {
   // (review NG-08), so the form uses aria-labelledby for it.
   private readonly noInput = new Set<string>(['user', 'grid', 'checkbox', 'check']);
 
+  /** Types whose pbdev control draws its own error text (pbdev-input-messages); the form does not draw it again. */
+  private readonly ownMessages = new Set<string>(['text', 'currency', 'percent', 'select', 'textarea', 'datetimepicker', 'date']);
+
+  /** True when the control of the type shows its error text itself (review R2, decision D2). */
+  drawsMessages(type: string | null | undefined): boolean {
+    return this.ownMessages.has((type ?? '').toLowerCase());
+  }
+
   register(type: string, component: Type<unknown>, hasInput = true): void {
     const key = type.toLowerCase();
     this.renderers.set(key, component);
+    this.ownMessages.delete(key);
     if (hasInput) {
       this.noInput.delete(key);
     } else {
