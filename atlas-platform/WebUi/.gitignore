@@ -41,3 +41,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Local target look (made by ../local/make-target-look.mjs from the read-only target copy; never committed)
+/target-look

@@ -468,25 +468,3 @@ pbdev-footer footer {
     color: variables.$gray-700;
   }
 }
-
-// ---------- Home page (stand-in) ----------
-.atlas-title { margin: 0.5rem 0; color: variables.$text-secondary; }
-.atlas-muted { color: variables.$gray-800; }
-.atlas-panel { background: #fff; padding: 1rem; border-radius: 4px; }
-.atlas-alert { padding: 0.75rem 1rem; border-radius: 4px; }
-.atlas-alert-error { background: variables.$red-fill; border: 1px solid variables.$status-red; color: variables.$red-dark; }
-.atlas-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
-.atlas-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 1rem 1.1rem;
-  background: #fff;
-  border: 1px solid variables.$gray-400;
-  border-radius: 4px;
-  text-decoration: none;
-  color: variables.$text-primary;
-}
-.atlas-card:hover { border-color: variables.$secondary-dark-blue; }
-.atlas-card-code { font-weight: 700; color: variables.$primary-red; letter-spacing: 0.05em; }
-.atlas-card-name { font-size: 1.2rem; font-weight: 600; }

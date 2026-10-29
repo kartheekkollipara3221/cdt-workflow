@@ -44,6 +44,27 @@ npm start          # ng serve on http://localhost:4200
 
 Open http://localhost:4200. The shell has the layout of the target `app.component` (navbar, sidebar with the app menu on hover, footer) and loads the same global styles in the same order as the target `angular.json` (ng-select theme, bootstrap, material indigo-pink, fontawesome, `styles.scss`, toastr). The **Act as** switch (test users; Development only) is in the user menu at the top right. Not the same as the target: the pbdev styles are look-alikes (the real `pbdev-core.min.css` is not in the repo), the sidebar logo is text (`Logo-white.png` not supplied), and the select controls are plain HTML (PrimeNG at the target).
 
+### Target look (recommended when you judge the look)
+
+The default preview above uses look-alikes. To see the target look, build it from the read-only target copy
+(`target-implementation-read-only`, not in git):
+
+```powershell
+cd atlas-platform/WebUi
+npm run start:target-look      # = node ../local/make-target-look.mjs, then ng serve --configuration target-look
+```
+
+`make-target-look.mjs` writes `WebUi/target-look/` (git-ignored; no target code goes into git): the real pbdev-core
+source (navbar, user menu, help, footer, dialog, loader, section, input, textarea, date picker, checkbox, …), the real
+`pbdev-core.min.css` compiled from the real Sass, `ag-theme-pbdev.min.css`, the target Tailwind theme and the target
+`styles.scss` unchanged. Tailwind 3, PrimeNG (Lara) and animations are on, as in the target `app.config.ts`.
+Stop `ng serve` before you run the script again (it rebuilds the folder).
+
+Still not the same as the target (files not supplied): the Mulish and Cormorant Infant fonts come from
+`@fontsource` (same fonts, open licence); the private `pbdev-icons` font is replaced by Font Awesome glyphs for the
+8 icons in use; `pbdev-select` uses the `pbdev-select-alt` source (same library, PrimeNG `p-select`); the ag-grid pbdev
+icon font uses the quartz icon font; the diamonds background and `Logo-white.png` are missing.
+
 What to try:
 
 1. Dashboard `Tax Time Database`: 3 tabs from the table (no procedure); the All Report has a totals row; the row menus come from `Permissions`.

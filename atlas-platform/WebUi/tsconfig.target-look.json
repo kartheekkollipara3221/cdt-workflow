@@ -1,0 +1,13 @@
+/* LOCAL ONLY: the target look (atlas-platform/local/make-target-look.mjs). "@pbdev/pbdev-core" is the real source. */
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "paths": {
+      "@pbdev/pbdev-core": ["./target-look/pbdev-core/index.ts"],
+      "@ag-grid-community/core": ["./node_modules/ag-grid-community"],
+      "@ag-grid-community/angular": ["./node_modules/ag-grid-angular"]
+    }
+  },
+  "include": ["src/**/*.ts", "target-look/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}
