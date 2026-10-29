@@ -1,4 +1,4 @@
-# RESUME HERE - 2026-10-28 (later). Local TARGET LOOK added (9bc6402). User to judge the look again.
+# RESUME HERE - 2026-10-28 (later). Local TARGET LOOK added (9bc6402). User: "spot on" -> look item CLOSED. NEXT: integration in dev (item 2).
 
 ## What changed (user: "still not matching to target look")
 - Cause: the local preview used look-alikes. The target loads Tailwind 3 (with its reset), the real
@@ -14,7 +14,7 @@
 - Running for the user: API 5080 (StandIn) + UI 4200 in target-look mode.
 - Known (also at the target): grid header text white on light blue (target app.component.scss `.ag-header`).
 
-## Open items: as in the entry below (1 = user feedback on the look, now on the target-look build).
+## Open items: as in the entry below, item 1 (look) is CLOSED (user confirmed 2026-10-28). Next: item 2.
 
 ## Next-session prompt
 "Resume. Read the top entry of CODEX_HANDOFF.md. <Feedback on the target look: ... | Integration result | Start B3>.
