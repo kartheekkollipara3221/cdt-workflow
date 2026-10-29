@@ -1,3 +1,27 @@
+# RESUME HERE - 2026-10-28 (later). Local TARGET LOOK added (9bc6402). User to judge the look again.
+
+## What changed (user: "still not matching to target look")
+- Cause: the local preview used look-alikes. The target loads Tailwind 3 (with its reset), the real
+  pbdev-core.min.css, Mulish/Cormorant fonts, ag-theme-pbdev + quartz, PrimeNG Lara, and real pbdev navbar/footer.
+- New: atlas-platform/local/make-target-look.mjs -> WebUi/target-look/ (git-ignored) from target-implementation-read-only:
+  real pbdev-core source + compiled Sass, target styles.scss (WebUi/WebUi copy, the newer one) and Tailwind theme.
+  Angular configuration `target-look`; `npm run start:target-look`. Toastr options = target (bottom-right).
+- Gaps (files not supplied): fonts via @fontsource; pbdev-icons -> Font Awesome for the 8 icons used; pbdev-select =
+  pbdev-select-alt source (PrimeNG p-select); ag-grid pbdev icon font -> quartz; diamonds svg cut off; Logo-white.png.
+- Default build (look-alikes) unchanged; platform/ unchanged; target package unchanged (no rebuild needed).
+- Regression: ng build (default) 0 warnings; ng build -c target-look 0 warnings; ng test 66 passed; browser: home,
+  dashboard, form 10000 with real styles, no console errors. .NET not rebuilt (API running locks DLLs; no .NET change).
+- Running for the user: API 5080 (StandIn) + UI 4200 in target-look mode.
+- Known (also at the target): grid header text white on light blue (target app.component.scss `.ag-header`).
+
+## Open items: as in the entry below (1 = user feedback on the look, now on the target-look build).
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Feedback on the target look: ... | Integration result | Start B3>.
+Keep the broad goal: seamless integration at the target, platform generic and simple, nothing breaks the existing system."
+
+---
+
 # RESUME HERE - 2026-10-28 session end. Review 2 fixes done (B73-B75), target package pushed, local preview = target shell (c10b593). User is reviewing the local look.
 
 ## State at save (2026-10-28)
