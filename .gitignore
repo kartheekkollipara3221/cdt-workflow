@@ -33,3 +33,6 @@ src/docs/workflow-map/
 # Reproducible local scratch output (historical evidence archived outside repo)
 artifacts/
 .bundle-test/
+
+# Read-only copy of the target code (holds target secrets, e.g. the AG Grid license key). Never commit.
+target-implementation-read-only/
