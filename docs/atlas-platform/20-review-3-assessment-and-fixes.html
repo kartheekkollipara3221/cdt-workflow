@@ -47,7 +47,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <main>
 <div class="eyebrow">CP Atlas platform · Review 3 second opinion</div>
 <h1>Review 3: second opinion and fix wave 4</h1>
-<p class="lead">Each of the 43 findings of module 19 was examined again at the cited line. The High findings were real and are fixed. Some fixes are narrower or different, for a stated reason. One new finding. The move can start after one framework check at the target.</p>
+<p class="lead">Each of the 43 findings of module 19 was examined again at the cited line. The High findings were real and are fixed. Some fixes are narrower or different, for a stated reason. One new finding. The target is upgraded to .NET 10, so the move can start.</p>
 
 <div class="note small">
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
@@ -88,7 +88,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <li>3 Low findings are not defects (section 5), and 2 belong to the target team.</li>
 </ul>
 <p>One new finding came from the work on RV-18: the platform dashboard runs no <code>Procedure</code> tab, but the start-up check accepted one (section 4, RV-N1).</p>
-<p><strong>The move can start after one item.</strong> Confirm the target framework of <code>BBH.CP.Atlas.App</code> and <code>BBH.CP.Atlas.Service</code> (RV-13). The copy shows <code>net9.0</code> for both and <code>net10.0</code> for <code>BBH.CP.Atlas.Data</code>. If the target is <code>net9.0</code>, stop and ask: the platform needs <code>net10.0</code>, and the target team owns that choice. Then commit, rebuild the target package, and integrate.</p>
+<p><strong>The move can start.</strong> (Answered 2026-10-31: the target is upgraded to .NET 10.) The item was: Confirm the target framework of <code>BBH.CP.Atlas.App</code> and <code>BBH.CP.Atlas.Service</code> (RV-13). The copy shows <code>net9.0</code> for both and <code>net10.0</code> for <code>BBH.CP.Atlas.Data</code>. If the target is <code>net9.0</code>, stop and ask: the platform needs <code>net10.0</code>, and the target team owns that choice. Then commit, rebuild the target package, and integrate.</p>
 </section>
 <section id="3-verdict-for-each-high-and-medium-finding">
 <h2>3. Verdict for each High and Medium finding</h2>
@@ -106,7 +106,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <tr><td>RV-10 no rollback SQL</td><td>Agree</td><td>New <code>090-ttdv2-rollback.sql</code> (module copy <code>sql/12-ttdv2-rollback.sql</code>): gives back the TTD roles that <code>050</code> revoked (by <code>@CopyRunBy</code> and the time of the <code>050</code> log row), soft-deletes the TTDV2 user roles, roles and app row, keeps the TTDV2 tables. Safe to run again.</td><td><code>The_rollback_gives_back_the_TTD_roles_and_removes_TTDV2_from_the_menu_and_is_safe_to_run_again</code>; <code>The_rollback_before_the_copy_changes_no_TTD_role</code>; release copy test</td></tr>
 <tr><td>RV-11 hand edits under-specified</td><td>Agree, other fix</td><td>No full copy of the target <code>CPAtlasService.cs</code> or dashboard in this repository (target code is not ours). Instead: (1) INTEGRATION.md gives the two signature changes and the exact replacement line for each method; (2) a new shipped helper <code>AtlasAppCode.ToLegacy</code> replaces <code>Enum.Parse</code> in the current chains; (3) a new shipped service <code>AtlasDashboardNavigation</code> makes the dashboard edit two guarded lines, with no template change. Not agreed: <code>editRow</code> with <code>applicationCode</code> from <code>setGridData</code> is correct (it is the app of the row).</td><td><code>ToLegacy_gives_404_...</code>; <code>opens the platform form from the target dashboard ...</code></td></tr>
 <tr><td>RV-12 disabled app 500</td><td>Agree</td><td><code>AtlasAppCode.ToLegacy</code>: 404 for a platform app that is not available, the same enum as before for a current code or number, the <code>Enum.Parse</code> error as before for any other code.</td><td><code>ToLegacy_gives_404_for_a_platform_app_that_is_not_available_and_the_enum_for_a_current_app</code></td></tr>
-<tr><td>RV-13 framework and path</td><td>Agree</td><td>Path: <code>src/app/platform/</code> in the package script, INTEGRATION.md, report 18 and all COPY headers (the target <code>angular.json</code> has <code>sourceRoot: "src"</code>). Framework: a check row in INTEGRATION.md section 5 with a stop-and-ask rule. This cannot be settled from the copy.</td><td>Package path is in <code>make-target-package.py</code></td></tr>
+<tr><td>RV-13 framework and path</td><td>Agree; answered</td><td>Path: <code>src/app/platform/</code> in the package script, INTEGRATION.md, report 18 and all COPY headers (the target <code>angular.json</code> has <code>sourceRoot: "src"</code>). Framework: a check row in INTEGRATION.md section 5 with a stop-and-ask rule. This cannot be settled from the copy.</td><td>Package path is in <code>make-target-package.py</code></td></tr>
 <tr><td>RV-14 late load response</td><td>Agree</td><td>A new load cancels the one before; load, save and remove stop when the form is destroyed.</td><td><code>cancels the load when the form is closed before the answer</code></td></tr>
 <tr><td>RV-15 effect cycle</td><td>Agree</td><td>Client: a control whose effects are running does not run them again. Start-up check: an error for a Set, Clear or SetFromOption cycle.</td><td><code>stops an effect cycle after one pass</code>; <code>A_Set_or_Clear_effect_cycle_is_an_error</code></td></tr>
 <tr><td>RV-16 dashboard dates</td><td>Agree in part</td><td>Not a defect: a timestamp shows the local day of the user (correct); TTDV2 <code>WeekEnding</code> is a <code>date</code> and has no time. The defect: the date filter compared the UTC day, so a row shown as 17-Oct did not match a 17-Oct filter. The filter now uses the shown day (<code>cellDay</code>).</td><td><code>filters on the same day that the cell shows</code></td></tr>
@@ -201,7 +201,7 @@ WHERE ISNULL(u.IsDeleted, 0) = 0 AND (u.LanID IS NULL OR a.Code IS NULL OR e.Nam
 <section id="9-next-steps">
 <h2>9. Next steps</h2>
 <ol>
-<li>Confirm the target framework of <code>BBH.CP.Atlas.App</code> and <code>BBH.CP.Atlas.Service</code> (RV-13). If it is <code>net9.0</code>, stop and ask.</li>
+<li>Done 2026-10-31: the target is upgraded to .NET 10 (RV-13 answered).</li>
 <li>Commit this wave; rebuild the target package (<code>python atlas-platform/local/make-target-package.py &lt;out.ps1&gt;</code>).</li>
 <li>At the target, before <code>030</code>: run the count query in section 6.</li>
 <li>One-time integration in the dev region (INTEGRATION.md), with the smoke test of the current apps before and after.</li>

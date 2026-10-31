@@ -12,7 +12,7 @@
 - Local review DB still has the old 030 view (re-run 030 locally if needed; tests use fresh DBs).
 
 ## Next
-1. Confirm target TFM of BBH.CP.Atlas.App and .Service (copy shows net9.0; Data net10.0). If net9.0: stop and ask.
+1. DONE 2026-10-31: user confirmed the target is upgraded to .NET 10 (RV-13 answered).
 2. DONE: wave 4 committed (2b6d60f); package atlas-platform/local/package/atlas-target-package.ps1 rebuilt (8e6204d, 90 files), extract tested.
 3. At the target before 030: run the NULL-row count query (module 20, section 6). Then the dev integration.
 4. Before app #2: RV-N1 tab procedures, RV-07 retry, RV-L03.

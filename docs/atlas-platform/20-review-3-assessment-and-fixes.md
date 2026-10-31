@@ -26,7 +26,7 @@ This review does not agree with all of it:
 
 One new finding came from the work on RV-18: the platform dashboard runs no `Procedure` tab, but the start-up check accepted one (section 4, RV-N1).
 
-**The move can start after one item.** Confirm the target framework of `BBH.CP.Atlas.App` and `BBH.CP.Atlas.Service` (RV-13). The copy shows `net9.0` for both and `net10.0` for `BBH.CP.Atlas.Data`. If the target is `net9.0`, stop and ask: the platform needs `net10.0`, and the target team owns that choice. Then commit, rebuild the target package, and integrate.
+**The move can start.** (Answered 2026-10-31: the target is upgraded to .NET 10.) The item was: Confirm the target framework of `BBH.CP.Atlas.App` and `BBH.CP.Atlas.Service` (RV-13). The copy shows `net9.0` for both and `net10.0` for `BBH.CP.Atlas.Data`. If the target is `net9.0`, stop and ask: the platform needs `net10.0`, and the target team owns that choice. Then commit, rebuild the target package, and integrate.
 
 ## 3. Verdict for each High and Medium finding
 
@@ -44,7 +44,7 @@ One new finding came from the work on RV-18: the platform dashboard runs no `Pro
 | RV-10 no rollback SQL | Agree | New `090-ttdv2-rollback.sql` (module copy `sql/12-ttdv2-rollback.sql`): gives back the TTD roles that `050` revoked (by `@CopyRunBy` and the time of the `050` log row), soft-deletes the TTDV2 user roles, roles and app row, keeps the TTDV2 tables. Safe to run again. | `The_rollback_gives_back_the_TTD_roles_and_removes_TTDV2_from_the_menu_and_is_safe_to_run_again`; `The_rollback_before_the_copy_changes_no_TTD_role`; release copy test |
 | RV-11 hand edits under-specified | Agree, other fix | No full copy of the target `CPAtlasService.cs` or dashboard in this repository (target code is not ours). Instead: (1) INTEGRATION.md gives the two signature changes and the exact replacement line for each method; (2) a new shipped helper `AtlasAppCode.ToLegacy` replaces `Enum.Parse` in the current chains; (3) a new shipped service `AtlasDashboardNavigation` makes the dashboard edit two guarded lines, with no template change. Not agreed: `editRow` with `applicationCode` from `setGridData` is correct (it is the app of the row). | `ToLegacy_gives_404_...`; `opens the platform form from the target dashboard ...` |
 | RV-12 disabled app 500 | Agree | `AtlasAppCode.ToLegacy`: 404 for a platform app that is not available, the same enum as before for a current code or number, the `Enum.Parse` error as before for any other code. | `ToLegacy_gives_404_for_a_platform_app_that_is_not_available_and_the_enum_for_a_current_app` |
-| RV-13 framework and path | Agree | Path: `src/app/platform/` in the package script, INTEGRATION.md, report 18 and all COPY headers (the target `angular.json` has `sourceRoot: "src"`). Framework: a check row in INTEGRATION.md section 5 with a stop-and-ask rule. This cannot be settled from the copy. | Package path is in `make-target-package.py` |
+| RV-13 framework and path | Agree; answered | Path: `src/app/platform/` in the package script, INTEGRATION.md, report 18 and all COPY headers (the target `angular.json` has `sourceRoot: "src"`). Framework: a check row in INTEGRATION.md section 5 with a stop-and-ask rule. This cannot be settled from the copy. | Package path is in `make-target-package.py` |
 | RV-14 late load response | Agree | A new load cancels the one before; load, save and remove stop when the form is destroyed. | `cancels the load when the form is closed before the answer` |
 | RV-15 effect cycle | Agree | Client: a control whose effects are running does not run them again. Start-up check: an error for a Set, Clear or SetFromOption cycle. | `stops an effect cycle after one pass`; `A_Set_or_Clear_effect_cycle_is_an_error` |
 | RV-16 dashboard dates | Agree in part | Not a defect: a timestamp shows the local day of the user (correct); TTDV2 `WeekEnding` is a `date` and has no time. The defect: the date filter compared the UTC day, so a row shown as 17-Oct did not match a 17-Oct filter. The filter now uses the shown day (`cellDay`). | `filters on the same day that the cell shows` |
@@ -137,7 +137,7 @@ Not run: the target package build. `make-target-package.py` refuses uncommitted 
 
 ## 9. Next steps
 
-1. Confirm the target framework of `BBH.CP.Atlas.App` and `BBH.CP.Atlas.Service` (RV-13). If it is `net9.0`, stop and ask.
+1. Done 2026-10-31: the target is upgraded to .NET 10 (RV-13 answered).
 2. Commit this wave; rebuild the target package (`python atlas-platform/local/make-target-package.py <out.ps1>`).
 3. At the target, before `030`: run the count query in section 6.
 4. One-time integration in the dev region (INTEGRATION.md), with the smoke test of the current apps before and after.
