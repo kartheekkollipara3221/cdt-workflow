@@ -1,3 +1,32 @@
+# RESUME HERE - 2026-10-31 (evening). Target package rebuilt at 570278e. DECISION: integrate now, fix by target results.
+
+## State
+- Commits: dbbb4cc (git-ignore target-implementation-read-only: it holds the AG Grid license key), 570278e (week headers
+  HeaderFromDate; Actions column = target vertical-ellipsis mat-menu, first column; GetAuditLog as the target: LogMessage
+  JSON text, no _Event, CreatedDate MM-dd-yyyy HH:mm:ss, oldest first; History dialog = target History Log layout),
+  package commit (91 files, commit 570278e). Push: ask the user.
+- Bug found and fixed: the target History Log does JSON.parse(LogMessage); we sent an array -> it would break for TTDV2.
+- Regression at 570278e: dotnet build 0 warnings; dotnet test 295; --atlas-check 0/0; ng build ok; ng test 77;
+  check:target-flags ok. Package extract tested on Windows PowerShell 5.1; no target secrets in it.
+- Not yet browser-checked by the user: week headers, Actions menu, History Log (Chrome extension not connected).
+- Local servers stopped (system low on memory). Restart: atlas-platform/local/README.md.
+
+## Decision (user, 2026-10-31)
+Stop local polishing. Integrate in the target DEV region step by step (steps 0-6: baseline; DTO partial; dormant core +
+020/030; CPAtlasService/controller wiring; TTDV2 back end 040 + Enabled; Angular form; dashboard + menu). Next work comes
+from target results. Use Enforce in dev. Wave 3 items (RV-N1, RV-07, RV-L03, RV-L14, a11y) wait for app #2.
+
+## Next
+1. Optional pre-work (offered, not started): API contract check vs target TS readers; form route guard; zero-module
+   start-up test; package split per step.
+2. User runs step 0 at the target (baseline + NULL-row count), then step 1. Errors -> fix here, rebuild package.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Target step N result: ... | Start the pre-work>. Keep the broad goal:
+seamless integration at the target, platform generic and simple, nothing breaks the existing system."
+
+---
+
 # RESUME HERE - 2026-10-31 (end of session). Wave 4 done and pushed; target is .NET 10. NEXT: one-time dev integration at the target.
 
 ## State
