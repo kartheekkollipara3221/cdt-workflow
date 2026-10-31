@@ -48,6 +48,15 @@ export interface CPGridColumn {
   /** The name of a cell component (NumericEditor, TextEditor, SelectEditor at the target). */
   cellRenderer?: string | null;
   cellRendererParams?: { disabled?: boolean; code?: string; ctrlname?: string; [key: string]: unknown } | null;
+  /** Platform: the header shows a date from a date control of the form (not an ag-grid field). */
+  HeaderFromDate?: CPHeaderFromDate | null;
+}
+
+/** Date + AddDays of the control, in Format (default "EEEE dd-MMM-yyyy", as the target TTD form). */
+export interface CPHeaderFromDate {
+  Control: string;
+  AddDays?: number | null;
+  Format?: string | null;
 }
 
 export interface CPGrid {

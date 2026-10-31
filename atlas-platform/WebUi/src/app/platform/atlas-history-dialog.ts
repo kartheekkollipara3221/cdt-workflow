@@ -1,6 +1,7 @@
 // COPY to the target: WebUi/src/app/platform/. The audit history of one record (v1/GetAuditLog, spec 09, 4.5).
-// All values are shown as text (no HTML).
-import { DatePipe } from '@angular/common';
+// All values are shown as text (no HTML). The layout is the target History Log (history-report-modal.ts): one block
+// for each entry, "Modified On : ..." and "Modified By : ...", then one "Name - Value" line for each changed field.
+import { formatDate } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, of, switchMap } from 'rxjs';
@@ -12,15 +13,17 @@ import { CPAuditChange, CPAuditLog } from './atlas-models';
 interface HistoryEntry {
   event: string;
   by: string;
-  when: Date | string;
+  when: string;
   changes: CPAuditChange[];
+  /** A LogMessage that is not a JSON list (old text form), shown as it is. */
+  text: string | null;
 }
 
 @Component({
   selector: 'atlas-history-dialog',
-  imports: [DialogComponent, LoaderComponent, DatePipe],
+  imports: [DialogComponent, LoaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11
-  template: `<pbdev-dialog [visible]="open()" [header]="'History of record ' + recordId()" (visibleChange)="!$event && closed.emit()">
+  template: `<pbdev-dialog [visible]="open()" header="History Log" [style]="dialogStyle" (visibleChange)="!$event && closed.emit()">
     @if (loading()) {
       <pbdev-loader />
     } @else if (error()) {
@@ -28,25 +31,36 @@ interface HistoryEntry {
     } @else if (entries().length === 0) {
       <p>No history.</p>
     } @else {
-      @for (entry of entries(); track $index) {
-        <div class="atlas-history-entry">
-          <div class="atlas-history-head">
-            <span class="atlas-badge" [class]="'atlas-badge atlas-badge-' + entry.event.toLowerCase()">{{ entry.event }}</span>
-            <span>{{ entry.by }}</span>
-            <span class="atlas-muted">{{ entry.when | date: 'dd-MMM-yyyy HH:mm' }}</span>
-          </div>
-          @if (entry.changes.length > 0) {
-            <table class="atlas-table">
-              <thead><tr><th>Field</th><th>Old value</th><th>New value</th></tr></thead>
-              <tbody>
-                @for (change of entry.changes; track change.Name) {
-                  <tr><td>{{ change.Label || change.Name }}</td><td>{{ change.Old ?? '' }}</td><td>{{ change.Value ?? '' }}</td></tr>
-                }
-              </tbody>
-            </table>
+      <table class="atlas-history-table">
+        <tbody>
+          @for (entry of entries(); track $index) {
+            <tr>
+              <td>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Modified On : {{ entry.when }}</th>
+                      <th>Modified By : {{ entry.by }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colspan="2">
+                        @for (change of entry.changes; track $index) {
+                          <div>{{ change.Name }} - {{ change.Value ?? '' }}</div>
+                        }
+                        @if (entry.text) {
+                          <div>{{ entry.text }}</div>
+                        }
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
           }
-        </div>
-      }
+        </tbody>
+      </table>
     }
   </pbdev-dialog>`,
 })
@@ -57,6 +71,8 @@ export class AtlasHistoryDialog {
   readonly appCode = input.required<string>();
   readonly recordId = input.required<number>();
   readonly closed = output<void>();
+  /** As the target modal (history-report-modal.css: width 80%, height 80vh). */
+  protected readonly dialogStyle = { width: '80vw', height: '80vh' };
 
   private readonly api = inject(AtlasApiService);
   readonly loading = signal(false);
@@ -95,22 +111,29 @@ export class AtlasHistoryDialog {
 }
 
 /**
- * Review 3 RV-L19: "yyyy-MM-dd HH:mm:ss" (the time of an app with AuditTime Local) as a local Date. DatePipe does not
- * read the space form in all browsers, and an error there leaves the dialog empty. Another text is given as it is.
+ * The changed fields of a LogMessage: JSON text (the server answer, as the target) or a JSON list. The _Event item is
+ * left out. Null: not a JSON list (old text form).
  */
-export function localTime(text: string | null | undefined): Date | string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(text ?? '');
-  return match
-    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6] ?? 0))
-    : (text ?? '');
+export function logItems(message: unknown): CPAuditChange[] | null {
+  let value = message;
+  if (typeof message === 'string') {
+    try {
+      value = JSON.parse(message);
+    } catch {
+      return null;
+    }
+  }
+  return Array.isArray(value) ? (value as CPAuditChange[]).filter((x) => x?.Name !== '_Event') : null;
 }
 
 export function toEntry(log: CPAuditLog): HistoryEntry {
-  const items = Array.isArray(log.LogMessage) ? (log.LogMessage as CPAuditChange[]) : [];
+  const items = logItems(log.LogMessage);
   return {
     event: log.Event ?? 'Change',
     by: log.CreatedBy,
-    when: log.CreatedDateUtc ? new Date(log.CreatedDateUtc) : localTime(log.CreatedDate),
-    changes: items.filter((x) => x.Name !== '_Event'),
+    // CreatedDate is the text of the target ("MM-dd-yyyy HH:mm:ss"); a UTC app also sends CreatedDateUtc: the user's time.
+    when: log.CreatedDateUtc ? formatDate(new Date(log.CreatedDateUtc), 'MM-dd-yyyy HH:mm:ss', 'en-US') : log.CreatedDate,
+    changes: items ?? [],
+    text: items === null && log.LogMessage !== null && log.LogMessage !== undefined ? String(log.LogMessage) : null,
   };
 }

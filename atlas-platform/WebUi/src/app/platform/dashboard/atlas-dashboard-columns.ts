@@ -1,7 +1,8 @@
 // COPY to the target: WebUi/src/app/platform/dashboard/. AG Grid column definitions from the tab Columns list
 // (spec 03, 4.6). Cells are text; a link is made with DOM methods, never HTML text (H5).
 import { ColDef, ICellRendererParams, ValueFormatterParams } from 'ag-grid-community';
-import { CPAtlasTab, CPMenu, CPTabColumn } from '../atlas-models';
+import { CPAtlasTab, CPTabColumn } from '../atlas-models';
+import { AtlasActionMenu } from './atlas-action-menu';
 
 export interface AtlasRowActions {
   edit(row: Record<string, unknown>): void;
@@ -58,18 +59,22 @@ function dateComparator(filterDate: Date, cellValue: unknown): number {
   return cell < filterDate ? -1 : cell > filterDate ? 1 : 0;
 }
 
-export function columnDefs(tab: CPAtlasTab, actions: AtlasRowActions): ColDef[] {
+/**
+ * The columns of a tab. The Actions column is first, as the target GenerateColumns: headerName "Actions", width 100,
+ * cellRendererParams.cpMenus = tab.Menus. actionMenu: the cell component; default AtlasActionMenu (the target menu).
+ * At the target, cp-atlas-dashboard can give its own ActionMenuComponent (it calls params.context, the dashboard).
+ */
+export function columnDefs(tab: CPAtlasTab, actions: AtlasRowActions, actionMenu: unknown = AtlasActionMenu): ColDef[] {
   const defs: ColDef[] = (tab.Columns ?? []).map((column) => columnDef(column, actions));
-  const menus = (tab.Menus ?? []).filter((x) => x.Visible !== false);
-  if (menus.length > 0) {
-    defs.push({
+  if ((tab.Menus ?? []).some((x) => x.Visible !== false)) {
+    defs.unshift({
       headerName: 'Actions',
       colId: '_actions',
+      cellRenderer: actionMenu,
       sortable: false,
       filter: false,
-      width: 60 + menus.length * 70,
-      pinned: 'right',
-      cellRenderer: (params: ICellRendererParams) => actionCell(params, menus, actions),
+      width: 100,
+      cellRendererParams: { cpMenus: tab.Menus, atlasActions: actions },
     });
   }
   return defs;
@@ -111,28 +116,6 @@ function columnDef(column: CPTabColumn, actions: AtlasRowActions): ColDef {
     };
   }
   return def;
-}
-
-function actionCell(params: ICellRendererParams, menus: CPMenu[], actions: AtlasRowActions): HTMLElement | string {
-  if (params.node.rowPinned) {
-    return '';
-  }
-  const box = document.createElement('div');
-  box.className = 'atlas-row-actions';
-  for (const menu of menus) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'atlas-row-action' + (menu.Name === 'Delete' ? ' atlas-row-action-danger' : '');
-    button.textContent = menu.Label ?? menu.Name ?? '';
-    const row = params.data as Record<string, unknown>;
-    button.addEventListener('click', () => {
-      if (menu.Name === 'Edit') actions.edit(row);
-      else if (menu.Name === 'History') actions.history(row);
-      else if (menu.Name === 'Delete') actions.remove(row);
-    });
-    box.appendChild(button);
-  }
-  return box;
 }
 
 /** The totals row for the columns with Sum (spec 03, 4.6), or null if there is no such column. */

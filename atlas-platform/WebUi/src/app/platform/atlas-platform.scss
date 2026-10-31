@@ -272,25 +272,12 @@ atlas-dashboard {
     cursor: pointer;
   }
 
-  .atlas-row-actions {
-    display: flex;
-    gap: 0.3rem;
-    align-items: center;
-    height: 100%;
-  }
-
-  .atlas-row-action {
-    border: 1px solid variables.$gray-500;
-    background: variables.$primary-white;
-    border-radius: 4px;
-    padding: 0 0.45rem;
+  // The vertical ellipsis button of the Actions cell (as the target mat-icon-button with no button module: plain).
+  .atlas-action-menu {
+    border: 0;
+    background: transparent;
     cursor: pointer;
-    line-height: 1.6;
-  }
-
-  .atlas-row-action-danger {
-    color: variables.$primary-red;
-    border-color: variables.$primary-red;
+    padding: 0 0.5rem;
   }
 
   .grand-total-row {
@@ -304,54 +291,29 @@ atlas-dashboard {
   color: variables.$gray-800;
 }
 
-.atlas-history-entry {
-  border-bottom: 1px solid variables.$gray-400;
-  padding: 0.6rem 0;
-}
-
-.atlas-history-head {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-bottom: 0.4rem;
-}
-
-.atlas-badge {
-  font-weight: 700;
-  padding: 0.1rem 0.5rem;
-  border-radius: 99px;
-  background: variables.$gray-300;
-}
-
-.atlas-badge-create {
-  background: variables.$green-fill;
-  color: variables.$green-dark;
-}
-
-.atlas-badge-update {
-  background: variables.$blue-fill-3;
-  color: variables.$blue-dark;
-}
-
-.atlas-badge-delete {
-  background: variables.$red-fill;
-  color: variables.$red-dark;
-}
-
-.atlas-table {
+// As the target history-report-modal.css (.styled-table).
+.atlas-history-table {
   width: 100%;
   border-collapse: collapse;
-}
+  font-family: sans-serif;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
 
-.atlas-table th,
-.atlas-table td {
-  text-align: left;
-  padding: 0.3rem 0.5rem;
-  border-bottom: 1px solid variables.$gray-300;
-  vertical-align: top;
-}
+  th {
+    padding: 12px 15px;
+    color: navy;
+    text-align: left;
+  }
 
-.atlas-table th {
-  color: variables.$gray-800;
-  font-weight: 600;
+  td {
+    padding: 12px 15px;
+    color: black;
+  }
+
+  > tbody > tr:nth-of-type(even) {
+    background-color: #f3f3f3;
+  }
+
+  > tbody > tr:hover {
+    background-color: #f1f1f1;
+  }
 }

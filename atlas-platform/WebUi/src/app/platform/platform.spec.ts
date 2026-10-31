@@ -8,7 +8,8 @@ import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atl
 import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid, toModelValue, toOutputValue } from './form/atlas-form-model';
 import { atlasValidators, errorCode, errorText } from './form/atlas-validators';
 import { ATLAS_VALIDATOR_CASES } from './form/atlas-validator-cases';
-import { cellDay, formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
+import { cellDay, columnDefs, formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
+import { AtlasActionMenu } from './dashboard/atlas-action-menu';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
 import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
 import { toSelectOptions } from './atlas-pbdev';
@@ -400,13 +401,53 @@ describe('dashboard date filter (review 3 RV-16)', () => {
   });
 });
 
-describe('history time (review 3 RV-L19)', () => {
-  it('reads the local time form with a space', async () => {
-    const { localTime } = await import('./atlas-history-dialog');
-    const value = localTime('2026-10-25 10:05:30');
-    expect(value instanceof Date).toBe(true);
-    expect((value as Date).getHours()).toBe(10);
-    expect((value as Date).getSeconds()).toBe(30);
-    expect(localTime('not a date')).toBe('not a date');
+describe('history entry (target History Log)', () => {
+  it('reads the LogMessage as JSON text or a list, leaves out _Event, and keeps old text', async () => {
+    const { toEntry } = await import('./atlas-history-dialog');
+    const log = { AppCode: 'TTDV2', RefID: 1, CreatedBy: 'Dana', CreatedDate: '10-25-2026 10:05:30' };
+    const text = toEntry({ ...log, LogMessage: '[{"Name":"_Event","Value":"Update"},{"Name":"TaxYear","Value":"2026"}]' });
+    expect(text.when).toBe('10-25-2026 10:05:30');
+    expect(text.changes.map((x) => `${x.Name} - ${x.Value}`)).toEqual(['TaxYear - 2026']);
+    expect(toEntry({ ...log, LogMessage: [{ Name: 'Category', Value: 'OTHER' }] }).changes.length).toBe(1);
+    const old = toEntry({ ...log, LogMessage: 'not json' });
+    expect(old.changes).toEqual([]);
+    expect(old.text).toBe('not json');
+  });
+});
+
+describe('Actions column (as the target GenerateColumns and Action-menu)', () => {
+  const noop = { edit: () => undefined, history: () => undefined, remove: () => undefined };
+  const tab = {
+    Name: 'All',
+    Columns: [{ Name: 'AccountNumber' }],
+    Menus: [{ Name: 'Edit', Visible: true }, { Name: 'Delete', Visible: false }, { Name: 'History', Visible: true }],
+  } as never;
+
+  it('is the first column, width 100, with the tab Menus and the menu component', () => {
+    const defs = columnDefs(tab, noop);
+    expect(defs[0].headerName).toBe('Actions');
+    expect(defs[0].width).toBe(100);
+    expect(defs[0].cellRenderer).toBe(AtlasActionMenu);
+    expect((defs[0].cellRendererParams as { cpMenus: unknown[] }).cpMenus.length).toBe(3);
+    expect(defs[1].field).toBe('AccountNumber');
+  });
+
+  it('takes the target ActionMenuComponent when the dashboard gives it', () => {
+    class TargetMenu {}
+    expect(columnDefs(tab, noop, TargetMenu)[0].cellRenderer).toBe(TargetMenu);
+  });
+
+  it('shows only the menus of the tab that are visible, and runs the row action', () => {
+    const calls: string[] = [];
+    const menu = new AtlasActionMenu();
+    menu.agInit({
+      node: { rowPinned: undefined },
+      data: { ID: 3 },
+      cpMenus: (tab as { Menus: unknown[] }).Menus,
+      atlasActions: { edit: () => calls.push('edit'), history: () => calls.push('history'), remove: () => calls.push('remove') },
+    } as never);
+    expect([menu.show('Edit'), menu.show('Delete'), menu.show('History')]).toEqual([true, false, true]);
+    menu.run('History');
+    expect(calls).toEqual(['history']);
   });
 });

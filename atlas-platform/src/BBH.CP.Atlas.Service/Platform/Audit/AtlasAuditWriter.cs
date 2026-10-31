@@ -27,7 +27,7 @@ public interface IAtlasAuditWriter
     /// <summary>Adds the entry to the platform context (the caller saves). An Update with no change adds nothing.</summary>
     bool Add(AtlasAppManifest manifest, int refId, string auditEvent, IReadOnlyList<AtlasAuditChange> changes);
 
-    /// <summary>The entries of one record, newest first.</summary>
+    /// <summary>The entries of one record, oldest first (as the target History Log).</summary>
     List<CPAuditLog> Read(AtlasAppManifest manifest, int refId);
 }
 
@@ -80,8 +80,8 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
         }
 
         List<Dictionary<string, object?>> rows = [.. query
-            .OrderByDescending(x => EF.Property<DateTime?>(x, "CreatedDate"))
-            .ThenByDescending(x => EF.Property<int>(x, AtlasTable.KeyColumnName))];
+            .OrderBy(x => EF.Property<DateTime?>(x, "CreatedDate"))
+            .ThenBy(x => EF.Property<int>(x, AtlasTable.KeyColumnName))];
 
         return [.. rows.Select(row => ToDto(manifest, refId, row))];
     }
@@ -118,7 +118,8 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
             AppCode = manifest.Code,
             RefID = refId,
             CreatedBy = row.GetValueOrDefault("CreatedBy") as string ?? "",
-            CreatedDate = created?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "",
+            // As the target GetAuditLog: the History Log shows this text.
+            CreatedDate = created?.ToString("MM-dd-yyyy HH:mm:ss", CultureInfo.InvariantCulture) ?? "",
             CreatedDateUtc = created == null || manifest.AuditTime != AtlasAuditTime.Utc
                 ? null
                 : created.Value.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
@@ -126,6 +127,20 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
             Event = auditEvent,
             Source = "App"
         };
+    }
+
+    /// <summary>
+    /// The LogMessage as the target sends it: JSON text that the target History Log reads with JSON.parse and shows as
+    /// "Name - Value". The _Event item is left out (it is in CPAuditLog.Event). Old and Label stay in each item.
+    /// A message that is not a JSON list is given as it is.
+    /// </summary>
+    public static object? ToText(object? logMessage)
+    {
+        if (logMessage is not JsonElement { ValueKind: JsonValueKind.Array } items)
+            return logMessage is JsonElement other ? other.GetRawText() : logMessage;
+        return JsonSerializer.Serialize(items.EnumerateArray()
+            .Where(x => !(x.ValueKind == JsonValueKind.Object && x.TryGetProperty("Name", out JsonElement name)
+                && name.ValueKind == JsonValueKind.String && name.GetString() == EventName)));
     }
 
     private AtlasTable AuditTable(AtlasAppManifest manifest)

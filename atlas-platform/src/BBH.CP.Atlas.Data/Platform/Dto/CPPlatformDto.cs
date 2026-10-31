@@ -82,6 +82,13 @@ namespace BBH.CP.Atlas.Data.DTO
         public string? BindMode { get; set; }
     }
 
+    public partial class CPGridColumn
+    {
+        /// <summary>The header shows a date from a date control of the form, for example the 7 days before
+        /// "WeekEnding" (as the TTD form at the target). Null = the fixed headerName.</summary>
+        public CPHeaderFromDate? HeaderFromDate { get; set; }
+    }
+
     public partial class CPButton
     {
         /// <summary>Button action (spec 01, 5.3). P1: Save, Close, Delete.</summary>
@@ -171,6 +178,18 @@ namespace BBH.CP.Atlas.Data.DTO
     public class CPSoftDelete
     {
         public string Field { get; set; } = "IsDeleted";
+    }
+
+    public class CPHeaderFromDate
+    {
+        /// <summary>The control with the date (yyyy-MM-dd).</summary>
+        public required string Control { get; set; }
+
+        /// <summary>Days to add to the date, for example -6 for the first day of a week that ends on the date.</summary>
+        public int AddDays { get; set; }
+
+        /// <summary>Angular date format. Default "EEEE dd-MMM-yyyy" (for example "Monday 19-Oct-2026", as the target).</summary>
+        public string? Format { get; set; }
     }
 
     public class CPOptionsSource

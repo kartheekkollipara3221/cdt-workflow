@@ -183,13 +183,16 @@ describe('AtlasFormComponent (review NG-09)', () => {
     expect(request.request.params.get('appCode')).toBe('TTDV2');
     expect(request.request.params.get('refID')).toBe('5');
     request.flush({
-      result: [{ AppCode: 'TTDV2', RefID: 5, CreatedBy: 'Dana', CreatedDate: '2026-10-25 10:00:00', Event: 'Update',
-        LogMessage: [{ Name: '_Event', Value: 'Update' }, { Name: 'Name', Label: 'Name', Old: 'a', Value: 'b' }] }],
+      result: [{ AppCode: 'TTDV2', RefID: 5, CreatedBy: 'Dana', CreatedDate: '10-25-2026 10:00:00', Event: 'Update',
+        LogMessage: '[{"Name":"Name","Label":"Name","Old":"a","Value":"b"}]' }],
     });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.historyOpen()).toBe(true);
-    expect((fixture.nativeElement as HTMLElement).textContent?.includes('Dana')).toBe(true);
+    const shown = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(shown.includes('Modified On : 10-25-2026 10:00:00')).toBe(true);
+    expect(shown.includes('Modified By : Dana')).toBe(true);
+    expect(shown.includes('Name - b')).toBe(true);
 
     fixture.componentInstance.historyOpen.set(false);
     fixture.detectChanges();
@@ -366,6 +369,35 @@ describe('AtlasFormComponent grid with ag-grid and the cell components (review R
 
     expect(element(fixture, '#div_WeeklyHour .atlas-error')?.textContent?.trim()).toBe('Mon: Enter whole minutes from 0 to 1440.');
   });
+
+  it('shows the day headers of the WeekEnding date and changes them with the date (HeaderFromDate, as the target)', async () => {
+    const dated = grid();
+    dated.Grid!.Columns![0].HeaderFromDate = { Control: 'WeekEnding', AddDays: -6, Format: 'EEEE dd-MMM-yyyy' };
+    dated.Grid!.Columns![1].HeaderFromDate = { Control: 'WeekEnding', AddDays: 0 };
+    const controls = [text('Name'), text('WeekEnding', { Value: '2026-10-25' })];
+    const { fixture } = setup({ ...section(controls), Controls: [...section(controls).Controls!, dated] }, 5, [
+      provideAtlasGridComponents({ NumericEditor: TestNumericCell }),
+    ]);
+    await ready(fixture);
+    const headers = () =>
+      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('#div_WeeklyHour .ag-header-cell-text')).map((x) => x.textContent?.trim());
+
+    expect(headers()).toEqual(['Monday 19-Oct-2026', 'Sunday 25-Oct-2026', 'Total']);
+
+    fixture.componentInstance.form.get('WeekEnding')!.setValue('2026-11-01');
+    for (let i = 0; i < 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      fixture.detectChanges();
+    }
+    expect(headers()).toEqual(['Monday 26-Oct-2026', 'Sunday 01-Nov-2026', 'Total']);
+
+    fixture.componentInstance.form.get('WeekEnding')!.setValue('');
+    for (let i = 0; i < 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      fixture.detectChanges();
+    }
+    expect(headers()).toEqual(['Mon', 'Tue', 'Total']);
+  });
 });
 
 describe('AtlasHistoryDialog (review NG-10)', () => {
@@ -388,7 +420,7 @@ describe('AtlasHistoryDialog (review NG-10)', () => {
     const second = http.expectOne((r) => r.url === 'GetAuditLog' && r.params.get('refID') === '7');
 
     expect(first.cancelled).toBe(true);
-    second.flush({ result: [{ AppCode: 'TTDV2', RefID: 7, CreatedBy: 'Seven', CreatedDate: '2026-10-25 10:00:00', Event: 'Create', LogMessage: [] }] });
+    second.flush({ result: [{ AppCode: 'TTDV2', RefID: 7, CreatedBy: 'Seven', CreatedDate: '10-25-2026 10:00:00', Event: 'Create', LogMessage: '[]' }] });
     fixture.detectChanges();
     expect(fixture.componentInstance.entries().map((x) => x.by)).toEqual(['Seven']);
   });

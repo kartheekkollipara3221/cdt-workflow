@@ -86,6 +86,10 @@ public static partial class AtlasConfigLint
                 Names(where, effect.SetFromOption?.Keys);
             }
 
+            foreach (CPGridColumn column in control.Grid?.Columns ?? [])
+                if (column.HeaderFromDate is { } header)
+                    Names($"the HeaderFromDate of the column '{column.field}'", [header.Control ?? ""]);
+
             if (control.Validator?.Pattern is { Length: > 0 } pattern && !Compiles(pattern))
                 error($"the Pattern of '{control.Name}' is not a valid regular expression.");
         }

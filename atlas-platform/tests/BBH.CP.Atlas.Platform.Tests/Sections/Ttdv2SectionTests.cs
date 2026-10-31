@@ -244,9 +244,12 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Equal("Yes", removed.Outputs!.Single().Value);
 
         List<CPAuditLog> audit = Svc(Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", created.ID);
-        Assert.Equal(["Delete", "Update", "Create"], audit.Select(x => x.Event));
+        // As the target History Log: oldest first; LogMessage is JSON text of Name/Value items (no _Event item).
+        Assert.Equal(["Create", "Update", "Delete"], audit.Select(x => x.Event));
+        Assert.Matches(@"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$", audit[0].CreatedDate);
 
-        JsonElement changes = (JsonElement)audit[1].LogMessage!;
+        JsonElement changes = JsonDocument.Parse(Assert.IsType<string>(audit[1].LogMessage)).RootElement;
+        Assert.DoesNotContain(changes.EnumerateArray(), x => x.GetProperty("Name").GetString() == "_Event");
         JsonElement category = changes.EnumerateArray().Single(x => x.GetProperty("Name").GetString() == "Category");
         Assert.Equal("TAX_N", category.GetProperty("Old").GetString());
         Assert.Equal("OTHER", category.GetProperty("Value").GetString());
@@ -612,14 +615,14 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
             Assert.Contains(saved.Outputs!, x => x.Name == "WorkDescription" && x.Value == "Prep text");
 
             // 3. History: the entry stays, the values are ***. The owner still sees them.
-            string prepHistory = System.Text.Json.JsonSerializer.Serialize(
+            string prepHistory = string.Join(' ',
                 custom.Service(_registry, Prep, Ttdv2Roles.Prepare).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
             Assert.Contains("\"Name\":\"Category\"", prepHistory, StringComparison.Ordinal);
             Assert.DoesNotContain("OTHER", prepHistory, StringComparison.Ordinal);
             Assert.DoesNotContain("TAX_N", prepHistory, StringComparison.Ordinal);
             Assert.Contains("Prep text", prepHistory, StringComparison.Ordinal);
 
-            string ownerHistory = System.Text.Json.JsonSerializer.Serialize(
+            string ownerHistory = string.Join(' ',
                 custom.Service(_registry, Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
             Assert.Contains("OTHER", ownerHistory, StringComparison.Ordinal);
         }

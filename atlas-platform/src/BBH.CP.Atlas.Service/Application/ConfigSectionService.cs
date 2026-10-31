@@ -685,6 +685,8 @@ namespace BBH.CP.Atlas.Service.Application
             if (hidden.Count > 0)
                 foreach (CPAuditLog entry in entries)
                     entry.LogMessage = AtlasAuditMask.Mask(entry.LogMessage, hidden);
+            foreach (CPAuditLog entry in entries)
+                entry.LogMessage = AtlasAuditWriter.ToText(entry.LogMessage);
             return entries;
         }
 

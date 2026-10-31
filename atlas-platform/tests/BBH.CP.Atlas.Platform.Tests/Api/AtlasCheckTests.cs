@@ -62,6 +62,19 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
     }
 
     [Fact]
+    public async Task A_HeaderFromDate_that_names_no_control_of_the_form_is_an_error()
+    {
+        CopyRealConfig();
+        string form = Path.Combine(_folder, "TTDV2.json");
+        File.WriteAllText(form, File.ReadAllText(form).Replace("\"Control\": \"WeekEnding\", \"AddDays\": -6", "\"Control\": \"WeekEnd\", \"AddDays\": -6", StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("the HeaderFromDate of the column 'MondayMinute' names 'WeekEnd'", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task An_unknown_rule_role_is_a_warning_only()
     {
         CopyRealConfig();

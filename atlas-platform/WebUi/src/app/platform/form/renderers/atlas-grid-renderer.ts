@@ -5,13 +5,16 @@
 // provideAtlasGridComponents (atlas-grid-components.ts). BindMode "SingleRowFields" (spec 01, 10.2): one row; each column is a field of the record.
 // The form keeps a form group with one control for each column field (validation, Computed, server errors); the grid
 // row and that group are kept the same in both directions.
+// HeaderFromDate (platform): the header shows the date of a form control + AddDays, for example the 7 days before
+// WeekEnding, as the TTD form at the target. It changes when the control value changes.
+import { formatDate } from '@angular/common';
 import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject, isDevMode } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormGroup } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
 import { CellValueChangedEvent, ClientSideRowModelModule, ColDef, GridApi, GridReadyEvent, Module, RowSelectionOptions } from 'ag-grid-community';
 import { AgLoadingOverlayComponent } from '../../atlas-pbdev';
-import { CPGridColumn } from '../../atlas-models';
+import { CPGridColumn, CPHeaderFromDate } from '../../atlas-models';
 import { ATLAS_GRID_COMPONENTS } from '../atlas-grid-components';
 import { errorText } from '../atlas-validators';
 import { AtlasRendererBase } from './atlas-renderers';
@@ -71,7 +74,10 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     this.rowData = [{ ...rowGroup.getRawValue() }];
     this.columns = (this.control.Grid?.Columns ?? []).map((column) => this.columnDef(column, rowGroup));
     // A Computed cell (for example WeeklyTotal) or a server answer changes the group: show it in the grid row.
-    this.group.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.syncGrid());
+    this.group.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.syncGrid();
+      this.syncHeaders();
+    });
   }
 
   onGridReady(event: GridReadyEvent): void {
@@ -115,6 +121,8 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     const def = { ...column } as ColDef & Record<string, unknown>;
     const cell = column.field ? rowGroup.get(column.field) : null;
     const name = typeof column.cellRenderer === 'string' ? column.cellRenderer : null;
+    delete def['HeaderFromDate'];
+    def.headerName = this.headerName(column);
     if (name && !this.components[name]) {
       if (isDevMode()) {
         console.warn(`Atlas: no grid component "${name}" for the column ${column.field}. Add it with provideAtlasGridComponents.`);
@@ -123,6 +131,21 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     }
     def.cellRendererParams = { ...(column.cellRendererParams ?? {}), disabled: !!column.cellRendererParams?.disabled || !cell || cell.disabled };
     return def;
+  }
+
+  private headerName(column: CPGridColumn): string | undefined {
+    const from = column.HeaderFromDate;
+    const date = from ? dateHeader(from, this.group.get(from.Control)?.value) : null;
+    return date ?? column.headerName ?? undefined;
+  }
+
+  /** A new date (for example another WeekEnding): new column definitions with the new headers. */
+  private syncHeaders(): void {
+    if (!this.columns.some((def, i) => def.headerName !== this.headerName(this.control.Grid!.Columns![i]))) {
+      return;
+    }
+    this.columns = this.columns.map((def, i) => ({ ...def, headerName: this.headerName(this.control.Grid!.Columns![i]) }));
+    this.cdr.markForCheck();
   }
 
   private syncGrid(): void {
@@ -138,4 +161,14 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     }
     this.cdr.markForCheck();
   }
+}
+
+/** The header text for a date value "yyyy-MM-dd" (a local day; not UTC, so the day is the same in each time zone). Null: no date. */
+export function dateHeader(from: CPHeaderFromDate, value: unknown): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value ?? ''));
+  if (!match) {
+    return null;
+  }
+  const day = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + (from.AddDays ?? 0));
+  return formatDate(day, from.Format || 'EEEE dd-MMM-yyyy', 'en-US');
 }
