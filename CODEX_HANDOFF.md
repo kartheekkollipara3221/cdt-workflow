@@ -2,8 +2,8 @@
 
 ## State
 - Commits: 2b6d60f (review 3 fix wave 4), 8e6204d (package), fb4f296 (handoff) - pushed.
-  fdcd719 (RV-13 answered: target upgraded to .NET 10), 587006a (package rebuilt at fdcd719) - local, 2 ahead of origin
-  (push when the user says so).
+  fdcd719 (RV-13 answered: target upgraded to .NET 10), 587006a (package rebuilt at fdcd719), a88191e (handoff) -
+  pushed 2026-10-31 (origin at a88191e).
 - Reports: docs/atlas-platform/19-architecture-review-3 (review by another model, 43 findings) and
   20-review-3-assessment-and-fixes (verdict per finding: 30 fixed, 2 documented, 6 deferred, 3 not agreed, 2 target team;
   new RV-N1). Reports 17, 18 also committed.
@@ -26,8 +26,8 @@
 6. Performance backlog (PF9 first); confirm MaxRows 5000 on TaxTimeAllReport (never asked).
 
 ## Next-session prompt
-"Resume. Read the top entry of CODEX_HANDOFF.md. <Integration result at the target: ... | NULL-row count: ... | Push the 2
-local commits | Start the B3 walk-through>. Keep the broad goal: seamless integration at the target, platform generic and
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Integration result at the target: ... | NULL-row count: ... | Start the B3
+walk-through>. Keep the broad goal: seamless integration at the target, platform generic and
 simple, nothing breaks the existing system."
 
 ---
