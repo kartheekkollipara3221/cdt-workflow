@@ -1,3 +1,37 @@
+# RESUME HERE - 2026-10-31 (end of session). Wave 4 done and pushed; target is .NET 10. NEXT: one-time dev integration at the target.
+
+## State
+- Commits: 2b6d60f (review 3 fix wave 4), 8e6204d (package), fb4f296 (handoff) - pushed.
+  fdcd719 (RV-13 answered: target upgraded to .NET 10), 587006a (package rebuilt at fdcd719) - local, 2 ahead of origin
+  (push when the user says so).
+- Reports: docs/atlas-platform/19-architecture-review-3 (review by another model, 43 findings) and
+  20-review-3-assessment-and-fixes (verdict per finding: 30 fixed, 2 documented, 6 deferred, 3 not agreed, 2 target team;
+  new RV-N1). Reports 17, 18 also committed.
+- Regression at end: dotnet build 0 warnings; dotnet test 294; --atlas-check 0/0; ng build ok; ng test 73;
+  npm run check:target-flags clean. SQL script tests 17 pass.
+- Target package: atlas-platform/local/package/atlas-target-package.ps1 (90 files, commit fdcd719). Extract tested on
+  Windows PowerShell 5.1 (SHA-256 check passes; WebUi files under copy/WebUi/src/app/platform/).
+- Parked (not committed): docs/ghcp-codebase-map-prompt.md, docs/ghcp-codebase-map-runbook.html (user: "leave this route").
+
+## Next (in order)
+1. At the target, before 030: run the NULL-row count query (module 20, section 6).
+2. One-time dev integration (user runs it): extract the .ps1 to a new folder; INTEGRATION.md section 1 copy, section 2
+   hand edits (exact lines for CPAtlasService, controller, cp-atlas-dashboard via AtlasDashboardNavigation); SQL 020/030/040
+   (050 only on change-over day; 090 = rollback); smoke test current apps before/after; TTDV2 Enabled=false until it passes;
+   list CP_Atlas_Application codes (AR-02 check). Errors -> fix here, rebuild package.
+3. Walk-through of design choices B3, B4, B7, B9, B10, B14, B15 (INTEGRATION.md section 6), one at a time.
+4. Review with the target team (modules 16, 19, 20, INTEGRATION.md). Target-team items: RV-L11 (time base of dbo.CP_Atlas_*
+   rows), RV-L13 (LanID index).
+5. Before app #2: RV-N1 (run tab procedures), RV-07 (retry after transient SQL start-up failure), RV-L03.
+6. Performance backlog (PF9 first); confirm MaxRows 5000 on TaxTimeAllReport (never asked).
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Integration result at the target: ... | NULL-row count: ... | Push the 2
+local commits | Start the B3 walk-through>. Keep the broad goal: seamless integration at the target, platform generic and
+simple, nothing breaks the existing system."
+
+---
+
 # RESUME HERE - 2026-10-31 (later). Fix wave 4 committed (2b6d60f) and target package rebuilt (8e6204d). NOT pushed.
 
 ## State
