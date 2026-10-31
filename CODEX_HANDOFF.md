@@ -1,4 +1,4 @@
-# RESUME HERE - 2026-10-31 (later). Fix wave 4 done: second opinion on review 3 (docs/atlas-platform/20-review-3-assessment-and-fixes.md + .html). NOT committed.
+# RESUME HERE - 2026-10-31 (later). Fix wave 4 committed (2b6d60f) and target package rebuilt (8e6204d). NOT pushed.
 
 ## State
 - Review 3 (module 19, by another model): 43 findings. Module 20 = verdict per finding + fixes: 30 fixed (5 in part),
@@ -13,7 +13,7 @@
 
 ## Next
 1. Confirm target TFM of BBH.CP.Atlas.App and .Service (copy shows net9.0; Data net10.0). If net9.0: stop and ask.
-2. Commit wave 4 (user to approve), then rebuild the target package (make-target-package.py refuses uncommitted changes).
+2. DONE: wave 4 committed (2b6d60f); package atlas-platform/local/package/atlas-target-package.ps1 rebuilt (8e6204d, 90 files), extract tested.
 3. At the target before 030: run the NULL-row count query (module 20, section 6). Then the dev integration.
 4. Before app #2: RV-N1 tab procedures, RV-07 retry, RV-L03.
 
