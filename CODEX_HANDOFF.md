@@ -4,7 +4,7 @@
 - Commits: dbbb4cc (git-ignore target-implementation-read-only: it holds the AG Grid license key), 570278e (week headers
   HeaderFromDate; Actions column = target vertical-ellipsis mat-menu, first column; GetAuditLog as the target: LogMessage
   JSON text, no _Event, CreatedDate MM-dd-yyyy HH:mm:ss, oldest first; History dialog = target History Log layout),
-  package commit (91 files, commit 570278e). Push: ask the user.
+  package (91 files): first at 570278e (pushed f3fea35), rebuilt at 4e7d5c0 with the NULL-row query in INTEGRATION.md section 3.
 - Bug found and fixed: the target History Log does JSON.parse(LogMessage); we sent an array -> it would break for TTDV2.
 - Regression at 570278e: dotnet build 0 warnings; dotnet test 295; --atlas-check 0/0; ng build ok; ng test 77;
   check:target-flags ok. Package extract tested on Windows PowerShell 5.1; no target secrets in it.
