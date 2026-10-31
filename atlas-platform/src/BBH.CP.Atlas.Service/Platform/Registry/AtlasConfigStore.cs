@@ -85,14 +85,28 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
             if (current != null && now - current.CheckedAt < _refresh)
                 return current;
 
-            string[] paths = Directory.Exists(ConfigFolder)
-                ? [.. Directory.GetFiles(ConfigFolder, "*.app.json").Order(StringComparer.OrdinalIgnoreCase)]
-                : [];
-            string signature = string.Join("|", paths.Select(path =>
+            string[] paths;
+            string signature;
+            try
             {
-                FileInfo file = new(path);
-                return $"{path}:{file.LastWriteTimeUtc.Ticks}:{file.Length}";
-            }));
+                paths = Directory.Exists(ConfigFolder)
+                    ? [.. Directory.GetFiles(ConfigFolder, "*.app.json").Order(StringComparer.OrdinalIgnoreCase)]
+                    : [];
+                signature = string.Join("|", paths.Select(path =>
+                {
+                    FileInfo file = new(path);
+                    return $"{path}:{file.LastWriteTimeUtc.Ticks}:{file.Length}";
+                }));
+            }
+            catch (Exception ex) when (current != null && ex is IOException or UnauthorizedAccessException)
+            {
+                // Review 3 RV-L05: the folder cannot be listed now (a share or ACL error). The last good apps stay in use;
+                // the next refresh tries again.
+                AtlasLog.ConfigInvalid(_logger, ConfigFolder, $"The config folder cannot be read: {ex.Message} The last good version stays in use.");
+                ManifestSnapshot kept = current with { CheckedAt = now };
+                Volatile.Write(ref _snapshot, kept);
+                return kept;
+            }
 
             ManifestSnapshot next = current != null && current.Signature == signature
                 ? current with { CheckedAt = now }
@@ -134,7 +148,17 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
 
         Dictionary<string, AtlasAppManifest> byCode = [];
         foreach (AtlasAppManifest manifest in manifests)
-            byCode.TryAdd(manifest.Code, manifest); // the first file wins, as FirstOrDefault did
+        {
+            if (byCode.TryAdd(manifest.Code, manifest))
+                continue; // the first file wins, as FirstOrDefault did
+            // Review 3 RV-L09: a second file with the same Code was ignored with no message.
+            string message = $"{Path.GetFileName(manifest.SourceFile)} has the Code {manifest.Code}, which {Path.GetFileName(byCode[manifest.Code].SourceFile)} already has. The second file is not used.";
+            if (!errors.Contains(message))
+            {
+                errors.Add(message);
+                AtlasLog.ConfigInvalid(_logger, Path.GetFileName(manifest.SourceFile) ?? "", message);
+            }
+        }
 
         return new ManifestSnapshot(signature, manifests, byCode, errors, now);
     }

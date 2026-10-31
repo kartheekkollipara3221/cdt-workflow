@@ -26,7 +26,7 @@ COPY = [
     ('src/BBH.CP.Atlas.App/Config/TTDV2.app.json', 'copy/BBH.CP.Atlas.App/Config/TTDV2.app.json'),
     ('src/BBH.CP.Atlas.App/Config/TTDV2.json', 'copy/BBH.CP.Atlas.App/Config/TTDV2.json'),
     ('src/BBH.CP.Atlas.App/Config/TTDV2.Dashboard.json', 'copy/BBH.CP.Atlas.App/Config/TTDV2.Dashboard.json'),
-    ('WebUi/src/app/platform/', 'copy/WebUi/Source/App/platform/'),
+    ('WebUi/src/app/platform/', 'copy/WebUi/src/app/platform/'),
     ('sql/release-p1/', 'copy/sql/release-p1/'),
 ]
 REFERENCE = [

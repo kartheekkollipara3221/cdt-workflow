@@ -1,3 +1,46 @@
+# RESUME HERE - 2026-10-31 (later). Fix wave 4 done: second opinion on review 3 (docs/atlas-platform/20-review-3-assessment-and-fixes.md + .html). NOT committed.
+
+## State
+- Review 3 (module 19, by another model): 43 findings. Module 20 = verdict per finding + fixes: 30 fixed (5 in part),
+  2 documented, 6 deferred, 3 not agreed, 2 for the target team; new RV-N1 (platform dashboard runs no Procedure tab ->
+  now a start-up error).
+- Key fixes: RV-01 no v1/ prefix in platform URLs (stand-in base URL now http://localhost:5080/v1/); RV-02 rule-hidden values
+  cleared on load/save/History (AtlasAuditMask); RV-03 unmappable table left out of the EF model; RV-08/09/10 SQL (030 view
+  NULL filter, 050 role-name check, 040 deleted-row stop, new 090-ttdv2-rollback.sql); RV-11/12 AtlasAppCode.ToLegacy +
+  AtlasDashboardNavigation + exact hand-edit lines in INTEGRATION.md; RV-13 path src/app/platform; Angular RV-14/15/16/17.
+- Regression: dotnet build 0 warnings; dotnet test 294; --atlas-check 0/0; ng build ok; ng test 73; npm run check:target-flags ok.
+- Local review DB still has the old 030 view (re-run 030 locally if needed; tests use fresh DBs).
+
+## Next
+1. Confirm target TFM of BBH.CP.Atlas.App and .Service (copy shows net9.0; Data net10.0). If net9.0: stop and ask.
+2. Commit wave 4 (user to approve), then rebuild the target package (make-target-package.py refuses uncommitted changes).
+3. At the target before 030: run the NULL-row count query (module 20, section 6). Then the dev integration.
+4. Before app #2: RV-N1 tab procedures, RV-07 retry, RV-L03.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Commit wave 4 | TFM at the target is ... | Integration result ...>.
+Keep the broad goal: seamless integration at the target, platform generic and simple, nothing breaks the existing system."
+
+---
+
+# RESUME HERE - 2026-10-31. Architecture review 3 done (docs/atlas-platform/19-architecture-review-3.md + .html). NEXT: fix wave 4 group A, then the dev integration.
+
+## Review 3 (no code changed)
+- 43 findings: 3 High (RV-01 /v1/v1/ URLs at the target; RV-02 rule-hidden field values sent on load/save/history;
+  RV-03 one bad table in the shared EF model gives 500 for all platform apps), 15 Medium, 25 Low.
+- Verdict: not ready for the move as the code is. Group A (section 9) blocks the dev integration: RV-01, RV-08 (view NULL),
+  RV-09 (050 name check, 040 IsDeleted), RV-10 (rollback SQL), RV-12 (disabled app 500 vs 404), RV-11/RV-13 (INTEGRATION.md
+  signature changes, TFM check, src/app path, reference diffs), RV-02. About one day. Then regression + rebuild the package.
+- Group B before app #2; group C backlog. Regression at review start: build 0 warnings, 277 + 66 tests pass.
+- Not committed: reports 17, 18, 19, README rows, docs/ghcp-codebase-map-prompt.md, docs/ghcp-codebase-map-runbook.html (parked).
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. Start fix wave 4 group A from docs/atlas-platform/19-architecture-review-3.md
+section 9, one item at a time, regression after each. Keep the broad goal: seamless integration at the target, platform generic
+and simple, nothing breaks the existing system."
+
+---
+
 # RESUME HERE - 2026-10-28 (later). Local TARGET LOOK added (9bc6402). User: "spot on" -> look item CLOSED. NEXT: integration in dev (item 2).
 
 ## What changed (user: "still not matching to target look")

@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/. The form model of a section: the form group, the outputs
+// COPY to the target: WebUi/src/app/platform/form/. The form model of a section: the form group, the outputs
 // for the save, and the client value of a Computed field. Plain functions, so the unit tests need no component.
 import { FormControl, FormGroup, FormRecord } from '@angular/forms';
 import { CPApplicationControl, CPApplicationSection, CPPageOutput } from '../atlas-models';

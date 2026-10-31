@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/. The audit history of one record (v1/GetAuditLog, spec 09, 4.5).
+// COPY to the target: WebUi/src/app/platform/. The audit history of one record (v1/GetAuditLog, spec 09, 4.5).
 // All values are shown as text (no HTML).
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
@@ -94,12 +94,23 @@ export class AtlasHistoryDialog {
   }
 }
 
+/**
+ * Review 3 RV-L19: "yyyy-MM-dd HH:mm:ss" (the time of an app with AuditTime Local) as a local Date. DatePipe does not
+ * read the space form in all browsers, and an error there leaves the dialog empty. Another text is given as it is.
+ */
+export function localTime(text: string | null | undefined): Date | string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(text ?? '');
+  return match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6] ?? 0))
+    : (text ?? '');
+}
+
 export function toEntry(log: CPAuditLog): HistoryEntry {
   const items = Array.isArray(log.LogMessage) ? (log.LogMessage as CPAuditChange[]) : [];
   return {
     event: log.Event ?? 'Change',
     by: log.CreatedBy,
-    when: log.CreatedDateUtc ? new Date(log.CreatedDateUtc) : log.CreatedDate,
+    when: log.CreatedDateUtc ? new Date(log.CreatedDateUtc) : localTime(log.CreatedDate),
     changes: items.filter((x) => x.Name !== '_Event'),
   };
 }

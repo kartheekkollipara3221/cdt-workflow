@@ -29,12 +29,21 @@ public class AtlasPlatformContext : DbContext
         optionsBuilder.ReplaceService<IModelCacheKeyFactory, AtlasModelCacheKeyFactory>();
     }
 
+    /// <summary>True if the table has an ID column and only column types that the platform supports.</summary>
+    public static bool IsMappable(AtlasTable table)
+    {
+        ArgumentNullException.ThrowIfNull(table);
+        return table.Key != null && table.Columns.All(x => x.ClrType != null);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        foreach (AtlasTable table in Registry.Tables)
+        // Review 3 RV-03: a table that cannot be mapped (no ID column, a column type that the platform does not support)
+        // is left out of the one shared model. The start-up check names it and disables only its app; the model of the
+        // other apps still builds. A request for that table then fails for that app only.
+        foreach (AtlasTable table in Registry.Tables.Where(IsMappable))
         {
-            AtlasColumn key = table.Key
-                ?? throw new InvalidOperationException($"Table '{table.FullName}' has no {AtlasTable.KeyColumnName} column.");
+            AtlasColumn key = table.Key!;
 
             modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(table.FullName, entity =>
             {
@@ -42,9 +51,7 @@ public class AtlasPlatformContext : DbContext
 
                 foreach (AtlasColumn column in table.Columns)
                 {
-                    Type clrType = column.ClrType
-                        ?? throw new InvalidOperationException(
-                            $"Column '{table.FullName}.{column.Name}' has the type '{column.SqlType}', which the platform does not support.");
+                    Type clrType = column.ClrType!;
 
                     var property = entity.IndexerProperty(clrType, column.Name).HasColumnType(column.StoreType);
 

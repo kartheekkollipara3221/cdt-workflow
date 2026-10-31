@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/dashboard/. AG Grid column definitions from the tab Columns list
+// COPY to the target: WebUi/src/app/platform/dashboard/. AG Grid column definitions from the tab Columns list
 // (spec 03, 4.6). Cells are text; a link is made with DOM methods, never HTML text (H5).
 import { ColDef, ICellRendererParams, ValueFormatterParams } from 'ag-grid-community';
 import { CPAtlasTab, CPMenu, CPTabColumn } from '../atlas-models';
@@ -30,11 +30,31 @@ export function formatDate(value: unknown): string {
   return `${match[3]}-${MONTHS[Number(match[2]) - 1]}-${match[1]}`;
 }
 
+/**
+ * The local day of a cell, as formatDate shows it (review 3 RV-16): a date-time with a time part is a timestamp and
+ * shows the day of the user; a yyyy-MM-dd date is that day. Before, the filter used the UTC day of a timestamp, so a
+ * row shown as 17-Oct did not match a filter of 17-Oct.
+ */
+export function cellDay(value: unknown): Date | null {
+  const text = String(value ?? '').trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (!match) {
+    return null;
+  }
+  if (text.length > 10) {
+    const date = new Date(text);
+    if (!Number.isNaN(date.getTime())) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+  }
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
 function dateComparator(filterDate: Date, cellValue: unknown): number {
-  if (!cellValue) {
+  const cell = cellDay(cellValue);
+  if (!cell) {
     return -1;
   }
-  const cell = new Date(String(cellValue).substring(0, 10) + 'T00:00:00');
   return cell < filterDate ? -1 : cell > filterDate ? 1 : 0;
 }
 

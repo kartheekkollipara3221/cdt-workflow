@@ -112,6 +112,22 @@ public static partial class AtlasAppCode
         return text;
     }
 
+    /// <summary>
+    /// Review 3 RV-12: the enum value for the current if chains at the target, in place of
+    /// <c>Enum.Parse&lt;CPApplicationCode&gt;(code, true)</c>. A code of a platform app that is not available (Enabled = false,
+    /// or disabled at start-up) gives 404, not the ArgumentException of Enum.Parse (a logged 500). Any other code gives the
+    /// same result as Enum.Parse before (no change for the current callers).
+    /// </summary>
+    public static BBH.CP.Atlas.Data.Enumerations.CPApplicationCode ToLegacy(string? code, IAtlasConfigStore? configStore)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            throw AtlasProblemException.BadRequest("The request has no app code.");
+        string text = FromRequest(code);
+        if (!IsLegacy(text) && configStore?.FindManifest(Normalize(text)) != null)
+            throw AtlasProblemException.NotFound($"App '{Normalize(text)}' is not available.");
+        return Enum.Parse<BBH.CP.Atlas.Data.Enumerations.CPApplicationCode>(text, true);
+    }
+
     /// <summary>True if the code is one of the current (enum) apps.</summary>
     public static bool IsLegacy(string? code) =>
         code != null && Enum.TryParse(code.Trim(), true, out BBH.CP.Atlas.Data.Enumerations.CPApplicationCode _) && !int.TryParse(code, out _);

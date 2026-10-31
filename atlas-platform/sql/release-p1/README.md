@@ -13,5 +13,11 @@ saved in TTD during the run: run it again.
 | 030 | `030-active-user-roles-view.sql` | — | `docs/atlas-platform/sql/06-active-user-roles-view.sql` |
 | 040 | `040-ttdv2-app.sql` | `<RUN_BY>` | `docs/atlas-platform/sql/12-ttdv2-app.sql` |
 | 050 | `050-ttdv2-copy-from-ttd.sql` (change-over day only) | `<SERVER_TIME_ZONE>`, `<RUN_BY>` | `docs/atlas-platform/sql/12-ttdv2-copy-from-ttd.sql` |
+| 090 | `090-ttdv2-rollback.sql` (rollback only, not in the run order) | `<RUN_BY>`, `<COPY_RUN_BY>` | `docs/atlas-platform/sql/12-ttdv2-rollback.sql` |
 
 The copies are the same as the module scripts (a test compares them). Change the module script, then copy it here.
+
+Rollback (review 3 RV-10): set `AppSettings:Modules:TTDV2:Enabled = false`, then run `090`. It gives back the TTD roles
+that `050` revoked and soft-deletes the TTDV2 app row and roles, so the menu has no TTDV2 row also after a code revert.
+It keeps the TTDV2 tables. A second run changes nothing. `040` stops (error 55010) while the deleted TTDV2 row is there:
+to install again, set `IsDeleted = 0` on the app row and its roles first.

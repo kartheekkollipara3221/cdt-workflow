@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/. Review SV-04: one list of validator cases that the client
+// COPY to the target: WebUi/src/app/platform/form/. Review SV-04: one list of validator cases that the client
 // (platform.spec.ts) and the server (ValidatorParityTests, reads this file) both check, so the two rule sets stay the
 // same. The array is strict JSON: double quotes, no trailing commas, no comments inside it. The label is "Field".
 import { CPValidator } from '../atlas-models';

@@ -107,6 +107,22 @@ CROSS APPLY (VALUES
     (N'ModifiedBy', ModifiedByName, ModifiedBy)) AS v(ColumnName, Value, LanId)
 WHERE NULLIF(LTRIM(RTRIM(v.Value)), '') IS NOT NULL AND v.LanId IS NULL;
 
+-- Review 3 RV-09: part 2 revokes all TTD roles and gives the TTDV2 role with the same name.
+-- A TTD role that a user has and that has no TTDV2 role of the same name would leave the user with no role.
+INSERT INTO #Problem (ID, ColumnName, Value, Problem)
+SELECT MIN(ue.CP_Atlas_UserID), N'Role', e1.Name, N'TTD role has no TTDV2 role with the same name (add it in 12-ttdv2-app.sql or move the users first)'
+FROM dbo.CP_Atlas_UserEntitlement AS ue
+INNER JOIN dbo.CP_Atlas_Entitlement AS e1 ON e1.ID = ue.CP_Atlas_EntitlementID AND ISNULL(e1.IsDeleted, 0) = 0
+INNER JOIN dbo.CP_Atlas_Application AS a1 ON a1.ID = e1.CP_Atlas_ApplicationID AND a1.Code = 'TTD'
+INNER JOIN dbo.CP_Atlas_User AS u ON u.ID = ue.CP_Atlas_UserID AND ISNULL(u.IsDeleted, 0) = 0
+WHERE ISNULL(ue.IsDeleted, 0) = 0
+  AND NOT EXISTS (SELECT 1
+                  FROM dbo.CP_Atlas_Entitlement AS e2
+                  INNER JOIN dbo.CP_Atlas_Application AS a2 ON a2.ID = e2.CP_Atlas_ApplicationID AND a2.Code = 'TTDV2'
+                                                           AND ISNULL(a2.IsDeleted, 0) = 0
+                  WHERE e2.Name = e1.Name AND ISNULL(e2.IsDeleted, 0) = 0)
+GROUP BY e1.Name;
+
 SELECT p.ColumnName, p.Problem, p.Value, COUNT(*) AS Records, MIN(p.ID) AS FirstID
 FROM #Problem AS p
 GROUP BY p.ColumnName, p.Problem, p.Value
@@ -122,7 +138,7 @@ WHERE ISNULL(TRY_CONVERT(int, WeeklyTotalText), -1) <>
     + ISNULL(FridayMinute,0) + ISNULL(SaturdayMinute,0) + ISNULL(SundayMinute,0);
 
 IF EXISTS (SELECT 1 FROM #Problem)
-    THROW 55006, 'Some TTD values cannot be converted. See the first result set. Nothing was copied.', 1;
+    THROW 55006, 'Some TTD values or roles cannot be converted. See the first result set. Nothing was copied and no role changed.', 1;
 
 -- Part 2: copy.
 BEGIN TRY

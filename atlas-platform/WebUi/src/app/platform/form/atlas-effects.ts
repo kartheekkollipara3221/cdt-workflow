@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/. Value-based client rules (spec 01, 5.1).
+// COPY to the target: WebUi/src/app/platform/form/. Value-based client rules (spec 01, 5.1).
 // Conditions: Equals, NotEquals, In, HasValue. Actions: Show, Hide, Require, Unrequire, Enable, Disable, Set, Clear,
 // SetFromOption. No expression language. The server applies Show/Hide/Require/Unrequire again on save.
 import { CPApplicationControl, CPEffectCondition, CPKeyValue } from '../atlas-models';

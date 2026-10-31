@@ -1,4 +1,4 @@
-// COPY to the target as a reference: WebUi/Source/App/platform/dashboard/. At the target, the current dashboard
+// COPY to the target as a reference: WebUi/src/app/platform/dashboard/. At the target, the current dashboard
 // component gets only the navigation change (formRoute first, then the current if chain) and the Columns support.
 // Locally this component is the dashboard of a platform app (route dashboard/:code).
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';

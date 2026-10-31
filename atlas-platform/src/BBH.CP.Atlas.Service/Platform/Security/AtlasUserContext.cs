@@ -70,7 +70,8 @@ public sealed class AtlasUserContext(
             SELECT r.ApplicationCode, p.Code AS ParentCode, r.RoleName, r.IsRead, r.IsWrite, r.IsAdmin
             FROM dbo.vw_CP_Atlas_ActiveUserRole AS r
             LEFT JOIN dbo.CP_Atlas_Application AS p ON p.ID = r.ParentApplicationId
-            WHERE r.LanId = @LanId;
+            WHERE r.LanId = @LanId
+              AND r.ApplicationCode IS NOT NULL AND r.RoleName IS NOT NULL; -- review 3 RV-08: a bad row gives no role, not an error
             """,
             reader => (reader.GetString(0), reader.NullableString(1),
                 new AtlasRole(reader.GetString(0), reader.GetString(2), reader.GetBoolean(3), reader.GetBoolean(4), reader.GetBoolean(5))),
@@ -81,20 +82,28 @@ public sealed class AtlasUserDirectory(CPSharepointContext context, IMemoryCache
 {
     private static readonly TimeSpan CacheTime = TimeSpan.FromMinutes(30);
 
+    /// <summary>Review 3 RV-L07: a LAN ID with no name is kept a short time only, so a user added later shows the name soon.</summary>
+    private static readonly TimeSpan MissTime = TimeSpan.FromMinutes(2);
+
+    /// <summary>Review 3 RV-L07: each entry has a size, so a host cache with a SizeLimit does not refuse it.</summary>
+    private static MemoryCacheEntryOptions Entry(bool found) =>
+        new() { AbsoluteExpirationRelativeToNow = found ? CacheTime : MissTime, Size = 1 };
+
     public string DisplayName(string? lanId)
     {
         if (string.IsNullOrWhiteSpace(lanId))
             return "";
 
-        return cache.GetOrCreate("atlas:user:" + lanId.ToUpperInvariant(), entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheTime;
-            string? name = AtlasSql.Query(context,
-                "SELECT TOP (1) DisplayName FROM dbo.CP_Atlas_User WHERE LanID = @LanId AND ISNULL(IsDeleted, 0) = 0;",
-                reader => reader.NullableString(0),
-                new SqlParameter("@LanId", System.Data.SqlDbType.NVarChar, 50) { Value = lanId }).FirstOrDefault();
-            return string.IsNullOrWhiteSpace(name) ? lanId : name;
-        })!;
+        string key = "atlas:user:" + lanId.ToUpperInvariant();
+        if (cache.TryGetValue(key, out string? cached) && cached != null)
+            return cached;
+
+        string? name = AtlasSql.Query(context,
+            "SELECT TOP (1) DisplayName FROM dbo.CP_Atlas_User WHERE LanID = @LanId AND ISNULL(IsDeleted, 0) = 0;",
+            reader => reader.NullableString(0),
+            new SqlParameter("@LanId", System.Data.SqlDbType.NVarChar, 50) { Value = lanId }).FirstOrDefault();
+        bool found = !string.IsNullOrWhiteSpace(name);
+        return cache.Set(key, found ? name! : lanId, Entry(found));
     }
 
     /// <summary>The names that are not in the cache come from one query for each 500 LAN IDs (review DA-09).</summary>
@@ -125,8 +134,9 @@ public sealed class AtlasUserDirectory(CPSharepointContext context, IMemoryCache
 
             foreach (string lanId in chunk)
             {
-                string name = found.GetValueOrDefault(lanId) ?? lanId;
-                cache.Set("atlas:user:" + lanId.ToUpperInvariant(), name, CacheTime);
+                string? hit = found.GetValueOrDefault(lanId);
+                string name = hit ?? lanId;
+                cache.Set("atlas:user:" + lanId.ToUpperInvariant(), name, Entry(hit != null));
                 names[lanId] = name;
             }
         }

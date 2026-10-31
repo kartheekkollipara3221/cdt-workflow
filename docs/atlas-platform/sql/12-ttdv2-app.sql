@@ -125,11 +125,16 @@ BEGIN TRY
     -- No attachment table: attachments are not in P1 (spec 12, 2.2).
 
     -- 4. Application row. Single app (no parent).
+    --    Review 3 RV-09: a deleted or a second TTDV2 row stops the script; the roles must not go to a deleted row.
+    IF EXISTS (SELECT 1 FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2' AND ISNULL(IsDeleted, 0) = 1)
+        THROW 55010, 'dbo.CP_Atlas_Application has a deleted TTDV2 row. Restore it (IsDeleted = 0) or remove it, then run again.', 1;
+    IF (SELECT COUNT(*) FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2') > 1
+        THROW 55011, 'dbo.CP_Atlas_Application has more than one TTDV2 row. Keep one, then run again.', 1;
     IF NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2')
         INSERT INTO dbo.CP_Atlas_Application (Name, Code, CreatedBy, CreatedDate, IsDeleted, ParentID)
         VALUES ('Tax Time Database', 'TTDV2', @RunBy, GETUTCDATE(), 0, NULL);
 
-    DECLARE @AppId int = (SELECT ID FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2');
+    DECLARE @AppId int = (SELECT ID FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2' AND ISNULL(IsDeleted, 0) = 0);
 
     -- 5. Roles with app-level flags (spec 01, 10.5; spec 06, 4.3).
     DECLARE @Roles TABLE (Name varchar(100) NOT NULL, IsAdmin bit NOT NULL, IsWrite bit NOT NULL, IsRead bit NOT NULL);

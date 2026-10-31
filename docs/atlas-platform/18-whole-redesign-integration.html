@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Atlas redesign: big picture and integration at the target</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas platform · Integration report</div>
+<h1>CP Atlas redesign: big picture and integration at the target</h1>
+<p class="lead">What the whole redesign improves over the target, what stays the same, what is pending, and every file to move or update at the target.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Report, 2026-10-29. Covers the whole redesign in <code>atlas-platform/</code> (release P1, pilot app TTDV2), not only the section master. For the form only, see <a href="17-section-master-comparison.html">17-section-master-comparison</a>. No code is changed by this report.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>81</b><span>new files to move</span></div>
+<div class="kpi"><b>11</b><span>target files to edit</span></div>
+<div class="kpi"><b>0</b><span>current apps changed</span></div>
+<div class="kpi"><b>343</b><span>platform tests</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>This report gives the big picture for the integration of the whole redesign at the target:</p>
+<ol>
+<li>What the redesign improves, compared with what the target does today (section 3).</li>
+<li>What stays the same (section 4).</li>
+<li>The new files to move to the target (section 5).</li>
+<li>The existing target files to update (section 6), and the SQL and settings (section 7).</li>
+<li>The order of the integration (section 8).</li>
+<li>What is pending (section 9).</li>
+</ol>
+<p>Sources: <code>atlas-platform/INTEGRATION.md</code>, specs 01-12, reviews 13 and 16, <code>CODEX_HANDOFF.md</code>, and the read-only target copy <code>target-implementation-read-only/</code>.</p>
+</section>
+<section id="2-big-picture">
+<h2>2. Big picture</h2>
+
+<h3>2.1 Target today</h3>
+<p>CP Atlas is one host (<code>BBH.CP.Atlas.App</code>, Angular <code>WebUi</code>) for SQMSO, SQMSB, TTD, AIN and CDT. Each app is code in shared files:</p>
+<ul>
+<li>An enum value in <code>CPApplicationCode</code> and <code>if</code> branches in <code>CPAtlasService</code> and <code>CPAtlasController</code>.</li>
+<li>One service class for each app (150 to 740 lines), with its own load, save, defaults, roles and workflow calls.</li>
+<li>An EF entity, a <code>DbSet</code> and a DTO for each app table. Stored procedures for each dashboard tab.</li>
+<li>App and field branches in the shared Angular components (<code>cp-atlas-sectionmaster</code>, <code>cp-atlas-dashboard</code>).</li>
+<li>The browser applies the rules and writes the audit entry. The server trusts the browser.</li>
+</ul>
+<h3>2.2 The redesign</h3>
+<p>The redesign adds a <strong>generic platform</strong> beside the current code. A new app is <strong>configuration</strong>: a manifest, a form JSON, a dashboard JSON, SQL from a template, and one registration line. The platform reads these files and does the work that each app class does today.</p>
+<div class="table-wrap"><table>
+<tr><th>Layer</th><th>Platform part</th></tr>
+<tr><td>Registry</td><td><code>&lt;CODE&gt;.app.json</code> manifest, <code>AddAtlasModule&lt;T&gt;("CODE")</code>, resolver by string code, config cache, menu enrichment</td></tr>
+<tr><td>Form</td><td>Generic form component (route <code>form/:code/:id</code>), renderer registry, <code>Effects</code>, <code>Computed</code>, validators</td></tr>
+<tr><td>Server</td><td><code>ConfigSectionService</code>: load, 12-step save pipeline, delete, history; hooks for app code</td></tr>
+<tr><td>Rules and security</td><td>Rule engine (roles, states, owner), user context (LAN ID, roles of the own app), access service (<code>Permissions</code>, <code>LogOnly</code>/<code>Enforce</code>)</td></tr>
+<tr><td>Data</td><td>Table registry from <code>sys.columns</code>, typed value conversion, <code>rowversion</code>, one EF model for platform tables</td></tr>
+<tr><td>Dashboard</td><td>Tabs from JSON (<code>Source: Table</code>, <code>Filter</code>, <code>MaxRows</code>, <code>Columns</code>), row permissions, totals row</td></tr>
+<tr><td>Audit</td><td>Server audit in the save transaction, History dialog</td></tr>
+<tr><td>Operations</td><td>Start-up check, <code>--atlas-check</code>, <code>Enabled</code> switch per app, <code>OnStartupError = DisableModule</code>, named log events</td></tr>
+</table></div>
+<p>The first app on the platform is <strong>TTDV2</strong>: TTD built again as a new app. TTD stays as it is (the reference) until the change-over.</p>
+<h3>2.3 In one table</h3>
+<div class="table-wrap"><table>
+<tr><th></th><th>Improved</th><th>Same</th><th>Pending</th></tr>
+<tr><td>New app</td><td>Config + SQL + 1 line</td><td>-</td><td>Features that the next apps need (section 9.3)</td></tr>
+<tr><td>Current apps</td><td>-</td><td>No change (SQMSO, SQMSB, TTD, AIN, CDT)</td><td>Migration to the platform (P3, P4)</td></tr>
+<tr><td>Look</td><td>-</td><td>pbdev controls, layout, styles, toastr</td><td><code>pbdev-select</code> and exact version proven at the target</td></tr>
+<tr><td>Contracts</td><td>Optional new fields (<code>Errors</code>, <code>Version</code>, <code>FormType</code>, ...)</td><td>Routes, endpoints, request and response shapes, IDs</td><td>-</td></tr>
+<tr><td>Security</td><td>Server checks each save</td><td>Windows authentication</td><td><code>Enforce</code> mode after one release</td></tr>
+<tr><td>Data</td><td>Typed, LAN IDs, versions, server audit</td><td>Current tables</td><td>TTD change-over (<code>050</code>)</td></tr>
+<tr><td>Operations</td><td>Release check, switch, isolation</td><td>Same host and app pool</td><td>Performance numbers (PF9)</td></tr>
+</table></div>
+</section>
+<section id="3-what-improves-area-by-area">
+<h2>3. What improves, area by area</h2>
+
+<h3>3.1 Adding an app</h3>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Target today</th><th>Redesign</th></tr>
+<tr><td>App code</td><td>Enum value (C#)</td><td>Manifest <code>&lt;CODE&gt;.app.json</code></td></tr>
+<tr><td>Server wiring</td><td><code>if</code> branches in <code>CPAtlasService</code> (13 branches) and controller</td><td>One <code>AddAtlasModule</code> line</td></tr>
+<tr><td>Service class</td><td>New class, 150-740 lines</td><td>None, or a small hook class (TTDV2: 31 lines + 38 lines option providers)</td></tr>
+<tr><td>Table</td><td>DDL, EF entity, <code>DbSet</code>, DTO</td><td>SQL template <code>05-new-app-template.sql</code>; columns read from <code>sys.columns</code></td></tr>
+<tr><td>Form</td><td>JSON + branches in the section master</td><td>JSON only</td></tr>
+<tr><td>Dashboard</td><td>JSON + branches in the dashboard + stored procedures</td><td>JSON only (<code>Source: Table</code>)</td></tr>
+<tr><td>Menu and navigation</td><td><code>if</code> chains in dashboard <code>onClick</code> / <code>editRow</code></td><td><code>FormType</code> from <code>v1/Application</code></td></tr>
+<tr><td>Test</td><td>Manual</td><td><code>--atlas-check</code> + platform tests</td></tr>
+<tr><td>Shared files changed</td><td>5 to 7</td><td>0</td></tr>
+</table></div>
+<p>Result: app #17 does not change shared code, so it cannot break the other apps. 13 apps are waiting (the unused codes in <code>CPApplicationCode</code>), and all 13 use the section form.</p>
+<h3>3.2 Registry and configuration (module 7, 11)</h3>
+<div class="table-wrap"><table>
+<tr><th>Target today</th><th>Redesign</th></tr>
+<tr><td><code>if</code> chain on the code; a code with no branch returns <code>null</code> → <code>NullReferenceException</code> (SM-06)</td><td>Resolver by code; a code with no module → clear 404</td></tr>
+<tr><td>JSON read from disk on each request; one <code>&lt;Code&gt;ConfigPath</code> key for each app</td><td>One <code>ConfigFolder</code>; cache; reload when a file changes; copy for each request</td></tr>
+<tr><td>A typo in the JSON is found by users</td><td>Lint at start-up and in <code>--atlas-check</code>: names, tokens, patterns, duplicates, tables, column types</td></tr>
+<tr><td>A menu item for an app that the API cannot open (RG-06)</td><td>The menu hides platform apps that are not available</td></tr>
+<tr><td>One bad config stops the host</td><td><code>DisableModule</code>: only that app is off; the current apps work (AR-01)</td></tr>
+</table></div>
+<h3>3.3 Form (module 1)</h3>
+<div class="table-wrap"><table>
+<tr><th>Target today</th><th>Redesign</th></tr>
+<tr><td>App codes, role names and more than 12 field names in the shared component</td><td>No app or field name; behaviour from <code>Effects</code>, <code>Rules</code>, <code>Computed</code></td></tr>
+<tr><td>5-second timer for conditional fields</td><td>Effects run at once</td></tr>
+<tr><td>Always "Record saved successfully"</td><td>Errors shown on the field or at the top</td></tr>
+<tr><td>Unknown control type hidden with no message</td><td>"Unsupported" note; check before deployment</td></tr>
+<tr><td><code>*ngIf</code> chain for each type</td><td>Renderer registry; a new type is one provider line</td></tr>
+<tr><td>No history, no delete, no conflict message</td><td>History, soft delete with confirm, conflict message</td></tr>
+</table></div>
+<h3>3.4 Save and security (modules 1, 4, 6)</h3>
+<div class="table-wrap"><table>
+<tr><th>Target today</th><th>Redesign</th></tr>
+<tr><td>The server saves each name that the browser sends (H3)</td><td>Allow list: only fields shown and enabled for this user</td></tr>
+<tr><td>The save does not check roles, state or owner (H4)</td><td>Rules and access check on the server</td></tr>
+<tr><td>Validators only in the browser</td><td>Same validators on the server</td></tr>
+<tr><td>Any value accepted for a list field</td><td>Value must be in the server option list for this user</td></tr>
+<tr><td>Roles from all apps in some modules (SM-08)</td><td>Roles only from the own app (and its parent); deleted entitlements do not count (<code>vw_CP_Atlas_ActiveUserRole</code>)</td></tr>
+<tr><td>System fields can come from the browser</td><td><code>CreatedBy</code>, <code>ModifiedBy</code>, dates, computed columns set by the server</td></tr>
+<tr><td>Errors caught and hidden (H7, SM-16)</td><td>Roll back, log, return the error</td></tr>
+<tr><td>Access change is all or nothing</td><td><code>AccessMode = LogOnly</code> first (log only), then <code>Enforce</code></td></tr>
+</table></div>
+<h3>3.5 Data (module 5)</h3>
+<div class="table-wrap"><table>
+<tr><th>Target today</th><th>Redesign</th></tr>
+<tr><td>Text columns for numbers and dates</td><td>Typed columns; conversion by column type, invariant culture</td></tr>
+<tr><td>Display names for people</td><td>LAN IDs (name in the label only)</td></tr>
+<tr><td>Last write wins (SM-18)</td><td><code>rowversion</code>; the second save gets a conflict</td></tr>
+<tr><td>Full table read to find one row (SM-12)</td><td>Key lookup, no tracking for reads</td></tr>
+<tr><td>EF entity and DTO for each table</td><td>Tables registered from metadata; no entity class</td></tr>
+<tr><td><code>DateTime.Now</code></td><td><code>TimeProvider</code>; UTC or local per app (<code>SystemTime</code>)</td></tr>
+</table></div>
+<h3>3.6 Dashboard (module 3)</h3>
+<div class="table-wrap"><table>
+<tr><th>Target today</th><th>Redesign</th></tr>
+<tr><td>A stored procedure for each tab</td><td><code>Source: Table</code> with <code>Filter</code>, <code>Any</code> groups, <code>MaxRows</code>, <code>Columns</code></td></tr>
+<tr><td>Row menus in code</td><td><code>Permissions</code> from the server</td></tr>
+<tr><td>Totals in code</td><td><code>sumsRow()</code> from the column JSON</td></tr>
+<tr><td>A tab of another app read with no check</td><td>The other app must be enabled and the user must have <code>View</code></td></tr>
+<tr><td>Non-sargable <code>ISNULL([IsDeleted],0)</code></td><td><code>[IsDeleted] = 0</code> with filtered indexes</td></tr>
+</table></div>
+<h3>3.7 Audit and history (module 9)</h3>
+<div class="table-wrap"><table>
+<tr><th>Target today</th><th>Redesign</th></tr>
+<tr><td>The browser writes the audit entry after each <code>POST</code></td><td>The server writes it in the save transaction</td></tr>
+<tr><td>A failed save still gets an entry; a user can skip or forge it</td><td>No entry without a commit; no entry when nothing changed</td></tr>
+<tr><td>No history view in the form</td><td>History dialog with old and new values</td></tr>
+</table></div>
+<h3>3.8 Operations</h3>
+<div class="table-wrap"><table>
+<tr><th>Target today</th><th>Redesign</th></tr>
+<tr><td>No release check</td><td><code>--atlas-check</code> (exit code 0 or 1)</td></tr>
+<tr><td>Rollback = code change and deployment</td><td><code>AppSettings:Modules:&lt;CODE&gt;:Enabled = false</code></td></tr>
+<tr><td>Errors lost</td><td>Named events 41001-41024</td></tr>
+<tr><td>Hand-run SQL</td><td>Numbered scripts with <code>dbo.CP_Atlas_ScriptLog</code></td></tr>
+<tr><td>Few tests</td><td>277 .NET tests (SQL Server) and 66 Angular tests; 0 build warnings</td></tr>
+</table></div>
+</section>
+<section id="4-what-stays-the-same">
+<h2>4. What stays the same</h2>
+<ul>
+<li><strong>Current apps.</strong> SQMSO, SQMSB, TTD, AIN and CDT keep their code, JSON, tables, procedures and routes. Their <code>if</code> branches stay.</li>
+<li><strong>Contracts.</strong> Routes <code>sectionmaster/:code/:id</code> and <code>stepmaster/...</code>, endpoints <code>v1/Application</code>, <code>v1/SectionPage</code>, <code>v1/ManagePage</code>, <code>v1/Execute</code>, <code>v1/AuditLog</code>, request and response shapes. New fields are optional. HTTP status 200 for save errors (phase 1).</li>
+<li><strong>Look.</strong> The same pbdev-core controls, section master and dashboard layout, CSS classes, <code>div_{Name}</code> / <code>btn_{Name}</code> IDs, toastr settings, ag-grid with the target cell editors. The local look built from the real pbdev-core source was confirmed ("spot on", 2026-10-28).</li>
+<li><strong>Host.</strong> Same .NET 10 host, same app pool, same IIS Windows authentication, same database and connection.</li>
+<li><strong>Packages.</strong> No new package. The platform uses the packages that the target already has.</li>
+<li><strong>Workflow engine.</strong> Not changed. CDT and SQMS keep their engine calls.</li>
+<li><strong>Database.</strong> Current tables are not changed. TTDV2 has its own schema. The <code>rowversion</code> and LAN ID scripts for the current tables are P4 only.</li>
+</ul>
+</section>
+<section id="5-new-files-to-move-to-the-target">
+<h2>5. New files to move to the target</h2>
+<p>The target package <code>atlas-platform/local/package/atlas-target-package.ps1</code> has all these files in the target layout (<code>copy\</code>), with SHA-256 checks. Do not copy: <code>StandIn/</code> folders, <code>WebUi/src/app/stand-in/</code>, <code>WebUi/src/app/app.*</code>, <code>WebUi/src/environments/</code>, <code>BBH.CP.Atlas.Infra</code>, <code>*.csproj</code>, <code>appsettings*.json</code>, <code>tests/</code>, <code>local/</code>.</p>
+<h3>5.1 Data project → <code>BBH.CP.Atlas.Data/Platform/</code></h3>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Purpose</th></tr>
+<tr><td><code>AtlasPlatformContext.cs</code></td><td>EF Core context for platform tables; same connection and transaction as <code>CPSharepointContext</code></td></tr>
+<tr><td><code>AtlasTableRegistry.cs</code>, <code>AtlasTable.cs</code></td><td>Registered tables and their columns</td></tr>
+<tr><td><code>AtlasColumnMetadataReader.cs</code></td><td>Reads columns, keys, defaults from <code>sys.columns</code></td></tr>
+<tr><td><code>AtlasSqlTypes.cs</code>, <code>AtlasValueConverter.cs</code></td><td>Supported SQL types; text ↔ typed value, same-value compare</td></tr>
+<tr><td><code>AtlasDataExtensions.cs</code></td><td>Registration and <code>FindActive</code> (key lookup, soft delete)</td></tr>
+<tr><td><code>Dto/CPPlatformDto.cs</code></td><td>Optional new DTO properties (partial classes): <code>Effects</code>, <code>Computed</code>, <code>Version</code>, <code>Errors</code>, <code>FormType</code>, ...</td></tr>
+<tr><td><code>README.md</code></td><td>Folder notes</td></tr>
+</table></div>
+<h3>5.2 Service project → <code>BBH.CP.Atlas.Service/Platform/</code></h3>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Purpose</th></tr>
+<tr><td><code>AtlasPlatformServices.cs</code>, <code>AtlasJson.cs</code>, <code>AtlasLog.cs</code>, <code>AtlasProblemException.cs</code></td><td>Shared services, JSON loader, log events 41001-41024, problem errors</td></tr>
+<tr><td><code>Registry/AtlasAppManifest.cs</code>, <code>AtlasConfigStore.cs</code>, <code>AtlasPlatformConfiguration.cs</code></td><td>Manifest model, config cache and reload, settings</td></tr>
+<tr><td><code>Registry/AtlasModuleResolver.cs</code>, <code>AtlasDisabledApps.cs</code></td><td>Code → module; apps that are off</td></tr>
+<tr><td><code>Registry/AtlasApplicationMenu.cs</code></td><td>Adds <code>FormType</code>, <code>HasDashboard</code> to <code>v1/Application</code>; guarded</td></tr>
+<tr><td><code>Sections/AtlasFormFields.cs</code>, <code>AtlasAllowList.cs</code>, <code>AtlasFieldValidator.cs</code></td><td>Effective fields, allow list, server validators</td></tr>
+<tr><td><code>Sections/AtlasServerEffects.cs</code>, <code>AtlasComputedFields.cs</code>, <code>AtlasDefaultTokens.cs</code></td><td>Server effects, <code>Computed</code>, default tokens</td></tr>
+<tr><td><code>Sections/AtlasModuleServices.cs</code></td><td>Parameter object for module classes</td></tr>
+<tr><td><code>Rules/AtlasRuleEngine.cs</code></td><td>Roles, states, owner → show, hide, enable, disable</td></tr>
+<tr><td><code>Security/AtlasUserContext.cs</code>, <code>AtlasRoles.cs</code>, <code>AtlasAccessService.cs</code>, <code>AtlasSql.cs</code></td><td>LAN ID, roles of the own app, <code>Permissions</code>, <code>LogOnly</code>/<code>Enforce</code></td></tr>
+<tr><td><code>Dashboard/AtlasDashboardService.cs</code>, <code>AtlasTabQueryBuilder.cs</code></td><td>Tabs from JSON; parameterized SQL</td></tr>
+<tr><td><code>Options/AtlasOptionProviders.cs</code></td><td><code>PBAccounts</code>, <code>UsersInRoles</code></td></tr>
+<tr><td><code>Audit/AtlasAuditWriter.cs</code></td><td>Server audit and history read</td></tr>
+<tr><td><code>README.md</code></td><td>Folder notes</td></tr>
+</table></div>
+<h3>5.3 Service project → <code>BBH.CP.Atlas.Service/Application/</code></h3>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Purpose</th></tr>
+<tr><td><code>ConfigSectionService.cs</code></td><td>The generic app service: load, save pipeline, delete, dashboard, history, hooks</td></tr>
+<tr><td><code>CPTTDV2Service.cs</code></td><td>TTDV2 module (one hook)</td></tr>
+<tr><td><code>TTDV2/TTDV2OptionProviders.cs</code></td><td><code>TaxYears</code>, <code>WeekEndings</code></td></tr>
+</table></div>
+<h3>5.4 App project → <code>BBH.CP.Atlas.App/Platform/</code> and <code>Config/</code></h3>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Purpose</th></tr>
+<tr><td><code>Platform/AtlasPlatformServiceCollectionExtensions.cs</code></td><td><code>AddAtlasPlatform</code>, <code>AddAtlasModule</code></td></tr>
+<tr><td><code>Platform/AtlasPlatformStartup.cs</code></td><td>Start-up (hosted service), <code>OnStartupError</code></td></tr>
+<tr><td><code>Platform/AtlasStartupCheck.cs</code>, <code>AtlasConfigLint.cs</code></td><td>Start-up check and <code>--atlas-check</code></td></tr>
+<tr><td><code>Platform/AtlasProblemExceptionFilter.cs</code></td><td>Problem body for platform errors</td></tr>
+<tr><td><code>Platform/UserInfoCurrentUserSource.cs</code></td><td>Current user from the target <code>UserInfo</code></td></tr>
+<tr><td><code>Platform/README.md</code></td><td>Folder notes</td></tr>
+<tr><td><code>Config/TTDV2.app.json</code>, <code>TTDV2.json</code>, <code>TTDV2.Dashboard.json</code></td><td>TTDV2 manifest, form, dashboard (Copy to Output: PreserveNewest)</td></tr>
+</table></div>
+<h3>5.5 WebUi → <code>WebUi/src/app/platform/</code></h3>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Purpose</th></tr>
+<tr><td><code>atlas-platform.routes.ts</code></td><td>Route <code>form/:code/:id</code> (lazy)</td></tr>
+<tr><td><code>atlas-api.service.ts</code>, <code>atlas-models.ts</code>, <code>atlas-errors.ts</code></td><td>API calls, models, error text</td></tr>
+<tr><td><code>atlas-navigation.ts</code></td><td><code>formRoute()</code>, <code>formTypeOf()</code>, dashboard link</td></tr>
+<tr><td><code>atlas-notice.service.ts</code></td><td>Toastr messages</td></tr>
+<tr><td><code>atlas-history-dialog.ts</code></td><td>History dialog</td></tr>
+<tr><td><code>atlas-pbdev.ts</code></td><td>All pbdev-core imports in one place</td></tr>
+<tr><td><code>atlas-platform.scss</code>, <code>atlas-tailwind-classes.ts</code></td><td>Platform styles; Tailwind classes used only in JSON</td></tr>
+<tr><td><code>form/atlas-form.component.ts</code>, <code>.html</code></td><td>Generic form</td></tr>
+<tr><td><code>form/atlas-form-model.ts</code>, <code>atlas-effects.ts</code>, <code>atlas-validators.ts</code>, <code>atlas-validator-cases.ts</code></td><td>Form model, effects, validators, shared test cases</td></tr>
+<tr><td><code>form/atlas-renderer-registry.ts</code>, <code>renderers/atlas-renderers.ts</code>, <code>renderers/atlas-grid-renderer.ts</code></td><td>Type → renderer; control renderers; ag-grid renderer</td></tr>
+<tr><td><code>form/atlas-grid-components.ts</code>, <code>atlas-field-a11y.directive.ts</code></td><td>Cell editor registration; accessibility</td></tr>
+<tr><td><code>dashboard/atlas-dashboard-columns.ts</code></td><td><code>columnDefs()</code>, <code>sumsRow()</code> for the target dashboard</td></tr>
+<tr><td><code>dashboard/atlas-dashboard.component.ts</code>, <code>.html</code></td><td>Reference only (see section 6)</td></tr>
+<tr><td><code>platform.spec.ts</code>, <code>platform.component.spec.ts</code></td><td>Tests; run in the target <code>ng test</code> (Karma)</td></tr>
+</table></div>
+<h3>5.6 SQL → DBA release folder</h3>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Purpose</th></tr>
+<tr><td><code>020-script-log.sql</code></td><td><code>dbo.CP_Atlas_ScriptLog</code></td></tr>
+<tr><td><code>030-active-user-roles-view.sql</code></td><td><code>dbo.vw_CP_Atlas_ActiveUserRole</code> (active roles only)</td></tr>
+<tr><td><code>040-ttdv2-app.sql</code></td><td>Schema <code>TTDV2</code>, tables, indexes, app row, roles, grants</td></tr>
+<tr><td><code>050-ttdv2-copy-from-ttd.sql</code></td><td>Change-over day only: copy TTD data, revoke TTD roles</td></tr>
+<tr><td><code>README.md</code></td><td>Order and checks</td></tr>
+</table></div>
+</section>
+<section id="6-existing-target-files-to-update-hand-edits">
+<h2>6. Existing target files to update (hand edits)</h2>
+<p>About 11 edits. All are additive. The package folder <code>reference\</code> has the local version of each file with the <code>PLATFORM</code> lines.</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Target file</th><th>Change</th><th>Risk if wrong</th></tr>
+<tr><td>1</td><td><code>Data/DTO/CPAtlasApplicationConfig.cs</code></td><td>Add <code>partial</code> to 16 classes (<code>CPAtlasApplicationConfig</code>, <code>CPApplicationSection</code>, <code>CPApplicationControl</code>, <code>CPButton</code>, <code>CPKeyValue</code>, <code>CPGrid</code>, <code>CPRule</code>, ...)</td><td>Build error only</td></tr>
+<tr><td>2</td><td><code>Data/DTO/CPAtlasDashboardConfig.cs</code></td><td>Add <code>partial</code> to 5 classes</td><td>Build error only</td></tr>
+<tr><td>3</td><td><code>Data/DTO/CPAtlasPage.cs</code>, <code>CPAtlasLog.cs</code></td><td>Add <code>partial</code> to <code>CPAtlasPage</code>, <code>CPAuditLog</code></td><td>Build error only</td></tr>
+<tr><td>4</td><td><code>program.cs</code></td><td><code>AddAtlasPlatform(configuration)</code>, <code>AddAtlasModule&lt;CPTTDV2Service&gt;("TTDV2")</code>; optional <code>StartAtlasPlatformAsync()</code>; <code>--atlas-check</code> switch</td><td>Host start</td></tr>
+<tr><td>5</td><td><code>Service/CPAtlasService.cs</code></td><td>3 optional constructor parameters; <code>PLATFORM</code> lines at the start of <code>GetApplication</code>, <code>LoadDashboard</code>, <code>LoadSectionPage</code>, <code>ManagePage</code>, <code>RemovePage</code>, <code>AuditLog</code>, <code>GetAuditLog</code>. The <code>if</code> chains stay.</td><td>Current apps (test them)</td></tr>
+<tr><td>6</td><td><code>Controllers/V1/CPAtlasController.cs</code></td><td><code>LoadDashboard(string code)</code>, <code>RemovePage(string code, int id)</code>; inject resolver and config store (and optional logger); <code>Enum.Parse</code> through <code>AtlasAppCode.FromRequest</code></td><td>Current apps (test them)</td></tr>
+<tr><td>7</td><td><code>app.routes.ts</code></td><td>Add <code>...atlasPlatformRoutes</code></td><td>TTDV2 only</td></tr>
+<tr><td>8</td><td><code>cp-atlas-dashboard.ts</code></td><td><code>formRoute(...)</code> first in <code>onClick</code> and <code>editRow</code>; <code>button.Target</code>; <code>columnDefs()</code> / <code>sumsRow()</code> for a tab with <code>Columns</code></td><td>Current dashboards (test them)</td></tr>
+<tr><td>9</td><td><code>angular.json</code></td><td>Add <code>src/app/platform/atlas-platform.scss</code> to <code>styles</code> (build and test)</td><td>Look only</td></tr>
+<tr><td>10</td><td><code>app.config.ts</code></td><td><code>provideAtlasGridComponents({ TextEditor, SelectEditor, NumericEditor })</code></td><td>TTDV2 grid only</td></tr>
+<tr><td>11</td><td>Menu (app component)</td><td>Show an app only when <code>HasDashboard</code> is not <code>false</code></td><td>Menu</td></tr>
+</table></div>
+<p>No change to <code>package.json</code>. No change to the workflow engine.</p>
+</section>
+<section id="7-sql-and-settings">
+<h2>7. SQL and settings</h2>
+
+<h3>7.1 SQL</h3>
+<p>Run <code>sql/release-p1/</code> in number order: <code>020</code>, <code>030</code>, <code>040</code>. Run <code>050</code> only on the change-over day (part 1 of <code>050</code> is read-only and lists values that cannot be converted).</p>
+<h3>7.2 Settings in the target <code>appsettings.json</code></h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th>Value</th></tr>
+<tr><td><code>AppSettings:ConfigFolder</code></td><td><code>Config</code> (default)</td></tr>
+<tr><td><code>AppSettings:ConfigRefreshSeconds</code></td><td><code>2</code> (default)</td></tr>
+<tr><td><code>AppSettings:Atlas:OnStartupError</code></td><td><code>DisableModule</code> (default)</td></tr>
+<tr><td><code>AppSettings:Modules:TTDV2:Enabled</code></td><td><code>false</code> until the smoke test passes</td></tr>
+<tr><td><code>AppSettings:Modules:TTDV2:AccessMode</code></td><td><code>LogOnly</code> (P1)</td></tr>
+</table></div>
+<p>The target reads only <code>appsettings.json</code> in the app folder. Restart the app pool after a change.</p>
+</section>
+<section id="8-integration-order-development-region">
+<h2>8. Integration order (development region)</h2>
+<ol>
+<li>Run the package: <code>powershell -ExecutionPolicy Bypass -File .\atlas-target-package.ps1 -Destination C:\temp\atlas-package</code>.</li>
+<li>Smoke test of the current apps <strong>before</strong> the change: menu, each dashboard, open, save (SQMSO, SQMSB, TTD, AIN, CDT).</li>
+<li>Copy the files of section 5 on one branch.</li>
+<li>Do the hand edits of section 6.</li>
+<li>Build: <code>dotnet build</code> (0 warnings) and <code>ng build</code>. This also proves <code>pbdev-select</code> and the exact pbdev-core version (AR-10).</li>
+<li>Run SQL <code>020</code>, <code>030</code>, <code>040</code>. Add the settings with <code>TTDV2:Enabled = false</code>.</li>
+<li>Run <code>BBH.CP.Atlas.App.exe --atlas-check</code> → exit code 0.</li>
+<li>Smoke test of the current apps <strong>after</strong> the change. Same results as step 2.</li>
+<li>List the <code>CP_Atlas_Application</code> codes (AR-02 check).</li>
+<li>Set <code>TTDV2:Enabled = true</code>. Test TTDV2: add, save, edit, history, conflict, roles (Owner, Prepare, Read, none).</li>
+</ol>
+<p>Rollback: <code>TTDV2:Enabled = false</code> (minutes), or revert the branch. The current apps do not use the platform paths.</p>
+</section>
+<section id="9-what-is-pending">
+<h2>9. What is pending</h2>
+
+<h3>9.1 Integration (next)</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Owner</th></tr>
+<tr><td>One-time integration in the development region (section 8)</td><td>User at the target; errors are fixed here and the package is built again</td></tr>
+<tr><td>Smoke test before and after; TTDV2 off until it passes</td><td>User</td></tr>
+<tr><td>List of <code>CP_Atlas_Application</code> codes (AR-02)</td><td>User</td></tr>
+<tr><td><code>pbdev-select</code> and exact pbdev-core version (AR-10)</td><td>Closed by the first target build</td></tr>
+<tr><td>Check <code>CPAtlasUser.LanId</code> / <code>Lanid</code> name, EF Core 10.0.13, no NU1902/NU1903</td><td>Target build</td></tr>
+</table></div>
+<h3>9.2 Decisions and reviews</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Status</th></tr>
+<tr><td>Walk-through of design choices B3, B4, B7, B9, B10, B14, B15</td><td>Not started (one at a time)</td></tr>
+<tr><td>Review with the target team (reviews 13, 16, INTEGRATION.md)</td><td>Not started</td></tr>
+<tr><td>Owner of the <code>Platform/</code> folders and an author guide + JSON Schema (AR-08)</td><td>To agree before app #2</td></tr>
+<tr><td><code>MaxRows</code> 5000 on <code>TaxTimeAllReport</code></td><td>To confirm</td></tr>
+<tr><td><code>AccessMode</code> <code>Enforce</code></td><td>After one release of log review</td></tr>
+<tr><td>Split <code>050</code> into copy and revoke (AR-11)</td><td>Decide at go-live</td></tr>
+</table></div>
+<h3>9.3 Platform features not in P1 (needed by some next apps, AR-09)</h3>
+<div class="table-wrap"><table>
+<tr><th>Feature</th><th>Design</th></tr>
+<tr><td>Attachments and file upload (<code>filepicker</code>)</td><td>Module 8</td></tr>
+<tr><td>Workflow engine adapter (start, execute, notify, SLA)</td><td>Module 10</td></tr>
+<tr><td>Multi-row grids; grid headers from a value (target <code>WeekEnding</code>)</td><td>Not yet designed</td></tr>
+<tr><td>Button actions other than <code>Save</code>, <code>Close</code>, <code>Delete</code>; <code>Redirects</code></td><td>Module 1, 5.3-5.4</td></tr>
+<tr><td>Parent and child apps (families, SQMSO → SQMSB bid)</td><td>Module 1, section 11</td></tr>
+<tr><td>Record visibility, <code>Relations</code></td><td>Modules 6, 4</td></tr>
+<tr><td>Lazy load and server paging on dashboards</td><td>Module 3</td></tr>
+<tr><td>Dashboard row actions as the target <code>ActionMenuComponent</code></td><td>Module 3 (N4)</td></tr>
+<tr><td>Stepper forms (CDT, one more app)</td><td>Step Master stays; module 2 not started</td></tr>
+<tr><td>Feature table of the next 13 apps, to order P2-P5</td><td>To do before P2</td></tr>
+</table></div>
+<h3>9.4 Performance and later releases</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Status</th></tr>
+<tr><td>Slow-request log (PF9), then decide async I/O (PF1, AR-04)</td><td>After integration</td></tr>
+<tr><td>Start-up time baseline (PF5, AR-06); parsed form cache (PF6, AR-07)</td><td>When numbers show a need</td></tr>
+<tr><td>P2: second new app; P3: SQMS family on the platform; P4: current apps moved in place (LAN ID and <code>rowversion</code> scripts for current tables)</td><td>Plan (pilot-first)</td></tr>
+<tr><td>Local look gaps (fonts, pbdev-icons, logo): local preview only</td><td>Not needed at the target</td></tr>
+</table></div>
+</section>
+<section id="10-recommendation">
+<h2>10. Recommendation</h2>
+<p>Integrate now in the development region, in the order of section 8. The risk to the current apps is in the hand edits 4, 5, 6, 8 and 11 of section 6; the smoke test before and after covers them. Keep TTDV2 off until the smoke test passes. Then make the feature table of the next 13 apps and add each missing feature once, as metadata.</p>
+</section>
+</main>
+</body>
+</html>

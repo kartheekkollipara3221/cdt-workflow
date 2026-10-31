@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Section Master: target and new platform compared</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas platform · Report</div>
+<h1>Section Master: target and new platform compared</h1>
+<p class="lead">How the new section master and the new solution differ from the target, what they improve, and the benefit of moving them to the target.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Report, 2026-10-29. Compares the target section master (copy as of 2026-10-27) with the new platform form (<code>atlas-platform/</code>, release P1, TTDV2). No code is changed by this report.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>0</b><span>app names in the new form</span></div>
+<div class="kpi"><b>12</b><span>save checks on the server</span></div>
+<div class="kpi"><b>0</b><span>shared files changed per new app</span></div>
+<div class="kpi"><b>343</b><span>platform tests</span></div>
+</div>
+
+<section id="1-purpose">
+<h2>1. Purpose</h2>
+<p>This report gives answers to three questions:</p>
+<ol>
+<li>How is the new section master better than the target section master?</li>
+<li>How is the new solution (form, server, data, operations) different from the target, and what does it improve?</li>
+<li>What is the benefit of moving the new solution to the target?</li>
+</ol>
+<p>Evidence:</p>
+<ul>
+<li>Target: <code>target-implementation-read-only/section-master-asof10272026/cp-atlas-sectionmaster-files/</code> (<code>.ts</code> 501 lines, <code>.html</code> 164 lines) and the target <code>Service/</code>, <code>Atlasapp/Config/</code> copies.</li>
+<li>New: <code>atlas-platform/WebUi/src/app/platform/form/</code> and <code>atlas-platform/src/</code>.</li>
+<li>Earlier specs and reviews: <a href="01-section-master.html">01-section-master</a> (findings SM-01 to SM-19), <a href="12-ttd-pilot-build.html">12-ttd-pilot-build</a>, <a href="13-architecture-review.html">13-architecture-review</a>, <a href="16-architecture-review-2.html">16-architecture-review-2</a>.</li>
+</ul>
+</section>
+<section id="2-short-answer">
+<h2>2. Short answer</h2>
+<div class="table-wrap"><table>
+<tr><th>Question</th><th>Answer</th></tr>
+<tr><td>Better section master?</td><td><strong>Yes.</strong> The target component has app names and field names in code. The new form has no app name and no field name. All app behaviour comes from JSON. The users see the same layout.</td></tr>
+<tr><td>Different solution?</td><td><strong>Yes, at the back.</strong> The target trusts the browser. The new server checks each save again: rules, allow list, validators, options, version, audit. Data is typed and has a version column.</td></tr>
+<tr><td>Benefit at the target?</td><td><strong>A new app is configuration, not code.</strong> App #17 does not change shared code, so it cannot break apps #1 to #16. Save errors, lost updates and false audit entries stop. One switch turns an app off.</td></tr>
+<tr><td>Same as the target?</td><td><strong>The look and the contracts.</strong> Same pbdev controls, same layout and CSS classes, same <code>div_{Name}</code> and <code>btn_{Name}</code> IDs, same endpoints. The current apps (SQMSO, SQMSB, TTD, AIN, CDT) do not change.</td></tr>
+</table></div>
+</section>
+<section id="3-how-each-one-works">
+<h2>3. How each one works</h2>
+
+<h3>3.1 Target section master (today)</h3>
+<ol>
+<li>The route <code>sectionmaster/:code/:id</code> opens the component. It calls <code>GET v1/SectionPage</code>.</li>
+<li>The server selects a module service with an <code>if</code> chain on the app code. The module service reads its own JSON file from disk and adds defaults in code.</li>
+<li>The component builds the form from <code>Controls</code>. It has special code for some apps and some fields (section 4).</li>
+<li>After 5 seconds, a timer shows or hides some SQMS fields with <code>document.getElementById</code>.</li>
+<li>Save: the component sends all form values to <code>POST v1/ManagePage</code>. The module service maps each name to a column. It catches all errors.</li>
+<li>The component always shows "Record saved successfully". An HTTP interceptor in the browser writes the audit entry.</li>
+</ol>
+<h3>3.2 New platform form (TTDV2)</h3>
+<ol>
+<li>The route <code>form/:code/:id</code> opens the form. The old route stays for the current apps.</li>
+<li>The server finds the app in a registry (manifest + one registration line). One generic service (<code>ConfigSectionService</code>) loads the form JSON from a cache, binds the record, adds <code>Defaults</code> and <code>OptionsSource</code> lists, and applies the <code>Rules</code> for this user.</li>
+<li>The form builds controls from the JSON. A renderer registry maps each <code>Type</code> to a component. <code>Effects</code> (show, hide, require, set) run at once when a value changes. <code>Computed</code> fields update while the user types.</li>
+<li>Save: the form sends only the shown and enabled fields, with the <code>Version</code> token.</li>
+<li>The server runs the 12-step save pipeline (section 5.2). Each error comes back to the user. The audit entry is written in the same transaction.</li>
+<li>The form shows "saved" only when there is no error. Field errors go to the field.</li>
+</ol>
+</section>
+<section id="4-the-section-master-item-by-item">
+<h2>4. The section master: item by item</h2>
+
+<h3>4.1 App code and field names in the shared component</h3>
+<div class="table-wrap"><table>
+<tr><th>Item in the target</th><th>Evidence (target <code>.ts</code>)</th><th>New platform</th></tr>
+<tr><td><code>Account</code> split on <code>" - "</code> into 4 fields</td><td>258-269</td><td><code>Effects</code> → <code>SetFromOption</code>, reads <code>Option.Data</code> (no position split). Fallback to the split for old options.</td></tr>
+<tr><td><code>OpportunityId</code> split on <code>" $$ "</code> into 5 fields</td><td>270-282</td><td>Same <code>SetFromOption</code>, JSON only</td></tr>
+<tr><td><code>BidForFullCommitment</code>, <code>BidFairValue</code> set or clear a field</td><td>283-296</td><td><code>Effects</code> → <code>Set</code> / <code>Clear</code></td></tr>
+<tr><td><code>FundConsideredSecondarySale</code> → vehicle list in a component variable</td><td>142-147, 297-301; <code>.html</code> 21-46</td><td>No special row. Options are on the control.</td></tr>
+<tr><td><code>WeekEnding</code> → grid column headers</td><td>302-317</td><td>Not yet (section 7)</td></tr>
+<tr><td><code>ClientRelationshipLeavingBBH</code>, <code>IsValuationForPrivateFundVehicle</code> → show, hide, require</td><td>197-238, 321-357</td><td><code>Effects</code> → <code>Show</code> / <code>Hide</code> / <code>Require</code> / <code>Unrequire</code>. Runs at once; no timer; no <code>document.getElementById</code>.</td></tr>
+<tr><td><code>WeeklyHour</code> grid: 8 column names in the save</td><td>412-425</td><td>Generic: each enabled cell of a <code>SingleRowFields</code> grid</td></tr>
+<tr><td><code>code == 'SQMSO' / 'SQMSB'</code>: a button sets <code>Status</code></td><td>385-388</td><td><code>Button.Action</code> in JSON (<code>Save</code>, <code>Close</code>, <code>Delete</code>)</td></tr>
+<tr><td>Redirect by <code>SQMSO</code>, <code>SQMSB</code>, <code>AIN</code> and roles <code>mfo</code> / <code>ipg</code></td><td>448-475</td><td>One dashboard link for each app (<code>ATLAS_DASHBOARD_LINK</code>)</td></tr>
+<tr><td><code>Bid</code> button → <code>addBid</code>, fixed target <code>SQMSB</code>, parent data in a memory service</td><td>477-487, 108-111</td><td>Not in P1 (parent/child design in spec 01, section 11)</td></tr>
+</table></div>
+<p>Count: the target component has <strong>3 app codes, 2 role names and more than 12 field names in code</strong>. The new form has <strong>0</strong> (<code>grep</code> of <code>WebUi/src/app/platform</code>, specs excluded). Each new app with dependent fields makes the target component larger. The new form does not change for a new app.</p>
+<h3>4.2 Correctness</h3>
+<div class="table-wrap"><table>
+<tr><th>Problem in the target</th><th>Effect</th><th>New platform</th></tr>
+<tr><td>5-second <code>setTimeout</code> for conditional fields (237)</td><td>For 5 seconds the form shows wrong fields and has wrong validators. A user can save in that time. If the page loads slowly, the rule does not run.</td><td>Effects run when the form is built and at each value change.</td></tr>
+<tr><td>Always shows "Record saved successfully" (439)</td><td>The server catches all errors and rolls back (SM-16). The user thinks the record is saved.</td><td>Message only when <code>Errors</code> is empty. Field errors on the field; other errors at the top. HTTP errors are shown.</td></tr>
+<tr><td>Hidden fields stay in the form and are sent</td><td>A hidden field can still block the save or be saved.</td><td>Hidden or disabled fields are not validated and not sent (<code>isShown</code>, <code>buildOutputs</code>).</td></tr>
+<tr><td>Unknown <code>Type</code> shows nothing</td><td>A typing error in the JSON hides a field with no message (SM-05).</td><td>Visible "unsupported" note; the control is disabled and not sent. <code>--atlas-check</code> finds it before deployment.</td></tr>
+<tr><td>Validators only <code>Required</code>, <code>Email</code>, <code>MinLength</code>, <code>MaxLength</code>, <code>Pattern</code></td><td>A value of only spaces passes <code>Required</code>. No number checks.</td><td>Same rules on client and server: spaces = empty, <code>Integer</code>, <code>Number</code>, <code>Min</code>, <code>Max</code>, own <code>Message</code>. Shared test cases.</td></tr>
+<tr><td>Value types</td><td>Date and checkbox values go to the server in browser format.</td><td>Fixed formats: <code>yyyy-MM-dd</code>, <code>true</code>/<code>false</code>, list with <code>#$#</code> (the target separator is kept).</td></tr>
+<tr><td><code>addBid</code> parent data in a memory service</td><td>A page reload loses the parent data (SM-19).</td><td>Not used.</td></tr>
+</table></div>
+<h3>4.3 Code quality (Angular)</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Target</th><th>New</th></tr>
+<tr><td>Template</td><td>One long <code>*ngIf</code> chain, one block for each type</td><td>One loop and a renderer registry (<code>@for</code>, <code>NgComponentOutlet</code>)</td></tr>
+<tr><td>New control type</td><td>Edit the shared template</td><td><code>provideAtlasRenderers({ rating: RatingRenderer })</code> in <code>app.config.ts</code></td></tr>
+<tr><td>Change detection</td><td>Default, <code>cdr.detectChanges()</code> calls</td><td>Signals, <code>OnPush</code></td></tr>
+<tr><td>Subscriptions</td><td>Manual <code>unsubscribe</code></td><td><code>takeUntilDestroyed</code></td></tr>
+<tr><td>Accessibility</td><td>Label not linked to the input</td><td><code>for</code>/<code>id</code>, <code>aria-required</code>, <code>aria-invalid</code>, error text linked with <code>aria-describedby</code></td></tr>
+<tr><td>Tests</td><td>1 spec file, 22 lines (create only)</td><td>66 Angular tests for the platform</td></tr>
+<tr><td>Form logic</td><td>In the component</td><td>Plain functions (<code>atlas-form-model.ts</code>, <code>atlas-effects.ts</code>) that tests can call with no component</td></tr>
+</table></div>
+<h3>4.4 New features in the form</h3>
+<ul>
+<li><strong>History</strong> button: shows <code>Create</code>, <code>Update</code>, <code>Delete</code> with old and new values.</li>
+<li><strong>Delete</strong> button with a confirm dialog (soft delete, only with the <code>CanDelete</code> permission).</li>
+<li><strong>Save conflict</strong> message when another user saved the record first.</li>
+<li><strong>Load error</strong> page with a "Back to the dashboard" button, not an empty page.</li>
+<li><strong>Computed</strong> fields (<code>Sum</code>, <code>Count</code>, <code>Min</code>, <code>Max</code>), for example the weekly total.</li>
+<li>The save button is disabled during the save (no double save).</li>
+</ul>
+<h3>4.5 What stays the same (look and contracts)</h3>
+<ul>
+<li>Layout and CSS classes are copied from the target 2026-10-27 template: <code>center-container</code>, <code>header-container</code>, <code>pbdev-section</code> (blue), <code>section-master</code>, <code>btnContainer</code>, <code>header-btn btn btn--primary</code>.</li>
+<li>The same pbdev controls: <code>pbdev-input</code>, <code>pbdev-select</code>, <code>pbdev-textarea</code>, <code>pbdev-date-picker</code>, <code>pbdev-checkbox</code>, <code>pbdev-dialog</code>, <code>pbdev-loader</code>; <code>ng-select</code>; ag-grid with the target cell editors (<code>TextEditor</code>, <code>SelectEditor</code>, <code>NumericEditor</code>).</li>
+<li>The same mandatory-field message and Ok dialog as <code>CPAtlasConfirmation</code>.</li>
+<li>The same element IDs (<code>div_{Name}</code>, <code>btn_{Name}</code>), the same <code>#$#</code> separator, the same toastr settings.</li>
+<li>The user confirmed the local look built from the real pbdev-core source: "spot on" (2026-10-28).</li>
+</ul>
+</section>
+<section id="5-the-whole-solution-what-is-different">
+<h2>5. The whole solution: what is different</h2>
+
+<h3>5.1 Server: one generic service, not one class for each app</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Target</th><th>New</th></tr>
+<tr><td>Select the app service</td><td><code>if</code> chains in <code>CPAtlasService</code> (13 branches); <code>null</code> for a code with no branch → <code>NullReferenceException</code> (SM-06)</td><td>Registry: <code>AddAtlasModule&lt;T&gt;("CODE")</code>; a code with no module gives a clear 404</td></tr>
+<tr><td>App code</td><td>Enum value in <code>CPApplicationCode</code></td><td>String code in a manifest (<code>&lt;CODE&gt;.app.json</code>); no enum change</td></tr>
+<tr><td>Service for each app</td><td><code>CPTTDService</code> 323 lines; <code>CPSQMSOService</code> 594; <code>CPSQMSBService</code> 738; <code>CPAINService</code> 147</td><td><code>ConfigSectionService</code> for all; TTDV2 adds one hook class (31 lines) and two option providers (38 lines)</td></tr>
+<tr><td>JSON file</td><td>Read from disk on each request; one <code>AppSettings:&lt;Code&gt;ConfigPath</code> key for each app</td><td>One <code>ConfigFolder</code>; cached; reload when the file changes</td></tr>
+<tr><td>Defaults</td><td>In C# (<code>"DRAFT"</code>, header text)</td><td><code>Defaults</code> in JSON, with tokens (<code>{User.LanID}</code>, <code>{Today}</code>, <code>{Options[0]}</code>)</td></tr>
+<tr><td>Option lists</td><td>In C# for each app</td><td><code>OptionsSource</code> → named provider (platform or app)</td></tr>
+</table></div>
+<h3>5.2 Save: the server checks again (security and data quality)</h3>
+<p>The target save trusts the browser (SM-14, issues H3, H4). The new save pipeline has these steps:</p>
+<ol>
+<li>Load the configuration and the record.</li>
+<li>Read the user roles for this app only (and its parent app). Deleted entitlements do not count (SM-08).</li>
+<li>Apply <code>Rules</code> and the server part of <code>Effects</code> for this user and record.</li>
+<li>Allow list: accept only fields that are shown and enabled for this user. Ignore other names and write <code>Atlas.FieldIgnored</code> (SM-14, H3).</li>
+<li>Stop if the user may not save this record (H4). <code>AccessMode</code> <code>LogOnly</code> first, then <code>Enforce</code>.</li>
+<li>Check the <code>Validator</code> rules and <code>Require</code> effects on the server.</li>
+<li>Check that a changed option value is one of the options that the server gives to this user.</li>
+<li>Check the version token. A conflict gives an error (SM-18).</li>
+<li>Convert the text values to the column types and map them.</li>
+<li>Set the system fields on the server: <code>CreatedBy</code>, <code>ModifiedBy</code>, dates from <code>TimeProvider</code>. Calculate <code>Computed</code> columns again.</li>
+<li>Write the audit entry in the same transaction (SM-17).</li>
+<li>Commit. On an error: roll back, log <code>Atlas.SaveFailed</code>, return the error to the user (SM-16).</li>
+</ol>
+<p>Result: a direct API call cannot save a hidden field, a value that is not in the list, a system column, or a record of another owner.</p>
+<h3>5.3 Data</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Target (<code>TTD.General</code>)</th><th>New (<code>TTDV2.General</code>)</th></tr>
+<tr><td>Column types</td><td>Text for numbers and dates</td><td>Typed columns (<code>int</code>, <code>date</code>, <code>decimal</code>)</td></tr>
+<tr><td>People</td><td>Display names</td><td>LAN IDs (joins and reports work; name changes do not break them)</td></tr>
+<tr><td>Concurrency</td><td>Last write wins (SM-18)</td><td><code>rowversion</code>; second save gets a conflict</td></tr>
+<tr><td>Find one row</td><td><code>ToList()</code> of the full table, then <code>Where</code> (SM-12)</td><td>Key lookup, no tracking for reads</td></tr>
+<tr><td>Audit</td><td>Written by the browser after each <code>POST</code> (a failed save still gets an entry; a user can skip it)</td><td>Written by the server in the save transaction; no entry when nothing changed</td></tr>
+<tr><td>Time</td><td><code>DateTime.Now</code> (local)</td><td>UTC from <code>TimeProvider</code> (or local by app setting)</td></tr>
+</table></div>
+<h3>5.4 Dashboard</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Target</th><th>New</th></tr>
+<tr><td>Tab data</td><td>A stored procedure for each tab</td><td><code>Source: Table</code> with <code>Filter</code>, <code>MaxRows</code>, <code>Columns</code> in JSON (no procedure)</td></tr>
+<tr><td>Open a record</td><td><code>if</code> chain in <code>onClick</code> / <code>editRow</code></td><td><code>FormType</code> from the app row; one <code>formRoute()</code> call</td></tr>
+<tr><td>Row actions</td><td>In code</td><td><code>Permissions</code> from the server</td></tr>
+<tr><td>Totals row</td><td>In code</td><td><code>sumsRow()</code> from the column JSON</td></tr>
+</table></div>
+<h3>5.5 Operations</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Target</th><th>New</th></tr>
+<tr><td>Check before deployment</td><td>None; users find errors</td><td><code>--atlas-check</code> (names, tokens, patterns, tables, column types, registration); exit code 0 or 1</td></tr>
+<tr><td>Turn one app off</td><td>Code change and deployment</td><td><code>AppSettings:Modules:&lt;CODE&gt;:Enabled = false</code></td></tr>
+<tr><td>A bad config</td><td>Can fail at run time for all users</td><td><code>OnStartupError = DisableModule</code>: only that app is off; the current apps work (AR-01)</td></tr>
+<tr><td>Logs</td><td>Errors are caught and lost</td><td>Named events 41001-41024 (<code>Atlas.AccessDenied</code>, <code>Atlas.FieldIgnored</code>, <code>Atlas.SaveFailed</code>, ...)</td></tr>
+<tr><td>Database changes</td><td>Hand-written</td><td>Numbered scripts in <code>sql/release-p1/</code> with a script log</td></tr>
+<tr><td>Tests</td><td>Few</td><td>277 .NET tests (with SQL Server) and 66 Angular tests; 0 build warnings</td></tr>
+</table></div>
+</section>
+<section id="6-benefit-of-moving-to-the-target">
+<h2>6. Benefit of moving to the target</h2>
+
+<h3>6.1 The cost of one new app</h3>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th>Target today</th><th>With the platform</th></tr>
+<tr><td>Code value</td><td>Enum value (C#)</td><td>Manifest <code>&lt;CODE&gt;.app.json</code></td></tr>
+<tr><td>Server wiring</td><td><code>if</code> branches in service and controller (C#)</td><td>One registration line</td></tr>
+<tr><td>Service class</td><td>New class, 150-740 lines (C#)</td><td>None, or one small hook class</td></tr>
+<tr><td>Table</td><td>DDL, EF entity, <code>DbSet</code>, DTO</td><td>SQL template <code>05-new-app-template.sql</code></td></tr>
+<tr><td>Form</td><td>JSON + branches in the section master (TypeScript)</td><td>JSON only</td></tr>
+<tr><td>Dashboard</td><td>JSON + branches in the dashboard + procedures</td><td>JSON only</td></tr>
+<tr><td>Entitlements</td><td>SQL</td><td>SQL (same)</td></tr>
+<tr><td>Test</td><td>Manual</td><td><code>--atlas-check</code> + platform tests</td></tr>
+<tr><td>Shared files changed</td><td>5 to 7</td><td>0 (only the one registration line)</td></tr>
+</table></div>
+<p>13 apps are waiting (the unused codes in <code>CPApplicationCode</code>), and all 13 use Section Master. With the target design, each app adds branches to the same shared files, so each app can break the others. With the platform, these apps are JSON and SQL.</p>
+<h3>6.2 Benefit for each group</h3>
+<div class="table-wrap"><table>
+<tr><th>Group</th><th>Benefit</th></tr>
+<tr><td>Business</td><td>Faster delivery of the next 13+ apps. Lower cost for each app. One app can be turned off in minutes.</td></tr>
+<tr><td>Users</td><td>Same look. Correct field rules at once (no 5-second gap). Real error messages. No lost work when two users save. History of each change.</td></tr>
+<tr><td>Developers</td><td>No change in shared files for a new app. Fewer regressions. Plain JSON with a checker. Tests for the shared code.</td></tr>
+<tr><td>Security and audit</td><td>The server enforces roles, fields and options. Roles only from the own app. Audit cannot be skipped or forged by the browser.</td></tr>
+<tr><td>Operations</td><td>Release check with an exit code. Named log events. A config error disables one app, not the host.</td></tr>
+<tr><td>Data</td><td>Typed columns and LAN IDs give correct reports and joins. UTC times.</td></tr>
+</table></div>
+<h3>6.3 Why the move is safe</h3>
+<ul>
+<li>All target changes are additive. The current route, endpoints, request and response shapes, control names and element IDs do not change.</li>
+<li>The current apps keep their code path. The <code>if</code> chains stay for the current codes; the platform runs only for codes with a manifest.</li>
+<li>TTDV2 has its own schema. TTD and its data do not change until the change-over script <code>050</code> runs.</li>
+<li><code>Modules:TTDV2:Enabled = false</code> until the smoke test of the current apps passes.</li>
+<li><code>AccessMode = LogOnly</code> first: a denied check is logged, not blocked, for one release.</li>
+<li>No new package at the target. The platform uses the packages that the target already has.</li>
+</ul>
+</section>
+<section id="7-what-is-not-better-yet-limits">
+<h2>7. What is not better yet (limits)</h2>
+<p>The new form does not have every feature of the target section master. A new app that needs one of these features cannot be config-only yet (review 2, AR-09).</p>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Status</th></tr>
+<tr><td>File upload (<code>filepicker</code>) and attachments</td><td>Not in P1 (module 8 designed). The type shows "unsupported".</td></tr>
+<tr><td>Multi-row grids (<code>Grid.Data</code> with many rows)</td><td>Not in P1. Only <code>SingleRowFields</code> grids.</td></tr>
+<tr><td>Grid column headers from a date (target <code>WeekEnding</code> branch, new on 2026-10-27)</td><td>Not in P1. Headers are static. Can be added once as metadata.</td></tr>
+<tr><td>Workflow engine calls (SQMS submit, status buttons)</td><td>Not in P1 (module 10 designed).</td></tr>
+<tr><td>Parent and child forms (<code>Bid</code> from an opportunity)</td><td>Not in P1 (spec 01, section 11 designed).</td></tr>
+<tr><td>Stepper forms (CDT)</td><td>Out of scope; Step Master stays.</td></tr>
+<tr><td><code>pbdev-select</code> and the exact <code>pbdev-core</code> version</td><td>Not proven at the target (AR-10). The first <code>ng build</code> at the target closes it.</td></tr>
+<tr><td>Synchronous database calls</td><td>Same as the target. Measure during integration (AR-04).</td></tr>
+<tr><td>Ownership</td><td>The platform is shared code. A team must own it, and app authors need a guide (AR-08).</td></tr>
+<tr><td>Integration effort</td><td>About 8 hand edits in target files (AR-03). Most of the integration risk is here.</td></tr>
+</table></div>
+</section>
+<section id="8-recommendation">
+<h2>8. Recommendation</h2>
+<p>Move the platform to the target development region as planned:</p>
+<ol>
+<li>Run the target package and do the hand edits of INTEGRATION.md section 2.</li>
+<li>Run a smoke test of each current app (menu, dashboard, load, save) before and after.</li>
+<li>Turn TTDV2 on only when the smoke test passes.</li>
+<li>Make a feature table of the next 13 apps. Add each missing feature once, as metadata (section 7), before the app that needs it.</li>
+</ol>
+</section>
+</main>
+</body>
+</html>

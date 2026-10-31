@@ -96,7 +96,17 @@ public static class AtlasPlatformStartup
         ILogger logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("BBH.CP.Atlas.Platform.Startup");
         string[] all = [.. services.GetServices<AtlasModuleRegistration>().Select(x => x.Code)];
         // A config file that cannot be read already removes only its own app (review HO-02), so it does not disable all.
-        HashSet<string> fileErrors = new(services.GetRequiredService<IAtlasConfigStore>().ConfigErrors, StringComparer.Ordinal);
+        // Review 3 RV-07: this runs after a failed start-up too; if the config store fails again, disable all apps here
+        // and do not let the exception stop the host.
+        HashSet<string> fileErrors = new(StringComparer.Ordinal);
+        try
+        {
+            fileErrors.UnionWith(services.GetRequiredService<IAtlasConfigStore>().ConfigErrors);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            errors = [.. errors, new(AtlasCheckSeverity.Error, "*", "the config store cannot be read: " + ex.Message)];
+        }
         foreach (IGrouping<string, AtlasCheckItem> group in errors.Where(x => !(x.App == "*" && fileErrors.Contains(x.Message)))
             .GroupBy(x => x.App, StringComparer.OrdinalIgnoreCase))
         {
@@ -121,8 +131,9 @@ public static class AtlasPlatformStartup
         {
             items = await LoadAndCheckAsync(services, cancellationToken);
         }
-        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // Review 3 RV-06: a report line and exit code 1, not a stack trace, for any failure.
             await output.WriteLineAsync("ERROR *: " + ex.Message);
             return 1;
         }
@@ -153,7 +164,7 @@ public static class AtlasPlatformStartup
         string[] tables = [.. configStore.GetManifests()
             .Where(x => registered.Contains(x.Code))
             .SelectMany(x => new[] { x.Table, x.AuditTable, x.AttachmentTable })
-            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Where(x => AtlasTable.IsValidFullName(x)) // review 3 RV-06: a bad name is a check error of its app only
             .Select(x => x!)];
 
         CPSharepointContext context = provider.GetRequiredService<CPSharepointContext>();

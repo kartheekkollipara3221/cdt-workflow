@@ -88,6 +88,39 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
     }
 
     [Fact]
+    public async Task A_Permissions_block_with_no_Create_Edit_or_Delete_key_is_an_error()
+    {
+        // Review 3 RV-05: a missing key allows the operation for each role of the app.
+        CopyRealConfig();
+        string form = Path.Combine(_folder, "TTDV2.json");
+        File.WriteAllText(form, File.ReadAllText(form)
+            .Replace("\"Delete\": [ \"Owner\" ],", "", StringComparison.Ordinal)
+            .Replace("\"Create\": [ \"Prepare\", \"Owner\" ],", "", StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR TTDV2: the Permissions block has no Create key", report, StringComparison.Ordinal);
+        Assert.Contains("ERROR TTDV2: the Permissions block has no Delete key", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("has no Edit key", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_table_name_with_no_schema_is_an_error_of_its_app_not_a_crash()
+    {
+        // Review 3 RV-06: before, ParseFullName threw out of the load, so all apps were disabled and the check crashed.
+        CopyRealConfig();
+        string manifest = Path.Combine(_folder, "TTDV2.app.json");
+        File.WriteAllText(manifest, File.ReadAllText(manifest).Replace("\"TTDV2.AuditLog\"", "\"AuditLog\"", StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR TTDV2: AuditTable 'AuditLog' must have the form Schema.Name", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("ERROR *:", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_setting_that_is_not_valid_is_an_error()
     {
         (int code, string report) = await CheckAsync(RealConfig, new() { ["AppSettings:Modules:TTDV2:AccessMode"] = "Enfroce" });
@@ -169,6 +202,70 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
 
         Assert.Equal(1, code);
         Assert.Contains("names 'AcountName', which is not a control or field of the form", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_Set_or_Clear_effect_cycle_is_an_error()
+    {
+        // Review 3 RV-15: a control that clears itself would run its effects again and again in the client.
+        CopyRealConfig();
+        ReplaceInForm("\"Clear\": [ \"AccountNumber\", \"AccountName\" ]", "\"Clear\": [ \"AccountNumber\", \"AccountName\", \"Account\" ]");
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("the effects of 'Account' change a control whose effects change 'Account' again", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_dashboard_tab_with_a_Procedure_is_an_error_until_the_platform_runs_procedures()
+    {
+        // Review 3 (RV-18 follow-up): the platform dashboard gives rows only for Source: Table tabs.
+        CopyRealConfig();
+        string dashboard = Path.Combine(_folder, "TTDV2.Dashboard.json");
+        string text = File.ReadAllText(dashboard);
+        int at = text.IndexOf("\"Source\": \"Table\"", StringComparison.Ordinal);
+        Assert.True(at > 0);
+        File.WriteAllText(dashboard, string.Concat(text.AsSpan(0, at), "\"Procedure\": \"TTDV2.Get_Current\"", text.AsSpan(at + "\"Source\": \"Table\"".Length)));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("has a Procedure; the platform dashboard runs only Source: Table tabs", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_Computed_field_over_a_text_column_is_an_error()
+    {
+        // Review 3 RV-L02: before, each save of the app gave a 500.
+        CopyRealConfig();
+        string form = Path.Combine(_folder, "TTDV2.json");
+        string text = File.ReadAllText(form);
+        int at = text.IndexOf("MondayMinute", text.IndexOf("\"Computed\"", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.True(at > 0);
+        File.WriteAllText(form, string.Concat(text.AsSpan(0, at), "AccountName", text.AsSpan(at + "MondayMinute".Length)));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("uses 'AccountName', which is not a number column", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_grid_cell_code_of_another_app_and_mixed_time_settings_are_warnings()
+    {
+        // Review 3 RV-L12 and RV-L04.
+        CopyRealConfig();
+        ReplaceInForm("\"code\": \"TTDV2\", \"ctrlname\": \"Monday\"", "\"code\": \"TTD\", \"ctrlname\": \"Monday\"");
+
+        string manifest = Path.Combine(_folder, "TTDV2.app.json");
+        File.WriteAllText(manifest, File.ReadAllText(manifest).Replace("\"Code\": \"TTDV2\",", "\"Code\": \"TTDV2\", \"SystemTime\": \"Local\",", StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(0, code);
+        Assert.Contains("column 'MondayMinute' has cellRendererParams.code 'TTD', not 'TTDV2'", report, StringComparison.Ordinal);
+        Assert.Contains("SystemTime is Local but AuditTime is Utc", report, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,9 +1,10 @@
-// COPY to the target: WebUi/Source/App/platform/form/. The generic platform form (spec 01, 5.5; spec 12,
+// COPY to the target: WebUi/src/app/platform/form/. The generic platform form (spec 01, 5.5; spec 12,
 // question 5), route form/:code/:id, beside the current sectionmaster component. It knows no app: the controls come
 // from the section JSON, the renderers from the registry, and the rules from the server.
 import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule, FormRecord } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DialogComponent, LoaderComponent, SectionComponent } from '../atlas-pbdev';
@@ -62,11 +63,16 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     });
   }
 
+  private loadRequest: Subscription | null = null;
+
   load(): void {
     this.loading.set(true);
     this.loadError.set(null);
     this.pageErrors.set([]);
-    this.api.section(this.code(), this.id()).subscribe({
+    // Review 3 RV-14: a new load cancels the one before (a late answer for record A must not build the form of B),
+    // and no answer is handled after the form is destroyed (NG0911).
+    this.loadRequest?.unsubscribe();
+    this.loadRequest = this.api.section(this.code(), this.id()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (section) => this.build(section),
       error: (error) => {
         this.loadError.set(problemText(error));
@@ -104,7 +110,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
         continue;
       }
       const item = this.form.get(control.Name);
-      item?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => applyEffects(control, toOutputValue(control, value), this));
+      item?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => this.runEffects(control, value));
     }
     for (const control of this.controlsByName.values()) {
       if (control.Effects?.length) {
@@ -116,6 +122,9 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     if (section.Computed) {
       this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.updateComputed());
       this.updateComputed();
+    }
+    if (!this.canSave()) {
+      this.form.disable({ emitEvent: false }); // review 3 RV-17
     }
     this.loading.set(false);
   }
@@ -160,6 +169,25 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
   }
 
+  /**
+   * Review 3 RV-15: Set, Clear and SetFromOption change other controls, and their effects run in turn. A control whose
+   * effects are running does not run them again, so a cycle in the config (A sets B, B sets A) stops after one pass
+   * instead of a stack overflow. The start-up check also reports such a cycle.
+   */
+  private readonly effectsRunning = new Set<string>();
+
+  private runEffects(control: CPApplicationControl, value: unknown): void {
+    if (this.effectsRunning.has(control.Name)) {
+      return;
+    }
+    this.effectsRunning.add(control.Name);
+    try {
+      applyEffects(control, toOutputValue(control, value), this);
+    } finally {
+      this.effectsRunning.delete(control.Name);
+    }
+  }
+
   setValue(name: string, value: string | null): void {
     const control = this.controlsByName.get(name);
     this.form.get(name)?.setValue(control ? toModelValue(control, value) : (value ?? ''));
@@ -198,9 +226,21 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
       if (actionOf(x) === 'delete') {
         return this.id() > 0 && !!this.section()?.UserPermissions?.CanDelete;
       }
+      if (actionOf(x) === 'save') {
+        return this.canSave();
+      }
       return true;
     }),
   );
+
+  /**
+   * Review 3 RV-17: the server would refuse the save (CanEdit or CanCreate false), so the form is read-only and has no
+   * Save button, as the target section master. No UserPermissions (an older server): Save shows, as before.
+   */
+  readonly canSave = computed(() => {
+    const permissions = this.section()?.UserPermissions;
+    return this.id() > 0 ? permissions?.CanEdit !== false : permissions?.CanCreate !== false;
+  });
 
   readonly canViewHistory = computed(() => this.id() > 0 && !!this.section()?.UserPermissions?.CanViewHistory);
 
@@ -228,7 +268,12 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     if (!section || this.saving()) {
       return;
     }
-    this.form.markAllAsTouched();
+    // Review 3 RV-L21: touch only the shown fields, so a field that an effect shows later has no error before input.
+    for (const control of valueControls(section)) {
+      if (this.isShown(control.Name)) {
+        this.form.get(control.Name)?.markAllAsTouched();
+      }
+    }
     this.pageErrors.set([]);
     if (shownInvalid(section, this.form, (name) => this.isShown(name))) {
       // As the section master: the modal; the fields also show their errors (all are touched) - decision D2.
@@ -244,6 +289,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
         Version: section.Version ?? null,
         Outputs: buildOutputs(section, this.form, (name) => this.isShown(name)),
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           this.saving.set(false);
@@ -263,7 +309,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
 
   remove(): void {
     this.confirmDelete.set(false);
-    this.api.remove(this.code(), this.id()).subscribe({
+    this.api.remove(this.code(), this.id()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => {
         if (result.Errors?.length) {
           this.pageErrors.set(result.Errors);

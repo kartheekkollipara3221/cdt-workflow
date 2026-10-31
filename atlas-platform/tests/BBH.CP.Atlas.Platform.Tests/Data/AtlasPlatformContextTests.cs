@@ -253,6 +253,29 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
         return registry;
     }
 
+    [Fact]
+    public async Task A_table_that_cannot_be_mapped_is_left_out_and_the_other_tables_still_work()
+    {
+        // Review 3 RV-03: before, the one shared model threw for the bad table, so every platform app gave 500.
+        string name = "BadModel" + Guid.NewGuid().ToString("N")[..6];
+        await database.ScalarAsync($"CREATE TABLE TTDV2.{name} (ID int IDENTITY PRIMARY KEY, Notes xml NULL);");
+        try
+        {
+            AtlasTableRegistry registry = await LoadRegistryAsync(General, AuditLog, $"TTDV2.{name}");
+            Assert.False(AtlasPlatformContext.IsMappable(registry.Get($"TTDV2.{name}")));
+            Assert.True(AtlasPlatformContext.IsMappable(registry.Get(General)));
+
+            int id = await InsertAsync(registry);
+            await using AtlasPlatformContext context = CreateContext(registry);
+            Assert.NotNull(await context.FindActiveAsync(General, id));
+            Assert.Throws<InvalidOperationException>(() => context.Records($"TTDV2.{name}").Count());
+        }
+        finally
+        {
+            await database.ScalarAsync($"DROP TABLE TTDV2.{name};");
+        }
+    }
+
     private AtlasPlatformContext CreateContext(AtlasTableRegistry registry) =>
         new(new DbContextOptionsBuilder<AtlasPlatformContext>().UseSqlServer(database.ConnectionString).Options, registry);
 

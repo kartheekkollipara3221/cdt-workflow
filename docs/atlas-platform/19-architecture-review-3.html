@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture review 3: the complete solution before the move to the target</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas platform · Architecture review 3</div>
+<h1>Architecture review 3: the complete solution before the move to the target</h1>
+<p class="lead">Four independent readers examined the Service, Data/App/SQL, Angular and integration-seam areas against the real target copies. The author confirmed each High and Medium finding at the cited line. Verdict: not ready today; one fix wave (group A) of about one day, then the dev integration.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Review 3, 2026-10-31. Fix wave 4 done (module 20). 43 findings: 3 High, 15 Medium, 25 Low. No code changed. Verdict: not ready for the move today; 5 items block the dev integration, about one day of work.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>43</b><span>findings</span></div>
+<div class="kpi"><b>3</b><span>High</span></div>
+<div class="kpi"><b>15</b><span>Medium</span></div>
+<div class="kpi"><b>25</b><span>Low</span></div>
+<div class="kpi"><b>5</b><span>blockers for today</span></div>
+<div class="kpi"><b>277 + 66</b><span>tests pass</span></div>
+</div>
+
+<section id="1-purpose-and-method">
+<h2>1. Purpose and method</h2>
+<p>This review examines the complete solution one more time before the one-time integration in the target dev region. Review 1 (module 13) found 47 findings; review 2 (module 16) found 11. Both are fixed or answered. This review does not repeat them. Where an earlier fix is not complete in the code, this review says so.</p>
+<p>Method:</p>
+<ul>
+<li>Four independent readers, one for each area: Service (<code>BBH.CP.Atlas.Service/Platform</code>, <code>Application</code>); Data, App, Config and SQL; the Angular <code>WebUi/src/app/platform</code>; the integration seam (<code>INTEGRATION.md</code>, the target package, the hand edits) against the real target copies in <code>target-implementation-read-only/</code>.</li>
+<li>Each reader read every file of its area in full, read reviews 13 and 16 first, and gave file and line for each finding.</li>
+<li>The author of this report opened each High and Medium finding at the cited line and confirmed it. Line numbers refer to the code at commit <code>00193b7</code>.</li>
+<li>Regression at the start of the review: <code>dotnet build</code> 0 warnings; <code>dotnet test</code> 277 passed; <code>ng build</code> 0 warnings; <code>ng test</code> 66 passed (vitest).</li>
+<li>Authentication is out of scope (IIS Windows authentication at the target) and is not a finding.</li>
+</ul>
+<p>Severity: High = blocks the move or breaks a promise that the design makes (all apps stay up; a hidden field stays hidden). Medium = a defect that a user or an operator meets, or a hand edit that cannot be made as written. Low = quality, consistency, or a latent defect with no path today.</p>
+</section>
+<section id="2-verdict">
+<h2>2. Verdict</h2>
+<p>The platform is sound in its core: parameterized SQL, one transaction for record and audit, rowversion concurrency, server-side rules and effects, IsOwner from the stored record, no XSS surface, DTO partials with no collision, a route that cannot shadow a target route. Sections 3 and 7 list what was checked and found correct.</p>
+<p>The move cannot start today as the code is. Five items block the dev integration:</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Blocker</th><th>Why it blocks</th><th>Effort</th></tr>
+<tr><td>RV-01</td><td>Every platform API URL becomes <code>/v1/v1/...</code> at the target</td><td>All TTDV2 calls give 404 on the first smoke test</td><td>15 minutes</td></tr>
+<tr><td>RV-11</td><td>The <code>CPAtlasService</code> hand edit needs two signature changes that INTEGRATION.md does not list; the dashboard hand edit is under-specified</td><td>The integrator cannot compile the PLATFORM lines as written; this is the AR-03 risk</td><td>Half a day (documents and reference diffs)</td></tr>
+<tr><td>RV-08</td><td>The role view can return NULL <code>RoleName</code> or <code>ApplicationCode</code>; the reader throws</td><td>One bad entitlement row at the target locks a user out of all platform apps</td><td>15 minutes</td></tr>
+<tr><td>RV-09</td><td>Script 050 maps TTD roles by name and revokes all TTD roles with no name check; 040 ignores a soft-deleted app row</td><td>A name mismatch at the target removes TTD users from both apps</td><td>1 hour</td></tr>
+<tr><td>RV-10</td><td>No rollback script for the rows that 040 and 050 write</td><td>After a branch revert the TTDV2 app row stays in the menu for every former TTD user, and the reverted controller rejects the code</td><td>1 hour</td></tr>
+</table></div>
+<p>RV-12 (a disabled app gives 500, not the documented 404) should go in the same wave because it is the rollback switch.</p>
+<p>The three High findings that are not blockers today (RV-02 hidden-field leak, RV-03 one bad table takes all platform apps down, RV-04 LogOnly Create) have no path in TTDV2 as configured. They break the platform promise for app #2 and must be fixed before the second app. RV-02 is cheap and should go in the same wave.</p>
+<p>Recommendation: fix wave 4 (section 9, group A) today, run the regression and rebuild the target package, then move. Group B before app #2. Group C is backlog.</p>
+</section>
+<section id="3-checked-and-found-correct">
+<h2>3. Checked and found correct</h2>
+<div class="table-wrap"><table>
+<tr><th>Area</th><th>Checked</th><th>Evidence</th></tr>
+<tr><td>SQL injection</td><td>Table and column names come only from <code>sys.columns</code> metadata and are bracket-quoted; values and <code>TOP</code> are parameters; no procedure name comes from config or request</td><td><code>AtlasTabQueryBuilder.cs:74-75, 102, 107, 111-132, 166</code>; <code>AtlasUserContext.cs:69-77, 116-120, 143-158</code>; <code>AtlasStartupCheck.cs:277-281</code></td></tr>
+<tr><td>Save transaction</td><td>Record and audit row in one transaction, one commit; rollback on concurrency and update errors; <code>ChangeTracker.Clear()</code> in <code>finally</code>; <code>OnAfterSave</code> wrapped</td><td><code>ConfigSectionService.cs:540-574, 386-394, 702</code></td></tr>
+<tr><td>Concurrency</td><td>Rowversion found by type and mapped with <code>IsRowVersion()</code>; <code>VersionRequired</code> when missing; a malformed token gives Conflict, not 500</td><td><code>ConfigSectionService.cs:306-315, 375-379, 672</code>; <code>AtlasPlatformContext.cs:56-57</code></td></tr>
+<tr><td>IsOwner</td><td>Rules and <code>Demand</code> always receive the stored record, never client values; <code>OwnerFields</code> lookup is case-insensitive</td><td><code>ConfigSectionService.cs:242, 256, 595, 626</code>; <code>AtlasAccessService.cs:86-94</code></td></tr>
+<tr><td>Earlier fixes in code</td><td>SV-01, SV-03, SV-04, SV-05, SV-06, SV-09, SV-10, DA-02, DA-03, HO-09, AR-01 default, AR-02 guard, NG-02, NG-03, NG-04, NG-07, NG-08, NG-10, NG-11, NG-12</td><td>See the readers' lists; two residuals are RV-05 (SV-02) and RV-L06 (DA-06)</td></tr>
+<tr><td>DI lifetimes</td><td><code>IAtlasModuleResolver</code> scoped; singletons hold no scoped service; no <code>DateTime.UtcNow</code> in the Service project; <code>TimeProvider</code> from the host is respected</td><td><code>AtlasPlatformServiceCollectionExtensions.cs:24, 35, 68</code></td></tr>
+<tr><td>Legacy isolation</td><td>The exception filter returns for any exception that is not <code>AtlasProblemException</code>; the resolver short-circuits on registered codes before the config store; the menu guard returns the procedure rows on any error</td><td><code>AtlasProblemExceptionFilter.cs:19</code>; <code>AtlasModuleResolver.cs:53</code>; <code>AtlasApplicationMenu.cs:23-32</code></td></tr>
+<tr><td>Path traversal</td><td>Form path resolved with <code>GetFullPath</code> and compared with the folder plus a separator</td><td><code>AtlasConfigStore.cs:165-175</code></td></tr>
+<tr><td>Culture</td><td>All parsing and formatting with <code>InvariantCulture</code></td><td><code>AtlasValueConverter.cs</code>; <code>AtlasFieldValidator.cs:42</code>; <code>AtlasDefaultTokens.cs:33</code></td></tr>
+<tr><td>XSS</td><td>No <code>innerHTML</code>, no <code>bypassSecurityTrust</code>; ag-grid cells built with DOM methods; JSON classes go only into <code>class</code> attributes</td><td><code>atlas-dashboard-columns.ts:82-85, 100-113</code>; <code>atlas-form.component.html:36-41</code></td></tr>
+<tr><td>API contract</td><td>GET responses wrapped <code>{ result }</code> as the target controller does; <code>ManagePage</code> sends <code>FormData</code> key <code>input</code>; PascalCase DTO names match</td><td><code>atlas-api.service.ts:23-50</code>; <code>CPAtlasController.cs.txt:40-70, 101-127</code></td></tr>
+<tr><td>Client to server</td><td>Hidden fields and sections are not validated or sent; the server applies Show, Hide, Enable, Disable, Set, Clear again; Delete and History hidden on the client are enforced on the server</td><td><code>atlas-form-model.ts:107-118, 163-170</code>; <code>AtlasServerEffects.cs:26-38</code>; <code>AtlasDashboardService.cs:183-186</code></td></tr>
+<tr><td>Styles</td><td>Scoped under <code>atlas-form</code> and <code>atlas-dashboard</code> hosts and <code>.atlas-*</code> classes; <code>.btn</code>, <code>h1</code>, <code>.nav-tabs</code> are not redefined</td><td><code>atlas-platform.scss:11, 130, 206, 303-354</code></td></tr>
+<tr><td>Routes</td><td><code>form/:code/:id</code> is lazy and cannot shadow <code>dashboard/:code</code>, <code>sectionmaster/...</code>, <code>stepmaster/...</code>, <code>page/...</code></td><td><code>atlas-platform.routes.ts:5-11</code>; target <code>app.routes.ts.txt:8-38</code></td></tr>
+<tr><td>DTO partials</td><td>Only new names are added; same namespace and assembly; the 12 classes are in the partial list</td><td><code>CPPlatformDto.cs:8-142</code>; <code>INTEGRATION.md:24-26</code></td></tr>
+<tr><td>Service seam</td><td>Base class, abstract and virtual members, interfaces and <code>IUserInfo</code> match the target; the constructor append keeps all call sites</td><td><code>CPApplicationService.cs.txt:30-49, 529, 587, 630</code>; <code>CPAtlasService.cs.txt:29-32</code></td></tr>
+<tr><td>DI at the target</td><td><code>TimeProvider</code> registered by the host is kept (<code>TryAddSingleton</code>); <code>AddProblemDetails</code> exists; <code>AtlasPlatformContext</code> reuses the <code>CPSharepointContext</code> connection</td><td><code>program.cs.txt:29, 72</code>; <code>AtlasDataExtensions.cs:19-20</code></td></tr>
+<tr><td>SQL scripts</td><td>050 is one transaction with <code>XACT_ABORT ON</code> and rollback in CATCH; 040 and 050 do not modify TTD tables; indexes only on the new empty tables; view column names match the real tables</td><td><code>050:24, 128-199</code>; <code>040:96-106, 121-123</code>; <code>030:18-37</code></td></tr>
+<tr><td>Config hygiene</td><td>No secret in <code>appsettings*.json</code> (Integrated Security); stand-in overrides equal the manifest values</td><td><code>appsettings.Development.json:3</code>; <code>TTDV2.app.json:13, 18</code></td></tr>
+</table></div>
+</section>
+<section id="4-high-findings">
+<h2>4. High findings</h2>
+
+<div class="issue">
+<h3><span class="badge b-high">RV-01</span>Every platform API URL becomes <code>/v1/v1/...</code> at the target <span class="area">integration</span></h3>
+<p>Evidence:</p>
+<ul>
+<li><code>atlas-platform/WebUi/src/app/platform/atlas-api.service.ts:23, 28, 34, 40, 45, 50</code>: <code>'v1/Application'</code>, <code>'v1/Dashboard'</code>, <code>'v1/SectionPage'</code>, <code>'v1/ManagePage'</code>, <code>'v1/RemovePage'</code>, <code>'v1/GetAuditLog'</code>.</li>
+<li>Target <code>WebUi/WebUi/Source/Environments/environment.ts.txt:3</code>: <code>apiBaseUrl: '/v1/'</code>. Target <code>Shared/Interceptors/apiinterceptor.ts.txt:5</code>: <code>const apiUrl = environment.apiBaseUrl + req.url;</code>. The interceptor is global.</li>
+<li>The target service uses bare names: <code>cp-atlas-service.ts.txt:43</code> <code>this.http.get('Application')</code>.</li>
+<li>The local environment masks the defect: <code>atlas-platform/WebUi/src/environments/environment.ts:5</code> <code>apiBaseUrl: 'http://localhost:5080/'</code>.</li>
+</ul>
+<p>Why it matters: after the copy, the TTDV2 form, the dashboard rows, save, delete and history all give 404. No local test and no build finds it. <code>INTEGRATION.md</code> does not mention it.</p>
+<p>Fix: remove the <code>v1/</code> prefix in <code>atlas-api.service.ts</code> and set the stand-in environment to <code>http://localhost:5080/v1/</code>. Add a spec that asserts the request URL has no <code>v1/</code> prefix.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">RV-02</span>A field that a rule hides is hidden on the client only; the server sends its value in three places <span class="area">authorization</span></h3>
+<p>Evidence:</p>
+<ul>
+<li><code>ConfigSectionService.cs:148</code> <code>BindValues(fields, table, record);</code> runs before <code>:153</code> <code>Services.Rules.ApplyToSection(...)</code>.</li>
+<li><code>AtlasRuleEngine.cs:116</code> <code>control.Visible = control.Visible &amp;&amp; result.Visible;</code> and <code>:127</code> <code>child.Visible = visible;</code> set only the flag. <code>Control.Value</code> and the grid rows stay.</li>
+<li><code>ConfigSectionService.cs:398-400</code>: <code>result.Outputs = [.. fields.All.Where(x =&gt; table.HasColumn(x.Field))...]</code> returns every column after a save.</li>
+<li><code>ConfigSectionService.cs:519-530</code>: <code>Changes(...)</code> records old and new values of every field; only <code>field.Control.Audit == false</code> masks (<code>:529</code>). History (<code>:621-628</code>) shows them.</li>
+<li>Test <code>Ttdv2SectionTests.cs:517-543</code> asserts <code>Visible == false</code> only.</li>
+</ul>
+<p>Why it matters: <code>HideControls</code> by role is an authorization statement in the config model. SV-03 closed the write side. The read side still sends the value in the LoadPage JSON, in the SavePage <code>Outputs</code> and in History. TTDV2 hides nothing by role, so it is not affected today. App #2 with <code>{ Roles: [Prepare], HideControls: [Salary] }</code> sends Salary to Prepare through three endpoints.</p>
+<p>Fix: after <code>ApplyToSection</code>, clear <code>Control.Value</code>, <code>Control.Options</code> and the grid rows for each control with <code>Visible == false</code>; filter <code>result.Outputs</code> to visible fields; in <code>GetAuditLog</code>, apply the reader's rule result and write <code>***</code> for a hidden field. Add one test that asserts the value is absent in all three places.</p>
+</div>
+<div class="issue">
+<h3><span class="badge b-high">RV-03</span>One bad table disables one app, but its table stays in the shared EF model and every platform app gives 500 <span class="area">data and start-up</span></h3>
+<p>Evidence:</p>
+<ul>
+<li><code>AtlasColumnMetadataReader.cs:86</code> <code>registry.Add(table);</code> adds the table before the check decides.</li>
+<li><code>AtlasPlatformContext.cs:34</code> <code>foreach (AtlasTable table in Registry.Tables)</code> and <code>:45-47</code> <code>?? throw new InvalidOperationException($"Column '{table.FullName}.{column.Name}' has the type ... does not support.")</code>.</li>
+<li><code>AtlasStartupCheck.cs:352-353</code> <code>if (items.Any(x =&gt; x.Severity == AtlasCheckSeverity.Error)) return;</code> skips the model build when per-app errors exist.</li>
+<li><code>AtlasTableRegistry.cs</code> has no Remove method.</li>
+</ul>
+<p>Why it matters: with the default <code>DisableModule</code> (AR-01), an app whose table has an unsupported column type is disabled, but the one EF model is built on the first <code>Records()</code> call of a healthy app, <code>OnModelCreating</code> throws for the bad table, and every platform app returns 500. HO-04 and AR-01 say "only the bad apps are off". For this error class the code does not keep that promise. TTDV2 alone is not affected; app #2 with one <code>sql_variant</code> or <code>geography</code> column takes TTDV2 down.</p>
+<p>Fix: in <code>OnModelCreating</code>, skip a table that fails the check (or map it without the bad column), or let <code>DisableApps</code> remove the tables of disabled apps from the registry. Run <code>CheckModel</code> also when per-app errors exist. Add a test with two apps, one bad table.</p>
+</div>
+</section>
+<section id="5-medium-findings">
+<h2>5. Medium findings</h2>
+
+<h3>Authorization and the save pipeline</h3>
+
+<div class="issue med">
+<h3><span class="badge b-med">RV-04</span>In LogOnly, a user with no Create permission or no role can insert a record <span class="area">authorization</span></h3>
+<p>Evidence: <code>AtlasAccessService.cs:67</code> <code>if (manifest.AccessMode == AtlasAccessMode.Enforce || operation == AtlasOperation.Delete)</code>: only Delete is always enforced. <code>ConfigSectionService.cs:284</code> required validators run for <code>x.Visible &amp;&amp; !x.Disabled</code> only; <code>:328-336</code> Defaults are mapped for every field. <code>TTDV2.app.json:13</code> <code>"AccessMode": "LogOnly"</code>; <code>040-ttdv2-app.sql:30-49</code> every business column is NULL.</p>
+<p>Why it matters: a <code>@Read</code> user, or a user with no TTDV2 role, posts <code>ID = 0</code> with no outputs. Create is denied but only logged; the rules disable every field, so nothing is validated; Defaults set TaxYear, WeekEnding and <code>TaxPreparerLanId</code>; the insert succeeds. The result is junk rows and audit noise in the app that ships in LogOnly. SV-02 covered Delete; Create was not examined.</p>
+<p>Fix: treat Create as Delete in <code>Demand</code> (always 403), or refuse a create when the effective section has no enabled field. Add the test "LogOnly: Read user posts ID 0 with no outputs; no row".</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-05</span>A missing Permissions key fails open; the start-up check requires only the block <span class="area">authorization; SV-02 residual</span></h3>
+<p>Evidence: <code>AtlasAccessService.cs:45</code> <code>permissions?.View == null || ...</code>; <code>:51-52</code> same for Create and Delete; <code>:107-108</code> <code>if (edit == null) return true;</code>. <code>AtlasStartupCheck.cs:144-145</code> checks <code>form.Permissions == null</code> only.</p>
+<p>Why it matters: <code>"Permissions": { "View": ["@Read"] }</code> passes <code>--atlas-check</code> and gives Create, Edit of all records and Delete to every role, <code>@Read</code> included. Delete destroys data.</p>
+<p>Fix: a missing key for Create, Edit or Delete means "nobody", or the start-up check gives an error for each missing key. Record the choice in spec 06.</p>
+</div>
+<h3>Start-up and isolation</h3>
+
+<div class="issue med">
+<h3><span class="badge b-med">RV-06</span>Per-app faults escape the per-manifest loop and disable every platform app; <code>--atlas-check</code> crashes on them <span class="area">start-up</span></h3>
+<p>Evidence: <code>AtlasTable.cs:78-79</code> throws <code>ArgumentException</code> for a <code>Table</code> such as <code>"General"</code> (no schema), reached from <code>AtlasColumnMetadataReader.cs:28</code>. <code>AtlasStartupCheck.cs:187</code> <code>GetRequiredKeyedService&lt;IAtlasModule&gt;(manifest.Code)</code> has no try. <code>AtlasPlatformStartup.cs:53-56</code> the catch-all gives <code>new(AtlasCheckSeverity.Error, "*", ex.Message)</code>, which disables all apps. <code>:124</code> <code>catch (Exception ex) when (ex is SqlException or InvalidOperationException)</code> does not catch <code>ArgumentException</code>, so the check command ends with a stack trace.</p>
+<p>Why it matters: app #17 with a typo in <code>Table</code> takes apps #1 to #16 off at start-up, and the release gate prints a stack trace instead of the named error.</p>
+<p>Fix: validate the <code>Schema.Name</code> form of <code>Table</code>, <code>AuditTable</code> and <code>AttachmentTable</code> for each manifest before <code>LoadAsync</code> (per-app error); wrap the module resolution per app; widen the catch at <code>:124</code> to <code>Exception</code> except <code>OperationCanceledException</code>.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-07</span>The DisableModule guard does not cover <code>DisableApps</code>, and there is no recovery after a transient SQL failure <span class="area">start-up; AR-01 completeness</span></h3>
+<p>Evidence: <code>AtlasPlatformStartup.cs:52-56</code> the catch wraps <code>LoadAndCheckAsync</code> only; <code>:67</code> <code>DisableApps(services, errors)</code> runs after it and <code>:99</code> calls <code>services.GetRequiredService&lt;IAtlasConfigStore&gt;().ConfigErrors</code>, which lists the folder (<code>AtlasConfigStore.cs:88-95</code>, outside the store's own try). <code>:190</code> <code>StartAsync(...) =&gt; services.StartAtlasPlatformAsync(...)</code>: an exception here stops the host. <code>:68</code> <code>registry.MarkLoaded();</code> after a <code>"*"</code> SQL failure; <code>AtlasDisabledApps.cs:17</code> "A restart after the fix makes them available again."</p>
+<p>Why it matters: if the config folder cannot be listed (an ACL change), the same call fails twice and the exception leaves the hosted service, which is the case AR-01 was meant to close. A failover during an IIS recycle gives 404 for every platform app until the next recycle, while the current apps recover on the next request.</p>
+<p>Fix: in the catch, disable all codes from <code>GetServices&lt;AtlasModuleRegistration&gt;()</code> without the config store; for the <code>"*"</code> SQL case do not <code>MarkLoaded</code> and let the resolver run one gated retry after a back-off, or expose a health-check item.</p>
+</div>
+<h3>SQL scripts and the shared tables</h3>
+
+<div class="issue med">
+<h3><span class="badge b-med">RV-08</span>The role view can return NULL <code>RoleName</code> or <code>ApplicationCode</code>; the reader throws and locks the user out of all platform apps <span class="area">SQL and security</span></h3>
+<p>Evidence: <code>030-active-user-roles-view.sql:23</code> <code>a.Code AS ApplicationCode,</code> and <code>:26</code> <code>e.Name AS RoleName,</code>; the WHERE clause (<code>:34-37</code>) filters <code>IsDeleted</code> only. <code>AtlasUserContext.cs:75</code> <code>reader.GetString(0)</code> and <code>reader.GetString(2)</code>. Both columns are nullable in the target shape (<code>local/sql/000-cp-atlas-core-tables.sql:11, 25</code>).</p>
+<p>Why it matters: the target owns the <code>CP_Atlas_*</code> data. One row with a NULL <code>Code</code> or <code>Name</code> gives <code>SqlNullValueException</code> on every platform request of each user who holds that row. The current apps use <code>Get_Application</code>, which tolerates it.</p>
+<p>Fix: add <code>AND a.Code IS NOT NULL AND e.Name IS NOT NULL</code> to the view, and read with <code>NullableString</code> and skip NULL rows.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-09</span>Script 050 maps TTD roles by name and revokes all TTD roles with no name check; 040 ignores a soft-deleted app row <span class="area">SQL; touches TTD users</span></h3>
+<p>Evidence: <code>050-ttdv2-copy-from-ttd.sql:138</code> <code>INNER JOIN dbo.CP_Atlas_Entitlement AS e2 ON ... AND e2.Name = e1.Name</code>; <code>:147</code> <code>UPDATE ue SET ue.IsDeleted = 1 ...</code> for all active TTD roles. The TTDV2 roles are <code>Read</code>, <code>Prepare</code>, <code>Owner</code> (<code>040:137-139</code>); the TTD role names at the target are not in this repository. <code>040:128</code> <code>IF NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2')</code> and <code>:132</code> have no <code>IsDeleted</code> filter; <code>AtlasStartupCheck.cs:371</code> takes <code>x.First()</code> of duplicate codes.</p>
+<p>Why it matters: a TTD role named <code>Reader</code> gets no TTDV2 role and is still revoked, so the user loses both apps with no message. A soft-deleted TTDV2 row in dev blocks the insert and attaches the entitlements to the deleted row.</p>
+<p>Fix: in 050 Part 1 add a <code>#Problem</code> row for each active TTD role name with no TTDV2 role of the same name, so the script stops before Part 2. In 040 filter <code>ISNULL(IsDeleted, 0) = 0</code> and <code>THROW</code> on a deleted or duplicate row.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-10</span>No rollback script for the rows that 040 and 050 write <span class="area">rollback</span></h3>
+<p>Evidence: <code>040:128-129</code> inserts the <code>TTDV2</code> row in <code>CP_Atlas_Application</code>; <code>:141</code> inserts the entitlements; <code>050:145-147</code> soft-deletes all TTD user entitlements with only a comment as rollback. Report 18 (<code>18-whole-redesign-integration.md:294</code>) gives "revert the branch" as the second rollback.</p>
+<p>Why it matters: after a branch revert the app row stays; <code>dbo.Get_Application</code> returns <code>TTDV2</code> to every user with a TTDV2 role (after 050: all former TTD users); the menu shows <code>dashboard/TTDV2</code>; the reverted controller <code>LoadDashboard(CPApplicationCode code)</code> rejects the value. TTD users have no roles until a person writes the UPDATE by hand.</p>
+<p>Fix: add <code>045-ttdv2-rollback.sql</code> (soft-delete the TTDV2 app row and entitlements; restore the TTD <code>CP_Atlas_UserEntitlement</code> rows by <code>ModifiedBy</code> and <code>ModifiedDate</code>) and name it in <code>sql/release-p1/README.md</code> and INTEGRATION.md section 8.</p>
+</div>
+<h3>The integration seam</h3>
+
+<div class="issue med">
+<h3><span class="badge b-med">RV-11</span>The <code>CPAtlasService</code> and dashboard hand edits are under-specified against the real target files <span class="area">integration; AR-03</span></h3>
+<p>Evidence:</p>
+<ul>
+<li>Target <code>Service/CPAtlasService.cs.txt:69</code> <code>LoadDashboard(CPApplicationCode Code)</code>, <code>:100</code> <code>RemovePage(CPApplicationCode code, int id)</code>, <code>:127</code> <code>LoadApplicationService(CPApplicationCode code)</code>. The reference <code>StandIn/CPAtlasService.cs:37, 66</code> take <code>string code</code>. <code>INTEGRATION.md:28</code> says only "copy the lines marked PLATFORM; the <code>if</code> chains stay". The <code>Enum.Parse</code> change is listed for the controller only (<code>:29</code>).</li>
+<li>Target <code>cp-atlas-dashboard.ts.txt:109</code> <code>onClick(controlName: string)</code> is called from <code>cp-atlas-dashboard.html.txt:12</code> <code>(click)="onClick(btn.Name)"</code>, so <code>button.Target</code> (<code>INTEGRATION.md:31</code>) needs a template change too. <code>editRow</code> (<code>:316</code>) uses <code>this.applicationCode</code>, which <code>setGridData</code> overwrites with <code>tab?.Code</code> (<code>:135</code>). <code>formTypeOf(apps, code)</code> needs the <code>v1/Application</code> rows; the dashboard has no <code>apps</code> field and the service exposes them as a stream only (<code>cp-atlas-service.ts.txt:18</code> <code>cpApplications$</code>).</li>
+</ul>
+<p>Why it matters: the PLATFORM lines do not compile against the enum parameters. The integrator must change two public signatures and add <code>Enum.Parse</code> after each PLATFORM line with no guidance. Hand edit 8 touches <code>onClick</code>, <code>editRow</code>, the template, a new <code>apps</code> subscription and <code>GenerateColumns</code>, with no reference file and no spec. This is the "error in an existing if chain" risk that AR-03 names.</p>
+<p>Fix: list the two signature changes and the <code>Enum.Parse&lt;CPApplicationCode&gt;(AtlasAppCode.FromRequest(code), true)</code> lines in the <code>CPAtlasService.cs</code> row; ship a full diff of <code>CPAtlasService.cs</code> and of <code>cp-atlas-dashboard.ts</code> in <code>reference\</code>; add a spec that runs the edited target dashboard with one legacy tab and one <code>Columns</code> tab.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-12</span>A disabled platform app gives 500 at the target, not the documented 404 <span class="area">rollback</span></h3>
+<p>Evidence: <code>StandIn/CPAtlasService.cs:101-104</code> <code>Platform()</code> returns null when <code>IsPlatformApp</code> is false; <code>AtlasModuleResolver.cs:53</code> is false for <code>Enabled: false</code>. The stand-in then throws <code>NotFound</code> (<code>:108-111</code>), but at the target the legacy chain runs <code>Enum.Parse&lt;CPApplicationCode&gt;("TTDV2")</code> (<code>CPAtlasService.cs.txt:114</code> pattern), which throws <code>ArgumentException</code>; <code>Middlewares/GlobalExceptionHandler.cs.txt:12-16</code> logs it as 500. <code>INTEGRATION.md:48-49</code> promises 404.</p>
+<p>Why it matters: with <code>TTDV2:Enabled=false</code> (the rollback switch), a bookmarked <code>dashboard/TTDV2</code> or <code>form/TTDV2/5</code> logs an unhandled exception on every hit; the menu guard is the only thing that hides it.</p>
+<p>Fix: after the PLATFORM line use <code>Enum.TryParse</code> and throw <code>AtlasProblemException.NotFound</code> when it fails and <code>configStore.FindManifest(code) != null</code>. Add an HTTP test for a disabled app.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-13</span>The host target framework is not verified, and the package writes the WebUi files to a folder that does not exist at the target <span class="area">build and package</span></h3>
+<p>Evidence: <code>Atlasapp/Atlasapp/BBH.CP.Atlas.App.csproj.txt:4</code> <code>net9.0</code>, <code>:11</code> EF SqlServer <code>9.0.14</code>; <code>Service/BBH.CP.Atlas.Service.csproj.txt:4</code> <code>net9.0</code>; <code>Data/.../BBH.CP.Atlas.Data.csproj.txt:4</code> <code>net10.0</code>, <code>:11</code> EF <code>10.0.13</code>. Platform <code>Directory.Build.props:4</code> <code>net10.0</code>, <code>:5</code> <code>LangVersion latest</code>. <code>INTEGRATION.md:76</code> checks "EF Core 10.0.13" only. <code>make-target-package.py:29</code> <code>'copy/WebUi/Source/App/platform/'</code> and every COPY header say <code>WebUi/Source/App/platform/</code>; the real target has <code>angular.json.txt:14</code> <code>"sourceRoot": "src"</code> and <code>INTEGRATION.md:32</code> itself says <code>src/app/platform/atlas-platform.scss</code>.</p>
+<p>Why it matters: a net9.0 project cannot reference a net10.0 Data project, so the copy is inconsistent and the real framework is unknown. Platform code compiles under the host's framework and language version, not the platform's. <code>Source/App</code> is a capitalisation artefact of the copy; the integrator gets two different paths in one document.</p>
+<p>Fix: add "confirm App and Service TFM = net10.0, or build the Platform folders under net9.0 once locally" to INTEGRATION.md section 5; state the minimum LangVersion. Package to <code>copy/WebUi/src/app/platform/</code> and use <code>src/app/...</code> in INTEGRATION.md and the COPY headers.</p>
+</div>
+<h3>Angular form and dashboard</h3>
+
+<div class="issue med">
+<h3><span class="badge b-med">RV-14</span>Form load, save and remove responses are not tied to the component lifetime; a late response on a destroyed form throws NG0911 <span class="area">Angular</span></h3>
+<p>Evidence: <code>atlas-form.component.ts:58-62</code> the <code>paramMap</code> subscription calls <code>this.load()</code> (no <code>switchMap</code>); <code>:69</code> <code>this.api.section(...).subscribe({</code> has no <code>takeUntilDestroyed</code>; <code>:107, :117</code> <code>takeUntilDestroyed(this.destroyRef)</code> runs inside <code>build()</code>, which runs from that response; <code>:240-261</code> (save) and <code>:266-276</code> (remove) are not guarded. Target <code>CustomRouteReuseStrategy.ts.txt:34-45</code> recreates the component on a parameter change.</p>
+<p>Why it matters: if the user clicks Close while <code>v1/SectionPage</code> is in flight, <code>build()</code> runs on a destroyed component and <code>takeUntilDestroyed</code> on a destroyed <code>DestroyRef</code> throws <code>NG0911</code> into the global error handler. Locally (<code>app.config.ts:16</code> <code>onSameUrlNavigation: 'reload'</code>) a slow response for record A can overwrite the form of record B, so a save sends B's ID with A's values. Module 13 section 11 says "an old request cannot overwrite a newer one"; that holds at the target only.</p>
+<p>Fix: <code>paramMap.pipe(map(...), switchMap(({ code, id }) =&gt; this.api.section(code, id).pipe(catchError(...))), takeUntilDestroyed(this.destroyRef))</code>; pipe save and remove through <code>takeUntilDestroyed</code> as well. Add a spec that destroys the fixture before the response is flushed.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-15</span>Effect <code>Set</code>, <code>Clear</code> and <code>SetFromOption</code> re-enter <code>valueChanges</code> with no cycle guard, and the lint does not check for a cycle <span class="area">Angular and config</span></h3>
+<p>Evidence: <code>atlas-form.component.ts:165</code> <code>this.form.get(name)?.setValue(...)</code> emits by default; <code>:107</code> each control with Effects subscribes to <code>valueChanges</code> and calls <code>applyEffects</code>; <code>atlas-effects.ts:67-72</code> <code>Set</code>, <code>Clear</code> and <code>SetFromOption</code> call <code>target.setValue</code>. <code>AtlasConfigLint.cs:75-87</code> checks only that the names exist. TTDV2 uses <code>SetFromOption</code> and <code>Clear</code> (<code>TTDV2.json:53, 57</code>) with no cycle.</p>
+<p>Why it matters: a config where A sets B and B sets A, or a control that sets itself, recurses until a stack overflow and the form page is dead. Angular emits <code>valueChanges</code> on <code>setValue</code> even when the value is unchanged. App #17 finds this at run time, not in <code>--atlas-check</code>.</p>
+<p>Fix: in <code>setValue</code> use <code>{ emitEvent: false }</code> and run <code>applyEffects</code> for the target once with a visited set per cascade; add a lint error for a cycle in the effect graph.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-16</span>Dashboard date columns convert a UTC date-time to the browser's local day; the form and the grid filter use the UTC day <span class="area">Angular</span></h3>
+<p>Evidence: <code>atlas-dashboard-columns.ts:24-28</code> <code>const date = new Date(text); ... date.getDate()</code> for any value longer than 10 characters; <code>:37</code> the filter comparator uses the <code>yyyy-MM-dd</code> prefix; <code>atlas-form-model.ts:48-49</code> reads the prefix. The server writes <code>datetime</code> columns as <code>yyyy-MM-dd'T'HH:mm:ss.fff'Z'</code> (<code>AtlasValueConverter.cs:103</code>).</p>
+<p>Why it matters: a <code>datetime</code> column that holds a date at 00:00 UTC shows 17-Oct on the dashboard for a US user and 18-Oct in the form, and a filter for 17-Oct does not match the row shown as 17-Oct. Two values for one record on two screens is a defect that users report.</p>
+<p>Fix: in <code>formatDate</code>, when the column type is <code>date</code>, format from the prefix (as the comparator already does); keep the local conversion for a true timestamp type only. Add <code>formatDate('2026-10-18T00:00:00.000Z')</code> to the spec.</p>
+</div>
+<div class="issue med">
+<h3><span class="badge b-med">RV-17</span>The client ignores <code>CanEdit</code> and <code>CanCreate</code>: Save stays visible and all fields editable on a view-only record; the user learns at save time with a 403 <span class="area">Angular</span></h3>
+<p>Evidence: <code>atlas-form.component.ts:193-203</code> <code>visibleButtons</code> tests <code>UserPermissions?.CanDelete</code> only; <code>atlas-models.ts:98-103</code> has <code>CanCreate</code> and <code>CanEdit</code>; the server fills them (<code>ConfigSectionService.cs:162</code>) and enforces Edit (<code>AtlasAccessService.cs:53</code>).</p>
+<p>Why it matters: the server check is present, so this is not a security gap. The UI shows a Save button and editable fields to a View-only user, who types for minutes and then gets "Access denied". The target section master hides what the user cannot do; the platform must match.</p>
+<p>Fix: hide the save buttons when <code>id() &gt; 0 ? !CanEdit : !CanCreate</code> and call <code>this.form.disable({ emitEvent: false })</code> in <code>build()</code> for that case.</p>
+</div>
+<h3>Tests</h3>
+
+<div class="issue med">
+<h3><span class="badge b-med">RV-18</span>Critical paths with no test <span class="area">tests</span></h3>
+<p>Evidence (.NET): <code>EndpointTests.cs</code> runs against the stand-in <code>CPAtlasService</code> (<code>StandIn/CPAtlasService.cs:107-111</code>), so the legacy <code>if</code> chain plus the PLATFORM lines is never executed. No test loads a dashboard tab with <code>Procedure</code> on the platform path (a grep over the tests finds <code>Procedure</code> in <code>EndpointTests.cs:38</code> only), although all current tabs are procedure tabs. No test for <code>Enabled=false</code> through the host HTTP path (RV-12). No test for the <code>--atlas-check</code> argument removal in <code>program.cs</code>.</p>
+<p>Evidence (Angular): <code>platform.component.spec.ts:62</code> sets <code>Version: 'AAAA'</code> but no spec asserts the <code>ManagePage</code> body <code>Version</code> (one hit for <code>Version</code> in both specs); no spec for a save click while <code>saving()</code> is true, an Effects <code>Set</code> chain (RV-15), Close during load (RV-14), a dashboard load error, a <code>date</code> column with a <code>Z</code> value (RV-16), or the edited target dashboard (RV-11). <code>platform.component.spec.ts:216-219</code> passes when <code>Zone</code> is undefined, so the only <code>OnPush</code> under zone test never runs locally.</p>
+<p>Why it matters: the rowversion round trip is the concurrency contract (DA-02); a regression that drops <code>Version</code> from the body turns every update into <code>VersionRequired</code> with no red test. The two riskiest hand edits (AR-03) have only the smoke test.</p>
+<p>Fix: assert <code>page.Version === 'AAAA'</code>; add the specs named above; add a <code>Procedure</code> tab test in <code>Ttdv2DashboardTests</code>, an HTTP test for <code>Enabled=false</code>, and a spec for the edited target dashboard; add <code>zone.js</code> as a devDependency for the zone spec.</p>
+</div>
+</section>
+<section id="6-low-findings">
+<h2>6. Low findings</h2>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th>Finding</th><th>Evidence</th><th>Fix</th></tr>
+<tr><td>RV-L01</td><td>The platform context keeps a reference to the finished shared transaction; a second save in one scope would throw (latent; one save per request today)</td><td><code>AtlasDataExtensions.cs:52-53</code>; <code>ConfigSectionService.cs:540, 571-574</code></td><td><code>platform.Database.UseTransaction(null)</code> in the <code>finally</code>; test with two saves in one scope</td></tr>
+<tr><td>RV-L02</td><td>A Computed field over a non-numeric source column gives a 500 on every save; the start-up check tests the column name only</td><td><code>AtlasComputedFields.cs:56</code>; <code>AtlasStartupCheck.cs:174-176</code></td><td>Start-up error for a non-numeric source or target; catch and return <code>ComputedInvalid</code></td></tr>
+<tr><td>RV-L03</td><td><code>user</code> controls bypass the option check; a LAN ID is never validated</td><td><code>ConfigSectionService.cs:412</code></td><td>Require the value in <code>CP_Atlas_User</code> or the provider list</td></tr>
+<tr><td>RV-L04</td><td><code>AuditTime</code> and <code>SystemTime</code> have separate defaults; History can differ from the record by the offset</td><td><code>AtlasAuditWriter.cs:60-62</code>; <code>ConfigSectionService.cs:670</code>; <code>AtlasAppManifest.cs:58, 64</code></td><td>Default <code>AuditTime</code> to <code>SystemTime</code>; start-up warning when they differ</td></tr>
+<tr><td>RV-L05</td><td>A config-folder read failure is not isolated; every platform request gives 500 until the next refresh</td><td><code>AtlasConfigStore.cs:88-95</code></td><td>Wrap the scan; return the previous snapshot on error</td></tr>
+<tr><td>RV-L06</td><td>The option check uses the old ordinal <code>SameValue</code> (DA-06 residual)</td><td><code>ConfigSectionService.cs:411, 685-686</code></td><td>Use <code>AtlasValueConverter.SameValue(value, previous, column)</code></td></tr>
+<tr><td>RV-L07</td><td>Display-name cache: 30 minutes, caches a miss, no size, no invalidation</td><td><code>AtlasUserContext.cs:82, 96, 129</code></td><td>Do not cache a miss; TTL as a setting; <code>entry.Size = 1</code></td></tr>
+<tr><td>RV-L08</td><td>A default shown in a disabled field is refused if a client echoes it on create</td><td><code>ConfigSectionService.cs:209-211</code>; <code>AtlasAllowList.cs:46-51</code></td><td>Treat a sent value equal to the default as <code>Unchanged</code> on create</td></tr>
+<tr><td>RV-L09</td><td>Two manifest files with the same <code>Code</code>: the first wins silently</td><td><code>AtlasConfigStore.cs:137</code></td><td>Start-up error for a duplicate code</td></tr>
+<tr><td>RV-L10</td><td>The script log stores the module file names, not the release file names</td><td><code>040:154</code> <code>'12-ttdv2-app.sql'</code>; <code>020:37</code>; <code>050:192</code></td><td>Log the release file name</td></tr>
+<tr><td>RV-L11</td><td>Platform scripts write <code>GETUTCDATE()</code> into the shared <code>dbo.CP_Atlas_*</code> tables; the current apps write local time</td><td><code>040:130, 142</code>; <code>050:133, 147</code>; <code>CPTTDService.cs.txt:134</code></td><td><code>GETDATE()</code> for rows in <code>dbo.CP_Atlas_*</code>, or state the rule</td></tr>
+<tr><td>RV-L12</td><td>The app code is hard-coded 8 times in the TTDV2 grid <code>cellRendererParams</code>; the lint does not see it</td><td><code>TTDV2.json:168-175</code></td><td>Lint rule, or the client fills it from the route</td></tr>
+<tr><td>RV-L13</td><td>The role query joins <code>CP_Atlas_User.LanID</code>, which has no index in the target shape (not a regression)</td><td><code>000-cp-atlas-core-tables.sql:39-53</code>; <code>AtlasUserContext.cs:71-73</code></td><td>Ask the target team for a filtered index</td></tr>
+<tr><td>RV-L14</td><td>The start-up check opens a second <code>SqlConnection</code> from the connection string</td><td><code>AtlasPlatformStartup.cs:160</code></td><td>Use <code>context.Database.GetDbConnection()</code></td></tr>
+<tr><td>RV-L15</td><td><code>AddAtlasPlatform</code> comment says <code>builder.Configuration</code>; INTEGRATION.md says <code>configuration</code> (the <code>appsettings.json</code>-only root)</td><td><code>AtlasPlatformServiceCollectionExtensions.cs:13</code>; <code>INTEGRATION.md:27, 55-57</code></td><td>Correct the comment</td></tr>
+<tr><td>RV-L16</td><td>The read-only copy has more divergences than the one that INTEGRATION.md lists</td><td><code>INTEGRATION.md:75</code>; <code>CPAtlasController.cs.txt:31</code> vs <code>CPAtlasService.cs.txt:29</code>; <code>app.component.ts.txt:84</code> vs <code>cp-atlas-service.ts.txt:18</code>; <code>app.routes.ts.txt:37</code></td><td>Add them to section 5; keep the first target build as the acceptance step</td></tr>
+<tr><td>RV-L17</td><td>Target TypeScript has <code>strictNullChecks: false</code>; the platform is strict</td><td><code>tsconfig.json.txt:8</code>; platform <code>tsconfig.json:6</code></td><td>Run <code>tsc</code> once with the target flags on the copied folder</td></tr>
+<tr><td>RV-L18</td><td><code>CPAtlasDashboard.Code</code> serialises as <code>0</code> (<code>CDT</code>) for TTDV2</td><td><code>CPAtlasDashboardConfig.cs.txt:19</code>; <code>program.cs.txt:70</code>; <code>CPPlatformDto.cs:117-121</code></td><td>Document it; clients use <code>AppCode</code> when present</td></tr>
+<tr><td>RV-L19</td><td>History fallback time <code>yyyy-MM-dd HH:mm:ss</code> goes through <code>DatePipe</code>; Safari rejects it</td><td><code>atlas-history-dialog.ts:102, 36</code>; <code>AtlasAuditWriter.cs:120-123</code></td><td>Parse into a local <code>Date</code></td></tr>
+<tr><td>RV-L20</td><td>Reference dashboard: uncancelled <code>forkJoin</code>, plain fields <code>code</code> and <code>apps</code>, full grid rebuild after delete</td><td><code>atlas-dashboard.component.ts:71-72, 86, 164</code></td><td><code>switchMap</code>; signals; remove the row without <code>loading</code></td></tr>
+<tr><td>RV-L21</td><td><code>markAllAsTouched()</code> touches hidden controls; a field shown later shows its error before input</td><td><code>atlas-form.component.ts:231, 233, 185-191</code></td><td>Touch shown controls only</td></tr>
+<tr><td>RV-L22</td><td>Radio group has no accessible group name; <code>aria-*</code> lands on the first radio only</td><td><code>atlas-renderers.ts:164, 167</code>; <code>atlas-field-a11y.directive.ts:17</code></td><td><code>aria-labelledby</code> on the group; add <code>option</code> to <code>noInput</code></td></tr>
+<tr><td>RV-L23</td><td>The a11y directive runs a DOM query on every change-detection cycle for every field</td><td><code>atlas-field-a11y.directive.ts:16-17</code>; <code>atlas-form.component.html:42, 51</code></td><td>Query once; update in an <code>effect()</code></td></tr>
+<tr><td>RV-L24</td><td>The form route path is hard-coded in three places</td><td><code>atlas-platform.routes.ts:7</code>; <code>atlas-navigation.ts:18</code>; <code>atlas-dashboard.component.ts:173</code></td><td>One exported constant or an <code>ATLAS_FORM_LINK</code> token</td></tr>
+<tr><td>RV-L25</td><td>The zone-mode test passes when <code>zone.js</code> is not loaded</td><td><code>platform.component.spec.ts:216-219</code></td><td>Add <code>zone.js</code> as a devDependency, or mark the case pending</td></tr>
+</table></div>
+</section>
+<section id="7-test-coverage">
+<h2>7. Test coverage</h2>
+<p>168 .NET test methods in 20 files; 45 Angular cases in 2 specs. All pass.</p>
+<div class="table-wrap"><table>
+<tr><th>Critical path</th><th>Test</th></tr>
+<tr><td>Save pipeline with permissions (Read, Prepare, Owner; Enforce)</td><td><code>Sections/Ttdv2SectionTests.cs</code>; <code>Security/AccessServiceTests.cs</code></td></tr>
+<tr><td>Rowversion conflict; missing Version</td><td><code>Sections/Ttdv2SectionTests.cs</code>; <code>Data/AtlasPlatformContextTests.cs</code></td></tr>
+<tr><td>Module disabled (resolver level)</td><td><code>Registry/RegistryTests.cs</code>; <code>Api/EndpointTests.cs</code></td></tr>
+<tr><td>Start-up error path (DisableModule, Stop, bad setting, SQL down)</td><td><code>Api/AtlasCheckTests.cs</code></td></tr>
+<tr><td>Dashboard <code>Source: Table</code> tabs, permissions, 403</td><td><code>Dashboard/Ttdv2DashboardTests.cs</code>; <code>Dashboard/TabQueryBuilderTests.cs</code></td></tr>
+<tr><td>Rules on save (role-hidden field, effects, disabled field)</td><td><code>Sections/SectionStepTests.cs</code>; <code>Rules/RuleEngineTests.cs</code></td></tr>
+<tr><td>Menu guard (AR-02)</td><td><code>Registry/ApplicationMenuTests.cs</code></td></tr>
+<tr><td>Validators, converter, SQL scripts</td><td><code>ValidatorParityTests.cs</code>; <code>AtlasValueConverterTests.cs</code>; <code>Ttdv2AppScriptTests.cs</code>; <code>CopyScriptTests.cs</code>; <code>ReleaseScriptTests.cs</code></td></tr>
+<tr><td>Module disabled through the target <code>CPAtlasService</code> legacy fall-through (RV-12)</td><td>NONE</td></tr>
+<tr><td>Dashboard <code>Procedure</code> tab on the platform path</td><td>NONE</td></tr>
+<tr><td>Legacy <code>if</code> chains plus PLATFORM lines in one <code>CPAtlasService</code> (RV-11)</td><td>NONE</td></tr>
+<tr><td>Edited target <code>cp-atlas-dashboard.ts</code> (RV-11)</td><td>NONE</td></tr>
+<tr><td><code>--atlas-check</code> argument removal in <code>program.cs</code></td><td>NONE</td></tr>
+<tr><td>Platform API URLs against the target <code>apiBaseUrl</code> (RV-01)</td><td>NONE</td></tr>
+<tr><td>LogOnly Create by a Read user (RV-04); hidden-field value absent (RV-02); two apps with one bad table (RV-03)</td><td>NONE</td></tr>
+</table></div>
+</section>
+<section id="8-rollback-with-enabled-false">
+<h2>8. Rollback with <code>Enabled=false</code></h2>
+<p>The resolver treats TTDV2 as not a platform app (<code>AtlasModuleResolver.cs:53</code>), the menu row is removed (<code>AtlasApplicationMenu.cs:42-55</code>), and the legacy chains run for the 4 apps. These items stay different:</p>
+<ul>
+<li>The Angular route <code>form/:code/:id</code> and <code>atlas-platform.scss</code> stay in the bundle (scoped; no effect on the existing pages).</li>
+<li><code>AtlasProblemExceptionFilter</code> stays registered (no-op for other exceptions).</li>
+<li>The hosted start-up service still reads <code>sys.columns</code> at every start (<code>AtlasPlatformStartup.cs:47-57</code>).</li>
+<li>Database objects remain: <code>dbo.CP_Atlas_ScriptLog</code> (020), <code>dbo.vw_CP_Atlas_ActiveUserRole</code> (030), the <code>TTDV2</code> schema and tables, the <code>CP_Atlas_Application</code> row and 3 entitlements (040), and after 050 the soft-deleted TTD user entitlements (RV-10).</li>
+<li>A stale <code>dashboard/TTDV2</code> link gives 500, not 404 (RV-12).</li>
+</ul>
+<p>The 4 apps run exactly as before only if hand edits 5, 6 and 8 kept the <code>if</code> chains intact; no test covers that (RV-18).</p>
+</section>
+<section id="9-recommended-order">
+<h2>9. Recommended order</h2>
+
+<h3>Group A: before the move (today)</h3>
+<ol>
+<li>RV-01: remove the <code>v1/</code> prefix; stand-in environment <code>http://localhost:5080/v1/</code>; one spec.</li>
+<li>RV-08: <code>IS NOT NULL</code> in the view; <code>NullableString</code> in the reader.</li>
+<li>RV-09: name check in 050 Part 1; <code>IsDeleted</code> filter and <code>THROW</code> in 040.</li>
+<li>RV-10: <code>045-ttdv2-rollback.sql</code>.</li>
+<li>RV-12: <code>TryParse</code> plus <code>NotFound</code> in the reference <code>CPAtlasService</code>.</li>
+<li>RV-11 and RV-13: INTEGRATION.md rows for the signature changes, the framework check and the <code>src/app</code> path; full reference diffs of <code>CPAtlasService.cs</code> and <code>cp-atlas-dashboard.ts</code>; package path.</li>
+<li>RV-02: clear hidden values on load, filter <code>Outputs</code>, mask History; one test.</li>
+<li>Regression; rebuild the target package; then the dev integration.</li>
+</ol>
+<h3>Group B: before app #2</h3>
+<p>RV-03, RV-04, RV-05, RV-06, RV-07, RV-14, RV-15, RV-16, RV-17, RV-18, RV-L02, RV-L05, RV-L09, RV-L12.</p>
+<h3>Group C: backlog</h3>
+<p>The remaining Low findings, with RV-L13 as a request to the target team.</p>
+</section>
+<section id="10-references">
+<h2>10. References</h2>
+<ul>
+<li>Module 13: architecture review 1 (47 findings, fixed in waves 1 to 3).</li>
+<li>Module 16: architecture review 2 (11 findings; AR-01, AR-02, AR-05 fixed).</li>
+<li>Report 18: whole redesign and integration (files to move, hand edits, order).</li>
+<li><code>atlas-platform/INTEGRATION.md</code>; <code>atlas-platform/local/make-target-package.py</code>.</li>
+<li>Target copies: <code>target-implementation-read-only/</code> (Atlasapp API, Service, Data, WebUi).</li>
+</ul>
+</section>
+<section id="11-fix-status">
+<h2>11. Fix status</h2>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Status</th></tr>
+<tr><td>RV-01 to RV-18</td><td>Fixed in wave 4 (2026-10-31); RV-04, RV-07, RV-16, RV-17 in part. See module 20 for each verdict.</td></tr>
+<tr><td>RV-L01 to RV-L25</td><td>12 fixed, 2 documented, 6 deferred, 3 not agreed, 2 for the target team. See module 20, section 5.</td></tr>
+</table></div>
+</section>
+</main>
+</body>
+</html>

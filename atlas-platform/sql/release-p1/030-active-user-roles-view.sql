@@ -34,7 +34,11 @@ INNER JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID
 WHERE ISNULL(u.IsDeleted, 0) = 0
   AND ISNULL(ue.IsDeleted, 0) = 0
   AND ISNULL(e.IsDeleted, 0) = 0
-  AND ISNULL(a.IsDeleted, 0) = 0;
+  AND ISNULL(a.IsDeleted, 0) = 0
+  -- Review 3 RV-08: a row with no LAN ID, app code or role name gives no role (the target owns this data).
+  AND u.LanID IS NOT NULL
+  AND a.Code IS NOT NULL
+  AND e.Name IS NOT NULL;
 GO
 
 -- Check: the view exists and returns rows.

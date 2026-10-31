@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/. The user text of an HTTP error (review NG-12): its own file, so the
+// COPY to the target: WebUi/src/app/platform/. The user text of an HTTP error (review NG-12): its own file, so the
 // dashboard and the form chunks do not share the form component code.
 export function problemText(error: unknown): string {
   const response = error as { status?: number; error?: { detail?: string; title?: string } };

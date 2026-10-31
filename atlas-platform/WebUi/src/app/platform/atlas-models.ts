@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/. The server DTOs (PascalCase, as the API sends them).
+// COPY to the target: WebUi/src/app/platform/. The server DTOs (PascalCase, as the API sends them).
 // Only the properties that the platform form and dashboard use. All new server fields are optional.
 
 export interface CPKeyValue {

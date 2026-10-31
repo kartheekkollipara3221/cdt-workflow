@@ -12,7 +12,7 @@ public sealed record AtlasAccessDecision(bool Allowed, string Reason);
 /// One access check for each operation (spec 06, 4.3). The platform calls it before each operation; a module does
 /// not call it itself. AccessMode LogOnly writes Atlas.AccessDenied and continues; Enforce returns 403.
 /// A Delete is never only logged (review SV-02): LogOnly keeps users at work while the role grants are checked, and
-/// that does not need a delete.
+/// that does not need a delete. The save of a new record is not only logged either (review 3 RV-04, in the save).
 /// </summary>
 public interface IAtlasAccessService
 {
@@ -97,7 +97,9 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
         new()
         {
             CanCreate = Evaluate(manifest, form, AtlasOperation.Create, null).Allowed,
-            CanEdit = Evaluate(manifest, form, AtlasOperation.Edit, record).Allowed,
+            // Review 3 RV-17: what the save will accept. In LogOnly a denied Edit is only logged, so the client keeps the
+            // Save button (the rules still make the fields read-only); in Enforce the client hides it.
+            CanEdit = Evaluate(manifest, form, AtlasOperation.Edit, record).Allowed || manifest.AccessMode == AtlasAccessMode.LogOnly,
             CanDelete = record != null && Evaluate(manifest, form, AtlasOperation.Delete, record).Allowed,
             CanViewHistory = record != null && Evaluate(manifest, form, AtlasOperation.History, record).Allowed
         };

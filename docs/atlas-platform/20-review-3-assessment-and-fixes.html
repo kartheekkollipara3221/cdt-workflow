@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review 3: second opinion and fix wave 4</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas platform · Review 3 second opinion</div>
+<h1>Review 3: second opinion and fix wave 4</h1>
+<p class="lead">Each of the 43 findings of module 19 was examined again at the cited line. The High findings were real and are fixed. Some fixes are narrower or different, for a stated reason. One new finding. The move can start after one framework check at the target.</p>
+
+<div class="note small">
+<p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
+<p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
+<p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
+<p><strong>Status.</strong> Done 2026-10-31. Of 43 findings: 30 fixed (5 of them in part), 2 documented, 6 deferred with a reason, 3 not agreed, 2 for the target team. One new finding (fixed for P1). 294 .NET tests and 73 Angular tests pass. Nothing committed yet.</p>
+<p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><b>30</b><span>fixed</span></div>
+<div class="kpi"><b>2</b><span>documented</span></div>
+<div class="kpi"><b>6</b><span>deferred</span></div>
+<div class="kpi"><b>3</b><span>not agreed</span></div>
+<div class="kpi"><b>2</b><span>target team</span></div>
+<div class="kpi"><b>294 + 73</b><span>tests pass</span></div>
+</div>
+
+<section id="1-purpose-and-method">
+<h2>1. Purpose and method</h2>
+<p>Module 19 is an independent review of the complete solution before the move to the target. This module gives a second opinion on each of its 43 findings, and the fixes for the findings that this review agrees with.</p>
+<p>Method:</p>
+<ul>
+<li>Each finding was opened at the cited line and examined against the code and the read-only target copies. The verdict is one of: <strong>Agree</strong> (fixed), <strong>Agree in part</strong> (a narrower or a different fix, with the reason), <strong>Agree, deferred</strong> (real, but the fix needs a decision or belongs to a later wave), <strong>Document</strong> (no code change; INTEGRATION.md tells the integrator), <strong>Disagree</strong> (with the reason), <strong>Target team</strong> (their data or their code).</li>
+<li>Each fix has a test that fails without the fix, except where section 6 says otherwise.</li>
+<li>Backward compatibility (AGENTS.md): no change to a public endpoint, a request or response field, a stable key or a current app. The current apps (SQMSO, SQMSB, TTD, AIN, CDT) run no platform code path that changed. TTDV2 is not live.</li>
+<li>Target code is not ours: this module does not copy a full target file into the repository. The hand edits are given as exact lines in INTEGRATION.md.</li>
+</ul>
+</section>
+<section id="2-verdict">
+<h2>2. Verdict</h2>
+<p>Module 19 is a good review. Its three High findings are real and are now fixed. The <code>/v1/v1/</code> defect (RV-01) alone would have failed the first smoke test at the target. Its evidence was correct at each line that was examined.</p>
+<p>This review does not agree with all of it:</p>
+<ul>
+<li>RV-16 (dates) names the wrong part. The dashboard display is correct for a timestamp; only the date filter was wrong.</li>
+<li>RV-17 would break the LogOnly design if it were fixed as written. The fix makes <code>CanEdit</code> tell what the save will accept.</li>
+<li>RV-04 as written (Create always enforced) would also block the load of a new form in LogOnly, which a test documents as intended. The fix enforces Create on the save only.</li>
+<li>3 Low findings are not defects (section 5), and 2 belong to the target team.</li>
+</ul>
+<p>One new finding came from the work on RV-18: the platform dashboard runs no <code>Procedure</code> tab, but the start-up check accepted one (section 4, RV-N1).</p>
+<p><strong>The move can start after one item.</strong> Confirm the target framework of <code>BBH.CP.Atlas.App</code> and <code>BBH.CP.Atlas.Service</code> (RV-13). The copy shows <code>net9.0</code> for both and <code>net10.0</code> for <code>BBH.CP.Atlas.Data</code>. If the target is <code>net9.0</code>, stop and ask: the platform needs <code>net10.0</code>, and the target team owns that choice. Then commit, rebuild the target package, and integrate.</p>
+</section>
+<section id="3-verdict-for-each-high-and-medium-finding">
+<h2>3. Verdict for each High and Medium finding</h2>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th>Verdict</th><th>What was done</th><th>Test</th></tr>
+<tr><td>RV-01 <code>/v1/v1/</code> URLs</td><td>Agree</td><td>The platform URLs have no <code>v1/</code> prefix (<code>Application</code>, <code>SectionPage</code>, ...), as the target service. The stand-in base URL is <code>http://localhost:5080/v1/</code>. The stand-in shell calls <code>authorize</code> and <code>standin/users</code>.</td><td>All component specs now match <code>SectionPage</code>, <code>ManagePage</code>, <code>RemovePage</code>, <code>GetAuditLog</code> with no prefix; <code>sends the Version ... on a URL with no v1/ prefix</code></td></tr>
+<tr><td>RV-02 rule-hidden values</td><td>Agree</td><td>Load: a field that the JSON shows and a rule hides gets no <code>Value</code>, no <code>Options</code> and an empty grid cell. Save: no <code>Outputs</code> entry for it. History: <code>***</code> for its old and new value, for that reader only (<code>AtlasAuditMask</code>). A field that the JSON hides keeps its value, because an effect can show it.</td><td><code>A_field_that_a_rule_hides_has_no_value_in_the_load_the_save_result_or_the_History</code></td></tr>
+<tr><td>RV-03 one bad table, all apps 500</td><td>Agree</td><td><code>OnModelCreating</code> leaves out a table that cannot be mapped (<code>AtlasPlatformContext.IsMappable</code>); the start-up check already names it and disables its app. The model check runs also when another app has errors.</td><td><code>A_table_that_cannot_be_mapped_is_left_out_and_the_other_tables_still_work</code></td></tr>
+<tr><td>RV-04 LogOnly Create</td><td>Agree in part</td><td>The save of a new record is always refused (403) when Create is denied, as a Delete. The load of a new form stays LogOnly (test <code>LogOnly_writes_AccessDenied_and_continues</code> keeps passing).</td><td><code>LogOnly_does_not_let_a_user_without_the_Create_permission_save_a_new_record</code> (Read user and no-role user)</td></tr>
+<tr><td>RV-05 missing Permissions key</td><td>Agree</td><td>A start-up check error for each missing <code>Create</code>, <code>Edit</code> or <code>Delete</code> key. No run-time change (a key that is there works as before). <code>View</code> and <code>History</code> keep their fallback (History follows View).</td><td><code>A_Permissions_block_with_no_Create_Edit_or_Delete_key_is_an_error</code></td></tr>
+<tr><td>RV-06 per-app fault disables all</td><td>Agree</td><td>A table name with no schema is a check error of its app (<code>AtlasTable.IsValidFullName</code>); the metadata load skips it. Each app check runs in its own <code>try</code>, so an exception (for example a module constructor) is an error of that app. <code>--atlas-check</code> reports any failure as <code>ERROR *:</code> and exit 1, not a stack trace.</td><td><code>A_table_name_with_no_schema_is_an_error_of_its_app_not_a_crash</code></td></tr>
+<tr><td>RV-07 start-up guard and recovery</td><td>Agree in part</td><td>Fixed: <code>DisableApps</code> no longer throws when the config store fails again; it disables all apps and the host runs. Deferred: the automatic retry after a transient SQL failure. It needs a re-enable path in <code>AtlasDisabledApps</code> and a gated re-run; decide the retry interval with the target operations team. Until then: recycle the app pool; <code>Atlas.AppDisabled</code> (41023) is logged at Critical.</td><td>Existing <code>A_start_up_failure_that_is_not_a_check_error_does_not_stop_the_host_by_default</code></td></tr>
+<tr><td>RV-08 NULL role name</td><td>Agree</td><td>The view <code>030</code> returns no row with a NULL <code>LanID</code>, app <code>Code</code> or role <code>Name</code>. The role query in <code>AtlasUserContext</code> filters NULL too (an older view at the target cannot throw).</td><td><code>The_role_view_gives_no_row_for_a_role_with_no_name</code></td></tr>
+<tr><td>RV-09 050 role names, 040 deleted row</td><td>Agree</td><td><code>050</code> part 1 lists each active TTD role name with no TTDV2 role of the same name; the script then stops before any change (error 55006). <code>040</code> stops (55010, 55011) on a deleted or a second <code>TTDV2</code> app row, and attaches roles only to the active row.</td><td><code>A_TTD_role_with_no_TTDV2_role_of_the_same_name_stops_the_copy_and_revokes_nothing</code>; the rollback test runs <code>040</code> on the deleted row</td></tr>
+<tr><td>RV-10 no rollback SQL</td><td>Agree</td><td>New <code>090-ttdv2-rollback.sql</code> (module copy <code>sql/12-ttdv2-rollback.sql</code>): gives back the TTD roles that <code>050</code> revoked (by <code>@CopyRunBy</code> and the time of the <code>050</code> log row), soft-deletes the TTDV2 user roles, roles and app row, keeps the TTDV2 tables. Safe to run again.</td><td><code>The_rollback_gives_back_the_TTD_roles_and_removes_TTDV2_from_the_menu_and_is_safe_to_run_again</code>; <code>The_rollback_before_the_copy_changes_no_TTD_role</code>; release copy test</td></tr>
+<tr><td>RV-11 hand edits under-specified</td><td>Agree, other fix</td><td>No full copy of the target <code>CPAtlasService.cs</code> or dashboard in this repository (target code is not ours). Instead: (1) INTEGRATION.md gives the two signature changes and the exact replacement line for each method; (2) a new shipped helper <code>AtlasAppCode.ToLegacy</code> replaces <code>Enum.Parse</code> in the current chains; (3) a new shipped service <code>AtlasDashboardNavigation</code> makes the dashboard edit two guarded lines, with no template change. Not agreed: <code>editRow</code> with <code>applicationCode</code> from <code>setGridData</code> is correct (it is the app of the row).</td><td><code>ToLegacy_gives_404_...</code>; <code>opens the platform form from the target dashboard ...</code></td></tr>
+<tr><td>RV-12 disabled app 500</td><td>Agree</td><td><code>AtlasAppCode.ToLegacy</code>: 404 for a platform app that is not available, the same enum as before for a current code or number, the <code>Enum.Parse</code> error as before for any other code.</td><td><code>ToLegacy_gives_404_for_a_platform_app_that_is_not_available_and_the_enum_for_a_current_app</code></td></tr>
+<tr><td>RV-13 framework and path</td><td>Agree</td><td>Path: <code>src/app/platform/</code> in the package script, INTEGRATION.md, report 18 and all COPY headers (the target <code>angular.json</code> has <code>sourceRoot: "src"</code>). Framework: a check row in INTEGRATION.md section 5 with a stop-and-ask rule. This cannot be settled from the copy.</td><td>Package path is in <code>make-target-package.py</code></td></tr>
+<tr><td>RV-14 late load response</td><td>Agree</td><td>A new load cancels the one before; load, save and remove stop when the form is destroyed.</td><td><code>cancels the load when the form is closed before the answer</code></td></tr>
+<tr><td>RV-15 effect cycle</td><td>Agree</td><td>Client: a control whose effects are running does not run them again. Start-up check: an error for a Set, Clear or SetFromOption cycle.</td><td><code>stops an effect cycle after one pass</code>; <code>A_Set_or_Clear_effect_cycle_is_an_error</code></td></tr>
+<tr><td>RV-16 dashboard dates</td><td>Agree in part</td><td>Not a defect: a timestamp shows the local day of the user (correct); TTDV2 <code>WeekEnding</code> is a <code>date</code> and has no time. The defect: the date filter compared the UTC day, so a row shown as 17-Oct did not match a 17-Oct filter. The filter now uses the shown day (<code>cellDay</code>).</td><td><code>filters on the same day that the cell shows</code></td></tr>
+<tr><td>RV-17 CanEdit and CanCreate</td><td>Agree in part</td><td>Fixed as written, Save would disappear in LogOnly, but there the server only logs a denied Edit. So <code>CanEdit</code> now tells what the save accepts (true in LogOnly). The client hides Save and makes the form read-only when the save would be refused. A server with no <code>UserPermissions</code> keeps Save.</td><td><code>has no Save button and read-only fields when the server would refuse the save</code></td></tr>
+<tr><td>RV-18 test gaps</td><td>Agree</td><td>New tests: section 3 rows above, plus <code>Two_saves_with_the_same_service_and_contexts_both_commit</code> and the warning tests. The <code>Procedure</code> gap led to RV-N1. Still with no local test (target side only): the edited target <code>CPAtlasService</code> chains and dashboard, and the <code>--atlas-check</code> switch in the target <code>program.cs</code>. The smoke test in INTEGRATION.md covers them.</td><td>Section 7</td></tr>
+</table></div>
+</section>
+<section id="4-new-finding">
+<h2>4. New finding</h2>
+
+<h3>RV-N1 The platform dashboard runs no Procedure tab, but the start-up check accepted one (Medium, dashboard)</h3>
+<p>Evidence: <code>AtlasDashboardService.cs:65</code> loads rows only when <code>tab.Source</code> is <code>Table</code>; no code runs <code>tab.Procedure</code>. <code>AtlasStartupCheck.cs</code> accepted "Procedure xor Source: Table". Spec 03, 4.7 says "A tab with <code>Procedure</code> works as today".</p>
+<p>Why it matters: app #2 with a special tab (a join, the SQMS "Pending Seller Approval" list) would show an empty tab with no error. TTDV2 has only <code>Source: Table</code> tabs, so P1 is not affected.</p>
+<p>Fix (done): a start-up check error for a <code>Procedure</code> tab on a platform dashboard, with the text "Use Source: Table". Open (before app #2): run a tab procedure with the visibility join and the paging parameters of spec 03, 4.2.1. Test: <code>A_dashboard_tab_with_a_Procedure_is_an_error_until_the_platform_runs_procedures</code>.</p>
+</section>
+<section id="5-verdict-for-each-low-finding">
+<h2>5. Verdict for each Low finding</h2>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th>Verdict</th><th>What was done, or the reason</th></tr>
+<tr><td>RV-L01 shared transaction kept</td><td>Agree</td><td><code>UseTransaction(null)</code> in the <code>finally</code> of the save. Test: two saves with one service.</td></tr>
+<tr><td>RV-L02 Computed over text</td><td>Agree</td><td>Start-up error when a Computed source or target is not a number column. Test.</td></tr>
+<tr><td>RV-L03 <code>user</code> control not validated</td><td>Agree, deferred</td><td>No enabled <code>user</code> control exists (TTDV2 <code>ModifiedBy</code> is a disabled system column). Decide the rule with the first app that has one: <code>CP_Atlas_User</code> or the provider list.</td></tr>
+<tr><td>RV-L04 AuditTime and SystemTime</td><td>Agree in part</td><td>A start-up warning when <code>SystemTime</code> is Local and <code>AuditTime</code> is Utc. The default does not change (no app has <code>SystemTime</code> Local; a change of default is a behaviour change). Test.</td></tr>
+<tr><td>RV-L05 config folder error</td><td>Agree</td><td>A folder that cannot be listed keeps the last good snapshot and logs <code>Atlas.ConfigInvalid</code>.</td></tr>
+<tr><td>RV-L06 option check <code>SameValue</code></td><td>Agree</td><td>The option check uses <code>AtlasValueConverter.SameValue</code> with the column (DA-06 complete); the private ordinal copy is removed.</td></tr>
+<tr><td>RV-L07 display-name cache</td><td>Agree</td><td>A miss is kept 2 minutes, a name 30 minutes; each entry has <code>Size = 1</code>.</td></tr>
+<tr><td>RV-L08 echoed default refused</td><td>Disagree</td><td>No caller posts a disabled default to a platform app: the platform client leaves out disabled fields, and the current client does not open platform apps. Refusing a value that the user cannot change is the SV-01 rule. Look again if a script caller appears.</td></tr>
+<tr><td>RV-L09 duplicate Code</td><td>Agree</td><td>A second manifest with the same Code is a config error (the first file still wins). Test.</td></tr>
+<tr><td>RV-L10 log names</td><td>Disagree</td><td>By design: the release scripts are the module scripts, byte for byte (a test compares them), so the log names the module file. <code>sql/release-p1/README.md</code> gives the map.</td></tr>
+<tr><td>RV-L11 UTC in shared tables</td><td>Target team</td><td>The evidence (<code>CPTTDService.cs.txt:134</code>) writes <code>TTD.General</code>, not the shared <code>dbo.CP_Atlas_*</code> tables. Who writes those rows today, and in which time, is not in the copy. Ask the target team; until then the scripts keep <code>GETUTCDATE()</code>.</td></tr>
+<tr><td>RV-L12 code in grid JSON</td><td>Agree</td><td>A start-up warning when <code>cellRendererParams.code</code> is not the app code. Test.</td></tr>
+<tr><td>RV-L13 LanID index</td><td>Target team</td><td>Ask for a filtered index on <code>CP_Atlas_User (LanID)</code>. Not a regression.</td></tr>
+<tr><td>RV-L14 second connection</td><td>Agree, deferred</td><td>Works at the target. Passing the context connection needs care not to dispose it; do it with the next change in that method.</td></tr>
+<tr><td>RV-L15 comment</td><td>Agree</td><td><code>AddAtlasPlatform(configuration)</code> in the comment.</td></tr>
+<tr><td>RV-L16 copy differences</td><td>Document</td><td>INTEGRATION.md section 5.</td></tr>
+<tr><td>RV-L17 target TypeScript flags</td><td>Agree</td><td>New <code>npm run check:target-flags</code> (<code>tsconfig.target-flags.json</code>). It found one real error in this wave's new code (an implicit <code>any[]</code> under <code>strictNullChecks: false</code>), now fixed.</td></tr>
+<tr><td>RV-L18 dashboard <code>Code</code> = 0</td><td>Document</td><td>INTEGRATION.md section 5: clients use <code>AppCode</code>.</td></tr>
+<tr><td>RV-L19 History local time</td><td>Agree</td><td><code>localTime()</code> reads <code>yyyy-MM-dd HH:mm:ss</code> into a local <code>Date</code>. Test.</td></tr>
+<tr><td>RV-L20 reference dashboard</td><td>Agree, deferred</td><td>The file is a reference and is not copied to the target; the target keeps its dashboard.</td></tr>
+<tr><td>RV-L21 errors on hidden fields</td><td>Agree</td><td>Save marks only the shown fields as touched.</td></tr>
+<tr><td>RV-L22 radio group name</td><td>Agree, deferred</td><td>Backlog (accessibility wave).</td></tr>
+<tr><td>RV-L23 a11y directive per cycle</td><td>Agree, deferred</td><td>Backlog (no measured cost at 40 fields).</td></tr>
+<tr><td>RV-L24 form route in 3 places</td><td>Disagree for now</td><td>No host mounts the platform under a prefix. Add a token when one does.</td></tr>
+<tr><td>RV-L25 zone test passes locally</td><td>Agree, deferred</td><td>The spec must run on Jasmine (target) and Vitest (local) with no runner API; the test runs at the target under Karma with zone.js.</td></tr>
+</table></div>
+</section>
+<section id="6-compatibility-notes">
+<h2>6. Compatibility notes</h2>
+<ul>
+<li><strong>Current apps:</strong> no changed code path. <code>ToLegacy</code> gives the same enum as <code>Enum.Parse</code> for each current code and number (test).</li>
+<li><strong>View <code>030</code>:</strong> a role row with a NULL <code>LanID</code>, app code or role name is no longer in the view. Before you run <code>030</code> at the target, count such rows; a user whose only role has a NULL name loses it in the view (it gave no usable role before either):</li>
+</ul>
+<pre><code>SELECT COUNT(*) AS RowsLeftOut
+FROM dbo.CP_Atlas_User AS u
+JOIN dbo.CP_Atlas_UserEntitlement AS ue ON ue.CP_Atlas_UserID = u.ID AND ISNULL(ue.IsDeleted, 0) = 0
+JOIN dbo.CP_Atlas_Entitlement AS e ON e.ID = ue.CP_Atlas_EntitlementID AND ISNULL(e.IsDeleted, 0) = 0
+JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID AND ISNULL(a.IsDeleted, 0) = 0
+WHERE ISNULL(u.IsDeleted, 0) = 0 AND (u.LanID IS NULL OR a.Code IS NULL OR e.Name IS NULL);</code></pre>
+<ul>
+<li><strong><code>040</code> re-run after the rollback</strong> stops with 55010 by design. To install again, set <code>IsDeleted = 0</code> on the TTDV2 app row and its roles first.</li>
+<li><strong>LogOnly:</strong> the save of a new record by a user with no Create permission is now 403 (before: a row of defaults). The load of the form is not changed.</li>
+<li><strong>New start-up errors</strong> (only for platform apps): a missing Permissions key, a Procedure tab, a Computed field over a non-number column, an effect cycle, a table name with no schema, a duplicate manifest Code. TTDV2 passes: <code>--atlas-check</code> gives 0 errors and 0 warnings.</li>
+</ul>
+</section>
+<section id="7-regression">
+<h2>7. Regression</h2>
+<div class="table-wrap"><table>
+<tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>dotnet build</code> (warnings as errors)</td><td>0 warnings, 0 errors</td></tr>
+<tr><td><code>dotnet test</code></td><td>294 passed (277 before; 17 new)</td></tr>
+<tr><td><code>--atlas-check</code> on the TTDV2 config</td><td>0 errors, 0 warnings, exit 0</td></tr>
+<tr><td><code>ng build</code></td><td>Complete, no warnings</td></tr>
+<tr><td><code>ng test</code> (Vitest)</td><td>73 passed (66 before; 7 new)</td></tr>
+<tr><td><code>npm run check:target-flags</code></td><td>No errors</td></tr>
+<tr><td>SQL scripts on SQL Server</td><td><code>CopyScriptTests</code>, <code>ReleaseScriptTests</code>, <code>Ttdv2AppScriptTests</code>: 17 passed</td></tr>
+</table></div>
+<p>Not run: the target package build. <code>make-target-package.py</code> refuses uncommitted changes, so it runs after the commit.</p>
+</section>
+<section id="8-files-changed">
+<h2>8. Files changed</h2>
+<div class="table-wrap"><table>
+<tr><th>Area</th><th>Files</th></tr>
+<tr><td>Service</td><td><code>Application/ConfigSectionService.cs</code> (RV-02, RV-04, RV-L01, RV-L06); <code>Platform/Audit/AtlasAuditMask.cs</code> (new, RV-02); <code>Platform/Registry/AtlasAppManifest.cs</code> (<code>ToLegacy</code>, RV-12); <code>Platform/Registry/AtlasConfigStore.cs</code> (RV-L05, RV-L09); <code>Platform/Security/AtlasAccessService.cs</code> (RV-17); <code>Platform/Security/AtlasUserContext.cs</code> (RV-08, RV-L07); <code>StandIn/CPAtlasService.cs</code> (reference lines, RV-11, RV-12)</td></tr>
+<tr><td>Data</td><td><code>Platform/AtlasPlatformContext.cs</code> (RV-03); <code>Platform/AtlasTable.cs</code> (RV-06)</td></tr>
+<tr><td>App</td><td><code>Platform/AtlasStartupCheck.cs</code> (RV-03, RV-05, RV-06, RV-N1, RV-L02, RV-L04, RV-L12); <code>Platform/AtlasConfigLint.cs</code> (RV-15); <code>Platform/AtlasPlatformStartup.cs</code> (RV-06, RV-07); <code>Platform/AtlasPlatformServiceCollectionExtensions.cs</code> (RV-L15)</td></tr>
+<tr><td>WebUi</td><td><code>platform/atlas-api.service.ts</code> (RV-01); <code>platform/atlas-navigation.ts</code> (<code>AtlasDashboardNavigation</code>, RV-11); <code>platform/form/atlas-form.component.ts</code> (RV-14, RV-15, RV-17, RV-L21); <code>platform/dashboard/atlas-dashboard-columns.ts</code> (RV-16); <code>platform/atlas-history-dialog.ts</code> (RV-L19); COPY headers of all <code>platform/</code> files (RV-13); <code>environments/environment.ts</code>, <code>app.ts</code> (stand-in, RV-01); <code>tsconfig.target-flags.json</code> (new), <code>package.json</code> (RV-L17)</td></tr>
+<tr><td>SQL</td><td><code>030</code>, <code>040</code>, <code>050</code> (RV-08, RV-09); <code>090-ttdv2-rollback.sql</code> (new, RV-10); module copies in <code>docs/atlas-platform/sql/</code>; <code>sql/release-p1/README.md</code></td></tr>
+<tr><td>Docs</td><td><code>INTEGRATION.md</code> (RV-10, RV-11, RV-12, RV-13, RV-L16, RV-L17, RV-L18); <code>local/make-target-package.py</code> (RV-13); report 18 path (RV-13)</td></tr>
+<tr><td>Tests</td><td><code>AtlasCheckTests</code>, <code>AtlasPlatformContextTests</code>, <code>CopyScriptTests</code>, <code>ReleaseScriptTests</code>, <code>RegistryTests</code>, <code>Ttdv2SectionTests</code>, <code>platform.spec.ts</code>, <code>platform.component.spec.ts</code></td></tr>
+</table></div>
+</section>
+<section id="9-next-steps">
+<h2>9. Next steps</h2>
+<ol>
+<li>Confirm the target framework of <code>BBH.CP.Atlas.App</code> and <code>BBH.CP.Atlas.Service</code> (RV-13). If it is <code>net9.0</code>, stop and ask.</li>
+<li>Commit this wave; rebuild the target package (<code>python atlas-platform/local/make-target-package.py &lt;out.ps1&gt;</code>).</li>
+<li>At the target, before <code>030</code>: run the count query in section 6.</li>
+<li>One-time integration in the dev region (INTEGRATION.md), with the smoke test of the current apps before and after.</li>
+<li>Before app #2: RV-N1 (tab procedures), RV-07 retry, RV-L03.</li>
+</ol>
+</section>
+</main>
+</body>
+</html>

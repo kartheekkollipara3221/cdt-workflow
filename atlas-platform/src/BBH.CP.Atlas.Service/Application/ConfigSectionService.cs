@@ -151,6 +151,7 @@ namespace BBH.CP.Atlas.Service.Application
             OnLoad(new AtlasLoadContext { Manifest = manifest, Form = form, Section = section, Fields = fields, Record = record });
 
             Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
+            ClearRuleHiddenValues(section, fields);
 
             string name = section.HeaderName ?? form.Name ?? manifest.Name ?? manifest.Code;
             section.HeaderName = record != null && !string.IsNullOrWhiteSpace(form.HeaderNameWithId)
@@ -162,6 +163,49 @@ namespace BBH.CP.Atlas.Service.Application
             section.UserPermissions = Services.Access.UserPermissions(manifest, form, record);
             section.Computed = form.Computed;
             return section;
+        }
+
+        /// <summary>
+        /// Review 3 RV-02: a field that the JSON shows and a rule hides from this user gets no value and no options in
+        /// the load. Hidden on the client only is not enough: the value was in the JSON of the response.
+        /// A field that the JSON hides (an effect can show it) keeps its value.
+        /// </summary>
+        private static void ClearRuleHiddenValues(CPApplicationSection section, AtlasFormFields beforeRules)
+        {
+            AtlasFormFields fields = AtlasFormFields.From(section);
+            fields.MarkHiddenByRules(beforeRules);
+            foreach (AtlasFormField field in fields.All.Where(x => x.HiddenByRule))
+            {
+                if (field.IsGridField)
+                {
+                    foreach (Dictionary<string, string> row in field.Control.Grid?.Data ?? [])
+                        if (row.ContainsKey(field.Name))
+                            row[field.Name] = "";
+                    continue;
+                }
+
+                field.Control.Value = null;
+                field.Control.Options = [];
+                field.Control.OptionsSource = null;
+            }
+        }
+
+        /// <summary>Review 3 RV-02: the fields (Name and column) that the rules hide from this user for this record.</summary>
+        private HashSet<string> RuleHiddenFields(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Dictionary<string, object?>? record)
+        {
+            HashSet<string> hidden = new(StringComparer.OrdinalIgnoreCase);
+            if (form.Section == null)
+                return hidden;
+            AtlasFormFields beforeRules = AtlasFormFields.From(form.Section);
+            Services.Rules.ApplyToSection(form.Section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
+            AtlasFormFields fields = AtlasFormFields.From(form.Section);
+            fields.MarkHiddenByRules(beforeRules);
+            foreach (AtlasFormField field in fields.All.Where(x => x.HiddenByRule))
+            {
+                hidden.Add(field.Name);
+                hidden.Add(field.Field);
+            }
+            return hidden;
         }
 
         private void BindValues(AtlasFormFields fields, AtlasTable table, Dictionary<string, object?>? record)
@@ -244,6 +288,12 @@ namespace BBH.CP.Atlas.Service.Application
             else
             {
                 Services.Access.Demand(manifest, form, AtlasOperation.Create, null, 0);
+                // Review 3 RV-04: a new record is never only logged (as a Delete, review SV-02). In LogOnly the rules make
+                // the fields read-only for such a user, so the save would insert a row of defaults only. The load of a
+                // new form stays LogOnly.
+                AtlasAccessDecision create = Services.Access.Evaluate(manifest, form, AtlasOperation.Create, null);
+                if (!create.Allowed)
+                    throw AtlasProblemException.Forbidden(create.Reason);
             }
 
             bool isNew = stored == null;
@@ -268,7 +318,7 @@ namespace BBH.CP.Atlas.Service.Application
             // 4. Allow list.
             Dictionary<AtlasFormField, string?> accepted = AtlasAllowList.Check(submitted, fields, table, previous,
                 field => SystemColumns.Contains(field.Field) || computed.Contains(field.Field) || derived.Contains(field.Name),
-                OptionError, errors,
+                (field, value, previous) => OptionError(field, value, previous, table), errors,
                 (field, reason) =>
                 {
                     if (reason == AtlasIgnoreReason.ServerSet)
@@ -396,7 +446,7 @@ namespace BBH.CP.Atlas.Service.Application
             result.ID = (int)record[table.Key!.Name]!;
             result.Version = VersionOf(table, record);
             result.Outputs = [.. fields.All
-                .Where(x => table.HasColumn(x.Field))
+                .Where(x => table.HasColumn(x.Field) && !x.HiddenByRule) // review 3 RV-02
                 .Select(x => new CPPageOutput { Name = x.Name, Value = Wire(record.GetValueOrDefault(table.Find(x.Field)!.Name), table.Find(x.Field)!) })];
             return result;
         }
@@ -405,10 +455,11 @@ namespace BBH.CP.Atlas.Service.Application
         /// A changed value of a control with options (Options or OptionsSource) must be one of the options that the server
         /// gives to this user (review SV-01). An unchanged saved value stays valid (KeepSavedValue, B10).
         /// </summary>
-        private CPPageError? OptionError(AtlasFormField field, string? value, string? previousValue)
+        private CPPageError? OptionError(AtlasFormField field, string? value, string? previousValue, AtlasTable table)
         {
             CPApplicationControl control = field.Control;
-            if (field.IsGridField || string.IsNullOrEmpty(value) || SameValue(value, previousValue)
+            if (field.IsGridField || string.IsNullOrEmpty(value)
+                || AtlasValueConverter.SameValue(value, previousValue, table.Find(field.Field)) // review 3 RV-L06 (DA-06)
                 || string.Equals(control.Type, "user", StringComparison.OrdinalIgnoreCase)
                 || control.OptionsSource == null && control.Options is not { Count: > 0 })
                 return null;
@@ -571,6 +622,9 @@ namespace BBH.CP.Atlas.Service.Application
             finally
             {
                 platform.ChangeTracker.Clear();
+                // Review 3 RV-L01: the platform context does not own the shared transaction; let it go, so a second save
+                // in the same scope can start a new one.
+                platform.Database.UseTransaction(null);
             }
         }
 
@@ -624,7 +678,14 @@ namespace BBH.CP.Atlas.Service.Application
             CPAtlasApplicationConfig form = Services.ConfigStore.GetForm(AppCode);
             Dictionary<string, object?>? record = Services.PlatformContext.FindActive(MainTable(manifest).FullName, refID, tracking: false);
             Services.Access.Demand(manifest, form, AtlasOperation.History, record, refID);
-            return Services.Audit.Read(manifest, refID);
+            List<CPAuditLog> entries = Services.Audit.Read(manifest, refID);
+
+            // Review 3 RV-02: the History shows *** for a field that the rules hide from this user.
+            HashSet<string> hidden = RuleHiddenFields(manifest, form, record);
+            if (hidden.Count > 0)
+                foreach (CPAuditLog entry in entries)
+                    entry.LogMessage = AtlasAuditMask.Mask(entry.LogMessage, hidden);
+            return entries;
         }
 
         #endregion Remove and audit
@@ -681,9 +742,6 @@ namespace BBH.CP.Atlas.Service.Application
             if (table.Find(name) is { } column)
                 record[column.Name] = value;
         }
-
-        private static bool SameValue(string? a, string? b) =>
-            string.Equals(string.IsNullOrEmpty(a) ? null : a, string.IsNullOrEmpty(b) ? null : b, StringComparison.Ordinal);
 
         private static CPPageError Error(string field, string code, string message) => new() { Field = field, Code = code, Message = message };
 

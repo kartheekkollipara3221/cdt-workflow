@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/. The only file of the platform that imports @pbdev/pbdev-core.
+// COPY to the target: WebUi/src/app/platform/. The only file of the platform that imports @pbdev/pbdev-core.
 // The platform uses only the classes and inputs that the target WebUi already uses (evidence: atlas-platform/PBDEV.md).
 // If the real library differs, change this file and the bindings listed in PBDEV.md section 3.
 import { AfterViewInit, Directive, ElementRef, Input, inject } from '@angular/core';

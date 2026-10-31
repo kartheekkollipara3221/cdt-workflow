@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/renderers/. One small component for each control Type.
+// COPY to the target: WebUi/src/app/platform/form/renderers/. One small component for each control Type.
 // Each renderer gets the control (JSON) and the form group, and binds the form control by name. The label and the
 // required mark are drawn by the form component (as cp-atlas-sectionmaster.html). The error text of pbdev-input,
 // pbdev-select, pbdev-textarea and pbdev-date-picker is drawn by the control itself (pbdev-input-messages), with

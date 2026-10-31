@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/. The target Tailwind config scans "./src/**/*.{html,ts}" only, so a
+// COPY to the target: WebUi/src/app/platform/. The target Tailwind config scans "./src/**/*.{html,ts}" only, so a
 // class that is only in a server JSON file (DivClass, Class) is not generated. Tailwind finds each class name below in
 // this file and generates it. When an app JSON uses a new Tailwind class, add it here (or to "safelist" in
 // tailwind.config.js). The list is not used at run time.

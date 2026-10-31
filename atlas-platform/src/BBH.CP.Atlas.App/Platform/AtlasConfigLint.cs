@@ -90,6 +90,32 @@ public static partial class AtlasConfigLint
                 error($"the Pattern of '{control.Name}' is not a valid regular expression.");
         }
 
+        // Review 3 RV-15: a value change runs the effects of the changed control; Set, Clear and SetFromOption change
+        // other controls, whose effects run in turn. A cycle (A sets B, B sets A, or A sets A) never ends in the client.
+        Dictionary<string, HashSet<string>> writes = new(StringComparer.OrdinalIgnoreCase);
+        foreach (CPApplicationControl control in controls.Where(x => x.Effects is { Count: > 0 }))
+            writes[control.Name] = new(control.Effects!.SelectMany(x =>
+                (x.Clear ?? []).Concat((IEnumerable<string>?)x.Set?.Keys ?? []).Concat((IEnumerable<string>?)x.SetFromOption?.Keys ?? [])), StringComparer.OrdinalIgnoreCase);
+        foreach (string start in writes.Keys)
+            if (ReachesItself(start))
+                error($"the effects of '{start}' change a control whose effects change '{start}' again (a Set/Clear/SetFromOption cycle).");
+
+        bool ReachesItself(string start)
+        {
+            HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+            Stack<string> open = new(writes[start]);
+            while (open.Count > 0)
+            {
+                string name = open.Pop();
+                if (string.Equals(name, start, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (seen.Add(name) && writes.TryGetValue(name, out HashSet<string>? next))
+                    foreach (string target in next)
+                        open.Push(target);
+            }
+            return false;
+        }
+
         foreach (CPRule rule in (form.Rules ?? []).Concat(controls.SelectMany(x => x.Rules ?? [])))
         {
             Names("a rule", rule.ShowControls);

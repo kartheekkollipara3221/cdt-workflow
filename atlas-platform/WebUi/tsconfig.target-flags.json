@@ -1,0 +1,9 @@
+/* Review 3 RV-L17: type-check platform/ with the compiler flags of the target WebUi (strictNullChecks false).
+   Local only, not copied. Run: npm run check:target-flags */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "strict": true, "strictNullChecks": false, "experimentalDecorators": true, "esModuleInterop": true, "noEmit": true, "types": [] },
+  "files": [],
+  "include": ["src/app/platform/**/*.ts"],
+  "exclude": ["src/app/platform/**/*.spec.ts"]
+}

@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/renderers/. The "grid" control (review R4), as the grid of
+// COPY to the target: WebUi/src/app/platform/form/renderers/. The "grid" control (review R4), as the grid of
 // cp-atlas-sectionmaster.html (2026-10-27): ag-grid-angular with class ag-theme-pbdev, [modules] ClientSideRowModelModule,
 // domLayout autoHeight, the same defaultColDef, AgLoadingOverlayComponent, and the cell components named by
 // "cellRenderer" in the JSON (NumericEditor, TextEditor, SelectEditor at the target), given with

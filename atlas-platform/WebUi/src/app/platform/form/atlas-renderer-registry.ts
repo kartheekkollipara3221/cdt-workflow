@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/. The renderer registry (spec 01, 5.5): control Type to
+// COPY to the target: WebUi/src/app/platform/form/. The renderer registry (spec 01, 5.5): control Type to
 // component. A new control type is one provideAtlasRenderers entry (or register() call); the form does not change.
 import { EnvironmentProviders, Injectable, Type, inject, provideEnvironmentInitializer } from '@angular/core';
 import {

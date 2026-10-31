@@ -176,6 +176,33 @@ public sealed class RegistryTests : IDisposable
     }
 
     [Fact]
+    public void ToLegacy_gives_404_for_a_platform_app_that_is_not_available_and_the_enum_for_a_current_app()
+    {
+        // Review 3 RV-12: at the target a disabled platform app falls through to the current if chain.
+        AtlasConfigStore store = Store(new() { ["AppSettings:Modules:OFF:Enabled"] = "false" });
+
+        Assert.Equal(BBH.CP.Atlas.Data.Enumerations.CPApplicationCode.TTD, AtlasAppCode.ToLegacy("ttd", store));
+        Assert.Equal(BBH.CP.Atlas.Data.Enumerations.CPApplicationCode.TTD, AtlasAppCode.ToLegacy("13", store));
+        Assert.Equal(404, Assert.Throws<AtlasProblemException>(() => AtlasAppCode.ToLegacy("off", store)).StatusCode);
+        Assert.Equal(400, Assert.Throws<AtlasProblemException>(() => AtlasAppCode.ToLegacy(" ", store)).StatusCode);
+        // An unknown code gives the error of Enum.Parse, as before (no change for the current callers).
+        Assert.Throws<ArgumentException>(() => AtlasAppCode.ToLegacy("XYZ", store));
+        Assert.Throws<ArgumentException>(() => AtlasAppCode.ToLegacy("OFF", null));
+    }
+
+    [Fact]
+    public void A_second_manifest_with_the_same_Code_is_a_config_error()
+    {
+        // Review 3 RV-L09: a copied file left with the same Code was ignored with no message.
+        File.WriteAllText(Path.Combine(_folder, "DEMO2.app.json"), """{ "Code": "DEMO", "Form": "DEMO.json" }""");
+
+        AtlasConfigStore store = Store();
+
+        Assert.Equal("DEMO.app.json", Path.GetFileName(store.FindManifest("DEMO")!.SourceFile));
+        Assert.Contains(store.ConfigErrors, x => x.Contains("DEMO2.app.json has the Code DEMO", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void AddAtlasModule_refuses_a_bad_code()
     {
         Assert.Throws<ArgumentException>(() => new ServiceCollection().AddAtlasModule<DemoModule>("2TTD"));

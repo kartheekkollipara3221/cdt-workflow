@@ -70,6 +70,15 @@ public sealed class AtlasTable
 
     public bool HasColumn(string columnName) => _columns.ContainsKey(columnName);
 
+    /// <summary>True if the text has the form "Schema.Name" (review 3 RV-06: a check error, not an exception).</summary>
+    public static bool IsValidFullName(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return false;
+        string[] parts = fullName.Split('.');
+        return parts.Length == 2 && !parts.Any(string.IsNullOrWhiteSpace);
+    }
+
     /// <summary>Splits "Schema.Name". The schema and the name must not contain a dot.</summary>
     public static (string Schema, string Name) ParseFullName(string fullName)
     {

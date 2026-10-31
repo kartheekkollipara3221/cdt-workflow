@@ -93,11 +93,11 @@ export class App implements OnInit {
   ]);
 
   ngOnInit(): void {
-    this.http.get<CurrentUser>('v1/authorize').subscribe({
+    this.http.get<CurrentUser>('authorize').subscribe({
       next: (user) => this.user.set(user),
       error: () => this.apiDown.set(true),
     });
-    this.http.get<{ result: TestUser[] }>('v1/standin/users').subscribe({ next: (x) => this.testUsers.set(x.result ?? []) });
+    this.http.get<{ result: TestUser[] }>('standin/users').subscribe({ next: (x) => this.testUsers.set(x.result ?? []) });
     this.api.applications().subscribe({
       next: (apps) => {
         this.menuItems.set(shellMenuItems(apps));

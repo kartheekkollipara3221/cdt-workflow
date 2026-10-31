@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/. Client validators from CPValidator (spec 01, 10.3).
+// COPY to the target: WebUi/src/app/platform/form/. Client validators from CPValidator (spec 01, 10.3).
 // The server checks the same rules (AtlasFieldValidator); the client checks are for the user only. Both sides use
 // the same rules and texts (review SV-04; shared cases in atlas-validator-cases.ts):
 //  - a value of only spaces is empty: Required fails, the other checks do not run;

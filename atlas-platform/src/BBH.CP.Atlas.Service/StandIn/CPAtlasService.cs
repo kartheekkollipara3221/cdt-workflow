@@ -1,8 +1,18 @@
 // STAND-IN: do not copy to the target.
 // Target: Service/CPAtlasService.cs. The target keeps its public methods and its if chains for the current codes.
-// Integration (INTEGRATION.md, section 2): add the optional constructor parameters "resolver" and "configStore"
-// (at the end, so the current calls compile), and add the marked "PLATFORM" lines at the start of each method.
+// Integration (INTEGRATION.md, section 2): add the optional constructor parameters "resolver", "configStore" and
+// "logger" (at the end, so the current calls compile), and add the marked "PLATFORM" lines at the start of each method.
 // The workflow engine parameters of the target constructor are left out here (no workflow in P1).
+// Review 3 RV-11: at the target, LoadDashboard and RemovePage take "string code" (they take CPApplicationCode today),
+// and after each PLATFORM line the current if chain gets its enum with AtlasAppCode.ToLegacy(code, configStore):
+//     LoadDashboard:   return LoadApplicationService(AtlasAppCode.ToLegacy(code, configStore))!.LoadDashboard();
+//     LoadSectionPage: return LoadSectionService(page.Code ?? AtlasAppCode.ToLegacy(page.AppCode, configStore), workflowContextReader)!.LoadPage(page);
+//     ManagePage:      return LoadApplicationService(page.Code ?? AtlasAppCode.ToLegacy(page.AppCode, configStore))!.SavePage(page, files);
+//     RemovePage:      return LoadApplicationService(AtlasAppCode.ToLegacy(code, configStore))!.RemovePage(id);
+//     AuditLog:        LoadApplicationService(page.Code ?? AtlasAppCode.ToLegacy(page.AppCode, configStore))!.AuditLog(page);
+//     GetAuditLog:     return LoadApplicationService(AtlasAppCode.ToLegacy(appCode, configStore))!.GetAuditLog(appCode, refID);
+// ToLegacy gives 404 for a platform app that is not available (Enabled = false), not the 500 of Enum.Parse (RV-12).
+// The full target file with these edits: local/package/reference/CPAtlasService.target.cs.
 using System.Data;
 using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.DTO;
@@ -104,11 +114,20 @@ namespace BBH.CP.Atlas.Service
             return resolver.IsPlatformApp(text) ? AtlasAppCode.Normalize(text) : null;
         }
 
-        // Locally there are no current (legacy) services. At the target the current if chains run here.
-        private static AtlasProblemException Legacy(string? code) =>
-            string.IsNullOrWhiteSpace(code)
-                ? AtlasProblemException.BadRequest("The request has no app code.")
-                : AtlasProblemException.NotFound($"App '{code}' is not available in the local stand-in host.");
+        // Locally there are no current (legacy) services. At the target the current if chains run here, with the enum
+        // from AtlasAppCode.ToLegacy (it gives 404 for a disabled platform app and 400 for no code, review 3 RV-12).
+        private AtlasProblemException Legacy(string? code)
+        {
+            try
+            {
+                AtlasAppCode.ToLegacy(code, configStore);
+            }
+            catch (ArgumentException)
+            {
+                // An unknown code: the target gives the error of Enum.Parse as before; the stand-in gives 404.
+            }
+            return AtlasProblemException.NotFound($"App '{code}' is not available in the local stand-in host.");
+        }
 
         private CPPBContext? PBContext => pbContext;
 

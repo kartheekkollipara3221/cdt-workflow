@@ -1,4 +1,4 @@
-// COPY to the target: WebUi/Source/App/platform/form/. Review NG-08: the accessible name, state and error of the input
+// COPY to the target: WebUi/src/app/platform/form/. Review NG-08: the accessible name, state and error of the input
 // inside a renderer. It works on the rendered DOM, so it does not need inputs of the @pbdev controls.
 import { AfterViewChecked, Directive, ElementRef, inject, input } from '@angular/core';
 

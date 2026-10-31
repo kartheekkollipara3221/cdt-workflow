@@ -61,77 +61,93 @@ public static class AtlasStartupCheck
             void Error(string message) => items.Add(new(AtlasCheckSeverity.Error, manifest.Code, message));
             void Warning(string message) => items.Add(new(AtlasCheckSeverity.Warning, manifest.Code, message));
 
-            if (!AtlasAppCode.IsValid(manifest.Code))
-            {
-                Error($"the code in {Path.GetFileName(manifest.SourceFile)} does not match ^[A-Z][A-Z0-9]{{1,19}}$.");
-                continue;
-            }
-
-            foreach (string settingError in manifest.SettingErrors)
-                Error(settingError);
-
-            if (!manifest.Enabled)
-            {
-                Warning("is disabled (Enabled = false); not checked.");
-                continue;
-            }
-
-            // Review DA-11: a current app taken over in place has local times in its rows; mixing UTC is a silent defect.
-            if (AtlasAppCode.IsLegacy(manifest.Code) && manifest.SystemTime == null)
-                Warning("is a current app taken over by the platform but the manifest has no SystemTime: new saves write UTC while the old rows have local time. Set \"SystemTime\": \"Local\" (or \"Utc\" after a data change).");
-
-            if (manifest.AccessMode == AtlasAccessMode.LogOnly && environment?.IsDevelopment() == false)
-                Warning($"AccessMode is LogOnly in {environment.EnvironmentName}: denied View, Create, Edit and History are only logged. Set Enforce after the log review.");
-
-            if (!registrations.TryGetValue(manifest.Code, out AtlasModuleRegistration? registration))
-            {
-                Error($"has a manifest but no registration line: add services.AddAtlasModule<...>(\"{manifest.Code}\").");
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(manifest.Service) && !registration.ServiceType.Name.Contains(manifest.Service, StringComparison.OrdinalIgnoreCase))
-                Warning($"the manifest Service '{manifest.Service}' does not match the registered class {registration.ServiceType.Name}.");
-
-            // The app row (spec 07, 4.5).
-            if (!appRows.TryGetValue(manifest.Code, out var row))
-                Error("has no active row in dbo.CP_Atlas_Application.");
-            else
-            {
-                string? parentCode = row.ParentId == null ? null : appRows.FirstOrDefault(x => x.Value.Id == row.ParentId).Key;
-                if (!string.Equals(parentCode, manifest.Parent, StringComparison.OrdinalIgnoreCase))
-                    Error($"the manifest Parent '{manifest.Parent ?? "null"}' does not agree with ParentID ('{parentCode ?? "null"}').");
-            }
-
-            // Tables.
-            AtlasTable? table = Table(manifest.Table, "Table", required: true, Error, tables);
-            Table(manifest.AuditTable, "AuditTable", required: manifest.AuditMode == AtlasAuditMode.Server, Error, tables);
-
-            CPAtlasApplicationConfig? form = null;
+            // Review 3 RV-06: an exception in the check of one app (for example its module constructor) is an error of
+            // that app only; the other apps are still checked and stay available.
             try
             {
-                form = string.IsNullOrWhiteSpace(manifest.Form) ? null : configStore.GetForm(manifest.Code);
+                if (!AtlasAppCode.IsValid(manifest.Code))
+                {
+                    Error($"the code in {Path.GetFileName(manifest.SourceFile)} does not match ^[A-Z][A-Z0-9]{{1,19}}$.");
+                    continue;
+                }
+
+                foreach (string settingError in manifest.SettingErrors)
+                    Error(settingError);
+
+                if (!manifest.Enabled)
+                {
+                    Warning("is disabled (Enabled = false); not checked.");
+                    continue;
+                }
+
+                // Review DA-11: a current app taken over in place has local times in its rows; mixing UTC is a silent defect.
+                if (AtlasAppCode.IsLegacy(manifest.Code) && manifest.SystemTime == null)
+                    Warning("is a current app taken over by the platform but the manifest has no SystemTime: new saves write UTC while the old rows have local time. Set \"SystemTime\": \"Local\" (or \"Utc\" after a data change).");
+
+                if (manifest.AccessMode == AtlasAccessMode.LogOnly && environment?.IsDevelopment() == false)
+                    Warning($"AccessMode is LogOnly in {environment.EnvironmentName}: denied View, Create, Edit and History are only logged. Set Enforce after the log review.");
+
+                if (!registrations.TryGetValue(manifest.Code, out AtlasModuleRegistration? registration))
+                {
+                    Error($"has a manifest but no registration line: add services.AddAtlasModule<...>(\"{manifest.Code}\").");
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(manifest.Service) && !registration.ServiceType.Name.Contains(manifest.Service, StringComparison.OrdinalIgnoreCase))
+                    Warning($"the manifest Service '{manifest.Service}' does not match the registered class {registration.ServiceType.Name}.");
+
+                // The app row (spec 07, 4.5).
+                if (!appRows.TryGetValue(manifest.Code, out var row))
+                    Error("has no active row in dbo.CP_Atlas_Application.");
+                else
+                {
+                    string? parentCode = row.ParentId == null ? null : appRows.FirstOrDefault(x => x.Value.Id == row.ParentId).Key;
+                    if (!string.Equals(parentCode, manifest.Parent, StringComparison.OrdinalIgnoreCase))
+                        Error($"the manifest Parent '{manifest.Parent ?? "null"}' does not agree with ParentID ('{parentCode ?? "null"}').");
+                }
+
+                // Tables.
+                AtlasTable? table = Table(manifest.Table, "Table", required: true, Error, tables);
+                Table(manifest.AuditTable, "AuditTable", required: manifest.AuditMode == AtlasAuditMode.Server, Error, tables);
+
+                CPAtlasApplicationConfig? form = null;
+                try
+                {
+                    form = string.IsNullOrWhiteSpace(manifest.Form) ? null : configStore.GetForm(manifest.Code);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or IOException)
+                {
+                    Error(ex.Message);
+                }
+
+                if (form?.Section == null)
+                    Error($"the form '{manifest.Form}' has no Section.");
+                else if (table != null)
+                {
+                    CheckForm(services, manifest, form, table, Error);
+                    CheckDefaults(form, table, Warning);
+                }
+
+                CheckDashboard(configStore, tables, manifest, Error);
+                if (form != null)
+                    CheckRoles(context, manifest, form, Warning);
+                if (form?.Section != null)
+                {
+                    CheckControlTypes(form, Warning);
+                    CheckGridCodes(manifest, form, Warning);
+                }
+
+                // Review 3 RV-L04: the record times and the audit times have their own settings.
+                if (manifest.SystemTime == AtlasAuditTime.Local && manifest.AuditTime == AtlasAuditTime.Utc)
+                    Warning("SystemTime is Local but AuditTime is Utc: the History shows times that differ from ModifiedDate by the UTC offset. Set \"AuditTime\": \"Local\" too, unless that is intended.");
+
+                // Review SV-07: typos in property names (warnings) and in names, tokens, patterns and actions (errors).
+                CheckContract(configStore, manifest, form, Error, Warning);
             }
-            catch (Exception ex) when (ex is InvalidOperationException or IOException)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Error(ex.Message);
+                Error("the check of this app stopped with an error: " + ex.Message);
             }
-
-            if (form?.Section == null)
-                Error($"the form '{manifest.Form}' has no Section.");
-            else if (table != null)
-            {
-                CheckForm(services, manifest, form, table, Error);
-                CheckDefaults(form, table, Warning);
-            }
-
-            CheckDashboard(configStore, tables, manifest, Error);
-            if (form != null)
-                CheckRoles(context, manifest, form, Warning);
-            if (form?.Section != null)
-                CheckControlTypes(form, Warning);
-
-            // Review SV-07: typos in property names (warnings) and in names, tokens, patterns and actions (errors).
-            CheckContract(configStore, manifest, form, Error, Warning);
         }
 
         CheckModel(services, items);
@@ -143,6 +159,16 @@ public static class AtlasStartupCheck
         // Review SV-02: with no Permissions block every operation is allowed for each role of the app.
         if (form.Permissions == null)
             error("the form has no Permissions block (View, Create, Edit, Delete, History); a missing block allows all operations.");
+        else
+        {
+            // Review 3 RV-05: a missing key allows that operation for each role of the app (also @Read).
+            if (form.Permissions.Create == null)
+                error("the Permissions block has no Create key; a missing key allows each role of the app to create records.");
+            if (form.Permissions.Edit == null)
+                error("the Permissions block has no Edit key; a missing key allows each role of the app to edit all records.");
+            if (form.Permissions.Delete == null)
+                error("the Permissions block has no Delete key; a missing key allows each role of the app to delete records.");
+        }
 
         AtlasFormFields fields = AtlasFormFields.From(form.Section!);
         foreach (AtlasFormField field in fields.All.Where(x => !table.HasColumn(x.Field)))
@@ -174,6 +200,11 @@ public static class AtlasStartupCheck
             foreach (string source in sources)
                 if (!table.HasColumn(source))
                     error($"Computed field '{target}' uses '{source}', which is not a column of {table.FullName}.");
+                else if (!IsNumeric(table.Find(source)!.ClrType))
+                    // Review 3 RV-L02: the save converts each source to a number; text or a date gave a 500 on each save.
+                    error($"Computed field '{target}' uses '{source}', which is not a number column ({table.Find(source)!.SqlType}).");
+            if (table.HasColumn(target) && !IsNumeric(table.Find(target)!.ClrType))
+                error($"Computed field '{target}' is not a number column ({table.Find(target)!.SqlType}).");
         }
 
         foreach (string name in (IEnumerable<string>?)form.Defaults?.Keys ?? [])
@@ -195,6 +226,11 @@ public static class AtlasStartupCheck
             if (!providers.Contains(field.Control.OptionsSource!.Provider))
                 error($"control '{field.Name}' uses the option provider '{field.Control.OptionsSource.Provider}', which is not registered.");
     }
+
+    private static bool IsNumeric(Type? type) =>
+        (Nullable.GetUnderlyingType(type ?? typeof(object)) ?? type) is { } t
+        && (t == typeof(byte) || t == typeof(short) || t == typeof(int) || t == typeof(long)
+            || t == typeof(decimal) || t == typeof(double) || t == typeof(float));
 
     /// <summary>Review DA-03: History of an app with a shared AuditTable must read only its own RefType values.</summary>
     private static void CheckSharedAuditTables(IReadOnlyList<AtlasAppManifest> manifests, List<AtlasCheckItem> items)
@@ -248,6 +284,9 @@ public static class AtlasStartupCheck
                 error("a dashboard tab has no ID.");
             if (table == !string.IsNullOrWhiteSpace(tab.Procedure))
                 error($"dashboard tab '{tab.ID}' must have Procedure or Source: Table, not both and not none.");
+            else if (!table)
+                // Review 3: the platform dashboard runs no tab procedure yet (spec 03, 4.7), so the tab would show no rows.
+                error($"dashboard tab '{tab.ID}' has a Procedure; the platform dashboard runs only Source: Table tabs (spec 03, 4.7). Use Source: Table.");
             if (!table)
                 continue;
 
@@ -300,6 +339,12 @@ public static class AtlasStartupCheck
             return null;
         }
 
+        if (!AtlasTable.IsValidFullName(name))
+        {
+            error($"{setting} '{name}' must have the form Schema.Name (for example TTDV2.General).");
+            return null;
+        }
+
         if (!tables.TryGet(name, out AtlasTable table))
         {
             error($"{setting} '{name}' does not exist, or the API login cannot see it.");
@@ -338,6 +383,17 @@ public static class AtlasStartupCheck
     };
 
     /// <summary>Review NG-04: a type with no client renderer shows only a note and cannot be edited.</summary>
+    /// <summary>Review 3 RV-L12: the app code in a grid cellRendererParams is typed in the JSON; a copied form keeps the old one.</summary>
+    private static void CheckGridCodes(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Action<string> warning)
+    {
+        IEnumerable<CPApplicationControl> controls = (form.Section!.Controls ?? [])
+            .SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []));
+        foreach (CPApplicationControl control in controls.Where(x => x.Grid?.Columns != null))
+            foreach (CPGridColumn column in control.Grid!.Columns!.Where(x => !string.IsNullOrWhiteSpace(x.cellRendererParams?.code)
+                && !string.Equals(x.cellRendererParams!.code, manifest.Code, StringComparison.OrdinalIgnoreCase)))
+                warning($"the grid '{control.Name}' column '{column.field}' has cellRendererParams.code '{column.cellRendererParams!.code}', not '{manifest.Code}'.");
+    }
+
     private static void CheckControlTypes(CPAtlasApplicationConfig form, Action<string> warning)
     {
         IEnumerable<CPApplicationControl> controls = (form.Section!.Controls ?? [])
@@ -349,9 +405,8 @@ public static class AtlasStartupCheck
     /// <summary>Builds the EF Core model of all registered tables once, so a model error is found at start-up.</summary>
     private static void CheckModel(IServiceProvider services, List<AtlasCheckItem> items)
     {
-        if (items.Any(x => x.Severity == AtlasCheckSeverity.Error))
-            return; // the table errors above already name the cause
-
+        // Review 3 RV-03: build the model also when an app has errors. A table that cannot be mapped is left out of the
+        // model (its app has a table error above), so a model error here is a new error for all apps.
         try
         {
             _ = services.GetRequiredService<AtlasPlatformContext>().Model;

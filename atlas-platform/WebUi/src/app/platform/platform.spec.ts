@@ -8,7 +8,7 @@ import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atl
 import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid, toModelValue, toOutputValue } from './form/atlas-form-model';
 import { atlasValidators, errorCode, errorText } from './form/atlas-validators';
 import { ATLAS_VALIDATOR_CASES } from './form/atlas-validator-cases';
-import { formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
+import { cellDay, formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
 import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
 import { toSelectOptions } from './atlas-pbdev';
@@ -385,5 +385,28 @@ describe('value kinds of the real pbdev controls (review R2)', () => {
     expect(toModelValue(list, null)).toEqual([]);
     expect(toOutputValue(list, ['A', 'B'])).toBe('A#$#B');
     expect(toOutputValue(list, [])).toBeNull();
+  });
+});
+
+describe('dashboard date filter (review 3 RV-16)', () => {
+  it('filters on the same day that the cell shows', () => {
+    const stamp = '2026-10-18T02:30:00.000Z';
+    const shown = formatDate(stamp);
+    const day = cellDay(stamp)!;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    expect(`${String(day.getDate()).padStart(2, '0')}-${months[day.getMonth()]}-${day.getFullYear()}`).toBe(shown);
+    expect(cellDay('2026-10-18')!.getDate()).toBe(18);
+    expect(cellDay('')).toBeNull();
+  });
+});
+
+describe('history time (review 3 RV-L19)', () => {
+  it('reads the local time form with a space', async () => {
+    const { localTime } = await import('./atlas-history-dialog');
+    const value = localTime('2026-10-25 10:05:30');
+    expect(value instanceof Date).toBe(true);
+    expect((value as Date).getHours()).toBe(10);
+    expect((value as Date).getSeconds()).toBe(30);
+    expect(localTime('not a date')).toBe('not a date');
   });
 });

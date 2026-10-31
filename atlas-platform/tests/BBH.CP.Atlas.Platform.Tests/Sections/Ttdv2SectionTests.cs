@@ -348,6 +348,40 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     }
 
     [Fact]
+    public async Task Two_saves_with_the_same_service_and_contexts_both_commit()
+    {
+        // Review 3 RV-L01: the platform context kept the finished shared transaction, so a second save in one scope failed.
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        CPTTDV2Service service = Svc(Owner, Ttdv2Roles.Owner);
+
+        CPApplicationSection first = service.LoadPage(new CPAtlasPage { ID = id });
+        CPAtlasPage one = service.SavePage(EditInput(id, first.Version, ("Category", "OTHER")), NoFiles);
+        CPAtlasPage two = service.SavePage(EditInput(id, one.Version, ("Category", "TAX_N")), NoFiles);
+
+        Assert.True(one.Errors is null or { Count: 0 }, Describe(one));
+        Assert.True(two.Errors is null or { Count: 0 }, Describe(two));
+        Assert.Equal("TAX_N", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
+    }
+
+    [Fact]
+    public async Task LogOnly_does_not_let_a_user_without_the_Create_permission_save_a_new_record()
+    {
+        // Review 3 RV-04: before, a Read user (or a user with no role) inserted a row of defaults in LogOnly.
+        using SectionHarness logOnly = new(database, AtlasAccessMode.LogOnly);
+        object? before = await database.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General");
+
+        AtlasProblemException error = Assert.Throws<AtlasProblemException>(() =>
+            logOnly.Service(_registry, Reader, Ttdv2Roles.Read).SavePage(new CPAtlasPage { AppCode = "TTDV2", ID = 0, Outputs = [] }, NoFiles));
+        AtlasProblemException noRole = Assert.Throws<AtlasProblemException>(() =>
+            logOnly.Service(_registry, "t.nobody").SavePage(new CPAtlasPage { AppCode = "TTDV2", ID = 0, Outputs = [] }, NoFiles));
+
+        Assert.Equal(403, error.StatusCode);
+        Assert.Equal(403, noRole.StatusCode);
+        Assert.Equal(before, await database.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General"));
+        Assert.Contains(logOnly.AccessLog.Entries, x => x.EventId.Name == "Atlas.AccessDenied" && x.Message.Contains("Create", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task LogOnly_does_not_let_a_user_without_the_Delete_permission_delete()
     {
         int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
@@ -535,6 +569,59 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
 
             Assert.Equal(0, result.ID);
             Assert.Contains(result.Errors!, x => x.Field == "WorkDescription" && x.Code == "NotAllowed");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_field_that_a_rule_hides_has_no_value_in_the_load_the_save_result_or_the_History()
+    {
+        // Review 3 RV-02: hidden on the client only is not enough; the value must not be in the responses.
+        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text : text
+            .Replace("""{ "Roles": [ "@Admin" ], "Disabled": false }""",
+                """{ "Roles": [ "@Admin" ], "Disabled": false }, { "Roles": [ "Prepare" ], "HideControls": [ "Category" ] }""", StringComparison.Ordinal));
+        try
+        {
+            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
+            int id = await InsertAsync(createdBy: Prep, taxPreparer: Prep);
+
+            // The owner changes Category, so the History has a Category entry.
+            CPApplicationSection ownerView = custom.Service(_registry, Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = id });
+            Assert.Equal("TAX_N", Control(ownerView, "Category").Value);
+            CPAtlasPage ownerSave = custom.Service(_registry, Owner, Ttdv2Roles.Owner)
+                .SavePage(EditInput(id, ownerView.Version, ("Category", "OTHER")), NoFiles);
+            Assert.True(ownerSave.Errors is null or { Count: 0 }, Describe(ownerSave));
+            Assert.Contains(ownerSave.Outputs!, x => x.Name == "Category" && x.Value == "OTHER");
+
+            // 1. Load: no value and no options.
+            CPApplicationSection loaded = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).LoadPage(new CPAtlasPage { ID = id });
+            CPApplicationControl category = Control(loaded, "Category");
+            Assert.False(category.Visible);
+            Assert.Null(category.Value);
+            Assert.True(category.Options is null or { Count: 0 });
+            Assert.Equal("Smith Family Trust", Control(loaded, "AccountName").Value); // other fields keep their values
+
+            // 2. Save result: no output for the hidden field.
+            CPAtlasPage saved = custom.Service(_registry, Prep, Ttdv2Roles.Prepare)
+                .SavePage(EditInput(id, loaded.Version, ("WorkDescription", "Prep text")), NoFiles);
+            Assert.True(saved.Errors is null or { Count: 0 }, Describe(saved));
+            Assert.DoesNotContain(saved.Outputs!, x => x.Name == "Category");
+            Assert.Contains(saved.Outputs!, x => x.Name == "WorkDescription" && x.Value == "Prep text");
+
+            // 3. History: the entry stays, the values are ***. The owner still sees them.
+            string prepHistory = System.Text.Json.JsonSerializer.Serialize(
+                custom.Service(_registry, Prep, Ttdv2Roles.Prepare).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
+            Assert.Contains("\"Name\":\"Category\"", prepHistory, StringComparison.Ordinal);
+            Assert.DoesNotContain("OTHER", prepHistory, StringComparison.Ordinal);
+            Assert.DoesNotContain("TAX_N", prepHistory, StringComparison.Ordinal);
+            Assert.Contains("Prep text", prepHistory, StringComparison.Ordinal);
+
+            string ownerHistory = System.Text.Json.JsonSerializer.Serialize(
+                custom.Service(_registry, Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
+            Assert.Contains("OTHER", ownerHistory, StringComparison.Ordinal);
         }
         finally
         {
