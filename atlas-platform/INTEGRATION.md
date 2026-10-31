@@ -37,6 +37,20 @@ Do not copy: `StandIn/` folders, `WebUi/src/app/stand-in/`, `WebUi/src/app/app.*
 ## 3. SQL
 
 Run `sql/release-p1/` in number order (DBA in QC and production). See `sql/release-p1/README.md` and spec 12, section 4.
+
+**Before `030` (read only):** count the role rows that the view `030` leaves out (a NULL `LanID`, app code or role name;
+review 3, module 20 section 6). A user whose only role has a NULL name loses it in the view (it gave no usable role
+before either). Write down the number; 0 is the expected result.
+
+```sql
+SELECT COUNT(*) AS RowsLeftOut
+FROM dbo.CP_Atlas_User AS u
+JOIN dbo.CP_Atlas_UserEntitlement AS ue ON ue.CP_Atlas_UserID = u.ID AND ISNULL(ue.IsDeleted, 0) = 0
+JOIN dbo.CP_Atlas_Entitlement AS e ON e.ID = ue.CP_Atlas_EntitlementID AND ISNULL(e.IsDeleted, 0) = 0
+JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID AND ISNULL(a.IsDeleted, 0) = 0
+WHERE ISNULL(u.IsDeleted, 0) = 0 AND (u.LanID IS NULL OR a.Code IS NULL OR e.Name IS NULL);
+```
+
 `050` runs only on the change-over day. Before: part 1 of `050` is read only and lists each value that cannot be converted,
 and each TTD role name with no TTDV2 role of the same name (review 3 RV-09; then nothing changes).
 Rollback (review 3 RV-10): set `AppSettings:Modules:TTDV2:Enabled = false`, then run `090-ttdv2-rollback.sql`. It gives
