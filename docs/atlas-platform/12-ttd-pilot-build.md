@@ -117,7 +117,7 @@ Defect fixed: the TTD "All Report" sums Saturday and Sunday, but its procedure d
 
 | File | Content |
 |---|---|
-| `sql/12-ttdv2-app.sql` | Schema, tables, app row, roles (from the new-app template) |
+| `sql/release-p1/040-ttdv2-app.sql` | Schema, tables, app row, roles (from the new-app template) |
 | `Config/TTDV2.app.json` | Manifest |
 | `Config/TTDV2.json` | Form |
 | `Config/TTDV2.Dashboard.json` | Dashboard |
@@ -132,10 +132,10 @@ Folder `sql/release-p1/`. The DBA runs the scripts in number order. Each script 
 | # | Script | Source |
 |---|---|---|
 | 010 | Engine idempotent migrations (H9) | Module 11, 4.4 |
-| 020 | `dbo.CP_Atlas_ScriptLog` | `sql/11-script-log.sql` |
-| 030 | `dbo.vw_CP_Atlas_ActiveUserRole` | `sql/06-active-user-roles-view.sql` |
-| 040 | TTDV2 app: schema, `General`, `AuditLog`, app row, roles with flags | [sql/12-ttdv2-app.sql](sql/12-ttdv2-app.sql) |
-| 050 | Copy TTD data to TTDV2 (run at the change-over only, section 10, question 4) | [sql/12-ttdv2-copy-from-ttd.sql](sql/12-ttdv2-copy-from-ttd.sql) |
+| 020 | `dbo.CP_Atlas_ScriptLog` | `sql/release-p1/020-script-log.sql` |
+| 030 | `dbo.vw_CP_Atlas_ActiveUserRole` | `sql/release-p1/030-active-user-roles-view.sql` |
+| 040 | TTDV2 app: schema, `General`, `AuditLog`, app row, roles with flags | [sql/release-p1/040-ttdv2-app.sql](../../atlas-platform/sql/release-p1/040-ttdv2-app.sql) |
+| 050 | Copy TTD data to TTDV2 (run at the change-over only, section 10, question 4) | [sql/release-p1/050-ttdv2-copy-from-ttd.sql](../../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql) |
 
 The copy script keeps the record IDs, converts the text values, finds LAN IDs where the display name is unique, copies the audit entries, gives TTDV2 roles to the users with the same TTD roles, revokes all TTD roles (decision, question 4), and lists each value that it cannot convert.
 
@@ -185,7 +185,7 @@ Decision 2026-10-25: keep the 4 target projects. Add a `Platform/` folder to eac
 ## 9. Notes
 
 - P2 (the first of the 13 apps) uses the same parts. It adds only what that app needs.
-- Template gap: module 9 (4.2) says new audit tables get `CreatedByLanId`. `sql/05-new-app-template.sql` does not have it yet. `sql/12-ttdv2-app.sql` has it. Add it to the template before P2.
+- Template gap: module 9 (4.2) says new audit tables get `CreatedByLanId`. `sql/05-new-app-template.sql` does not have it yet. `sql/release-p1/040-ttdv2-app.sql` has it. Add it to the template before P2.
 
 ## 10. Open questions
 
@@ -246,7 +246,7 @@ Each phase ends with `dotnet build` (no warnings) and `dotnet test` green. Stop 
 | Phase | Content | Tests |
 |---|---|---|
 | C0 | .NET solution skeleton, `Directory.Build.props`, .NET stand-ins, empty `Platform/` folders, `INTEGRATION.md` and `local/README.md` outlines | Build; one smoke test |
-| C1 | Data: `AtlasPlatformContext` (shared-type), `sys.columns` reader, value converter (6.4), load by key | Conversion unit tests; SQL tests on a test database made by `12-ttdv2-app.sql` |
+| C1 | Data: `AtlasPlatformContext` (shared-type), `sys.columns` reader, value converter (6.4), load by key | Conversion unit tests; SQL tests on a test database made by `040-ttdv2-app.sql` |
 | C2 | Config: manifest model, tolerant JSON loader, cache with copy, `AddAtlasPlatform`, `AddAtlasModule`, resolver, string app code | Loader parity test with all current JSON files; resolver 404/400 |
 | C3 | Security: `IAtlasUserContext`, active roles (view), role flags, `IAtlasAccessService`, `Permissions`, `LogOnly`/`Enforce`, `Atlas.AccessDenied` log | Access matrix (module 1, 10.5) |
 | C4 | Rules: `IAtlasRuleEngine` (`FirstMatch`, `MostPermissive`, `RuleDefault`, `OwnerFields`) | Rule matrix; `FirstMatch` gives the current results |

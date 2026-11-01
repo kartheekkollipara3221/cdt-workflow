@@ -31,12 +31,12 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
         }
 
         string atlasRoot = TestPaths.AtlasPlatformRoot();
-        string specSql = Path.Combine(TestPaths.RepositoryRoot(), "docs", "atlas-platform", "sql");
+        string release = Path.Combine(atlasRoot, "sql", "release-p1");
 
         await RunScriptFileAsync(Path.Combine(atlasRoot, "local", "sql", "000-cp-atlas-core-tables.sql"));
-        await RunScriptFileAsync(Path.Combine(specSql, "11-script-log.sql"));
-        await RunScriptFileAsync(Path.Combine(specSql, "06-active-user-roles-view.sql"));
-        await RunScriptFileAsync(Path.Combine(specSql, "12-ttdv2-app.sql"), ("<RUN_BY>", "test.runner"));
+        await RunScriptFileAsync(Path.Combine(release, "020-script-log.sql"));
+        await RunScriptFileAsync(Path.Combine(release, "030-active-user-roles-view.sql"));
+        await RunScriptFileAsync(Path.Combine(release, "040-ttdv2-app.sql"), ("<RUN_BY>", "test.runner"));
 
         await using SqlConnection connection = new(ConnectionString);
         await new AtlasColumnMetadataReader().LoadAsync(connection, Ttdv2Registry, ["TTDV2.General", "TTDV2.AuditLog"]);

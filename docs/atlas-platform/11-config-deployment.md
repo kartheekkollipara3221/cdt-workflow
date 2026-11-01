@@ -123,7 +123,7 @@ The platform loader uses `System.Text.Json` with `ReadCommentHandling = Skip`, `
 - One release folder for each release: `sql/release-<n>/`. Each script has a number: `010-engine-migrations.sql`, `020-active-user-roles-view.sql`, `030-lanid-columns.sql`, ... The DBA runs them in number order.
 - Each script is additive and idempotent (as all module scripts are today).
 - Engine migrations: the target team makes an idempotent script from the engine migrations (`dotnet ef migrations script --idempotent`) and puts it first in the release folder. The API does not run migrations at start-up. Decision 2026-10-25 (question 2): the DBA runs the idempotent engine script as the first script of the release; the API login keeps no DDL right in QC and production (module 5, question 4). This removes CD-03.
-- A script tracking table (decision 2026-10-25, question 3): `dbo.CP_Atlas_ScriptLog` (`ScriptName`, `Release`, `AppliedAtUtc`, `AppliedBy`). Script: [sql/11-script-log.sql](sql/11-script-log.sql), run once in release P1. Each later platform script ends with the short "log this script" block from that file and writes one row. The API login has `SELECT` only. The start-up check warns if a script of the current release is not in the table. This removes CD-04.
+- A script tracking table (decision 2026-10-25, question 3): `dbo.CP_Atlas_ScriptLog` (`ScriptName`, `Release`, `AppliedAtUtc`, `AppliedBy`). Script: [sql/release-p1/020-script-log.sql](../../atlas-platform/sql/release-p1/020-script-log.sql), run once in release P1. Each later platform script ends with the short "log this script" block from that file and writes one row. The API login has `SELECT` only. The start-up check warns if a script of the current release is not in the table. This removes CD-04.
 
 ### 4.5 Feature switches
 
@@ -197,5 +197,5 @@ Accepted risk (decision 2026-10-25): H1 and H2 stay in production until P3, afte
 
 1. Answered (2026-10-25): today the values are changed on the server after each deployment. The team must change to environment files (4.1); the team guide and the change-over steps are in 4.1.1.
 2. Answered (2026-10-25): an idempotent SQL script from the engine migrations, run by the DBA as the first script of the release (4.4).
-3. Answered (2026-10-25): yes. `dbo.CP_Atlas_ScriptLog`, script [sql/11-script-log.sql](sql/11-script-log.sql) (4.4).
+3. Answered (2026-10-25): yes. `dbo.CP_Atlas_ScriptLog`, script [sql/release-p1/020-script-log.sql](../../atlas-platform/sql/release-p1/020-script-log.sql) (4.4).
 4. Answered (2026-10-25): changed order. TTD pilot first (P1), then the first new app (P2), then the security fixes H1, H2, DB-01 (P3), then the migration of the current apps (P4). The platform is built beside the current code (4.7).

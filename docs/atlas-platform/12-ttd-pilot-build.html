@@ -172,7 +172,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <h3>3.3 Files for TTDV2</h3>
 <div class="table-wrap"><table>
 <tr><th>File</th><th>Content</th></tr>
-<tr><td><code>sql/12-ttdv2-app.sql</code></td><td>Schema, tables, app row, roles (from the new-app template)</td></tr>
+<tr><td><code>sql/release-p1/040-ttdv2-app.sql</code></td><td>Schema, tables, app row, roles (from the new-app template)</td></tr>
 <tr><td><code>Config/TTDV2.app.json</code></td><td>Manifest</td></tr>
 <tr><td><code>Config/TTDV2.json</code></td><td>Form</td></tr>
 <tr><td><code>Config/TTDV2.Dashboard.json</code></td><td>Dashboard</td></tr>
@@ -187,10 +187,10 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <div class="table-wrap"><table>
 <tr><th>#</th><th>Script</th><th>Source</th></tr>
 <tr><td>010</td><td>Engine idempotent migrations (H9)</td><td>Module 11, 4.4</td></tr>
-<tr><td>020</td><td><code>dbo.CP_Atlas_ScriptLog</code></td><td><code>sql/11-script-log.sql</code></td></tr>
-<tr><td>030</td><td><code>dbo.vw_CP_Atlas_ActiveUserRole</code></td><td><code>sql/06-active-user-roles-view.sql</code></td></tr>
-<tr><td>040</td><td>TTDV2 app: schema, <code>General</code>, <code>AuditLog</code>, app row, roles with flags</td><td><a href="sql/12-ttdv2-app.sql">sql/12-ttdv2-app.sql</a></td></tr>
-<tr><td>050</td><td>Copy TTD data to TTDV2 (run at the change-over only, section 10, question 4)</td><td><a href="sql/12-ttdv2-copy-from-ttd.sql">sql/12-ttdv2-copy-from-ttd.sql</a></td></tr>
+<tr><td>020</td><td><code>dbo.CP_Atlas_ScriptLog</code></td><td><code>sql/release-p1/020-script-log.sql</code></td></tr>
+<tr><td>030</td><td><code>dbo.vw_CP_Atlas_ActiveUserRole</code></td><td><code>sql/release-p1/030-active-user-roles-view.sql</code></td></tr>
+<tr><td>040</td><td>TTDV2 app: schema, <code>General</code>, <code>AuditLog</code>, app row, roles with flags</td><td><a href="../../atlas-platform/sql/release-p1/040-ttdv2-app.sql">sql/release-p1/040-ttdv2-app.sql</a></td></tr>
+<tr><td>050</td><td>Copy TTD data to TTDV2 (run at the change-over only, section 10, question 4)</td><td><a href="../../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql">sql/release-p1/050-ttdv2-copy-from-ttd.sql</a></td></tr>
 </table></div>
 <p>The copy script keeps the record IDs, converts the text values, finds LAN IDs where the display name is unique, copies the audit entries, gives TTDV2 roles to the users with the same TTD roles, revokes all TTD roles (decision, question 4), and lists each value that it cannot convert.</p>
 </section>
@@ -246,7 +246,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <h2>9. Notes</h2>
 <ul>
 <li>P2 (the first of the 13 apps) uses the same parts. It adds only what that app needs.</li>
-<li>Template gap: module 9 (4.2) says new audit tables get <code>CreatedByLanId</code>. <code>sql/05-new-app-template.sql</code> does not have it yet. <code>sql/12-ttdv2-app.sql</code> has it. Add it to the template before P2.</li>
+<li>Template gap: module 9 (4.2) says new audit tables get <code>CreatedByLanId</code>. <code>sql/05-new-app-template.sql</code> does not have it yet. <code>sql/release-p1/040-ttdv2-app.sql</code> has it. Add it to the template before P2.</li>
 </ul>
 </section>
 <section id="10-open-questions">
@@ -315,7 +315,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <div class="table-wrap"><table>
 <tr><th>Phase</th><th>Content</th><th>Tests</th></tr>
 <tr><td>C0</td><td>.NET solution skeleton, <code>Directory.Build.props</code>, .NET stand-ins, empty <code>Platform/</code> folders, <code>INTEGRATION.md</code> and <code>local/README.md</code> outlines</td><td>Build; one smoke test</td></tr>
-<tr><td>C1</td><td>Data: <code>AtlasPlatformContext</code> (shared-type), <code>sys.columns</code> reader, value converter (6.4), load by key</td><td>Conversion unit tests; SQL tests on a test database made by <code>12-ttdv2-app.sql</code></td></tr>
+<tr><td>C1</td><td>Data: <code>AtlasPlatformContext</code> (shared-type), <code>sys.columns</code> reader, value converter (6.4), load by key</td><td>Conversion unit tests; SQL tests on a test database made by <code>040-ttdv2-app.sql</code></td></tr>
 <tr><td>C2</td><td>Config: manifest model, tolerant JSON loader, cache with copy, <code>AddAtlasPlatform</code>, <code>AddAtlasModule</code>, resolver, string app code</td><td>Loader parity test with all current JSON files; resolver 404/400</td></tr>
 <tr><td>C3</td><td>Security: <code>IAtlasUserContext</code>, active roles (view), role flags, <code>IAtlasAccessService</code>, <code>Permissions</code>, <code>LogOnly</code>/<code>Enforce</code>, <code>Atlas.AccessDenied</code> log</td><td>Access matrix (module 1, 10.5)</td></tr>
 <tr><td>C4</td><td>Rules: <code>IAtlasRuleEngine</code> (<code>FirstMatch</code>, <code>MostPermissive</code>, <code>RuleDefault</code>, <code>OwnerFields</code>)</td><td>Rule matrix; <code>FirstMatch</code> gives the current results</td></tr>

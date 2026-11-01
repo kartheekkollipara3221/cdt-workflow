@@ -20,7 +20,7 @@ internal sealed class FakeUserContext(string lanId, params AtlasRole[] roles) : 
         new(roles.Where(x => string.Equals(x.AppCode, appCode, StringComparison.OrdinalIgnoreCase)));
 }
 
-/// <summary>The TTDV2 roles (spec 01, 10.5; sql/12-ttdv2-app.sql).</summary>
+/// <summary>The TTDV2 roles (spec 01, 10.5; sql/release-p1/040-ttdv2-app.sql).</summary>
 internal static class Ttdv2Roles
 {
     public static AtlasRole Read => new("TTDV2", "Read", IsRead: true, IsWrite: false, IsAdmin: false);

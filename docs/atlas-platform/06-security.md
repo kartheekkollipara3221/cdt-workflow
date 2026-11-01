@@ -155,7 +155,7 @@ Flag order (decision 2026-10-25): `IsAdmin` includes write and read; `IsWrite` i
 
 ### 4.4 Roles by app
 
-- One database view gives the active roles: [sql/06-active-user-roles-view.sql](sql/06-active-user-roles-view.sql) (`dbo.vw_CP_Atlas_ActiveUserRole`). It filters `IsDeleted` on the user, the user entitlement, the entitlement and the application. All role queries use this view. This removes the `IsDeleted` part of SE-03.
+- One database view gives the active roles: [sql/release-p1/030-active-user-roles-view.sql](../../atlas-platform/sql/release-p1/030-active-user-roles-view.sql) (`dbo.vw_CP_Atlas_ActiveUserRole`). It filters `IsDeleted` on the user, the user entitlement, the entitlement and the application. All role queries use this view. This removes the `IsDeleted` part of SE-03.
 - The view also gives `IsRead`, `IsWrite` and `IsAdmin` for each role. The access check (4.3) reads them for the `@Read`, `@Write` and `@Admin` names.
 - The team grants and revokes roles with SQL: [sql/06-grant-revoke-role-template.sql](sql/06-grant-revoke-role-template.sql). It finds the user by LAN ID and the role by app code and role name. Revoke sets `IsDeleted` = 1; the script deletes no row. A later admin screen must use the same rules.
 - `v1/authorize` adds an optional field `AppRoles`: `{ "SQMS": ["MFO"], "TTD": ["Prepare"] }`. Keep the flat `Roles` list for the current client. The updated client uses `AppRoles`. This removes the rest of SE-03.
