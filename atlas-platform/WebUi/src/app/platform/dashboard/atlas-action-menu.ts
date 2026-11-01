@@ -9,6 +9,19 @@ import { ICellRendererParams } from 'ag-grid-community';
 import { CPMenu } from '../atlas-models';
 import type { AtlasRowActions } from './atlas-dashboard-columns';
 
+interface AtlasActionItem {
+  name: string;
+  icon: string;
+  run: (actions: AtlasRowActions, row: Record<string, unknown>) => void;
+}
+
+/** The menu items, in the order of the target menu. */
+const ITEMS: AtlasActionItem[] = [
+  { name: 'Edit', icon: 'fa-solid fa-pen-to-square', run: (actions, row) => actions.edit(row) },
+  { name: 'Delete', icon: 'fa fa-trash', run: (actions, row) => actions.remove(row) },
+  { name: 'History', icon: 'fa fa-history', run: (actions, row) => actions.history(row) },
+];
+
 export interface AtlasActionMenuParams extends ICellRendererParams {
   cpMenus?: CPMenu[] | null;
   atlasActions: AtlasRowActions;
@@ -22,29 +35,20 @@ export interface AtlasActionMenuParams extends ICellRendererParams {
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
     <mat-menu #menu="matMenu">
-      @if (show('Edit')) {
-        <button mat-menu-item (click)="run('Edit')">
-          <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-          <span> {{ label('Edit') }}</span>
-        </button>
-      }
-      @if (show('Delete')) {
-        <button mat-menu-item (click)="run('Delete')">
-          <i class="fa fa-trash" aria-hidden="true"></i>
-          <span> {{ label('Delete') }}</span>
-        </button>
-      }
-      @if (show('History')) {
-        <button mat-menu-item (click)="run('History')">
-          <i class="fa fa-history" aria-hidden="true"></i>
-          <span> {{ label('History') }}</span>
-        </button>
+      @for (item of items; track item.name) {
+        @if (show(item.name)) {
+          <button mat-menu-item (click)="run(item.name)">
+            <i [class]="item.icon" aria-hidden="true"></i>
+            <span> {{ label(item.name) }}</span>
+          </button>
+        }
       }
     </mat-menu>
   }`,
 })
 export class AtlasActionMenu implements ICellRendererAngularComp {
   private params!: AtlasActionMenuParams;
+  readonly items = ITEMS;
   pinned = false;
 
   agInit(params: AtlasActionMenuParams): void {
@@ -67,11 +71,7 @@ export class AtlasActionMenu implements ICellRendererAngularComp {
   }
 
   run(name: string): void {
-    const row = this.params.data as Record<string, unknown>;
-    const actions = this.params.atlasActions;
-    if (name === 'Edit') actions.edit(row);
-    else if (name === 'Delete') actions.remove(row);
-    else if (name === 'History') actions.history(row);
+    ITEMS.find((x) => x.name === name)?.run(this.params.atlasActions, this.params.data as Record<string, unknown>);
   }
 
   private menu(name: string): CPMenu | undefined {

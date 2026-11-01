@@ -47,6 +47,21 @@ export abstract class AtlasRendererBase {
     }
     return this.messages;
   }
+
+  private optionsFor: CPKeyValue[] | null | undefined;
+  private mappedOptions: SelectOption<string>[] = [];
+
+  /**
+   * The options as label/value objects (pbdev-select and ng-select take them). The list is mapped again only when the
+   * control gets new options.
+   */
+  get options(): SelectOption<string>[] {
+    if (this.control.Options !== this.optionsFor) {
+      this.optionsFor = this.control.Options;
+      this.mappedOptions = toSelectOptions(this.optionsFor);
+    }
+    return this.mappedOptions;
+  }
 }
 
 @Component({
@@ -82,19 +97,7 @@ export class AtlasAmountRenderer extends AtlasRendererBase {
   template: `<pbdev-select [atlasControlId]="'ctl_' + control.Name" [options]="options" [customErrorMessages]="errorMessages"
     [formControl]="formControl" />`,
 })
-export class AtlasSelectRenderer extends AtlasRendererBase {
-  private source: CPKeyValue[] | null | undefined;
-  private mapped: SelectOption<string>[] = [];
-
-  /** pbdev-select takes label/value objects; the list is mapped again only when the control gets new options. */
-  get options(): SelectOption<string>[] {
-    if (this.control.Options !== this.source) {
-      this.source = this.control.Options;
-      this.mapped = toSelectOptions(this.source);
-    }
-    return this.mapped;
-  }
-}
+export class AtlasSelectRenderer extends AtlasRendererBase {}
 
 /**
  * "ngselect": a select with search, as cp-atlas-sectionmaster.html (decision D3): the options are mapped to
@@ -106,18 +109,7 @@ export class AtlasSelectRenderer extends AtlasRendererBase {
   template: `<ng-select [items]="options" bindLabel="label" bindValue="value" [multiple]="!!control.Multiple"
     [clearable]="false" [virtualScroll]="true" placeholder="" [formControl]="formControl" [labelForId]="'ctl_' + control.Name" />`,
 })
-export class AtlasNgSelectRenderer extends AtlasRendererBase {
-  private source: CPKeyValue[] | null | undefined;
-  private mapped: SelectOption<string>[] = [];
-
-  get options(): SelectOption<string>[] {
-    if (this.control.Options !== this.source) {
-      this.source = this.control.Options;
-      this.mapped = toSelectOptions(this.source);
-    }
-    return this.mapped;
-  }
-}
+export class AtlasNgSelectRenderer extends AtlasRendererBase {}
 
 @Component({
   selector: 'atlas-textarea-renderer',

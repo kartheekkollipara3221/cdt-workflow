@@ -6,13 +6,14 @@
 //  - Integer, then "a number" (no exponent), then Min and Max;
 //  - Validator.Message, when set, is the text of each failure.
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { isNil } from '../atlas-dates';
 import { CPValidator } from '../atlas-models';
 
 const integerText = /^[+-]?\d+$/;
 const numberText = /^[+-]?(\d+\.?\d*|\.\d+)$/;
 
 function empty(value: unknown): boolean {
-  return value === null || value === undefined || String(value).trim() === '';
+  return isNil(value) || String(value).trim() === '';
 }
 
 function text(control: AbstractControl): string {
@@ -71,10 +72,10 @@ export function atlasValidators(validator: CPValidator | null | undefined, requi
   if (!validator) {
     return list;
   }
-  if (validator.MaxLength !== null && validator.MaxLength !== undefined) {
+  if (!isNil(validator.MaxLength)) {
     list.push(atlasMaxLength(validator.MaxLength));
   }
-  if (validator.MinLength !== null && validator.MinLength !== undefined) {
+  if (!isNil(validator.MinLength)) {
     list.push(atlasMinLength(validator.MinLength));
   }
   if (validator.Pattern) {
@@ -85,8 +86,8 @@ export function atlasValidators(validator: CPValidator | null | undefined, requi
   }
   const min = validator.Min;
   const max = validator.Max;
-  const hasMin = min !== null && min !== undefined;
-  const hasMax = max !== null && max !== undefined;
+  const hasMin = !isNil(min);
+  const hasMax = !isNil(max);
   if (validator.Integer || hasMin || hasMax) {
     list.push(atlasNumber);
   }

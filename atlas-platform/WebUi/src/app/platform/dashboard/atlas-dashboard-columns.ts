@@ -1,6 +1,8 @@
 // COPY to the target: WebUi/src/app/platform/dashboard/. AG Grid column definitions from the tab Columns list
 // (spec 03, 4.6). Cells are text; a link is made with DOM methods, never HTML text (H5).
+import { formatDate as formatDay } from '@angular/common';
 import { ColDef, ICellRendererParams, ValueFormatterParams } from 'ag-grid-community';
+import { isNil, parseLocalDay } from '../atlas-dates';
 import { CPAtlasTab, CPTabColumn } from '../atlas-models';
 import { AtlasActionMenu } from './atlas-action-menu';
 
@@ -10,25 +12,14 @@ export interface AtlasRowActions {
   remove(row: Record<string, unknown>): void;
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 /** "2026-10-18" or ISO date-time to "18-Oct-2026". Other text stays. */
 export function formatDate(value: unknown): string {
-  if (value === null || value === undefined || value === '') {
+  if (isNil(value) || value === '') {
     return '';
   }
   const text = String(value);
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
-  if (!match) {
-    return text;
-  }
-  if (text.length > 10) {
-    const date = new Date(text);
-    if (!Number.isNaN(date.getTime())) {
-      return `${String(date.getDate()).padStart(2, '0')}-${MONTHS[date.getMonth()]}-${date.getFullYear()}`;
-    }
-  }
-  return `${match[3]}-${MONTHS[Number(match[2]) - 1]}-${match[1]}`;
+  const day = localDay(text);
+  return day ? formatDay(day, 'dd-MMM-yyyy', 'en-US') : text;
 }
 
 /**
@@ -37,18 +28,18 @@ export function formatDate(value: unknown): string {
  * row shown as 17-Oct did not match a filter of 17-Oct.
  */
 export function cellDay(value: unknown): Date | null {
-  const text = String(value ?? '').trim();
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
-  if (!match) {
-    return null;
-  }
-  if (text.length > 10) {
+  return localDay(String(value ?? '').trim());
+}
+
+function localDay(text: string): Date | null {
+  const day = parseLocalDay(text);
+  if (day && text.length > 10) {
     const date = new Date(text);
     if (!Number.isNaN(date.getTime())) {
       return new Date(date.getFullYear(), date.getMonth(), date.getDate());
     }
   }
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return day;
 }
 
 function dateComparator(filterDate: Date, cellValue: unknown): number {
@@ -102,12 +93,12 @@ function columnDef(column: CPTabColumn, actions: AtlasRowActions): ColDef {
   if ((column.Link ?? '').toLowerCase() === 'edit') {
     def.cellRenderer = (params: ICellRendererParams) => {
       if (params.node.rowPinned) {
-        return document.createTextNode(params.value === null || params.value === undefined ? '' : String(params.value));
+        return document.createTextNode(isNil(params.value) ? '' : String(params.value));
       }
       const link = document.createElement('a');
       link.className = 'atlas-link';
       link.href = '#'; // review NG-08: a link with href takes the focus and opens with Enter
-      link.textContent = params.value === null || params.value === undefined || params.value === '' ? '(open)' : String(params.value);
+      link.textContent = isNil(params.value) || params.value === '' ? '(open)' : String(params.value);
       link.addEventListener('click', (event) => {
         event.preventDefault();
         actions.edit(params.data as Record<string, unknown>);

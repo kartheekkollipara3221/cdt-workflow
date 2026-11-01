@@ -302,7 +302,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
         },
         error: (error) => {
           this.saving.set(false);
-          this.pageErrors.set([{ Field: '', Code: 'Http', Message: problemText(error) }]);
+          this.httpFail(error);
         },
       });
   }
@@ -318,8 +318,13 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
         this.notice.show('success', 'Record deleted successfully');
         this.router.navigate(this.dashboardLink(this.code()));
       },
-      error: (error) => this.pageErrors.set([{ Field: '', Code: 'Http', Message: problemText(error) }]),
+      error: (error) => this.httpFail(error),
     });
+  }
+
+  /** An HTTP failure of a save or a delete: one error at the top. */
+  private httpFail(error: unknown): void {
+    this.pageErrors.set([{ Field: '', Code: 'Http', Message: problemText(error) }]);
   }
 
   /** Field errors go to the field; the others are listed at the top (spec 01, 5.11). */

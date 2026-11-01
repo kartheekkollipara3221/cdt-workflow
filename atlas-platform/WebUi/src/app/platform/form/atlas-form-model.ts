@@ -2,6 +2,7 @@
 // for the save, and the client value of a Computed field. Plain functions, so the unit tests need no component.
 import { FormControl, FormGroup, FormRecord } from '@angular/forms';
 import { CPApplicationControl, CPApplicationSection, CPPageOutput } from '../atlas-models';
+import { isNil, parseLocalDay } from '../atlas-dates';
 import { atlasValidators } from './atlas-validators';
 
 export const SINGLE_ROW_FIELDS = 'SingleRowFields';
@@ -44,10 +45,8 @@ function pad(n: number): string {
 /** The form value of a server text (the JSON Value, a Set effect, a server answer). */
 export function toModelValue(control: CPApplicationControl, text: string | null | undefined): unknown {
   switch (valueKind(control)) {
-    case 'date': {
-      const match = /^(\d{4})-(\d{2})-(\d{2})/.exec((text ?? '').trim());
-      return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
-    }
+    case 'date':
+      return parseLocalDay((text ?? '').trim());
     case 'bool':
       return ['true', 'yes', '1'].includes((text ?? '').trim().toLowerCase());
     case 'list':
@@ -59,7 +58,7 @@ export function toModelValue(control: CPApplicationControl, text: string | null 
 
 /** The server text of a form value (null when empty). */
 export function toOutputValue(control: CPApplicationControl, value: unknown): string | null {
-  if (value === null || value === undefined) {
+  if (isNil(value)) {
     return valueKind(control) === 'bool' ? 'false' : null;
   }
   if (value instanceof Date) {
@@ -174,7 +173,7 @@ export function buildOutputs(section: CPApplicationSection, group: FormGroup, vi
       const row: Record<string, string> = {};
       for (const [field, cell] of Object.entries(item.controls)) {
         if (cell.enabled) {
-          row[field] = cell.value === null || cell.value === undefined ? '' : String(cell.value).trim();
+          row[field] = isNil(cell.value) ? '' : String(cell.value).trim();
         }
       }
       outputs.push({ Name: control.Name, Value: JSON.stringify([row]) });
@@ -196,7 +195,7 @@ export function computeValue(expression: string, values: Record<string, unknown>
     .map((x) => x.trim())
     .filter((x) => x.length > 0)
     .map((name) => values[name])
-    .filter((x) => x !== null && x !== undefined && String(x).trim() !== '' && !Number.isNaN(Number(x)))
+    .filter((x) => !isNil(x) && String(x).trim() !== '' && !Number.isNaN(Number(x)))
     .map((x) => Number(x));
   switch (match[1].toLowerCase()) {
     case 'sum':

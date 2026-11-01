@@ -5,6 +5,7 @@ import { formatDate } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, of, switchMap } from 'rxjs';
+import { isNil } from './atlas-dates';
 import { problemText } from './atlas-errors';
 import { DialogComponent, LoaderComponent } from './atlas-pbdev';
 import { AtlasApiService } from './atlas-api.service';
@@ -132,6 +133,6 @@ export function toEntry(log: CPAuditLog): HistoryEntry {
     // CreatedDate is the text of the target ("MM-dd-yyyy HH:mm:ss"); a UTC app also sends CreatedDateUtc: the user's time.
     when: log.CreatedDateUtc ? formatDate(new Date(log.CreatedDateUtc), 'MM-dd-yyyy HH:mm:ss', 'en-US') : log.CreatedDate,
     changes: items ?? [],
-    text: items === null && log.LogMessage !== null && log.LogMessage !== undefined ? String(log.LogMessage) : null,
+    text: items === null && !isNil(log.LogMessage) ? String(log.LogMessage) : null,
   };
 }

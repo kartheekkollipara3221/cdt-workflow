@@ -2,6 +2,7 @@
 // Conditions: Equals, NotEquals, In, HasValue. Actions: Show, Hide, Require, Unrequire, Enable, Disable, Set, Clear,
 // SetFromOption. No expression language. The server applies all of them again on save and sets the Set, Clear and
 // SetFromOption values itself (review B35).
+import { isNil } from '../atlas-dates';
 import { CPApplicationControl, CPEffectCondition, CPKeyValue } from '../atlas-models';
 
 /** The form state that the effects change. The form component implements it. */
@@ -13,7 +14,7 @@ export interface AtlasEffectTarget {
 }
 
 export function hasValue(value: unknown): boolean {
-  return value !== null && value !== undefined && String(value) !== '';
+  return !isNil(value) && String(value) !== '';
 }
 
 export function matches(when: CPEffectCondition | null | undefined, value: unknown): boolean {
@@ -22,13 +23,13 @@ export function matches(when: CPEffectCondition | null | undefined, value: unkno
   }
   const text = hasValue(value) ? String(value) : '';
   const same = (a: string | null | undefined) => (a ?? '').toLowerCase() === text.toLowerCase();
-  if (when.HasValue !== null && when.HasValue !== undefined && when.HasValue !== hasValue(value)) {
+  if (!isNil(when.HasValue) && when.HasValue !== hasValue(value)) {
     return false;
   }
-  if (when.Equals !== null && when.Equals !== undefined && !same(when.Equals)) {
+  if (!isNil(when.Equals) && !same(when.Equals)) {
     return false;
   }
-  if (when.NotEquals !== null && when.NotEquals !== undefined && same(when.NotEquals)) {
+  if (!isNil(when.NotEquals) && same(when.NotEquals)) {
     return false;
   }
   if (when.In && !when.In.some((x) => same(x))) {

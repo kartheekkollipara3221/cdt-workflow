@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormGroup } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
 import { CellValueChangedEvent, ClientSideRowModelModule, ColDef, GridApi, GridReadyEvent, Module, RowSelectionOptions } from 'ag-grid-community';
+import { isNil, parseLocalDay } from '../../atlas-dates';
 import { AgLoadingOverlayComponent } from '../../atlas-pbdev';
 import { CPGridColumn, CPHeaderFromDate } from '../../atlas-models';
 import { ATLAS_GRID_COMPONENTS } from '../atlas-grid-components';
@@ -92,7 +93,7 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     if (!cell) {
       return;
     }
-    const value = event.newValue === null || event.newValue === undefined ? '' : String(event.newValue);
+    const value = isNil(event.newValue) ? '' : String(event.newValue);
     if (String(cell.value ?? '') !== value) {
       cell.setValue(value);
     }
@@ -165,10 +166,6 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
 
 /** The header text for a date value "yyyy-MM-dd" (a local day; not UTC, so the day is the same in each time zone). Null: no date. */
 export function dateHeader(from: CPHeaderFromDate, value: unknown): string | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value ?? ''));
-  if (!match) {
-    return null;
-  }
-  const day = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + (from.AddDays ?? 0));
-  return formatDate(day, from.Format || 'EEEE dd-MMM-yyyy', 'en-US');
+  const day = parseLocalDay(value, from.AddDays ?? 0);
+  return day && formatDate(day, from.Format || 'EEEE dd-MMM-yyyy', 'en-US');
 }
