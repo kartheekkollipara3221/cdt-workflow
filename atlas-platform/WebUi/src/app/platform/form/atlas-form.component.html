@@ -37,28 +37,28 @@
           <pbdev-section [variant]="'blue'" title="{{ container.Label }}">
             <div class="{{ container.Class ?? '' }}">
               @for (child of container.ChildControls ?? []; track child.Name) {
-                @if (isVisible(child.Name) && registry.resolve(child.Type); as renderer) {
+                @if (isVisible(child.Name) && views().get(child.Name); as view) {
                   <div [attr.id]="'div_' + child.Name" class="{{ child.DivClass ?? '' }}"
                     [atlasFieldA11y]="child.Name" [required]="isRequired(child.Name)" [invalid]="!!error(child)"
-                    [labelledBy]="!registry.hasInput(child.Type)">
-                    <label [attr.for]="registry.hasInput(child.Type) ? 'ctl_' + child.Name : null">
+                    [labelledBy]="!view.hasInput">
+                    <label [attr.for]="view.hasInput ? 'ctl_' + child.Name : null">
                       <span class="label-text" [attr.id]="'lbl_' + child.Name">{{ child.Label }}</span>
                       @if (isRequired(child.Name)) {
                         <span class="required-indicator" aria-hidden="true">*</span>
                       }
                     </label>
-                    <ng-container *ngComponentOutlet="renderer; inputs: { control: child, group: form }" />
-                    <span class="atlas-error" [class.atlas-sr-only]="registry.drawsMessages(child.Type)" [attr.id]="'err_' + child.Name" aria-live="polite">{{ error(child) ?? '' }}</span>
+                    <ng-container *ngComponentOutlet="view.renderer; inputs: { control: child, group: form }" />
+                    <span class="atlas-error" [class.atlas-sr-only]="view.ownMessages" [attr.id]="'err_' + child.Name" aria-live="polite">{{ error(child) ?? '' }}</span>
                   </div>
                 }
               }
             </div>
           </pbdev-section>
         </div>
-      } @else if (registry.resolve(container.Type); as renderer) {
+      } @else if (views().get(container.Name); as view) {
         <div [attr.id]="'div_' + container.Name" class="col-span-3 block mb-1">
           <div class="section-master col-span-12 border-b border-gray-200 pb-2 mt-2 text-sm font-semibold text-gray-700">{{ container.Label }}</div>
-          <ng-container *ngComponentOutlet="renderer; inputs: { control: container, group: form }" />
+          <ng-container *ngComponentOutlet="view.renderer; inputs: { control: container, group: form }" />
         </div>
       }
     }

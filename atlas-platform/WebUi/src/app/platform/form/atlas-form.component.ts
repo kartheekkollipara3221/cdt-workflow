@@ -2,9 +2,9 @@
 // question 5), route form/:code/:id, beside the current sectionmaster component. It knows no app: the controls come
 // from the section JSON, the renderers from the registry, and the rules from the server.
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, Type, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription } from 'rxjs';
+import { EMPTY, catchError, switchMap, tap } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule, FormRecord } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DialogComponent, LoaderComponent, SectionComponent } from '../atlas-pbdev';
@@ -15,10 +15,19 @@ import { ATLAS_DASHBOARD_LINK } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
 import { problemText } from '../atlas-errors';
 import { AtlasEffectTarget, applyEffects } from './atlas-effects';
-import { AtlasFormRecord, buildFormGroup, buildOutputs, computeValue, containerOf, isSection, isShown, shownInvalid, toModelValue, toOutputValue, valueControls } from './atlas-form-model';
+import { AtlasFormRecord, buildFormGroup, buildOutputs, computeValue, containerOf, initialFlags, isSection, isShown, shownInvalid, toModelValue, toOutputValue, valueControls } from './atlas-form-model';
 import { AtlasFieldA11yDirective } from './atlas-field-a11y.directive';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
 import { atlasValidators, errorText } from './atlas-validators';
+
+/** What the template needs of one control, found one time for each section (review FABLE F17). */
+export interface AtlasFieldView {
+  renderer: Type<unknown>;
+  /** The renderer has an input that a label can point to (label for). */
+  hasInput: boolean;
+  /** The pbdev control shows its own error text, so the form text is for screen readers only. */
+  ownMessages: boolean;
+}
 
 @Component({
   selector: 'atlas-form',
@@ -55,78 +64,90 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   private controlsByName = new Map<string, CPApplicationControl>();
   private containers = new Map<string, string>();
 
+  /** The view of each control of the section, by name: renderer, label target, message mode. */
+  readonly views = computed(() => {
+    const views = new Map<string, AtlasFieldView>();
+    for (const control of this.section()?.Controls ?? []) {
+      for (const item of [control, ...(control.ChildControls ?? [])]) {
+        views.set(item.Name, {
+          renderer: this.registry.resolve(item.Type),
+          hasInput: this.registry.hasInput(item.Type),
+          ownMessages: this.registry.drawsMessages(item.Type),
+        });
+      }
+    }
+    return views;
+  });
+
   ngOnInit(): void {
-    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      this.code.set((params.get('code') ?? '').toUpperCase());
-      this.id.set(Number(params.get('id') ?? 0) || 0);
-      this.load();
-    });
-  }
-
-  private loadRequest: Subscription | null = null;
-
-  load(): void {
-    this.loading.set(true);
-    this.loadError.set(null);
-    this.pageErrors.set([]);
-    // Review 3 RV-14: a new load cancels the one before (a late answer for record A must not build the form of B),
-    // and no answer is handled after the form is destroyed (NG0911).
-    this.loadRequest?.unsubscribe();
-    this.loadRequest = this.api.section(this.code(), this.id()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (section) => this.build(section),
-      error: (error) => {
-        this.loadError.set(problemText(error));
-        this.loading.set(false);
-      },
-    });
+    // Review 3 RV-14: a new route cancels the load before it (a late answer for record A must not build the form of
+    // B), and no answer is handled after the form is destroyed (NG0911).
+    this.route.paramMap
+      .pipe(
+        tap((params) => {
+          this.code.set((params.get('code') ?? '').toUpperCase());
+          this.id.set(Number(params.get('id') ?? 0) || 0);
+          this.loading.set(true);
+          this.loadError.set(null);
+          this.pageErrors.set([]);
+        }),
+        switchMap(() =>
+          this.api.section(this.code(), this.id()).pipe(
+            catchError((error) => {
+              this.loadError.set(problemText(error));
+              this.loading.set(false);
+              return EMPTY;
+            }),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((section) => this.build(section));
   }
 
   private build(section: CPApplicationSection): void {
     this.controlsByName = new Map(valueControls(section).map((x) => [x.Name, x]));
     this.containers = containerOf(section);
-    const visible: Record<string, boolean> = {};
-    const required: Record<string, boolean> = {};
-    for (const control of section.Controls ?? []) {
-      visible[control.Name] = control.Visible !== false;
-      for (const child of control.ChildControls ?? []) {
-        visible[child.Name] = child.Visible !== false;
-        required[child.Name] = !!child.Validator?.Required;
-      }
-    }
-    this.visible.set(visible);
-    this.required.set(required);
+    const flags = initialFlags(section);
+    this.visible.set(flags.visible);
+    this.required.set(flags.required);
     this.form = buildFormGroup(section);
-    // A control with no renderer cannot be edited, so it is not validated or sent (review NG-04).
+    this.disableUnsupported();
+    this.section.set(section);
+    this.wireEffects();
+    this.wireComputed(section);
+    if (!this.canSave()) {
+      this.form.disable({ emitEvent: false }); // review 3 RV-17
+    }
+    this.loading.set(false);
+  }
+
+  /** A control with no renderer cannot be edited, so it is not validated or sent (review NG-04). */
+  private disableUnsupported(): void {
     for (const control of this.controlsByName.values()) {
       if (!this.registry.has(control.Type)) {
         this.form.get(control.Name)?.disable({ emitEvent: false });
       }
     }
-    this.section.set(section);
+  }
 
-    // Effects run when the form is built and each time the source value changes (spec 01, 5.1).
-    for (const control of this.controlsByName.values()) {
-      if (!control.Effects?.length) {
-        continue;
-      }
-      const item = this.form.get(control.Name);
-      item?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => this.runEffects(control, value));
+  /** Effects run when the form is built and each time the source value changes (spec 01, 5.1). */
+  private wireEffects(): void {
+    const sources = [...this.controlsByName.values()].filter((x) => x.Effects?.length);
+    for (const control of sources) {
+      this.form.get(control.Name)?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => this.runEffects(control, value));
     }
-    for (const control of this.controlsByName.values()) {
-      if (control.Effects?.length) {
-        applyEffects(control, toOutputValue(control, this.form.get(control.Name)?.value), this);
-      }
+    for (const control of sources) {
+      applyEffects(control, toOutputValue(control, this.form.get(control.Name)?.value), this);
     }
+  }
 
-    // Computed fields: the client shows the value while the user types; the server saves its own value.
+  /** Computed fields: the client shows the value while the user types; the server saves its own value. */
+  private wireComputed(section: CPApplicationSection): void {
     if (section.Computed) {
       this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.updateComputed());
       this.updateComputed();
     }
-    if (!this.canSave()) {
-      this.form.disable({ emitEvent: false }); // review 3 RV-17
-    }
-    this.loading.set(false);
   }
 
   private updateComputed(): void {

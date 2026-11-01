@@ -82,6 +82,20 @@ export function toOutputValue(control: CPApplicationControl, value: unknown): st
   return value === '' ? null : String(value);
 }
 
+/** The visible and required flags of the controls as the JSON gives them; the effects change them later. */
+export function initialFlags(section: CPApplicationSection): { visible: Record<string, boolean>; required: Record<string, boolean> } {
+  const visible: Record<string, boolean> = {};
+  const required: Record<string, boolean> = {};
+  for (const control of section.Controls ?? []) {
+    visible[control.Name] = control.Visible !== false;
+    for (const child of control.ChildControls ?? []) {
+      visible[child.Name] = child.Visible !== false;
+      required[child.Name] = !!child.Validator?.Required;
+    }
+  }
+  return { visible, required };
+}
+
 /** The value controls of a section: the section-level controls and the children of "section" containers. */
 export function valueControls(section: CPApplicationSection): CPApplicationControl[] {
   const list: CPApplicationControl[] = [];

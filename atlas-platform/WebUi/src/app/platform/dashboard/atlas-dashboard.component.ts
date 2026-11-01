@@ -8,6 +8,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ClientSideRowModelModule, ColDef, Module, RowClassParams } from 'ag-grid-community';
 import { AgLoadingOverlayComponent, DialogComponent, LoaderComponent } from '../atlas-pbdev';
+import { EMPTY, Observable, Subject, catchError, startWith, switchMap, tap } from 'rxjs';
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
 import { CPAtlasDashboard, CPAtlasTab, CPButton, CPButtonTarget } from '../atlas-models';
@@ -71,36 +72,51 @@ export class AtlasDashboardComponent implements OnInit {
 
   code = '';
 
+  private readonly reloads = new Subject<void>();
+
   ngOnInit(): void {
-    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      this.code = (params.get('code') ?? '').toUpperCase();
-      this.tabIndex.set(0);
-      this.search.set('');
-      this.load();
-    });
+    // A new route or a reload cancels the load before it, so a late answer cannot show the rows of another app.
+    this.route.paramMap
+      .pipe(
+        switchMap((params) => {
+          this.code = (params.get('code') ?? '').toUpperCase();
+          this.tabIndex.set(0);
+          this.search.set('');
+          return this.reloads.pipe(
+            startWith(undefined),
+            switchMap(() => this.fetch()),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
   }
 
+  /** Loads the dashboard of the current app again (after a delete). */
   load(): void {
+    this.reloads.next();
+  }
+
+  private fetch(): Observable<CPAtlasDashboard> {
     this.loading.set(true);
     this.error.set(null);
-    this.api.dashboard(this.code).subscribe({
-      next: (dashboard) => {
+    return this.api.dashboard(this.code).pipe(
+      tap((dashboard) => {
         this.dashboard.set(dashboard);
         if (this.tabIndex() >= this.tabs().length) {
           this.tabIndex.set(0);
         }
         this.loading.set(false);
-      },
-      error: (error) => {
+      }),
+      catchError((error) => {
         this.error.set(problemText(error));
         this.loading.set(false);
-      },
-    });
+        return EMPTY;
+      }),
+    );
   }
 
-  visibleButtons(): CPButton[] {
-    return (this.dashboard()?.Buttons ?? []).filter((x) => x.Visible);
-  }
+  readonly visibleButtons = computed<CPButton[]>(() => (this.dashboard()?.Buttons ?? []).filter((x) => x.Visible));
 
   /** The add button: Target first (spec 03, 4.5). */
   onButton(button: CPButton): void {
