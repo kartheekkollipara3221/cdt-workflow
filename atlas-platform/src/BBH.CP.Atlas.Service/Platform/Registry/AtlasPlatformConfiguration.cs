@@ -11,6 +11,9 @@ public sealed class AtlasPlatformConfiguration(IConfiguration configuration)
 {
     public IConfiguration Configuration { get; } = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
+    /// <summary>The platform settings read from <see cref="Configuration"/> (review FABLE F05).</summary>
+    public AtlasPlatformOptions Options { get; } = AtlasPlatformOptions.From(configuration);
+
     /// <summary>The setting sources in order (last wins), for the --atlas-check report.</summary>
     public string Sources => Configuration is IConfigurationRoot root
         ? string.Join(", ", root.Providers.Select(Describe))

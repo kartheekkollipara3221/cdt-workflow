@@ -20,7 +20,7 @@ public static class AtlasPlatformStartup
     /// The setting of review HO-04: DisableModule (default since review 2, AR-01) or Stop. The platform runs in the
     /// process of the current apps, so by default a platform error must not stop them.
     /// </summary>
-    public const string OnStartupErrorKey = "AppSettings:Atlas:OnStartupError";
+    public const string OnStartupErrorKey = AtlasPlatformOptions.OnStartupErrorKey;
 
     /// <summary>
     /// Loads the table metadata and runs the start-up check. With DisableModule (default) an error removes only the
@@ -77,13 +77,11 @@ public static class AtlasPlatformStartup
     /// </summary>
     private static (AtlasStartupErrorMode Mode, string? Error) OnStartupError(IServiceProvider services)
     {
-        IConfiguration? configuration = services.GetService<AtlasPlatformConfiguration>()?.Configuration ?? services.GetService<IConfiguration>();
-        string? text = configuration?[OnStartupErrorKey];
-        if (string.IsNullOrWhiteSpace(text))
-            return (AtlasStartupErrorMode.DisableModule, null);
-        return Enum.TryParse(text.Trim(), ignoreCase: true, out AtlasStartupErrorMode mode) && Enum.IsDefined(mode) && !int.TryParse(text, out _)
+        AtlasPlatformOptions options = services.GetService<AtlasPlatformConfiguration>()?.Options
+            ?? AtlasPlatformOptions.From(services.GetService<IConfiguration>());
+        return options.StartupErrorMode is { } mode
             ? (mode, null)
-            : (AtlasStartupErrorMode.DisableModule, $"The setting {OnStartupErrorKey} = '{text}' is not valid (allowed: DisableModule, Stop).");
+            : (AtlasStartupErrorMode.DisableModule, $"The setting {OnStartupErrorKey} = '{options.OnStartupError}' is not valid (allowed: DisableModule, Stop).");
     }
 
     /// <summary>DisableModule: the apps with errors are not available; an error of all apps ("*") disables all of them.</summary>

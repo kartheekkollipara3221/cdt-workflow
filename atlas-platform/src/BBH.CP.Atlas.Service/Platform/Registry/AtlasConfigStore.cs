@@ -52,9 +52,10 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         _configuration = configuration;
         _logger = logger ?? (ILogger)NullLogger.Instance;
         _time = time ?? TimeProvider.System;
-        string folder = configuration["AppSettings:ConfigFolder"] is { Length: > 0 } configured ? configured : "Config";
+        AtlasPlatformOptions options = AtlasPlatformOptions.From(configuration);
+        string folder = options.ConfigFolder;
         ConfigFolder = Path.GetFullPath(Path.IsPathRooted(folder) ? folder : Path.Combine(environment.ContentRootPath, folder));
-        _refresh = TimeSpan.FromSeconds(int.TryParse(configuration["AppSettings:ConfigRefreshSeconds"], out int seconds) && seconds >= 0 ? seconds : 2);
+        _refresh = TimeSpan.FromSeconds(options.ConfigRefreshSeconds);
     }
 
     public string ConfigFolder { get; }
@@ -245,10 +246,9 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         if (section[key] is not { } text)
             return false;
 
-        string? name = Enum.GetNames<T>().FirstOrDefault(x => string.Equals(x, text.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (name != null)
+        if (AtlasEnumText.TryParse(text, out T parsed))
         {
-            value = Enum.Parse<T>(name);
+            value = parsed;
             return true;
         }
 
