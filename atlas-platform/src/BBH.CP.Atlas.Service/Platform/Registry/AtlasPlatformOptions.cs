@@ -6,18 +6,15 @@ namespace BBH.CP.Atlas.Service.Platform.Registry;
 /// The platform settings under AppSettings (INTEGRATION.md, section 4), read in one place (review FABLE F05). A value
 /// that is missing or not valid gives the default; OnStartupError keeps its text, so the start-up check can report
 /// a value that is not valid. The module overrides (AppSettings:Modules:*) are read by <see cref="AtlasConfigStore"/>.
+/// AppSettings:ConfigRefreshSeconds is no longer read (review FABLE F04: the config is read one time); a value is ignored.
 /// </summary>
 public sealed class AtlasPlatformOptions
 {
     public const string ConfigFolderKey = "AppSettings:ConfigFolder";
-    public const string ConfigRefreshSecondsKey = "AppSettings:ConfigRefreshSeconds";
     public const string OnStartupErrorKey = "AppSettings:Atlas:OnStartupError";
 
     /// <summary>The folder of the manifests and JSON files, relative to the content root. Default "Config".</summary>
     public string ConfigFolder { get; init; } = "Config";
-
-    /// <summary>How often the store looks for changed manifest files. Default 2; 0 = on each call.</summary>
-    public int ConfigRefreshSeconds { get; init; } = 2;
 
     /// <summary>The text of AppSettings:Atlas:OnStartupError, or null. See <see cref="StartupErrorMode"/>.</summary>
     public string? OnStartupError { get; init; }
@@ -25,7 +22,6 @@ public sealed class AtlasPlatformOptions
     public static AtlasPlatformOptions From(IConfiguration? configuration) => new()
     {
         ConfigFolder = configuration?[ConfigFolderKey] is { Length: > 0 } folder ? folder : "Config",
-        ConfigRefreshSeconds = int.TryParse(configuration?[ConfigRefreshSecondsKey], out int seconds) && seconds >= 0 ? seconds : 2,
         OnStartupError = configuration?[OnStartupErrorKey]
     };
 

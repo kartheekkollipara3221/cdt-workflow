@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using BBH.CP.Atlas.Data.DTO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -9,14 +8,12 @@ namespace BBH.CP.Atlas.Service.Platform.Registry;
 
 /// <summary>
 /// Reads the manifests, form JSON and dashboard JSON from one folder (AppSettings:ConfigFolder, default "Config",
-/// relative to the content root; spec 07, 4.7). The file text is kept in memory and read again when the file
-/// changes. Each form and dashboard call returns a new object, so a request can change it (spec 01, 5.6).
-/// The manifests are one parsed, shared snapshot (review HO-07): do not change a manifest object. The store looks
-/// at the folder (names, times, sizes) at most every AppSettings:ConfigRefreshSeconds (default 2; 0 = each call)
-/// and parses the manifests again only when the folder changed.
-/// One manifest file that cannot be read does not stop the others (review HO-02): the last good version of that file
-/// stays in use (or, with no good version, only that app is missing), Atlas.ConfigInvalid is logged and ConfigErrors
-/// names the file for the start-up check.
+/// relative to the content root; spec 07, 4.7) one time, at the first use (the platform start-up), and keeps them
+/// (review FABLE F04). A change to a config file is seen after a restart of the app pool, as a table change.
+/// Each form and dashboard call returns a new object, so a request can change it (spec 01, 5.6). The manifests are
+/// shared (review HO-07): do not change a manifest object.
+/// One manifest file that cannot be read does not stop the others (review HO-02): only that app is missing,
+/// Atlas.ConfigInvalid is logged and ConfigErrors names the file for the start-up check.
 /// </summary>
 public interface IAtlasConfigStore
 {
@@ -32,7 +29,7 @@ public interface IAtlasConfigStore
     /// <summary>The dashboard JSON of the app (a new copy), or null if the app has no dashboard.</summary>
     CPAtlasDashboard? GetDashboard(string appCode);
 
-    /// <summary>Manifest files that could not be read in the current snapshot (review HO-02).</summary>
+    /// <summary>Manifest files that could not be read (review HO-02).</summary>
     IReadOnlyList<string> ConfigErrors => [];
 }
 
@@ -40,90 +37,61 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger _logger;
-    private readonly TimeProvider _time;
-    private readonly TimeSpan _refresh;
-    private readonly ConcurrentDictionary<string, (DateTime Stamp, string Text)> _files = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
-    private ManifestSnapshot? _snapshot;
+    private Catalog? _catalog;
 
-    public AtlasConfigStore(IConfiguration configuration, IHostEnvironment environment, TimeProvider? time = null,
-        ILogger<AtlasConfigStore>? logger = null)
+    public AtlasConfigStore(IConfiguration configuration, IHostEnvironment environment, ILogger<AtlasConfigStore>? logger = null)
     {
         _configuration = configuration;
         _logger = logger ?? (ILogger)NullLogger.Instance;
-        _time = time ?? TimeProvider.System;
-        AtlasPlatformOptions options = AtlasPlatformOptions.From(configuration);
-        string folder = options.ConfigFolder;
+        string folder = AtlasPlatformOptions.From(configuration).ConfigFolder;
         ConfigFolder = Path.GetFullPath(Path.IsPathRooted(folder) ? folder : Path.Combine(environment.ContentRootPath, folder));
-        _refresh = TimeSpan.FromSeconds(options.ConfigRefreshSeconds);
     }
 
     public string ConfigFolder { get; }
 
-    public IReadOnlyList<AtlasAppManifest> GetManifests() => Snapshot().Manifests;
+    public IReadOnlyList<AtlasAppManifest> GetManifests() => Read().Manifests;
 
     public AtlasAppManifest? FindManifest(string appCode) =>
-        Snapshot().ByCode.GetValueOrDefault(AtlasAppCode.Normalize(appCode));
+        Read().ByCode.GetValueOrDefault(AtlasAppCode.Normalize(appCode));
 
-    public IReadOnlyList<string> ConfigErrors => Snapshot().Errors;
+    public IReadOnlyList<string> ConfigErrors => Read().Errors;
 
-    private sealed record ManifestSnapshot(
-        string Signature, IReadOnlyList<AtlasAppManifest> Manifests, IReadOnlyDictionary<string, AtlasAppManifest> ByCode,
-        IReadOnlyList<string> Errors, DateTimeOffset CheckedAt);
+    /// <summary>The text of a form or dashboard file, or the error of its read (thrown again on each use).</summary>
+    private sealed record FileText(string? Text, Exception? Error);
 
-    private ManifestSnapshot Snapshot()
+    private sealed record Catalog(
+        IReadOnlyList<AtlasAppManifest> Manifests, IReadOnlyDictionary<string, AtlasAppManifest> ByCode,
+        IReadOnlyList<string> Errors, IReadOnlyDictionary<string, FileText> Files);
+
+    /// <summary>The config, read at the first call. A read that fails (the folder cannot be listed) is tried again at the next call.</summary>
+    private Catalog Read()
     {
-        DateTimeOffset now = _time.GetUtcNow();
-        ManifestSnapshot? current = Volatile.Read(ref _snapshot);
-        if (current != null && now - current.CheckedAt < _refresh)
+        Catalog? current = Volatile.Read(ref _catalog);
+        if (current != null)
             return current;
 
         lock (_lock)
         {
-            current = _snapshot;
-            if (current != null && now - current.CheckedAt < _refresh)
-                return current;
-
-            string[] paths;
-            string signature;
-            try
-            {
-                paths = Directory.Exists(ConfigFolder)
-                    ? [.. Directory.GetFiles(ConfigFolder, "*.app.json").Order(StringComparer.OrdinalIgnoreCase)]
-                    : [];
-                signature = string.Join("|", paths.Select(path =>
-                {
-                    FileInfo file = new(path);
-                    return $"{path}:{file.LastWriteTimeUtc.Ticks}:{file.Length}";
-                }));
-            }
-            catch (Exception ex) when (current != null && ex is IOException or UnauthorizedAccessException)
-            {
-                // Review 3 RV-L05: the folder cannot be listed now (a share or ACL error). The last good apps stay in use;
-                // the next refresh tries again.
-                AtlasLog.ConfigInvalid(_logger, ConfigFolder, $"The config folder cannot be read: {ex.Message} The last good version stays in use.");
-                ManifestSnapshot kept = current with { CheckedAt = now };
-                Volatile.Write(ref _snapshot, kept);
-                return kept;
-            }
-
-            ManifestSnapshot next = current != null && current.Signature == signature
-                ? current with { CheckedAt = now }
-                : Build(paths, signature, now, current);
-            Volatile.Write(ref _snapshot, next);
-            return next;
+            current = _catalog ?? Build();
+            Volatile.Write(ref _catalog, current);
+            return current;
         }
     }
 
-    private ManifestSnapshot Build(string[] paths, string signature, DateTimeOffset now, ManifestSnapshot? previous)
+    private Catalog Build()
     {
+        string[] paths = Directory.Exists(ConfigFolder)
+            ? [.. Directory.GetFiles(ConfigFolder, "*.app.json").Order(StringComparer.OrdinalIgnoreCase)]
+            : [];
+
         List<AtlasAppManifest> manifests = [];
         List<string> errors = [];
         foreach (string path in paths)
         {
             try
             {
-                AtlasAppManifest manifest = AtlasJson.Deserialize<AtlasAppManifest>(ReadText(path), Path.GetFileName(path));
+                AtlasAppManifest manifest = AtlasJson.Deserialize<AtlasAppManifest>(File.ReadAllText(path), Path.GetFileName(path));
                 if (string.IsNullOrWhiteSpace(manifest.Code))
                     throw new InvalidOperationException($"{Path.GetFileName(path)} has no Code.");
                 manifest.Code = AtlasAppCode.Normalize(manifest.Code);
@@ -133,15 +101,9 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
             }
             catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
             {
-                AtlasAppManifest? lastGood = previous?.Manifests.FirstOrDefault(x => string.Equals(x.SourceFile, path, StringComparison.OrdinalIgnoreCase));
-                string result = lastGood != null
-                    ? $"The last good version ({lastGood.Code}) stays in use."
-                    : "The app of this file is not available.";
-                string message = $"{Path.GetFileName(path)} cannot be read: {ex.Message} {result}";
+                string message = $"{Path.GetFileName(path)} cannot be read: {ex.Message} The app of this file is not available.";
                 errors.Add(message);
                 AtlasLog.ConfigInvalid(_logger, Path.GetFileName(path), message);
-                if (lastGood != null)
-                    manifests.Add(lastGood);
             }
         }
 
@@ -152,14 +114,36 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
                 continue; // the first file wins, as FirstOrDefault did
             // Review 3 RV-L09: a second file with the same Code was ignored with no message.
             string message = $"{Path.GetFileName(manifest.SourceFile)} has the Code {manifest.Code}, which {Path.GetFileName(byCode[manifest.Code].SourceFile)} already has. The second file is not used.";
-            if (!errors.Contains(message))
-            {
-                errors.Add(message);
-                AtlasLog.ConfigInvalid(_logger, Path.GetFileName(manifest.SourceFile) ?? "", message);
-            }
+            errors.Add(message);
+            AtlasLog.ConfigInvalid(_logger, Path.GetFileName(manifest.SourceFile) ?? "", message);
         }
 
-        return new ManifestSnapshot(signature, manifests, byCode, errors, now);
+        Dictionary<string, FileText> files = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string? name in byCode.Values.SelectMany(x => new[] { x.Form, x.Dashboard }))
+            if (!string.IsNullOrWhiteSpace(name) && !files.ContainsKey(name))
+                files[name] = ReadFile(name);
+
+        return new Catalog(manifests, byCode, errors, files);
+    }
+
+    private FileText ReadFile(string fileName)
+    {
+        try
+        {
+            return new FileText(File.ReadAllText(Resolve(fileName)), null);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            return new FileText(null, ex);
+        }
+    }
+
+    private string Text(string fileName)
+    {
+        FileText file = Read().Files.GetValueOrDefault(fileName) ?? ReadFile(fileName);
+        if (file.Error != null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(file.Error);
+        return file.Text!;
     }
 
     public CPAtlasApplicationConfig GetForm(string appCode)
@@ -169,8 +153,7 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         if (string.IsNullOrWhiteSpace(manifest.Form))
             throw AtlasProblemException.NotFound($"App '{manifest.Code}' has no form.");
 
-        string path = Resolve(manifest.Form);
-        return AtlasJson.Deserialize<CPAtlasApplicationConfig>(ReadText(path), manifest.Form);
+        return AtlasJson.Deserialize<CPAtlasApplicationConfig>(Text(manifest.Form), manifest.Form);
     }
 
     public CPAtlasDashboard? GetDashboard(string appCode)
@@ -179,8 +162,7 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         if (manifest == null || string.IsNullOrWhiteSpace(manifest.Dashboard))
             return null;
 
-        string path = Resolve(manifest.Dashboard);
-        CPAtlasDashboard dashboard = AtlasJson.Deserialize<CPAtlasDashboard>(ReadText(path), manifest.Dashboard);
+        CPAtlasDashboard dashboard = AtlasJson.Deserialize<CPAtlasDashboard>(Text(manifest.Dashboard), manifest.Dashboard);
         dashboard.AppCode ??= manifest.Code;
         return dashboard;
     }
@@ -195,17 +177,6 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         if (!File.Exists(path))
             throw new FileNotFoundException($"Config file '{fileName}' was not found in {ConfigFolder}.", path);
         return path;
-    }
-
-    private string ReadText(string path)
-    {
-        DateTime stamp = File.GetLastWriteTimeUtc(path);
-        if (_files.TryGetValue(path, out var cached) && cached.Stamp == stamp)
-            return cached.Text;
-
-        string text = File.ReadAllText(path);
-        _files[path] = (stamp, text);
-        return text;
     }
 
     // Environment values win (spec 07, 4.1; spec 11, 4.5). A value that is present but not valid fails closed

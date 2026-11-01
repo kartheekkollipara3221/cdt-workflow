@@ -133,16 +133,21 @@ public sealed class RegistryTests : IDisposable
     }
 
     [Fact]
-    public void A_changed_file_is_read_again()
+    public void A_changed_file_is_seen_only_after_a_new_start()
     {
+        // Review FABLE F04: the config is read one time at start-up; a change needs a restart (as a table change).
         AtlasConfigStore store = Store();
         Assert.Equal("Demo", store.GetForm("DEMO").Name);
 
         string path = Path.Combine(_folder, "DEMO.json");
         File.WriteAllText(path, """{ "Name": "Demo 2", "Section": { "Name": "Demo" } }""");
-        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
+        string manifest = Path.Combine(_folder, "DEMO.app.json");
+        File.WriteAllText(manifest, File.ReadAllText(manifest).Replace("\"Enforce\"", "\"LogOnly\"", StringComparison.Ordinal));
 
-        Assert.Equal("Demo 2", store.GetForm("DEMO").Name);
+        Assert.Equal("Demo", store.GetForm("DEMO").Name);
+        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
+        Assert.Equal("Demo 2", Store().GetForm("DEMO").Name);
+        Assert.Equal(AtlasAccessMode.LogOnly, Store().FindManifest("DEMO")!.AccessMode);
     }
 
     [Fact]
@@ -314,23 +319,6 @@ public sealed class RegistryTests : IDisposable
     }
 
     [Fact]
-    public void A_changed_manifest_is_seen_after_the_refresh_time()
-    {
-        ManualTime time = new(new DateTimeOffset(2026, 10, 25, 12, 0, 0, TimeSpan.Zero));
-        AtlasConfigStore store = Store(new() { ["AppSettings:ConfigRefreshSeconds"] = "60" }, time);
-        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
-
-        string path = Path.Combine(_folder, "DEMO.app.json");
-        File.WriteAllText(path, File.ReadAllText(path).Replace("\"Enforce\"", "\"LogOnly\"", StringComparison.Ordinal));
-        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
-
-        time.Now = time.Now.AddSeconds(30);
-        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);   // not checked yet
-        time.Now = time.Now.AddSeconds(31);
-        Assert.Equal(AtlasAccessMode.LogOnly, store.FindManifest("DEMO")!.AccessMode);
-    }
-
-    [Fact]
     public void A_manifest_file_that_cannot_be_read_does_not_stop_the_other_apps()
     {
         File.WriteAllText(Path.Combine(_folder, "BROKEN.app.json"), """{ "Code": "BROKEN", "Form": """);
@@ -340,21 +328,6 @@ public sealed class RegistryTests : IDisposable
         Assert.Null(store.FindManifest("BROKEN"));
         Assert.Contains(store.ConfigErrors, x => x.StartsWith("BROKEN.app.json cannot be read", StringComparison.Ordinal)
             && x.EndsWith("The app of this file is not available.", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void A_manifest_file_that_becomes_unreadable_keeps_its_last_good_version()
-    {
-        AtlasConfigStore store = Store();
-        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
-
-        string path = Path.Combine(_folder, "DEMO.app.json");
-        File.WriteAllText(path, """{ "Code": "demo", "AccessMode": "LogOnly", """); // a copy that is not complete
-        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
-
-        Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode);
-        Assert.Contains(store.ConfigErrors, x => x.Contains("The last good version (DEMO) stays in use.", StringComparison.Ordinal));
-        Assert.NotNull(store.FindManifest("OFF"));
     }
 
     [Fact]
@@ -380,18 +353,10 @@ public sealed class RegistryTests : IDisposable
         Assert.True(resolver.IsPlatformApp("LATE"));
     }
 
-    private sealed class ManualTime(DateTimeOffset now) : TimeProvider
-    {
-        public DateTimeOffset Now { get; set; } = now;
-
-        public override DateTimeOffset GetUtcNow() => Now;
-    }
-
-    private AtlasConfigStore Store(Dictionary<string, string?>? settings = null, TimeProvider? time = null)
+    private AtlasConfigStore Store(Dictionary<string, string?>? settings = null)
     {
         Dictionary<string, string?> values = new(settings ?? []) { ["AppSettings:ConfigFolder"] = _folder };
-        values.TryAdd("AppSettings:ConfigRefreshSeconds", "0");
-        return new AtlasConfigStore(new ConfigurationBuilder().AddInMemoryCollection(values).Build(), new TestHost(_folder), time);
+        return new AtlasConfigStore(new ConfigurationBuilder().AddInMemoryCollection(values).Build(), new TestHost(_folder));
     }
 
     public sealed class DemoModule : IAtlasModule

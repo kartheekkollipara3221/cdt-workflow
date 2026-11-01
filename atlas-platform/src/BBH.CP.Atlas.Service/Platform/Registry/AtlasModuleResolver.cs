@@ -16,7 +16,7 @@ public sealed record AtlasModuleRegistration(string Code, Type ServiceType);
 
 /// <summary>
 /// Replaces the five if chains (spec 07, 4.3). Unknown or disabled app: 404. Missing service type: 400.
-/// An app whose Table or AuditTable was not loaded at start-up (for example a manifest changed while the app runs)
+/// An app whose Table or AuditTable was not loaded at start-up (for example the start-up did not run)
 /// is not available: 404 and Atlas.AppNotAvailable (review HO-05). A restart loads the table and runs the checks.
 /// </summary>
 public interface IAtlasModuleResolver
