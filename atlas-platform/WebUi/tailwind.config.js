@@ -10,6 +10,8 @@ const theming = (name) => {
 
 module.exports = {
   content: ['./src/**/*.{html,ts}'],
+  // The Tailwind classes that platform app JSON uses (TTDV2.json Class/DivClass); INTEGRATION.md section 2 (review FABLE O18).
+  safelist: ['grid', 'grid-cols-2', 'grid-cols-3', 'gap-6', 'items-start', 'p-8', 'bg-white'],
   theme: {
     extend: {
       fontFamily: theming('fonts'),
