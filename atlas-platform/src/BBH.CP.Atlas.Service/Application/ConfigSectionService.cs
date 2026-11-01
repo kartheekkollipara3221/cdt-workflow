@@ -264,129 +264,209 @@ namespace BBH.CP.Atlas.Service.Application
         {
             ArgumentNullException.ThrowIfNull(input);
             AtlasAppManifest manifest = Manifest;
-            CPAtlasApplicationConfig form = Services.ConfigStore.GetForm(AppCode);
             AtlasTable table = MainTable(manifest);
-            CPAtlasPage result = new() { AppCode = manifest.Code, Code = input.Code, Step = input.Step, ID = 0, Outputs = [] };
-            List<CPPageError> errors = [];
-
-            // 1-2. Record and access.
-            Dictionary<string, object?>? stored = null;
-            if (input.ID > 0)
+            SaveState state = new()
             {
-                stored = Services.PlatformContext.FindActive(table.FullName, input.ID)
-                    ?? throw AtlasProblemException.NotFound($"Record {input.ID} of {manifest.Code} was not found.");
-                Services.Access.Demand(manifest, form, AtlasOperation.Edit, stored, input.ID);
+                Input = input,
+                Manifest = manifest,
+                Form = Services.ConfigStore.GetForm(AppCode),
+                Table = table,
+                Result = new() { AppCode = manifest.Code, Code = input.Code, Step = input.Step, ID = 0, Outputs = [] }
+            };
+
+            LoadStored(state);
+            ApplyRules(state);
+            ReadAndFilter(state);
+            ValidateFields(state);
+            CheckVersion(state);
+            MapRecord(state);
+            if (state.Errors.Count > 0)
+                return Failed(state.Result, state.Errors);
+
+            ComputeAndSystemFields(state);
+            RunBeforeSave(state);
+            if (state.Errors.Count > 0)
+                return Failed(state.Result, state.Errors);
+
+            if (!Persist(state))
+                return Failed(state.Result, state.Errors);
+            return Complete(state);
+        }
+
+        /// <summary>The state of one save, passed from step to step of <see cref="SavePage"/>.</summary>
+        private sealed class SaveState
+        {
+            public required CPAtlasPage Input { get; init; }
+            public required AtlasAppManifest Manifest { get; init; }
+            public required CPAtlasApplicationConfig Form { get; init; }
+            public required AtlasTable Table { get; init; }
+            public required CPAtlasPage Result { get; init; }
+            public List<CPPageError> Errors { get; } = [];
+
+            /// <summary>The stored record, or null for a new record.</summary>
+            public Dictionary<string, object?>? Stored { get; set; }
+            public bool IsNew => Stored == null;
+            public Dictionary<string, string?> Previous { get; set; } = [];
+            public CPApplicationSection Section { get; set; } = null!;
+            public AtlasFormFields Fields { get; set; } = null!;
+            public Dictionary<string, string?> Submitted { get; set; } = [];
+
+            /// <summary>The fields that the server effects set (SetFromOption, Set, Clear).</summary>
+            public HashSet<string> Derived { get; set; } = [];
+
+            /// <summary>The Computed columns (spec 01, 10.2).</summary>
+            public HashSet<string> Computed { get; set; } = [];
+            public Dictionary<AtlasFormField, string?> Accepted { get; set; } = [];
+            public Dictionary<string, object?> Record { get; set; } = null!;
+            public AtlasSaveContext Context { get; set; } = null!;
+
+            /// <summary>The submitted value of a field, else its stored value.</summary>
+            public string? Current(AtlasFormField field) =>
+                Submitted.TryGetValue(field.Name, out string? value) ? value : Previous.GetValueOrDefault(field.Field);
+        }
+
+        /// <summary>Save steps 1-2: the stored record and the access check.</summary>
+        private void LoadStored(SaveState state)
+        {
+            AtlasAppManifest manifest = state.Manifest;
+            if (state.Input.ID > 0)
+            {
+                state.Stored = Services.PlatformContext.FindActive(state.Table.FullName, state.Input.ID)
+                    ?? throw AtlasProblemException.NotFound($"Record {state.Input.ID} of {manifest.Code} was not found.");
+                Services.Access.Demand(manifest, state.Form, AtlasOperation.Edit, state.Stored, state.Input.ID);
             }
             else
             {
-                Services.Access.Demand(manifest, form, AtlasOperation.Create, null, 0);
+                Services.Access.Demand(manifest, state.Form, AtlasOperation.Create, null, 0);
                 // Review 3 RV-04: a new record is never only logged (as a Delete, review SV-02). In LogOnly the rules make
                 // the fields read-only for such a user, so the save would insert a row of defaults only. The load of a
                 // new form stays LogOnly.
-                AtlasAccessDecision create = Services.Access.Evaluate(manifest, form, AtlasOperation.Create, null);
+                AtlasAccessDecision create = Services.Access.Evaluate(manifest, state.Form, AtlasOperation.Create, null);
                 if (!create.Allowed)
                     throw AtlasProblemException.Forbidden(create.Reason);
             }
 
-            bool isNew = stored == null;
-            Dictionary<string, string?> previous = Snapshot(table, stored);
+            state.Previous = Snapshot(state.Table, state.Stored);
+        }
 
-            // 3. Effective section: rules for this user and record.
-            CPApplicationSection section = form.Section
+        /// <summary>Save step 3: the effective section, with the rules for this user and record.</summary>
+        private void ApplyRules(SaveState state)
+        {
+            AtlasAppManifest manifest = state.Manifest;
+            state.Section = state.Form.Section
                 ?? throw AtlasProblemException.Config($"The form of {manifest.Code} has no Section.");
-            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, stored), manifest.RuleMode, manifest.RuleDefault);
-            AtlasFormFields fields = AtlasFormFields.From(section, outcome);
+            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(state.Section, state.Form.Rules,
+                RuleContext(manifest, state.Form, state.Stored), manifest.RuleMode, manifest.RuleDefault);
+            state.Fields = AtlasFormFields.From(state.Section, outcome);
+        }
 
-            Dictionary<string, string?> submitted = ReadOutputs(input, fields, errors);
-            string? Current(AtlasFormField field) =>
-                submitted.TryGetValue(field.Name, out string? value) ? value : previous.GetValueOrDefault(field.Field);
+        /// <summary>Save steps 4-5: the outputs, the server part of the Effects, and the allow list.</summary>
+        private void ReadAndFilter(SaveState state)
+        {
+            state.Submitted = ReadOutputs(state.Input, state.Fields, state.Errors);
 
             // Server part of Effects (Show, Hide, Require, Unrequire) and the SetFromOption targets.
-            HashSet<string> derived = AtlasServerEffects.Apply(fields, Current);
-            HashSet<string> computed = new((IEnumerable<string>?)form.Computed?.Keys ?? [], StringComparer.OrdinalIgnoreCase);
+            state.Derived = AtlasServerEffects.Apply(state.Fields, state.Current);
+            state.Computed = new((IEnumerable<string>?)state.Form.Computed?.Keys ?? [], StringComparer.OrdinalIgnoreCase);
 
-            // 4. Allow list.
-            Dictionary<AtlasFormField, string?> accepted = AtlasAllowList.Check(submitted, fields, table, previous,
-                field => SystemColumns.Contains(field.Field) || computed.Contains(field.Field) || derived.Contains(field.Name),
-                (field, value, previous) => OptionError(field, value, previous, table), errors,
+            state.Accepted = AtlasAllowList.Check(state.Submitted, state.Fields, state.Table, state.Previous,
+                field => IsServerSet(state, field),
+                (field, value, previous) => OptionError(field, value, previous, state.Table), state.Errors,
                 (field, reason) =>
                 {
                     if (reason == AtlasIgnoreReason.ServerSet)
-                        AtlasLog.FieldIgnored(Logger, manifest.Code, field.Name, "ServerSet");
+                        AtlasLog.FieldIgnored(Logger, state.Manifest.Code, field.Name, "ServerSet");
                 });
 
             // Review SV-12: a refused field is a warning, so a probe or a client defect can be found in the log.
-            foreach (CPPageError refusal in errors.Where(x => x.Code is "NotAllowed" or "NotInOptions" or "InvalidGrid"))
-                AtlasLog.FieldRefused(Logger, Services.User.LanId, manifest.Code, input.ID, refusal.Field ?? "", refusal.Code);
+            foreach (CPPageError refusal in state.Errors.Where(x => x.Code is "NotAllowed" or "NotInOptions" or "InvalidGrid"))
+                AtlasLog.FieldRefused(Logger, Services.User.LanId, state.Manifest.Code, state.Input.ID, refusal.Field ?? "", refusal.Code);
+        }
 
-            // 6. Validators and the Require effects (visible and enabled fields only; one error for each field).
-            HashSet<string> refused = new(errors.Select(x => x.Field ?? ""), StringComparer.OrdinalIgnoreCase);
-            foreach (AtlasFormField field in fields.All.Where(x => x.Visible && !x.Disabled))
+        /// <summary>A field that only the server writes: a system column, a Computed column or a server effect target.</summary>
+        private static bool IsServerSet(SaveState state, AtlasFormField field) =>
+            SystemColumns.Contains(field.Field) || state.Computed.Contains(field.Field) || state.Derived.Contains(field.Name);
+
+        /// <summary>Save step 6: validators and the Require effects (visible and enabled fields only; one error for each field).</summary>
+        private void ValidateFields(SaveState state)
+        {
+            HashSet<string> refused = new(state.Errors.Select(x => x.Field ?? ""), StringComparer.OrdinalIgnoreCase);
+            IReadOnlyDictionary<string, string>? defaults = state.Form.Defaults;
+            foreach (AtlasFormField field in state.Fields.All.Where(x => x.Visible && !x.Disabled))
             {
-                if (SystemColumns.Contains(field.Field) || computed.Contains(field.Field) || derived.Contains(field.Name)
-                    || refused.Contains(field.Name))
+                if (IsServerSet(state, field) || refused.Contains(field.Name))
                     continue;
 
-                string? value = accepted.TryGetValue(field, out string? sent) ? sent : previous.GetValueOrDefault(field.Field);
-                if (isNew && string.IsNullOrEmpty(value) && form.Defaults != null && form.Defaults.ContainsKey(field.Name))
-                    continue; // the default is set at step 9
+                string? value = state.Accepted.TryGetValue(field, out string? sent) ? sent : state.Previous.GetValueOrDefault(field.Field);
+                if (state.IsNew && string.IsNullOrEmpty(value) && defaults != null && defaults.ContainsKey(field.Name))
+                    continue; // the default is set at step 8
 
                 if (field.IsGridField && string.IsNullOrWhiteSpace(value) && field.Validator?.Integer == true)
                 {
                     value = "0"; // spec 01, 10.3: an empty day value is 0
-                    accepted[field] = value;
+                    state.Accepted[field] = value;
                 }
 
                 if (AtlasFieldValidator.Validate(field, value) is { } error)
-                    errors.Add(error);
+                    state.Errors.Add(error);
             }
+        }
 
-            // 7. Version token.
-            // Review DA-02: the rowversion column is found by its type, and an update with no Version is refused.
-            if (stored != null && RowVersion(table) != null)
+        /// <summary>Save step 7: the version token. Review DA-02: the rowversion column is found by its type, and an update with no Version is refused.</summary>
+        private void CheckVersion(SaveState state)
+        {
+            if (state.Stored == null || RowVersion(state.Table) == null)
+                return;
+
+            if (string.IsNullOrWhiteSpace(state.Input.Version))
             {
-                if (string.IsNullOrWhiteSpace(input.Version))
-                {
-                    if (manifest.RequireVersion)
-                        errors.Add(VersionRequired());
-                }
-                else if (!string.Equals(input.Version, VersionOf(table, stored), StringComparison.Ordinal))
-                    errors.Add(Conflict());
+                if (state.Manifest.RequireVersion)
+                    state.Errors.Add(VersionRequired());
             }
+            else if (!string.Equals(state.Input.Version, VersionOf(state.Table, state.Stored), StringComparison.Ordinal))
+                state.Errors.Add(Conflict());
+        }
 
-            // 8. Conversion and mapping.
-            Dictionary<string, object?> record = stored ?? table.NewRecord();
+        /// <summary>Save step 8: conversion and mapping of the accepted values, the server effect values and the defaults.</summary>
+        private void MapRecord(SaveState state)
+        {
+            AtlasTable table = state.Table;
+            AtlasFormFields fields = state.Fields;
+            List<CPPageError> errors = state.Errors;
+            Dictionary<string, object?> record = state.Record = state.Stored ?? table.NewRecord();
+
             HashSet<string> invalid = new(errors.Select(x => x.Field), StringComparer.OrdinalIgnoreCase);
-            foreach ((AtlasFormField field, string? value) in accepted.Where(x => !invalid.Contains(x.Key.Name)))
+            foreach ((AtlasFormField field, string? value) in state.Accepted.Where(x => !invalid.Contains(x.Key.Name)))
                 Map(table, record, field.Name, field.Field, value, errors);
 
-            if (derived.Count > 0)
-                foreach ((string target, string? value) in AtlasServerEffects.Values(fields, Current, OptionsOf))
+            if (state.Derived.Count > 0)
+                foreach ((string target, string? value) in AtlasServerEffects.Values(fields, state.Current, OptionsOf))
                     if (fields.Find(target) is { } field)
                         Map(table, record, field.Name, field.Field, value, errors);
 
-            if (isNew && form.Defaults != null)
+            if (!state.IsNew || state.Form.Defaults == null)
+                return;
+
+            foreach ((string name, string token) in state.Form.Defaults)
             {
-                foreach ((string name, string token) in form.Defaults)
-                {
-                    if (fields.Find(name) is not { } field || accepted.TryGetValue(field, out string? sent) && !string.IsNullOrEmpty(sent))
-                        continue;
-                    string? value = ResolveDefault(token, field.Control.OptionsSource == null ? field.Control.Options : OptionsOf(field.Control));
-                    Map(table, record, field.Name, field.Field, value, errors);
-                }
+                if (fields.Find(name) is not { } field || state.Accepted.TryGetValue(field, out string? sent) && !string.IsNullOrEmpty(sent))
+                    continue;
+                string? value = ResolveDefault(token, field.Control.OptionsSource == null ? field.Control.Options : OptionsOf(field.Control));
+                Map(table, record, field.Name, field.Field, value, errors);
             }
+        }
 
-            if (errors.Count > 0)
-                return Failed(result, errors);
-
-            // Computed fields (spec 01, 10.2).
-            foreach ((string target, string expression) in form.Computed ?? new Dictionary<string, string>())
+        /// <summary>Computed fields (spec 01, 10.2) and step 9, the system fields: UTC from TimeProvider (or local time, SystemTime Local, review DA-11); people as LAN IDs.</summary>
+        private void ComputeAndSystemFields(SaveState state)
+        {
+            AtlasTable table = state.Table;
+            Dictionary<string, object?> record = state.Record;
+            foreach ((string target, string expression) in state.Form.Computed ?? new Dictionary<string, string>())
                 if (AtlasComputedFields.Compute(table, record, target, expression) is { } computeError)
-                    errors.Add(computeError);
+                    state.Errors.Add(computeError);
 
-            // 9. System fields: UTC from TimeProvider (or local time, SystemTime Local, review DA-11); people as LAN IDs.
             DateTime now = SystemNow();
-            if (isNew)
+            if (state.IsNew)
             {
                 SetIfColumn(table, record, "CreatedBy", Services.User.LanId);
                 SetIfColumn(table, record, "CreatedDate", now);
@@ -395,47 +475,60 @@ namespace BBH.CP.Atlas.Service.Application
 
             SetIfColumn(table, record, "ModifiedBy", Services.User.LanId);
             SetIfColumn(table, record, "ModifiedDate", now);
+        }
 
-            AtlasSaveContext saveContext = new()
+        /// <summary>Step 10: the OnBeforeSave hook. Its errors stop the save.</summary>
+        private void RunBeforeSave(SaveState state)
+        {
+            state.Context = new AtlasSaveContext
             {
-                Manifest = manifest,
-                Form = form,
-                Section = section,
-                Fields = fields,
-                Record = record,
-                Previous = previous,
-                IsNew = isNew
+                Manifest = state.Manifest,
+                Form = state.Form,
+                Section = state.Section,
+                Fields = state.Fields,
+                Record = state.Record,
+                Previous = state.Previous,
+                IsNew = state.IsNew
             };
-            OnBeforeSave(saveContext);
-            errors.AddRange(saveContext.Errors);
-            if (errors.Count > 0)
-                return Failed(result, errors);
+            OnBeforeSave(state.Context);
+            state.Errors.AddRange(state.Context.Errors);
+        }
 
-            // 11-12. Save and audit in one transaction.
-            if (stored != null && !string.IsNullOrWhiteSpace(input.Version) && RowVersion(table) is { } rowVersion)
+        /// <summary>Steps 11-12: save and audit in one transaction. False: the errors say why.</summary>
+        private bool Persist(SaveState state)
+        {
+            AtlasTable table = state.Table;
+            if (state.Stored != null && !string.IsNullOrWhiteSpace(state.Input.Version) && RowVersion(table) is { } rowVersion)
             {
                 // The UPDATE uses the version from the client, so a change after the load gives a conflict.
-                Services.PlatformContext.Entry(stored).Property(rowVersion.Name).OriginalValue =
-                    Convert.FromBase64String(input.Version);
+                Services.PlatformContext.Entry(state.Stored).Property(rowVersion.Name).OriginalValue =
+                    Convert.FromBase64String(state.Input.Version);
             }
 
-            if (!SaveWithAudit(manifest, table, record, isNew, isNew ? AtlasAuditEvents.Create : AtlasAuditEvents.Update,
-                    () => Changes(fields, table, previous, record, isNew), errors))
-                return Failed(result, errors);
+            return SaveWithAudit(state.Manifest, table, state.Record, state.IsNew,
+                state.IsNew ? AtlasAuditEvents.Create : AtlasAuditEvents.Update,
+                () => Changes(state.Fields, table, state.Previous, state.Record, state.IsNew), state.Errors);
+        }
 
+        /// <summary>After the commit: the OnAfterSave hook and the result (ID, Version, Outputs).</summary>
+        private CPAtlasPage Complete(SaveState state)
+        {
+            AtlasTable table = state.Table;
+            Dictionary<string, object?> record = state.Record;
             try
             {
-                OnAfterSave(saveContext);
+                OnAfterSave(state.Context);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Review SV-06: a 500 here would make the user save again with ID = 0 and create a duplicate.
-                AtlasLog.AfterSaveFailed(Logger, ex, manifest.Code, record[table.Key!.Name], Services.User.LanId);
+                AtlasLog.AfterSaveFailed(Logger, ex, state.Manifest.Code, record[table.Key!.Name], Services.User.LanId);
             }
 
+            CPAtlasPage result = state.Result;
             result.ID = (int)record[table.Key!.Name]!;
             result.Version = VersionOf(table, record);
-            result.Outputs = [.. fields.All
+            result.Outputs = [.. state.Fields.All
                 .Where(x => table.HasColumn(x.Field) && !x.HiddenByRule) // review 3 RV-02
                 .Select(x => new CPPageOutput { Name = x.Name, Value = Wire(record.GetValueOrDefault(table.Find(x.Field)!.Name), table.Find(x.Field)!) })];
             return result;
