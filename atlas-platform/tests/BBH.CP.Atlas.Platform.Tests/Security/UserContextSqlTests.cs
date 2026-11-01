@@ -19,12 +19,12 @@ public class UserContextSqlTests(SqlServerDatabaseFixture database)
         await database.SeedUserAsync("uc.both", "Both Roles", "TTDV2", "Read", "Prepare");
         await using CPSharepointContext context = Context();
 
-        AtlasAppRoles roles = new AtlasUserContext(new FixedUser("uc.both"), context, new NoManifests()).RolesFor("ttdv2");
+        AtlasAppRoles roles = new AtlasUserContext(new FixedUser("uc.both"), context, new EmptyConfigStore()).RolesFor("ttdv2");
 
         Assert.Equal(["Prepare", "Read"], roles.RoleNames.Order());
         Assert.True(roles.IsWrite);
         Assert.False(roles.IsAdmin);
-        Assert.False(new AtlasUserContext(new FixedUser("uc.both"), context, new NoManifests()).RolesFor("TTD").HasAnyRole);
+        Assert.False(new AtlasUserContext(new FixedUser("uc.both"), context, new EmptyConfigStore()).RolesFor("TTD").HasAnyRole);
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class UserContextSqlTests(SqlServerDatabaseFixture database)
             """);
         await using CPSharepointContext context = Context();
 
-        Assert.False(new AtlasUserContext(new FixedUser("uc.revoked"), context, new NoManifests()).RolesFor("TTDV2").HasAnyRole);
+        Assert.False(new AtlasUserContext(new FixedUser("uc.revoked"), context, new EmptyConfigStore()).RolesFor("TTDV2").HasAnyRole);
     }
 
     [Fact]
@@ -81,14 +81,5 @@ public class UserContextSqlTests(SqlServerDatabaseFixture database)
     private sealed class FixedUser(string lanId) : IAtlasCurrentUserSource
     {
         public CPUser GetCurrentUser() => new() { LanID = lanId, DisplayName = lanId };
-    }
-
-    private sealed class NoManifests : IAtlasConfigStore
-    {
-        public string ConfigFolder => "";
-        public IReadOnlyList<AtlasAppManifest> GetManifests() => [];
-        public AtlasAppManifest? FindManifest(string appCode) => null;
-        public CPAtlasApplicationConfig GetForm(string appCode) => throw new NotSupportedException();
-        public CPAtlasDashboard? GetDashboard(string appCode) => null;
     }
 }

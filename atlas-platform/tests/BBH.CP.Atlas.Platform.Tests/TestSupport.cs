@@ -1,6 +1,8 @@
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace BBH.CP.Atlas.Platform.Tests;
@@ -53,6 +55,41 @@ internal sealed class ListLoggerFactory : ILoggerFactory
     public void Dispose()
     {
     }
+}
+
+/// <summary>A fixed clock. The local time zone is UTC (unless a test sets Zone), so local and UTC dates are the same.</summary>
+internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+{
+    public DateTimeOffset Now { get; set; } = now;
+
+    public TimeZoneInfo Zone { get; set; } = TimeZoneInfo.Utc;
+
+    public override DateTimeOffset GetUtcNow() => Now;
+
+    public override TimeZoneInfo LocalTimeZone => Zone;
+}
+
+/// <summary>A Development host with the content root <paramref name="root"/>.</summary>
+internal sealed class TestHost(string root) : IHostEnvironment
+{
+    public string EnvironmentName { get; set; } = "Development";
+    public string ApplicationName { get; set; } = "Tests";
+    public string ContentRootPath { get; set; } = root;
+    public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+}
+
+/// <summary>A config store with no apps.</summary>
+internal sealed class EmptyConfigStore : IAtlasConfigStore
+{
+    public string ConfigFolder => "";
+
+    public IReadOnlyList<AtlasAppManifest> GetManifests() => [];
+
+    public AtlasAppManifest? FindManifest(string appCode) => null;
+
+    public CPAtlasApplicationConfig GetForm(string appCode) => throw new NotSupportedException();
+
+    public CPAtlasDashboard? GetDashboard(string appCode) => null;
 }
 
 internal static class TestManifests

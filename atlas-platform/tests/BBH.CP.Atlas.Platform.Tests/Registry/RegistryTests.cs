@@ -5,7 +5,6 @@ using BBH.CP.Atlas.Service.Platform;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 
 namespace BBH.CP.Atlas.Platform.Tests.Registry;
@@ -290,7 +289,7 @@ public sealed class RegistryTests : IDisposable
     [Fact]
     public void The_TimeProvider_of_the_host_is_kept()
     {
-        TimeProvider fixedTime = new FixedTime();
+        TimeProvider fixedTime = new FixedTimeProvider(DateTimeOffset.UnixEpoch);
         ServiceCollection services = new();
         services.AddSingleton(fixedTime);
         services.AddAtlasPlatform(new ConfigurationBuilder().Build());
@@ -309,10 +308,6 @@ public sealed class RegistryTests : IDisposable
         InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => services.AddAtlasModule<DemoModule>("demo"));
 
         Assert.Contains("'DEMO' is registered twice", error.Message, StringComparison.Ordinal);
-    }
-
-    private sealed class FixedTime : TimeProvider
-    {
     }
 
     [Fact]
@@ -370,13 +365,5 @@ public sealed class RegistryTests : IDisposable
     public sealed class DemoModule : IAtlasModule
     {
         public string AppCode { get; set; } = "";
-    }
-
-    private sealed class TestHost(string root) : IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = "Development";
-        public string ApplicationName { get; set; } = "Tests";
-        public string ContentRootPath { get; set; } = root;
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

@@ -16,7 +16,7 @@ public sealed class ApplicationMenuTests
         ];
         ListLogger<object> logger = new();
 
-        List<Dictionary<string, object>> result = AtlasApplicationMenu.Enrich(rows, new ThrowingResolver(), new EmptyStore(), logger);
+        List<Dictionary<string, object>> result = AtlasApplicationMenu.Enrich(rows, new ThrowingResolver(), new EmptyConfigStore(), logger);
 
         Assert.Same(rows, result);
         Assert.Equal(2, result.Count);
@@ -29,7 +29,7 @@ public sealed class ApplicationMenuTests
     {
         List<Dictionary<string, object>> rows = [new() { ["ID"] = 1, ["Code"] = "CDT" }, new() { ["ID"] = 2, ["Code"] = "TTDV2" }];
 
-        Assert.Same(rows, AtlasApplicationMenu.Enrich(rows, new ThrowingResolver(), new EmptyStore()));
+        Assert.Same(rows, AtlasApplicationMenu.Enrich(rows, new ThrowingResolver(), new EmptyConfigStore()));
     }
 
     private sealed class ThrowingResolver : IAtlasModuleResolver
@@ -40,18 +40,5 @@ public sealed class ApplicationMenuTests
             appCode == "TTDV2" ? throw new InvalidOperationException("Simulated platform defect.") : false;
 
         public TService Get<TService>(string appCode, string feature) where TService : class => throw new NotSupportedException();
-    }
-
-    private sealed class EmptyStore : IAtlasConfigStore
-    {
-        public string ConfigFolder => "";
-
-        public IReadOnlyList<AtlasAppManifest> GetManifests() => [];
-
-        public AtlasAppManifest? FindManifest(string appCode) => null;
-
-        public CPAtlasApplicationConfig GetForm(string appCode) => throw new NotSupportedException();
-
-        public CPAtlasDashboard? GetDashboard(string appCode) => null;
     }
 }

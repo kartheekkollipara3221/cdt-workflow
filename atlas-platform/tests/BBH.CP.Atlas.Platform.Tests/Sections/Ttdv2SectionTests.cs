@@ -31,7 +31,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         await database.SeedUserAsync(OtherPrep, "Quinn Preparer", "TTDV2", "Prepare");
         await database.SeedUserAsync(Owner, "Olive Owner", "TTDV2", "Owner");
         await database.SeedUserAsync(Reader, "Riley Reader", "TTDV2", "Read");
-        _registry = await SectionHarness.RegistryAsync(database);
+        _registry = database.Ttdv2Registry;
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -262,24 +262,16 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     public async Task A_disabled_number_sent_in_another_form_is_no_change()
     {
         // Review DA-06: "02026" and the stored 2026 are the same value, so a disabled field does not give NotAllowed.
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text
-            : text.Replace("\"Name\": \"TaxYear\",", "\"Name\": \"TaxYear\", \"Disabled\": true,", StringComparison.Ordinal));
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner, taxYear: 2026);
-            string? version = custom.Service(_registry, Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = id }).Version;
+        using ConfigCopy config = new ConfigCopy().Replace("TTDV2.json", "\"Name\": \"TaxYear\",", "\"Name\": \"TaxYear\", \"Disabled\": true,");
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner, taxYear: 2026);
+        string? version = custom.Service(_registry, Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = id }).Version;
 
-            CPAtlasPage saved = custom.Service(_registry, Owner, Ttdv2Roles.Owner)
-                .SavePage(EditInput(id, version, ("TaxYear", "02026"), ("Category", "OTHER")), NoFiles);
+        CPAtlasPage saved = custom.Service(_registry, Owner, Ttdv2Roles.Owner)
+            .SavePage(EditInput(id, version, ("TaxYear", "02026"), ("Category", "OTHER")), NoFiles);
 
-            Assert.True(saved.ID > 0, Describe(saved));
-            Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        Assert.True(saved.ID > 0, Describe(saved));
+        Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
     }
 
     // ---------- Access matrix (spec 01, 10.5), AccessMode Enforce ----------
@@ -405,20 +397,12 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
 
         Assert.Equal(2, Svc(Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id).Count); // no setting: all entries (as before)
 
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.app.json" ? text
-            : text.Replace("\"Enabled\": true", "\"Enabled\": true, \"AuditRefTypes\": [ \"TTDV2\", \"TTD\" ]", StringComparison.Ordinal));
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            List<CPAuditLog> audit = custom.Service(_registry, Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id);
+        using ConfigCopy config = new ConfigCopy().Replace("TTDV2.app.json", "\"Enabled\": true", "\"Enabled\": true, \"AuditRefTypes\": [ \"TTDV2\", \"TTD\" ]");
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        List<CPAuditLog> audit = custom.Service(_registry, Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id);
 
-            CPAuditLog entry = Assert.Single(audit);
-            Assert.Equal("Old", entry.CreatedBy);
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        CPAuditLog entry = Assert.Single(audit);
+        Assert.Equal("Old", entry.CreatedBy);
     }
 
     [Fact]
@@ -492,23 +476,17 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     public async Task SystemTime_decides_if_ModifiedDate_is_UTC_or_local_time(string? systemTime, int hour)
     {
         // Review DA-11: the clock is 10:00 UTC; the local zone is UTC-5.
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.app.json" || systemTime == null ? text
-            : text.Replace("\"Enabled\": true", $"\"Enabled\": true, \"SystemTime\": \"{systemTime}\"", StringComparison.Ordinal));
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            custom.Time.Zone = TimeZoneInfo.CreateCustomTimeZone("UTC-5", TimeSpan.FromHours(-5), "UTC-5", "UTC-5");
+        using ConfigCopy config = new();
+        if (systemTime != null)
+            config.Replace("TTDV2.app.json", "\"Enabled\": true", $"\"Enabled\": true, \"SystemTime\": \"{systemTime}\"");
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        custom.Time.Zone = TimeZoneInfo.CreateCustomTimeZone("UTC-5", TimeSpan.FromHours(-5), "UTC-5", "UTC-5");
 
-            CPAtlasPage result = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(NewInput(), NoFiles);
+        CPAtlasPage result = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(NewInput(), NoFiles);
 
-            Assert.True(result.ID > 0, Describe(result));
-            DateTime modified = (DateTime)(await database.ScalarAsync($"SELECT ModifiedDate FROM TTDV2.General WHERE ID = {result.ID}"))!;
-            Assert.Equal(hour, modified.Hour);
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        Assert.True(result.ID > 0, Describe(result));
+        DateTime modified = (DateTime)(await database.ScalarAsync($"SELECT ModifiedDate FROM TTDV2.General WHERE ID = {result.ID}"))!;
+        Assert.Equal(hour, modified.Hour);
     }
 
     private sealed class ThrowingAfterSave(AtlasModuleServices services) : ConfigSectionService(services)
@@ -577,133 +555,100 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     [Fact]
     public async Task With_RequireVersion_false_an_update_with_no_Version_is_saved()
     {
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.app.json" ? text
-            : text.Replace("\"Enabled\": true", "\"Enabled\": true, \"RequireVersion\": false", StringComparison.Ordinal));
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        using ConfigCopy config = new ConfigCopy().Replace("TTDV2.app.json", "\"Enabled\": true", "\"Enabled\": true, \"RequireVersion\": false");
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
 
-            CPAtlasPage result = custom.Service(_registry, Owner, Ttdv2Roles.Owner).SavePage(EditInput(id, null, ("Category", "OTHER")), NoFiles);
+        CPAtlasPage result = custom.Service(_registry, Owner, Ttdv2Roles.Owner).SavePage(EditInput(id, null, ("Category", "OTHER")), NoFiles);
 
-            Assert.True(result.Errors is null or { Count: 0 }, Describe(result));
-            Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        Assert.True(result.Errors is null or { Count: 0 }, Describe(result));
+        Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
     }
 
     [Fact]
     public void An_effect_cannot_show_a_field_that_a_rule_hid()
     {
         // Review SV-03: a Prepare rule hides WorkDescription; an effect on Category tries to show it again.
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text : text
-            .Replace("""{ "Roles": [ "@Admin" ], "Disabled": false }""",
-                """{ "Roles": [ "@Admin" ], "Disabled": false }, { "Roles": [ "Prepare" ], "HideControls": [ "WorkDescription" ] }""", StringComparison.Ordinal)
-            .Replace("\"Name\": \"Category\",", "\"Name\": \"Category\", \"Effects\": [ { \"When\": { \"Equals\": \"OTHER\" }, \"Show\": [ \"WorkDescription\" ] } ],", StringComparison.Ordinal));
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            CPApplicationSection loaded = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).LoadPage(new CPAtlasPage { ID = 0 });
-            Assert.False(Control(loaded, "WorkDescription").Visible); // the rule hides it
+        using ConfigCopy config = new ConfigCopy().Replace("TTDV2.json", """{ "Roles": [ "@Admin" ], "Disabled": false }""",
+            """{ "Roles": [ "@Admin" ], "Disabled": false }, { "Roles": [ "Prepare" ], "HideControls": [ "WorkDescription" ] }""")
+            .Replace("TTDV2.json", "\"Name\": \"Category\",", "\"Name\": \"Category\", \"Effects\": [ { \"When\": { \"Equals\": \"OTHER\" }, \"Show\": [ \"WorkDescription\" ] } ],");
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        CPApplicationSection loaded = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).LoadPage(new CPAtlasPage { ID = 0 });
+        Assert.False(Control(loaded, "WorkDescription").Visible); // the rule hides it
 
-            CPAtlasPage input = NewInput();
-            input.Outputs!.Single(x => x.Name == "Category").Value = "OTHER";
-            input.Outputs!.Single(x => x.Name == "WorkDescription").Value = "sent anyway";
+        CPAtlasPage input = NewInput();
+        input.Outputs!.Single(x => x.Name == "Category").Value = "OTHER";
+        input.Outputs!.Single(x => x.Name == "WorkDescription").Value = "sent anyway";
 
-            CPAtlasPage result = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
+        CPAtlasPage result = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
 
-            Assert.Equal(0, result.ID);
-            Assert.Contains(result.Errors!, x => x.Field == "WorkDescription" && x.Code == "NotAllowed");
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        Assert.Equal(0, result.ID);
+        Assert.Contains(result.Errors!, x => x.Field == "WorkDescription" && x.Code == "NotAllowed");
     }
 
     [Fact]
     public async Task A_field_that_a_rule_hides_has_no_value_in_the_load_the_save_result_or_the_History()
     {
         // Review 3 RV-02: hidden on the client only is not enough; the value must not be in the responses.
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text : text
-            .Replace("""{ "Roles": [ "@Admin" ], "Disabled": false }""",
-                """{ "Roles": [ "@Admin" ], "Disabled": false }, { "Roles": [ "Prepare" ], "HideControls": [ "Category" ] }""", StringComparison.Ordinal));
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            int id = await InsertAsync(createdBy: Prep, taxPreparer: Prep);
+        using ConfigCopy config = new ConfigCopy().Replace("TTDV2.json", """{ "Roles": [ "@Admin" ], "Disabled": false }""",
+            """{ "Roles": [ "@Admin" ], "Disabled": false }, { "Roles": [ "Prepare" ], "HideControls": [ "Category" ] }""");
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        int id = await InsertAsync(createdBy: Prep, taxPreparer: Prep);
 
-            // The owner changes Category, so the History has a Category entry.
-            CPApplicationSection ownerView = custom.Service(_registry, Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = id });
-            Assert.Equal("TAX_N", Control(ownerView, "Category").Value);
-            CPAtlasPage ownerSave = custom.Service(_registry, Owner, Ttdv2Roles.Owner)
-                .SavePage(EditInput(id, ownerView.Version, ("Category", "OTHER")), NoFiles);
-            Assert.True(ownerSave.Errors is null or { Count: 0 }, Describe(ownerSave));
-            Assert.Contains(ownerSave.Outputs!, x => x.Name == "Category" && x.Value == "OTHER");
+        // The owner changes Category, so the History has a Category entry.
+        CPApplicationSection ownerView = custom.Service(_registry, Owner, Ttdv2Roles.Owner).LoadPage(new CPAtlasPage { ID = id });
+        Assert.Equal("TAX_N", Control(ownerView, "Category").Value);
+        CPAtlasPage ownerSave = custom.Service(_registry, Owner, Ttdv2Roles.Owner)
+            .SavePage(EditInput(id, ownerView.Version, ("Category", "OTHER")), NoFiles);
+        Assert.True(ownerSave.Errors is null or { Count: 0 }, Describe(ownerSave));
+        Assert.Contains(ownerSave.Outputs!, x => x.Name == "Category" && x.Value == "OTHER");
 
-            // 1. Load: no value and no options.
-            CPApplicationSection loaded = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).LoadPage(new CPAtlasPage { ID = id });
-            CPApplicationControl category = Control(loaded, "Category");
-            Assert.False(category.Visible);
-            Assert.Null(category.Value);
-            Assert.True(category.Options is null or { Count: 0 });
-            Assert.Equal("Smith Family Trust", Control(loaded, "AccountName").Value); // other fields keep their values
+        // 1. Load: no value and no options.
+        CPApplicationSection loaded = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).LoadPage(new CPAtlasPage { ID = id });
+        CPApplicationControl category = Control(loaded, "Category");
+        Assert.False(category.Visible);
+        Assert.Null(category.Value);
+        Assert.True(category.Options is null or { Count: 0 });
+        Assert.Equal("Smith Family Trust", Control(loaded, "AccountName").Value); // other fields keep their values
 
-            // 2. Save result: no output for the hidden field.
-            CPAtlasPage saved = custom.Service(_registry, Prep, Ttdv2Roles.Prepare)
-                .SavePage(EditInput(id, loaded.Version, ("WorkDescription", "Prep text")), NoFiles);
-            Assert.True(saved.Errors is null or { Count: 0 }, Describe(saved));
-            Assert.DoesNotContain(saved.Outputs!, x => x.Name == "Category");
-            Assert.Contains(saved.Outputs!, x => x.Name == "WorkDescription" && x.Value == "Prep text");
+        // 2. Save result: no output for the hidden field.
+        CPAtlasPage saved = custom.Service(_registry, Prep, Ttdv2Roles.Prepare)
+            .SavePage(EditInput(id, loaded.Version, ("WorkDescription", "Prep text")), NoFiles);
+        Assert.True(saved.Errors is null or { Count: 0 }, Describe(saved));
+        Assert.DoesNotContain(saved.Outputs!, x => x.Name == "Category");
+        Assert.Contains(saved.Outputs!, x => x.Name == "WorkDescription" && x.Value == "Prep text");
 
-            // 3. History: the entry stays, the values are ***. The owner still sees them.
-            string prepHistory = string.Join(' ',
-                custom.Service(_registry, Prep, Ttdv2Roles.Prepare).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
-            Assert.Contains("\"Name\":\"Category\"", prepHistory, StringComparison.Ordinal);
-            Assert.DoesNotContain("OTHER", prepHistory, StringComparison.Ordinal);
-            Assert.DoesNotContain("TAX_N", prepHistory, StringComparison.Ordinal);
-            Assert.Contains("Prep text", prepHistory, StringComparison.Ordinal);
+        // 3. History: the entry stays, the values are ***. The owner still sees them.
+        string prepHistory = string.Join(' ',
+            custom.Service(_registry, Prep, Ttdv2Roles.Prepare).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
+        Assert.Contains("\"Name\":\"Category\"", prepHistory, StringComparison.Ordinal);
+        Assert.DoesNotContain("OTHER", prepHistory, StringComparison.Ordinal);
+        Assert.DoesNotContain("TAX_N", prepHistory, StringComparison.Ordinal);
+        Assert.Contains("Prep text", prepHistory, StringComparison.Ordinal);
 
-            string ownerHistory = string.Join(' ',
-                custom.Service(_registry, Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
-            Assert.Contains("OTHER", ownerHistory, StringComparison.Ordinal);
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        string ownerHistory = string.Join(' ',
+            custom.Service(_registry, Owner, Ttdv2Roles.Owner).GetAuditLog("TTDV2", id).Select(x => x.LogMessage));
+        Assert.Contains("OTHER", ownerHistory, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task The_server_applies_Set_and_Disable_effects_as_the_client_does()
     {
         // Review SV-04: Category OTHER sets WorkDescription (server value wins) and disables TaxYear.
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.json" ? text : text
-            .Replace("\"Name\": \"Category\",",
-                "\"Name\": \"Category\", \"Effects\": [ { \"When\": { \"Equals\": \"OTHER\" }, \"Set\": { \"WorkDescription\": \"Other work\" }, \"Disable\": [ \"TaxYear\" ] } ],",
-                StringComparison.Ordinal));
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            CPAtlasPage input = NewInput();
-            input.Outputs!.Single(x => x.Name == "Category").Value = "OTHER";
-            input.Outputs!.Single(x => x.Name == "WorkDescription").Value = "client text";
+        using ConfigCopy config = new ConfigCopy().Replace("TTDV2.json", "\"Name\": \"Category\",",
+            "\"Name\": \"Category\", \"Effects\": [ { \"When\": { \"Equals\": \"OTHER\" }, \"Set\": { \"WorkDescription\": \"Other work\" }, \"Disable\": [ \"TaxYear\" ] } ],");
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        CPAtlasPage input = NewInput();
+        input.Outputs!.Single(x => x.Name == "Category").Value = "OTHER";
+        input.Outputs!.Single(x => x.Name == "WorkDescription").Value = "client text";
 
-            CPAtlasPage changedYear = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
-            Assert.Contains(changedYear.Errors!, x => x.Field == "TaxYear" && x.Code == "NotAllowed"); // disabled by the effect
+        CPAtlasPage changedYear = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
+        Assert.Contains(changedYear.Errors!, x => x.Field == "TaxYear" && x.Code == "NotAllowed"); // disabled by the effect
 
-            input.Outputs!.RemoveAll(x => x.Name == "TaxYear");
-            CPAtlasPage saved = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
-            Assert.True(saved.ID > 0, Describe(saved));
-            Assert.Equal("Other work", await database.ScalarAsync($"SELECT WorkDescription FROM TTDV2.General WHERE ID = {saved.ID}"));
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        input.Outputs!.RemoveAll(x => x.Name == "TaxYear");
+        CPAtlasPage saved = custom.Service(_registry, Prep, Ttdv2Roles.Prepare).SavePage(input, NoFiles);
+        Assert.True(saved.ID > 0, Describe(saved));
+        Assert.Equal("Other work", await database.ScalarAsync($"SELECT WorkDescription FROM TTDV2.General WHERE ID = {saved.ID}"));
     }
 
     // ---------- Helpers ----------
@@ -749,15 +694,10 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     private static CPAtlasPage EditInput(int id, string? version, params (string Name, string? Value)[] values) =>
         new() { AppCode = "TTDV2", ID = id, Version = version, Outputs = [.. values.Select(x => new CPPageOutput { Name = x.Name, Value = x.Value })] };
 
-    private async Task<int> InsertAsync(string createdBy, string taxPreparer, int taxYear = 2026, string weekEnding = "2026-10-18", int monday = 60)
-    {
-        object? id = await database.ScalarAsync($"""
-            INSERT INTO TTDV2.General (Account, AccountNumber, AccountName, TaxYear, Category, WeekEnding, MondayMinute, WeeklyTotal,
-                                      TaxPreparerLanId, CreatedBy, CreatedDate, IsDeleted)
-            OUTPUT INSERTED.ID
-            VALUES ('100100 - Smith Family Trust', '100100', 'Smith Family Trust', {taxYear}, 'TAX_N', '{weekEnding}', {monday}, {monday},
-                    '{taxPreparer}', '{createdBy}', '2026-10-01', 0);
-            """);
-        return (int)id!;
-    }
+    private Task<int> InsertAsync(string createdBy, string taxPreparer, int taxYear = 2026, string weekEnding = "2026-10-18", int monday = 60) =>
+        database.InsertGeneralAsync(
+            ("Account", "100100 - Smith Family Trust"), ("AccountNumber", "100100"), ("AccountName", "Smith Family Trust"),
+            ("TaxYear", taxYear), ("Category", "TAX_N"), ("WeekEnding", DateTime.Parse(weekEnding, System.Globalization.CultureInfo.InvariantCulture)),
+            ("MondayMinute", monday), ("WeeklyTotal", monday), ("TaxPreparerLanId", taxPreparer), ("CreatedBy", createdBy),
+            ("CreatedDate", new DateTime(2026, 10, 1)), ("IsDeleted", false));
 }

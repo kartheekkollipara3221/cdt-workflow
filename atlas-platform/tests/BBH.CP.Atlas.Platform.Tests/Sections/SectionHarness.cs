@@ -13,24 +13,10 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BBH.CP.Atlas.Platform.Tests.Sections;
-
-/// <summary>A fixed clock. The local time zone is UTC (unless a test sets Zone), so local and UTC dates are the same.</summary>
-internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-{
-    public DateTimeOffset Now { get; set; } = now;
-
-    public TimeZoneInfo Zone { get; set; } = TimeZoneInfo.Utc;
-
-    public override DateTimeOffset GetUtcNow() => Now;
-
-    public override TimeZoneInfo LocalTimeZone => Zone;
-}
 
 /// <summary>
 /// Makes the TTDV2 module (ConfigSectionService) on the test database, with the real TTDV2 files of the App project. Each call to
@@ -41,8 +27,6 @@ internal sealed class SectionHarness : IDisposable
     public const string General = "TTDV2.General";
     public const string AuditLog = "TTDV2.AuditLog";
 
-    private static readonly SemaphoreSlim RegistryLock = new(1, 1);
-    private static AtlasTableRegistry? _registry;
     private readonly List<IDisposable> _resources = [];
     private readonly SqlServerDatabaseFixture _database;
     private readonly IConfiguration _configuration;
@@ -57,43 +41,15 @@ internal sealed class SectionHarness : IDisposable
             ["AppSettings:ConfigFolder"] = configFolder,
             ["AppSettings:Modules:TTDV2:AccessMode"] = accessMode.ToString()
         }).Build();
-        _configStore = new AtlasConfigStore(_configuration, new Host(configFolder));
+        _configStore = new AtlasConfigStore(_configuration, new TestHost(configFolder));
     }
 
     public static string RealConfigFolder => Path.Combine(TestPaths.AtlasPlatformRoot(), "src", "BBH.CP.Atlas.App", "Config");
-
-    /// <summary>A copy of the real Config folder in a new temp folder, changed by <paramref name="change"/> (file name, text).</summary>
-    public static string ConfigCopy(Func<string, string, string> change)
-    {
-        string folder = Path.Combine(Path.GetTempPath(), "atlas-section-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(folder);
-        foreach (string file in Directory.GetFiles(RealConfigFolder, "*.json"))
-            File.WriteAllText(Path.Combine(folder, Path.GetFileName(file)), change(Path.GetFileName(file), File.ReadAllText(file)));
-        return folder;
-    }
 
     /// <summary>Wednesday 2026-10-21 10:00 UTC.</summary>
     public FixedTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 21, 10, 0, 0, TimeSpan.Zero));
 
     public ListLogger<AtlasAccessService> AccessLog { get; } = new();
-
-    public static async Task<AtlasTableRegistry> RegistryAsync(SqlServerDatabaseFixture database)
-    {
-        await RegistryLock.WaitAsync();
-        try
-        {
-            if (_registry != null)
-                return _registry;
-            AtlasTableRegistry registry = new();
-            await using SqlConnection connection = new(database.ConnectionString);
-            await new AtlasColumnMetadataReader().LoadAsync(connection, registry, [General, AuditLog]);
-            return _registry = registry;
-        }
-        finally
-        {
-            RegistryLock.Release();
-        }
-    }
 
     public ConfigSectionService Service(AtlasTableRegistry registry, string lanId, params AtlasRole[] roles) =>
         new(ModuleServices(registry, lanId, roles, NullLoggerFactory.Instance)) { AppCode = "TTDV2" };
@@ -125,12 +81,42 @@ internal sealed class SectionHarness : IDisposable
         foreach (IDisposable resource in _resources)
             resource.Dispose();
     }
+}
 
-    private sealed class Host(string root) : IHostEnvironment
+/// <summary>A copy of the real Config folder in a new temp folder; deleted on Dispose.</summary>
+internal sealed class ConfigCopy : IDisposable
+{
+    public ConfigCopy()
     {
-        public string EnvironmentName { get; set; } = "Development";
-        public string ApplicationName { get; set; } = "Tests";
-        public string ContentRootPath { get; set; } = root;
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+        Directory.CreateDirectory(Folder);
+        foreach (string file in Directory.GetFiles(SectionHarness.RealConfigFolder, "*.json"))
+            File.Copy(file, Path.Combine(Folder, Path.GetFileName(file)));
     }
+
+    public string Folder { get; } = Path.Combine(Path.GetTempPath(), "atlas-section-" + Guid.NewGuid().ToString("N")[..8]);
+
+    /// <summary>Replaces <paramref name="oldText"/> in one file (LF or CRLF line ends). Throws when the text is not there.</summary>
+    public ConfigCopy Replace(string file, string oldText, string newText)
+    {
+        string path = Path.Combine(Folder, file);
+        string text = File.ReadAllText(path);
+        if (!text.Contains(oldText, StringComparison.Ordinal))
+        {
+            oldText = oldText.Replace("\n", "\r\n", StringComparison.Ordinal);
+            newText = newText.Replace("\n", "\r\n", StringComparison.Ordinal);
+        }
+
+        if (!text.Contains(oldText, StringComparison.Ordinal))
+            throw new InvalidOperationException($"{file} has no text {oldText}.");
+        File.WriteAllText(path, text.Replace(oldText, newText, StringComparison.Ordinal));
+        return this;
+    }
+
+    public ConfigCopy Write(string file, string text)
+    {
+        File.WriteAllText(Path.Combine(Folder, file), text);
+        return this;
+    }
+
+    public void Dispose() => Directory.Delete(Folder, recursive: true);
 }

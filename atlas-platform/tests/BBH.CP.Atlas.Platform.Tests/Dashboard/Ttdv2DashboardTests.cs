@@ -22,7 +22,7 @@ public sealed class Ttdv2DashboardTests(SqlServerDatabaseFixture database) : IAs
     {
         await database.SeedUserAsync(_me, "Dana Dashboard", "TTDV2", "Prepare");
         await database.SeedUserAsync("d.other", "Otto Other", "TTDV2", "Prepare");
-        _registry = await SectionHarness.RegistryAsync(database);
+        _registry = database.Ttdv2Registry;
         _created = await InsertAsync(createdBy: _me, preparer: "d.other", modifiedBy: "d.other");
         _prepared = await InsertAsync(createdBy: "d.other", preparer: _me, modifiedBy: "d.other");
         _modified = await InsertAsync(createdBy: "d.other", preparer: "d.other", modifiedBy: _me);
@@ -96,32 +96,23 @@ public sealed class Ttdv2DashboardTests(SqlServerDatabaseFixture database) : IAs
     public void A_tab_with_the_rows_of_another_app_needs_that_app_enabled_and_its_View_check(bool enabled, bool hasRole, bool shown)
     {
         // Review SV-05: the tab CurrentTaxTimesheet reads the app OTHERAPP (the same table, AccessMode Enforce).
-        string folder = SectionHarness.ConfigCopy((file, text) => file != "TTDV2.Dashboard.json" ? text
-            : text.Replace("\"ID\": \"CurrentTaxTimesheet\",\n      \"Code\": \"TTDV2\"", "\"ID\": \"CurrentTaxTimesheet\",\n      \"Code\": \"OTHERAPP\"", StringComparison.Ordinal)
-                  .Replace("\"ID\": \"CurrentTaxTimesheet\",\r\n      \"Code\": \"TTDV2\"", "\"ID\": \"CurrentTaxTimesheet\",\r\n      \"Code\": \"OTHERAPP\"", StringComparison.Ordinal));
-        File.WriteAllText(Path.Combine(folder, "OTHERAPP.app.json"), $$"""
-            { "Code": "OTHERAPP", "Form": "TTDV2.json", "Table": "TTDV2.General", "AuditTable": "TTDV2.AuditLog",
-              "AccessMode": "Enforce", "Enabled": {{(enabled ? "true" : "false")}} }
-            """);
-        Assert.Contains("\"OTHERAPP\"", File.ReadAllText(Path.Combine(folder, "TTDV2.Dashboard.json")), StringComparison.Ordinal);
-        try
-        {
-            using SectionHarness custom = new(database, AtlasAccessMode.Enforce, folder);
-            AtlasRole[] roles = hasRole
-                ? [Ttdv2Roles.Prepare, new AtlasRole("OTHERAPP", "Prepare", IsRead: true, IsWrite: true, IsAdmin: false)]
-                : [Ttdv2Roles.Prepare];
+        using ConfigCopy config = new ConfigCopy()
+            .Replace("TTDV2.Dashboard.json", "\"ID\": \"CurrentTaxTimesheet\",\n      \"Code\": \"TTDV2\"", "\"ID\": \"CurrentTaxTimesheet\",\n      \"Code\": \"OTHERAPP\"")
+            .Write("OTHERAPP.app.json", $$"""
+                { "Code": "OTHERAPP", "Form": "TTDV2.json", "Table": "TTDV2.General", "AuditTable": "TTDV2.AuditLog",
+                  "AccessMode": "Enforce", "Enabled": {{(enabled ? "true" : "false")}} }
+                """);
+        using SectionHarness custom = new(database, AtlasAccessMode.Enforce, config.Folder);
+        AtlasRole[] roles = hasRole
+            ? [Ttdv2Roles.Prepare, new AtlasRole("OTHERAPP", "Prepare", IsRead: true, IsWrite: true, IsAdmin: false)]
+            : [Ttdv2Roles.Prepare];
 
-            CPAtlasDashboard dashboard = custom.Service(_registry, _me, roles).LoadDashboard();
+        CPAtlasDashboard dashboard = custom.Service(_registry, _me, roles).LoadDashboard();
 
-            CPAtlasTab tab = Tab(dashboard, "CurrentTaxTimesheet");
-            Assert.Equal(shown, tab.Visible);
-            Assert.Equal(shown, tab.KeyValues!.Count > 0);
-            Assert.True(Tab(dashboard, "TaxTimeAllReport").Visible); // the TTDV2 tabs are not changed
-        }
-        finally
-        {
-            Directory.Delete(folder, recursive: true);
-        }
+        CPAtlasTab tab = Tab(dashboard, "CurrentTaxTimesheet");
+        Assert.Equal(shown, tab.Visible);
+        Assert.Equal(shown, tab.KeyValues!.Count > 0);
+        Assert.True(Tab(dashboard, "TaxTimeAllReport").Visible); // the TTDV2 tabs are not changed
     }
 
     private CPAtlasDashboard Load(string lanId, params AtlasRole[] roles) => _harness.Service(_registry, lanId, roles).LoadDashboard();
@@ -131,12 +122,10 @@ public sealed class Ttdv2DashboardTests(SqlServerDatabaseFixture database) : IAs
     private static List<int> Ids(CPAtlasDashboard dashboard, string tab) =>
         [.. Tab(dashboard, tab).KeyValues!.Select(x => Convert.ToInt32(x["ID"]))];
 
-    private async Task<int> InsertAsync(string createdBy, string preparer, string modifiedBy, bool deleted = false) =>
-        (int)(await database.ScalarAsync($"""
-            INSERT INTO TTDV2.General (AccountNumber, AccountName, TaxYear, Category, WeekEnding, SaturdayMinute, WeeklyTotal,
-                                      TaxPreparerLanId, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate, IsDeleted)
-            OUTPUT INSERTED.ID
-            VALUES ('100100', 'Smith Family Trust', 2026, 'TAX_N', '2026-10-18', 15, 15, '{preparer}', '{createdBy}', '2026-10-01',
-                    '{modifiedBy}', '2026-10-02', {(deleted ? 1 : 0)});
-            """))!;
+    private Task<int> InsertAsync(string createdBy, string preparer, string modifiedBy, bool deleted = false) =>
+        database.InsertGeneralAsync(
+            ("AccountNumber", "100100"), ("AccountName", "Smith Family Trust"), ("TaxYear", 2026), ("Category", "TAX_N"),
+            ("WeekEnding", new DateTime(2026, 10, 18)), ("SaturdayMinute", 15), ("WeeklyTotal", 15), ("TaxPreparerLanId", preparer),
+            ("CreatedBy", createdBy), ("CreatedDate", new DateTime(2026, 10, 1)), ("ModifiedBy", modifiedBy),
+            ("ModifiedDate", new DateTime(2026, 10, 2)), ("IsDeleted", deleted));
 }
