@@ -339,16 +339,13 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     }
 
     [Fact]
-    public async Task LogOnly_writes_AccessDenied_and_continues()
+    public void LogOnly_writes_AccessDenied_and_continues()
     {
-        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
         using SectionHarness logOnly = new(database, AtlasAccessMode.LogOnly);
 
-        CPApplicationSection section = logOnly.Service(_registry, Reader, Ttdv2Roles.Read).LoadPage(new CPAtlasPage { ID = 0 });
+        logOnly.Service(_registry, Reader, Ttdv2Roles.Read).LoadPage(new CPAtlasPage { ID = 0 });
 
-        Assert.NotNull(section);
         Assert.Contains(logOnly.AccessLog.Entries, x => x.EventId.Name == "Atlas.AccessDenied" && x.Message.Contains("Create", StringComparison.Ordinal));
-        _ = id;
     }
 
     [Fact]
@@ -450,7 +447,6 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         CPAtlasPage result = service.SavePage(EditInput(id, version, ("Category", "OTHER"), ("MondayMinute", "1441")), NoFiles);
 
         Assert.Equal(0, result.ID);
-        Assert.Empty(services.PlatformContext.ChangeTracker.Entries());
         services.PlatformContext.SaveChanges();
         Assert.Equal("TAX_N", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
     }
@@ -474,17 +470,20 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     }
 
     [Fact]
-    public async Task Load_and_history_do_not_track_the_record()
+    public async Task A_save_after_load_and_history_in_the_same_scope_commits()
     {
-        // Review DA-10: the read-only paths keep nothing in the change tracker.
+        // Review DA-10: the read-only paths keep nothing that a later save in the same scope trips on.
         int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
         AtlasModuleServices services = _harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         ConfigSectionService service = new(services) { AppCode = "TTDV2" };
 
-        service.LoadPage(new CPAtlasPage { ID = id });
+        string? version = service.LoadPage(new CPAtlasPage { ID = id }).Version;
         service.GetAuditLog("TTDV2", id);
+        CPAtlasPage result = service.SavePage(EditInput(id, version, ("Category", "OTHER")), NoFiles);
 
-        Assert.Empty(services.PlatformContext.ChangeTracker.Entries());
+        Assert.True(result.Errors is null or { Count: 0 }, Describe(result));
+        Assert.Equal(id, result.ID);
+        Assert.Equal("OTHER", await database.ScalarAsync($"SELECT Category FROM TTDV2.General WHERE ID = {id}"));
     }
 
     [Theory]

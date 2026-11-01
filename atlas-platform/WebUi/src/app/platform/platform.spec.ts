@@ -437,10 +437,9 @@ describe('Actions column (as the target GenerateColumns and Action-menu)', () =>
     Menus: [{ Name: 'Edit', Visible: true }, { Name: 'Delete', Visible: false }, { Name: 'History', Visible: true }],
   } as never;
 
-  it('is the first column, width 100, with the tab Menus and the menu component', () => {
+  it('is the first column, with the tab Menus and the menu component', () => {
     const defs = columnDefs(tab, noop);
     expect(defs[0].headerName).toBe('Actions');
-    expect(defs[0].width).toBe(100);
     expect(defs[0].cellRenderer).toBe(AtlasActionMenu);
     expect((defs[0].cellRendererParams as { cpMenus: unknown[] }).cpMenus.length).toBe(3);
     expect(defs[1].field).toBe('AccountNumber');

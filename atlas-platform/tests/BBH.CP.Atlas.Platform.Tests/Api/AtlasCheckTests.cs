@@ -380,6 +380,8 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
             Assert.True(registry.IsLoaded);
             Assert.True(registry.TryGet("TTDV2.General", out _));
             await app.Services.StartAtlasPlatformAsync(); // the program.cs line of INTEGRATION.md stays valid
+            Assert.Same(registry, app.Services.GetRequiredService<AtlasTableRegistry>());
+            Assert.True(registry.TryGet("TTDV2.General", out _));
         }
         finally
         {

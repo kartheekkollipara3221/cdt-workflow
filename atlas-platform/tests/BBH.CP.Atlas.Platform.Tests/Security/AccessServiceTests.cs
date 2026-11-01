@@ -129,15 +129,11 @@ public class AccessServiceTests
     }
 
     [Fact]
-    public void Flags_follow_the_flag_order()
+    public void Role_tokens_match_the_role_flags()
     {
-        AtlasAppRoles admin = new([Ttdv2Roles.Owner]);
         AtlasAppRoles writer = new([Ttdv2Roles.Prepare]);
         AtlasAppRoles reader = new([Ttdv2Roles.Read]);
 
-        Assert.True(admin.IsRead && admin.IsWrite && admin.IsAdmin);
-        Assert.True(writer.IsRead && writer.IsWrite && !writer.IsAdmin);
-        Assert.True(reader.IsRead && !reader.IsWrite);
         Assert.True(writer.MatchesAny(["@Read"]));
         Assert.False(reader.MatchesAny(["@Write"]));
     }

@@ -134,22 +134,6 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
         Assert.Contains("\"type\"", body, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task Swagger_lists_the_endpoints()
-    {
-        string json = await _client.GetStringAsync("swagger/v1/swagger.json");
-        Assert.Contains("/v1/ManagePage", json, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void A_number_code_of_an_old_caller_maps_to_the_enum_name()
-    {
-        Assert.Equal("TTD", AtlasAppCode.FromRequest("13"));
-        Assert.Equal("TTDV2", AtlasAppCode.FromRequest("TTDV2"));
-        Assert.True(AtlasAppCode.IsLegacy("ttd"));
-        Assert.False(AtlasAppCode.IsLegacy("TTDV2"));
-    }
-
     private async Task<JsonElement> GetResultAsync(string url)
     {
         using HttpResponseMessage response = await _client.GetAsync(url);

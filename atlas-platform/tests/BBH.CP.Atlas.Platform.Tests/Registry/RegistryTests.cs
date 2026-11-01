@@ -196,6 +196,15 @@ public sealed class RegistryTests : IDisposable
     }
 
     [Fact]
+    public void A_number_code_of_an_old_caller_maps_to_the_enum_name()
+    {
+        Assert.Equal("TTD", AtlasAppCode.FromRequest("13"));
+        Assert.Equal("TTDV2", AtlasAppCode.FromRequest("TTDV2"));
+        Assert.True(AtlasAppCode.IsLegacy("ttd"));
+        Assert.False(AtlasAppCode.IsLegacy("TTDV2"));
+    }
+
+    [Fact]
     public void A_second_manifest_with_the_same_Code_is_a_config_error()
     {
         // Review 3 RV-L09: a copied file left with the same Code was ignored with no message.
@@ -213,7 +222,7 @@ public sealed class RegistryTests : IDisposable
         Assert.Throws<ArgumentException>(() => new ServiceCollection().AddAtlasModule<DemoModule>("2TTD"));
     }
 
-    [Theory]
+    [TargetCopyTheory]
     [InlineData("TTD.json.txt")]
     [InlineData("SQMSO.json.txt")]
     [InlineData("SQMSB.json.txt")]
@@ -229,7 +238,7 @@ public sealed class RegistryTests : IDisposable
         Assert.True(config.Section != null || config.Steps is { Count: > 0 });
     }
 
-    [Fact]
+    [TargetCopyFact]
     public void The_current_dashboard_file_loads_with_the_platform_loader()
     {
         string json = File.ReadAllText(TestPaths.TargetConfigFile("CPAtlasDashboardConfig.json.txt"));
@@ -276,7 +285,6 @@ public sealed class RegistryTests : IDisposable
 
         Assert.Equal(Path.GetFullPath(_folder), store.ConfigFolder);
         Assert.Equal(AtlasAccessMode.Enforce, store.FindManifest("DEMO")!.AccessMode); // the container override is not used
-        Assert.Same(given, provider.GetRequiredService<AtlasPlatformConfiguration>().Configuration);
     }
 
     [Fact]

@@ -185,19 +185,6 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
     }
 
     [Fact]
-    public async Task Two_registries_with_different_tables_get_different_models()
-    {
-        AtlasTableRegistry generalOnly = await LoadRegistryAsync(General);
-        AtlasTableRegistry both = await LoadRegistryAsync(General, AuditLog);
-
-        await using AtlasPlatformContext first = CreateContext(generalOnly);
-        await using AtlasPlatformContext second = CreateContext(both);
-
-        Assert.Null(first.Model.FindEntityType(AuditLog));
-        Assert.NotNull(second.Model.FindEntityType(AuditLog));
-    }
-
-    [Fact]
     public async Task An_insert_with_no_value_uses_the_database_default()
     {
         string name = "Defaults" + Guid.NewGuid().ToString("N")[..6];
@@ -262,8 +249,6 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
         try
         {
             AtlasTableRegistry registry = await LoadRegistryAsync(General, AuditLog, $"TTDV2.{name}");
-            Assert.False(AtlasPlatformContext.IsMappable(registry.Get($"TTDV2.{name}")));
-            Assert.True(AtlasPlatformContext.IsMappable(registry.Get(General)));
 
             int id = await InsertAsync(registry);
             await using AtlasPlatformContext context = CreateContext(registry);

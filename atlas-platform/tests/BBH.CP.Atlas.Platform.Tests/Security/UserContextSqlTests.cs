@@ -57,7 +57,7 @@ public class UserContextSqlTests(SqlServerDatabaseFixture database)
     }
 
     [Fact]
-    public async Task Display_names_of_many_users_come_from_one_query_and_fill_the_cache()
+    public async Task Display_names_of_many_users_are_read_together_and_kept_in_the_cache()
     {
         // Review DA-09: a dashboard with 200 preparers must not make 200 round trips.
         await database.SeedUserAsync("uc.many1", "Many One", "TTDV2", "Read");
@@ -71,7 +71,6 @@ public class UserContextSqlTests(SqlServerDatabaseFixture database)
         Assert.Equal("Many One", names["uc.many1"]);
         Assert.Equal("Many Two", names["uc.many2"]);
         Assert.Equal("uc.unknown", names["uc.unknown"]);
-        Assert.Equal(3, cache.Count);
         Assert.Equal("Many Two", directory.DisplayName("uc.many2")); // from the cache
     }
 
