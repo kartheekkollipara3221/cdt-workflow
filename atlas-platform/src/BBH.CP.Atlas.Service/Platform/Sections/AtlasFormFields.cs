@@ -1,4 +1,5 @@
 using BBH.CP.Atlas.Data.DTO;
+using BBH.CP.Atlas.Service.Platform.Rules;
 
 namespace BBH.CP.Atlas.Service.Platform.Sections;
 
@@ -124,6 +125,25 @@ public sealed class AtlasFormFields
         }
     }
 
+    /// <summary>The fields of a section after the rules, with HiddenByRule and DisabledByRule from <paramref name="outcome"/>.</summary>
+    public static AtlasFormFields From(CPApplicationSection section, AtlasRuleOutcome outcome)
+    {
+        AtlasFormFields fields = From(section);
+        fields.ApplyOutcome(outcome);
+        return fields;
+    }
+
+    /// <summary>Sets HiddenByRule and DisabledByRule from what the rules changed (review SV-03, SV-04, FABLE F01).</summary>
+    public void ApplyOutcome(AtlasRuleOutcome outcome)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+        foreach (AtlasFormField field in _fields)
+        {
+            field.HiddenByRule = outcome.HiddenByRule.Contains(field.Name);
+            field.DisabledByRule = outcome.DisabledByRule.Contains(field.Name);
+        }
+    }
+
     public static bool IsSingleRowGrid(CPApplicationControl control) =>
         control.Grid != null && string.Equals(control.Grid.BindMode, SingleRowFields, StringComparison.OrdinalIgnoreCase);
 
@@ -134,18 +154,6 @@ public sealed class AtlasFormFields
 
     /// <summary>Any control by name (section, child or grid).</summary>
     public CPApplicationControl? Control(string name) => _controls.GetValueOrDefault(name);
-
-    /// <summary>Marks the fields that the JSON (<paramref name="beforeRules"/>) shows or enables and the rules hide or disable.</summary>
-    public void MarkHiddenByRules(AtlasFormFields beforeRules)
-    {
-        ArgumentNullException.ThrowIfNull(beforeRules);
-        foreach (AtlasFormField field in _fields)
-        {
-            AtlasFormField? before = beforeRules.Find(field.Name);
-            field.HiddenByRule = !field.Visible && before is { Visible: true };
-            field.DisabledByRule = field.Disabled && before is { Disabled: false };
-        }
-    }
 
     public IEnumerable<AtlasFormField> FieldsOf(string controlName) =>
         _fields.Where(x => string.Equals(x.Control.Name, controlName, StringComparison.OrdinalIgnoreCase));

@@ -146,8 +146,9 @@ namespace BBH.CP.Atlas.Service.Application
 
             OnLoad(new AtlasLoadContext { Manifest = manifest, Form = form, Section = section, Fields = fields, Record = record });
 
-            Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
-            ClearRuleHiddenValues(section, fields);
+            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
+            fields.ApplyOutcome(outcome);
+            ClearRuleHiddenValues(fields);
 
             string name = section.HeaderName ?? form.Name ?? manifest.Name ?? manifest.Code;
             section.HeaderName = record != null && !string.IsNullOrWhiteSpace(form.HeaderNameWithId)
@@ -166,10 +167,8 @@ namespace BBH.CP.Atlas.Service.Application
         /// the load. Hidden on the client only is not enough: the value was in the JSON of the response.
         /// A field that the JSON hides (an effect can show it) keeps its value.
         /// </summary>
-        private static void ClearRuleHiddenValues(CPApplicationSection section, AtlasFormFields beforeRules)
+        private static void ClearRuleHiddenValues(AtlasFormFields fields)
         {
-            AtlasFormFields fields = AtlasFormFields.From(section);
-            fields.MarkHiddenByRules(beforeRules);
             foreach (AtlasFormField field in fields.All.Where(x => x.HiddenByRule))
             {
                 if (field.IsGridField)
@@ -192,11 +191,8 @@ namespace BBH.CP.Atlas.Service.Application
             HashSet<string> hidden = new(StringComparer.OrdinalIgnoreCase);
             if (form.Section == null)
                 return hidden;
-            AtlasFormFields beforeRules = AtlasFormFields.From(form.Section);
-            Services.Rules.ApplyToSection(form.Section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
-            AtlasFormFields fields = AtlasFormFields.From(form.Section);
-            fields.MarkHiddenByRules(beforeRules);
-            foreach (AtlasFormField field in fields.All.Where(x => x.HiddenByRule))
+            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(form.Section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
+            foreach (AtlasFormField field in AtlasFormFields.From(form.Section, outcome).All.Where(x => x.HiddenByRule))
             {
                 hidden.Add(field.Name);
                 hidden.Add(field.Field);
@@ -298,10 +294,8 @@ namespace BBH.CP.Atlas.Service.Application
             // 3. Effective section: rules for this user and record.
             CPApplicationSection section = form.Section
                 ?? throw AtlasProblemException.Config($"The form of {manifest.Code} has no Section.");
-            AtlasFormFields beforeRules = AtlasFormFields.From(section);
-            Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, stored), manifest.RuleMode, manifest.RuleDefault);
-            AtlasFormFields fields = AtlasFormFields.From(section);
-            fields.MarkHiddenByRules(beforeRules);
+            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, stored), manifest.RuleMode, manifest.RuleDefault);
+            AtlasFormFields fields = AtlasFormFields.From(section, outcome);
 
             Dictionary<string, string?> submitted = ReadOutputs(input, fields, errors);
             string? Current(AtlasFormField field) =>
