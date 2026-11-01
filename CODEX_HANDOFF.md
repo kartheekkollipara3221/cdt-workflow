@@ -1,4 +1,4 @@
-# RESUME HERE - 2026-10-31 (night). Independent simplification review (Phase A) written. NO code changed. Waiting for the owner's step list.
+# RESUME HERE - 2026-10-31 (night). Simplification review (Phase A) done and decided. NEXT: Phase B by Opus 5.5 from docs/atlas-platform/FABLE_IMPLEMENTATION_PLAN.md. NO platform code changed yet.
 
 ## State
 - New: docs/atlas-platform/FABLE_REVIEW.md (verdict, 19 findings F01-F19, 18 delete/merge items O1-O18, test quality,
@@ -8,11 +8,17 @@
   than needed from review-driven additions; steps 1-8 are no-contract or additive; steps 9 (config loaded once, no live
   JSON reload) and 10 (one Time setting, drop AuditMode/AuditTime/AttachmentTable/Service/SchemaVersion) need a decision.
 
-## Decisions (owner, 2026-10-31): steps 1-14 without step 10; step 9 yes; step 10 no; step 6 delete the pilot files.
-Phase B in progress. Done steps are listed under "Phase B progress" below (one commit each).
+## Decisions (owner, 2026-10-31): steps 1-14 without step 10; step 9 yes (config read once at start-up); step 10 no
+(manifest settings stay); step 6 delete the pilot C# files (AddAtlasModule<ConfigSectionService>("TTDV2")).
+
+## Hand-off
+- The owner does the implementation with Claude Opus 5.5. The work order is docs/atlas-platform/FABLE_IMPLEMENTATION_PLAN.md:
+  rules, baseline, 13 steps (1-9, 11-14) with files, exact changes, tests to pin, expected counts, package and
+  INTEGRATION.md effects, test hygiene, out of scope, end-of-job hand-off.
+- Commits so far: 59ffd2f (review + decisions), this handoff commit. Not pushed.
 
 ## Phase B progress
-- (none yet)
+- (none yet; one commit per step, recorded here by the next session)
 
 ## Next
 1. DONE: owner picked the Phase B steps from FABLE_REVIEW.md section 8 and answers steps 9 and 10.
@@ -22,8 +28,8 @@ Phase B in progress. Done steps are listed under "Phase B progress" below (one c
 3. Then the dev integration at the target continues (entry below).
 
 ## Next-session prompt
-"Resume. Read the top entry of CODEX_HANDOFF.md. Phase B: do steps <list> of docs/atlas-platform/FABLE_REVIEW.md
-section 8. Decision on step 9: <yes/no>. Step 10: <yes/no>. Keep the broad goal: seamless integration at the target,
+"Resume. Read the top entry of CODEX_HANDOFF.md, then docs/atlas-platform/FABLE_IMPLEMENTATION_PLAN.md. Do Phase B
+step 1. One step per commit, all five gates after each step, no push. Keep the broad goal: seamless integration at the target,
 platform generic and simple, nothing breaks the existing system."
 
 ---
