@@ -1,4 +1,55 @@
-# RESUME HERE - 2026-10-31 (night). Simplification review (Phase A) done and decided. NEXT: Phase B by Opus 5.5 from docs/atlas-platform/FABLE_IMPLEMENTATION_PLAN.md. NO platform code changed yet.
+# RESUME HERE - 2026-10-31 (late night). Phase B DONE (steps 1-14, no step 10). Package rebuilt. NOT pushed.
+
+## State
+- Branch console-code-first-0518. Commits (one for each step, all gates green after each):
+  2a9710b step 1 dead code | 4166e92 step 2 client helpers (atlas-dates.ts) | 2cbb081 step 3 one navigation, one value
+  rule, no " - " option split | 8f8e18f step 4 rule engine returns AtlasRuleOutcome | a70b7c2 step 5 SavePage split |
+  c6a02a5 step 6 TTDV2 needs no C# (Years/WeekEndings providers) | cc1c55e step 7 AtlasPlatformOptions | 744f321 step 8 four
+  interfaces dropped | bdabf9d step 9 config read once | ef45c44 step 11 start-up check split | 73b04fe step 12 form view
+  model, switchMap loads | 0d176b3 step 13 shared effect/Computed cases | 8cab414 step 14 Tailwind safelist |
+  3577d2e package (92 files, at 8cab414).
+- Test counts: dotnet test 295 (steps 1-5) -> 297 (step 6, +2 provider tests) -> 295 (step 9, -2 refresh tests) -> 305
+  (step 13, +10). ng test 77 -> 87 (step 13). Build 0 warnings; --atlas-check 0/0; check:target-flags ok after each step.
+- INTEGRATION.md: section 1 (no CPTTDV2Service/TTDV2), section 2 program.cs line (ConfigSectionService) and new
+  tailwind.config.js row, section 4 (ConfigRefreshSeconds row -> "config read one time at start-up"), 4.1 TTDV2 row,
+  B51 wording, new B76 (F03) and B77 (F04).
+- docs/atlas-platform/README.md row 22.
+
+## Deviations from FABLE_IMPLEMENTATION_PLAN.md (all on purpose, in the commit messages)
+- Step 1: AtlasRendererRegistry.types() kept (the B46 spec "renders each registered control type" reads it). The
+  rule-engine expression is `!Enable && (child.Disabled || Disabled || Disable)`; the plan's expression would stop Enable
+  from re-enabling a child that the JSON disabled. .p-8 kept (TTDV2.json uses it).
+- Step 2: action menu keeps run(name) (the spec calls run('History')).
+- Step 4: the engine compares the effective field state before/after the rules (as AtlasFormFields does), so the sets
+  equal the old diff. Note: a field that an app OnLoad hook hides is no longer "HiddenByRule" (only rules count); no app
+  has such a hook now.
+- Step 7: options read by hand (the binder throws on a bad int; the old code used the default). AtlasPlatformConfiguration kept.
+- Step 9: smaller than the plan: no AtlasApp/AtlasAppCatalog/GetApp; AtlasDisabledApps and AtlasPlatformStartupGate kept.
+  The store reads all files one time at the first use and keeps the text. A_changed_file_is_read_again became
+  A_changed_file_is_seen_only_after_a_new_start (no extra test); The_manifests_are_parsed_once_... kept (still true).
+- Step 11: CheckApp is about 50 lines (the others under 45). Reflection walk for unknown properties kept (it reports
+  every JSON path).
+- Step 12: the field error stays a method (form-control touched/errors are not signals, a computed would go stale);
+  `form` stays public (the spec reads it).
+- Step 13: the client Computed already left empty values out (the review text was older than the code); cases only.
+- Section 4 test hygiene (optional step 15): not done; needs the owner's OK (item 6 deletes docs SQL copies).
+
+## Not checked
+- Browser checks of the plan (steps 3, 6, 12: open TTDV2 from the dashboard, defaults, week headers, live Weekly Total,
+  save). No browser was connected; the component specs cover the same paths.
+
+## Next
+1. Owner: review the 14 commits; push when OK (nothing pushed).
+2. Optional step 15 (test hygiene, plan section 4) if the owner agrees.
+3. Then the dev integration at the target continues (entry below), with the new package 3577d2e.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Push Phase B | Do step 15 | Target step N result: ...>. Keep the broad
+goal: seamless integration at the target, platform generic and simple, nothing breaks the existing system."
+
+---
+
+# DONE (superseded by the entry above) - 2026-10-31 (night). Simplification review (Phase A) done and decided. NEXT: Phase B by Opus 5.5 from docs/atlas-platform/FABLE_IMPLEMENTATION_PLAN.md. NO platform code changed yet.
 
 ## State
 - New: docs/atlas-platform/FABLE_REVIEW.md (verdict, 19 findings F01-F19, 18 delete/merge items O1-O18, test quality,
