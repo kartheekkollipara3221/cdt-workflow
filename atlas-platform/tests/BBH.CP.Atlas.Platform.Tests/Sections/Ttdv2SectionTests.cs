@@ -517,6 +517,51 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     }
 
     [Fact]
+    public async Task An_OnLoad_hook_sees_the_record_and_its_change_reaches_the_user()
+    {
+        // FABLE review 4.2 item 1: the hooks that the next apps override.
+        int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
+        HookModule service = new(_harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)) { AppCode = "TTDV2" };
+
+        CPApplicationSection created = service.LoadPage(new CPAtlasPage { ID = 0 });
+        CPApplicationSection stored = service.LoadPage(new CPAtlasPage { ID = id });
+
+        Assert.Equal("new", Control(created, "WorkDescription").Value);
+        Assert.Equal("stored " + id, Control(stored, "WorkDescription").Value);
+    }
+
+    [Fact]
+    public async Task An_error_from_the_OnBeforeSave_hook_stops_the_save()
+    {
+        HookModule service = new(_harness.ModuleServices(_registry, Prep, [Ttdv2Roles.Prepare], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance))
+        {
+            AppCode = "TTDV2",
+            RefuseCategory = "TAX_N"
+        };
+        object? before = await database.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General");
+
+        CPAtlasPage result = service.SavePage(NewInput(), NoFiles);
+
+        Assert.Equal(0, result.ID);
+        Assert.Contains(result.Errors!, x => x.Field == "Category" && x.Code == "HookRefused");
+        Assert.Equal(before, await database.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General"));
+    }
+
+    private sealed class HookModule(AtlasModuleServices services) : ConfigSectionService(services)
+    {
+        public string? RefuseCategory { get; init; }
+
+        protected override void OnLoad(AtlasLoadContext context) =>
+            context.Section.FindControlByName("WorkDescription")!.Value = context.IsNew ? "new" : "stored " + context.Record!["ID"];
+
+        protected override void OnBeforeSave(AtlasSaveContext context)
+        {
+            if (Equals(context.Record["Category"], RefuseCategory))
+                context.Errors.Add(new CPPageError { Field = "Category", Code = "HookRefused", Message = "The app refuses this category." });
+        }
+    }
+
+    [Fact]
     public async Task An_update_with_no_Version_is_refused()
     {
         // Review DA-02: a caller that does not send Version must not overwrite changes of other users.
