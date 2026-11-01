@@ -1,3 +1,33 @@
+# RESUME HERE - 2026-10-31 (night). Independent simplification review (Phase A) written. NO code changed. Waiting for the owner's step list.
+
+## State
+- New: docs/atlas-platform/FABLE_REVIEW.md (verdict, 19 findings F01-F19, 18 delete/merge items O1-O18, test quality,
+  10 most complex functions, duplication C#/TS, 14-step refactor plan). README row 21 added. No code, package or
+  INTEGRATION.md change. Baseline re-measured at review start: build 0 warnings; dotnet test 295; ng test 77.
+- Verdict in one line: the design is right (metadata + shared-type EF + one generic service); the code is 25-30% heavier
+  than needed from review-driven additions; steps 1-8 are no-contract or additive; steps 9 (config loaded once, no live
+  JSON reload) and 10 (one Time setting, drop AuditMode/AuditTime/AttachmentTable/Service/SchemaVersion) need a decision.
+
+## Decisions (owner, 2026-10-31): steps 1-14 without step 10; step 9 yes; step 10 no; step 6 delete the pilot files.
+Phase B in progress. Done steps are listed under "Phase B progress" below (one commit each).
+
+## Phase B progress
+- (none yet)
+
+## Next
+1. DONE: owner picked the Phase B steps from FABLE_REVIEW.md section 8 and answers steps 9 and 10.
+2. Phase B rules (from the owner's brief): one step per commit; pin with tests, change structure, prove nothing changed;
+   gates after each step: dotnet build (0 warnings), dotnet test (295), --atlas-check (0/0), ng build + ng test (77),
+   npm run check:target-flags; rebuild the package when a COPY file or INTEGRATION.md changes; do not push without OK.
+3. Then the dev integration at the target continues (entry below).
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. Phase B: do steps <list> of docs/atlas-platform/FABLE_REVIEW.md
+section 8. Decision on step 9: <yes/no>. Step 10: <yes/no>. Keep the broad goal: seamless integration at the target,
+platform generic and simple, nothing breaks the existing system."
+
+---
+
 # RESUME HERE - 2026-10-31 (evening). Target package rebuilt at 570278e. DECISION: integrate now, fix by target results.
 
 ## State
