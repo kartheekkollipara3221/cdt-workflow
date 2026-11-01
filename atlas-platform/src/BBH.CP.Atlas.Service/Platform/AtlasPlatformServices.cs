@@ -18,18 +18,18 @@ public static class AtlasPlatformServices
         // Security (module 6).
         services.AddScoped<IAtlasUserContext, AtlasUserContext>();
         services.AddScoped<IAtlasUserDirectory, AtlasUserDirectory>();
-        services.AddScoped<IAtlasAccessService, AtlasAccessService>();
+        services.AddScoped<AtlasAccessService>();
 
         // Rules (module 4).
-        services.AddSingleton<IAtlasRuleEngine, AtlasRuleEngine>();
+        services.AddSingleton<AtlasRuleEngine>();
 
         // Audit (module 9), option providers (module 1, 10.2) and the module service bundle.
-        services.AddScoped<IAtlasAuditWriter, AtlasAuditWriter>();
+        services.AddScoped<AtlasAuditWriter>();
         services.AddScoped<IAtlasOptionProvider, PBAccountsOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, UsersInRolesOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, YearsOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, WeekEndingsOptionProvider>();
-        services.AddScoped<IAtlasDashboardService, AtlasDashboardService>();
+        services.AddScoped<AtlasDashboardService>();
         services.AddScoped<AtlasModuleServices>();
     }
 }

@@ -22,19 +22,11 @@ public sealed record AtlasAuditChange(string Name, string? Label, string? Old, s
 /// The server audit (spec 09, 4.1-4.5). The entry is written in the transaction of the save. LogMessage is a JSON
 /// list: the first item is <c>{"Name":"_Event","Value":"Create|Update|Delete"}</c>, then one item for each field.
 /// </summary>
-public interface IAtlasAuditWriter
-{
-    /// <summary>Adds the entry to the platform context (the caller saves). An Update with no change adds nothing.</summary>
-    bool Add(AtlasAppManifest manifest, int refId, string auditEvent, IReadOnlyList<AtlasAuditChange> changes);
-
-    /// <summary>The entries of one record, oldest first (as the target History Log).</summary>
-    List<CPAuditLog> Read(AtlasAppManifest manifest, int refId);
-}
-
-public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserContext user, TimeProvider time) : IAtlasAuditWriter
+public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserContext user, TimeProvider time)
 {
     public const string EventName = "_Event";
 
+    /// <summary>Adds the entry to the platform context (the caller saves). An Update with no change adds nothing.</summary>
     public bool Add(AtlasAppManifest manifest, int refId, string auditEvent, IReadOnlyList<AtlasAuditChange> changes)
     {
         ArgumentNullException.ThrowIfNull(manifest);
@@ -65,6 +57,7 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
         return true;
     }
 
+    /// <summary>The entries of one record, oldest first (as the target History Log).</summary>
     public List<CPAuditLog> Read(AtlasAppManifest manifest, int refId)
     {
         ArgumentNullException.ThrowIfNull(manifest);

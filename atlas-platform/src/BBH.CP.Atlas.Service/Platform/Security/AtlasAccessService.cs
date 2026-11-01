@@ -14,22 +14,7 @@ public sealed record AtlasAccessDecision(bool Allowed, string Reason);
 /// A Delete is never only logged (review SV-02): LogOnly keeps users at work while the role grants are checked, and
 /// that does not need a delete. The save of a new record is not only logged either (review 3 RV-04, in the save).
 /// </summary>
-public interface IAtlasAccessService
-{
-    AtlasAccessDecision Evaluate(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasOperation operation,
-        IReadOnlyDictionary<string, object?>? record);
-
-    /// <summary>Evaluates, and on denial logs (LogOnly) or throws 403 (Enforce).</summary>
-    void Demand(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasOperation operation,
-        IReadOnlyDictionary<string, object?>? record, int recordId);
-
-    /// <summary>True if the current user is an owner of the record (OwnerFields, LAN ID match). A new record: true.</summary>
-    bool IsOwner(CPAtlasApplicationConfig? form, IReadOnlyDictionary<string, object?>? record);
-
-    CPUserPermissions UserPermissions(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, IReadOnlyDictionary<string, object?>? record);
-}
-
-public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAccessService> logger) : IAtlasAccessService
+public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAccessService> logger)
 {
     public AtlasAccessDecision Evaluate(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasOperation operation,
         IReadOnlyDictionary<string, object?>? record)
@@ -53,6 +38,7 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
         };
     }
 
+    /// <summary>Evaluates, and on denial logs (LogOnly) or throws 403 (Enforce).</summary>
     public void Demand(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasOperation operation,
         IReadOnlyDictionary<string, object?>? record, int recordId)
     {
@@ -66,6 +52,7 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
             throw AtlasProblemException.Forbidden(decision.Reason);
     }
 
+    /// <summary>True if the current user is an owner of the record (OwnerFields, LAN ID match). A new record: true.</summary>
     public bool IsOwner(CPAtlasApplicationConfig? form, IReadOnlyDictionary<string, object?>? record)
     {
         if (record == null)

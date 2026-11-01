@@ -15,20 +15,15 @@ namespace BBH.CP.Atlas.Service.Platform.Dashboard;
 /// (a hidden tab gets no rows); the rows of each visible <c>Source: Table</c> tab; menus and the add button from
 /// <c>Permissions</c> when the JSON has no rules.
 /// </summary>
-public interface IAtlasDashboardService
-{
-    CPAtlasDashboard Load(string appCode);
-}
-
 public sealed class AtlasDashboardService(
     IAtlasConfigStore configStore,
     CPSharepointContext context,
     AtlasTableRegistry tables,
     IAtlasUserContext user,
     IAtlasUserDirectory directory,
-    IAtlasAccessService access,
-    IAtlasRuleEngine rules,
-    ILogger<AtlasDashboardService>? logger = null) : IAtlasDashboardService
+    AtlasAccessService access,
+    AtlasRuleEngine rules,
+    ILogger<AtlasDashboardService>? logger = null)
 {
     public CPAtlasDashboard Load(string appCode)
     {

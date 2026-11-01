@@ -24,10 +24,10 @@ public sealed class AtlasModuleServices(
     AtlasPlatformContext platformContext,
     IAtlasUserContext user,
     IAtlasUserDirectory directory,
-    IAtlasAccessService access,
-    IAtlasRuleEngine rules,
-    IAtlasAuditWriter audit,
-    IAtlasDashboardService dashboards,
+    AtlasAccessService access,
+    AtlasRuleEngine rules,
+    AtlasAuditWriter audit,
+    AtlasDashboardService dashboards,
     IEnumerable<IAtlasOptionProvider> optionProviders,
     TimeProvider time,
     IConfiguration configuration,
@@ -38,10 +38,10 @@ public sealed class AtlasModuleServices(
     public AtlasPlatformContext PlatformContext { get; } = platformContext;
     public IAtlasUserContext User { get; } = user;
     public IAtlasUserDirectory Directory { get; } = directory;
-    public IAtlasAccessService Access { get; } = access;
-    public IAtlasRuleEngine Rules { get; } = rules;
-    public IAtlasAuditWriter Audit { get; } = audit;
-    public IAtlasDashboardService Dashboards { get; } = dashboards;
+    public AtlasAccessService Access { get; } = access;
+    public AtlasRuleEngine Rules { get; } = rules;
+    public AtlasAuditWriter Audit { get; } = audit;
+    public AtlasDashboardService Dashboards { get; } = dashboards;
     public IReadOnlyList<IAtlasOptionProvider> OptionProviders { get; } = [.. optionProviders];
     public TimeProvider Time { get; } = time;
     public IConfiguration Configuration { get; } = configuration;

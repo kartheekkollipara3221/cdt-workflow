@@ -1,6 +1,6 @@
 // STAND-IN: do not copy to the target.
 // Target: Data/Data/DTO/CPAtlasDashboardConfig.cs. Same classes and properties; the classes are "partial"
-// (INTEGRATION.md). The rule extension methods are not copied: the platform uses IAtlasRuleEngine (module 4).
+// (INTEGRATION.md). The rule extension methods are not copied: the platform uses AtlasRuleEngine (module 4).
 using BBH.CP.Atlas.Data.Enumerations;
 
 namespace BBH.CP.Atlas.Data.DTO

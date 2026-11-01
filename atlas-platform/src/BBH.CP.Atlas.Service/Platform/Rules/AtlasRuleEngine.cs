@@ -41,20 +41,7 @@ public sealed class AtlasRuleResult
 /// One rule engine for all targets (spec 04, 4.1). FirstMatch = the current behaviour; MostPermissive = all matching
 /// rules count (4.2). RuleDefault applies when a target has rules but none matches (4.3).
 /// </summary>
-public interface IAtlasRuleEngine
-{
-    AtlasRuleResult Evaluate(IReadOnlyList<CPRule>? rules, AtlasRuleContext context, AtlasRuleMode mode, AtlasRuleDefault fallback);
-
-    /// <summary>
-    /// Applies the rules to the section-level controls (their own Rules, else the app-level rules), their child
-    /// controls and the buttons. The rules can hide or disable; a child control that the JSON disables stays
-    /// disabled unless a rule names it in EnableControls. Returns the fields that the rules hid or disabled.
-    /// </summary>
-    AtlasRuleOutcome ApplyToSection(CPApplicationSection section, IReadOnlyList<CPRule>? appRules, AtlasRuleContext context,
-        AtlasRuleMode mode, AtlasRuleDefault fallback);
-}
-
-public sealed class AtlasRuleEngine : IAtlasRuleEngine
+public sealed class AtlasRuleEngine
 {
     private static readonly StringComparer Comparer = StringComparer.OrdinalIgnoreCase;
 
@@ -109,6 +96,11 @@ public sealed class AtlasRuleEngine : IAtlasRuleEngine
         };
     }
 
+    /// <summary>
+    /// Applies the rules to the section-level controls (their own Rules, else the app-level rules), their child
+    /// controls and the buttons. The rules can hide or disable; a child control that the JSON disables stays
+    /// disabled unless a rule names it in EnableControls. Returns the fields that the rules hid or disabled.
+    /// </summary>
     public AtlasRuleOutcome ApplyToSection(CPApplicationSection section, IReadOnlyList<CPRule>? appRules, AtlasRuleContext context,
         AtlasRuleMode mode, AtlasRuleDefault fallback)
     {
