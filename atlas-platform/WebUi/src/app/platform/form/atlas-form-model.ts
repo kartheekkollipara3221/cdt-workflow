@@ -207,7 +207,10 @@ export function buildOutputs(section: CPApplicationSection, group: FormGroup, vi
   return outputs;
 }
 
-/** The client value of a Computed field (Sum, Count, Min, Max; empty = 0 for Sum). Null if the expression is not known. */
+/**
+ * The client value of a Computed field (Sum, Count, Min, Max). An empty value is left out, as on the server
+ * (AtlasComputedFields; shared cases in atlas-effect-cases.ts). Null if the expression is not known.
+ */
 export function computeValue(expression: string, values: Record<string, unknown>): number | null {
   const match = /^\s*(Sum|Count|Min|Max)\s*\((.*)\)\s*$/i.exec(expression);
   if (!match) {

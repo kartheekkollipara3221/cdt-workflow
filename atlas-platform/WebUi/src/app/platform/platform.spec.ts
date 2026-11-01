@@ -8,6 +8,7 @@ import { AtlasEffectTarget, applyEffects, matches, optionData } from './form/atl
 import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shownInvalid, toModelValue, toOutputValue } from './form/atlas-form-model';
 import { atlasValidators, errorCode, errorText } from './form/atlas-validators';
 import { ATLAS_VALIDATOR_CASES } from './form/atlas-validator-cases';
+import { ATLAS_COMPUTED_CASES, ATLAS_EFFECT_CASES } from './form/atlas-effect-cases';
 import { cellDay, columnDefs, formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasActionMenu } from './dashboard/atlas-action-menu';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
@@ -248,6 +249,19 @@ describe('validator cases shared with the server (review SV-04)', () => {
       const control = new FormControl(item.value, atlasValidators(item.validator, !!item.validator.Required));
       expect(errorCode(control.errors)).toBe(item.code);
       expect(errorText(control.errors, 'Field', item.validator)).toBe(item.message);
+    });
+  }
+});
+
+describe('effect and Computed cases shared with the server (review FABLE 6.1)', () => {
+  for (const item of ATLAS_EFFECT_CASES) {
+    it(`${JSON.stringify(item.when)} "${item.value}" matches: ${item.matches}`, () => {
+      expect(matches(item.when, item.value)).toBe(item.matches);
+    });
+  }
+  for (const item of ATLAS_COMPUTED_CASES) {
+    it(`${item.expression} of ${JSON.stringify(item.values)} is ${item.result}`, () => {
+      expect(computeValue(item.expression, item.values)).toBe(item.result);
     });
   }
 });
