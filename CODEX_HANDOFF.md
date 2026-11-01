@@ -9,7 +9,7 @@
   text is not found; fixture InsertGeneralAsync, one batch runner with stopOnError, TTDV2 registry read in InitializeAsync)
   | 8cd4112 15d (owner OK: the fixture runs sql/release-p1; five docs/atlas-platform/sql copies and ReleaseScriptTests
   deleted; links in specs 06/11/12/20/README md+html go to release-p1) | bcb4b2b package (92 files, at 8cd4112).
-- Test counts: dotnet test 305 -> 301 (15a) -> 303 (15b) -> 303 (15c) -> 298 (15d). Fresh clone: 296 pass, 2 skipped.
+- Test counts: dotnet test 305 -> 301 (15a) -> 303 (15b) -> 303 (15c) -> 298 (15d). Fresh clone: 292 pass, 2 skipped (the 5-row theory counts as 1 skip).
   ng test 87. Build 0 warnings; --atlas-check 0/0; check:target-flags ok.
 - Deviations from plan section 4: the renderer-registry register() spec kept (provideAtlasRenderers calls register in
   production); The_manifests_are_parsed_once kept (step 9 kept it; plan item 2 does not list it); the ScriptName values
