@@ -51,6 +51,17 @@ public static partial class AtlasConfigLint
             error($"the manifest SchemaVersion {version} is newer than this platform ({SchemaVersion}).");
 
         List<CPApplicationControl> controls = [.. (form.Section?.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []))];
+        HashSet<string> names = DuplicateNames(controls, error);
+        EffectTargets(controls, names, error);
+        EffectCycles(controls, error);
+        RuleTargets(form, controls, names, error);
+        Defaults(form, names, error);
+        ButtonActions(form, error, warning);
+    }
+
+    /// <summary>A control name used two times is an error. Returns the names of the controls, grid columns and fields.</summary>
+    private static HashSet<string> DuplicateNames(List<CPApplicationControl> controls, Action<string> error)
+    {
         HashSet<string> names = new(StringComparer.OrdinalIgnoreCase);
         foreach (CPApplicationControl control in controls)
         {
@@ -62,79 +73,98 @@ public static partial class AtlasConfigLint
         }
         foreach (CPApplicationControl control in controls.Where(x => !string.IsNullOrWhiteSpace(x.Field)))
             names.Add(control.Field!);
+        return names;
+    }
 
-        void Names(string where, IEnumerable<string>? list)
-        {
-            foreach (string name in list ?? [])
-                if (!names.Contains(name))
-                    error($"{where} names '{name}', which is not a control or field of the form.");
-        }
+    private static void Names(HashSet<string> names, string where, IEnumerable<string>? list, Action<string> error)
+    {
+        foreach (string name in list ?? [])
+            if (!names.Contains(name))
+                error($"{where} names '{name}', which is not a control or field of the form.");
+    }
 
+    /// <summary>The targets of the effects, the HeaderFromDate controls and the Pattern of each control.</summary>
+    private static void EffectTargets(List<CPApplicationControl> controls, HashSet<string> names, Action<string> error)
+    {
         foreach (CPApplicationControl control in controls)
         {
             foreach (CPEffect effect in control.Effects ?? [])
             {
                 string where = $"an effect of '{control.Name}'";
-                Names(where, effect.Show);
-                Names(where, effect.Hide);
-                Names(where, effect.Require);
-                Names(where, effect.Unrequire);
-                Names(where, effect.Enable);
-                Names(where, effect.Disable);
-                Names(where, effect.Clear);
-                Names(where, effect.Set?.Keys);
-                Names(where, effect.SetFromOption?.Keys);
+                Names(names, where, effect.Show, error);
+                Names(names, where, effect.Hide, error);
+                Names(names, where, effect.Require, error);
+                Names(names, where, effect.Unrequire, error);
+                Names(names, where, effect.Enable, error);
+                Names(names, where, effect.Disable, error);
+                Names(names, where, effect.Clear, error);
+                Names(names, where, effect.Set?.Keys, error);
+                Names(names, where, effect.SetFromOption?.Keys, error);
             }
 
             foreach (CPGridColumn column in control.Grid?.Columns ?? [])
                 if (column.HeaderFromDate is { } header)
-                    Names($"the HeaderFromDate of the column '{column.field}'", [header.Control ?? ""]);
+                    Names(names, $"the HeaderFromDate of the column '{column.field}'", [header.Control ?? ""], error);
 
             if (control.Validator?.Pattern is { Length: > 0 } pattern && !Compiles(pattern))
                 error($"the Pattern of '{control.Name}' is not a valid regular expression.");
         }
+    }
 
-        // Review 3 RV-15: a value change runs the effects of the changed control; Set, Clear and SetFromOption change
-        // other controls, whose effects run in turn. A cycle (A sets B, B sets A, or A sets A) never ends in the client.
+    /// <summary>
+    /// Review 3 RV-15: a value change runs the effects of the changed control; Set, Clear and SetFromOption change
+    /// other controls, whose effects run in turn. A cycle (A sets B, B sets A, or A sets A) never ends in the client.
+    /// </summary>
+    private static void EffectCycles(List<CPApplicationControl> controls, Action<string> error)
+    {
         Dictionary<string, HashSet<string>> writes = new(StringComparer.OrdinalIgnoreCase);
         foreach (CPApplicationControl control in controls.Where(x => x.Effects is { Count: > 0 }))
             writes[control.Name] = new(control.Effects!.SelectMany(x =>
                 (x.Clear ?? []).Concat((IEnumerable<string>?)x.Set?.Keys ?? []).Concat((IEnumerable<string>?)x.SetFromOption?.Keys ?? [])), StringComparer.OrdinalIgnoreCase);
         foreach (string start in writes.Keys)
-            if (ReachesItself(start))
+            if (ReachesItself(writes, start))
                 error($"the effects of '{start}' change a control whose effects change '{start}' again (a Set/Clear/SetFromOption cycle).");
+    }
 
-        bool ReachesItself(string start)
+    private static bool ReachesItself(Dictionary<string, HashSet<string>> writes, string start)
+    {
+        HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+        Stack<string> open = new(writes[start]);
+        while (open.Count > 0)
         {
-            HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
-            Stack<string> open = new(writes[start]);
-            while (open.Count > 0)
-            {
-                string name = open.Pop();
-                if (string.Equals(name, start, StringComparison.OrdinalIgnoreCase))
-                    return true;
-                if (seen.Add(name) && writes.TryGetValue(name, out HashSet<string>? next))
-                    foreach (string target in next)
-                        open.Push(target);
-            }
-            return false;
+            string name = open.Pop();
+            if (string.Equals(name, start, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (seen.Add(name) && writes.TryGetValue(name, out HashSet<string>? next))
+                foreach (string target in next)
+                    open.Push(target);
         }
+        return false;
+    }
 
+    private static void RuleTargets(CPAtlasApplicationConfig form, List<CPApplicationControl> controls, HashSet<string> names, Action<string> error)
+    {
         foreach (CPRule rule in (form.Rules ?? []).Concat(controls.SelectMany(x => x.Rules ?? [])))
         {
-            Names("a rule", rule.ShowControls);
-            Names("a rule", rule.HideControls);
-            Names("a rule", rule.EnableControls);
-            Names("a rule", rule.DisableControls);
+            Names(names, "a rule", rule.ShowControls, error);
+            Names(names, "a rule", rule.HideControls, error);
+            Names(names, "a rule", rule.EnableControls, error);
+            Names(names, "a rule", rule.DisableControls, error);
         }
+    }
 
+    private static void Defaults(CPAtlasApplicationConfig form, HashSet<string> names, Action<string> error)
+    {
         foreach ((string name, string token) in form.Defaults ?? new Dictionary<string, string>())
         {
-            Names("Defaults", [name]);
+            Names(names, "Defaults", [name], error);
             if (!AtlasDefaultTokens.IsValid(token))
                 error($"the default token '{token}' of '{name}' is not known (known: {string.Join(", ", AtlasDefaultTokens.Fixed)}, {{Options[n]}}).");
         }
+    }
 
+    private static void ButtonActions(CPAtlasApplicationConfig form, Action<string> error, Action<string> warning)
+    {
         foreach (CPButton button in form.Section?.Buttons ?? [])
         {
             if (button.Action?.Type is not { } type)
