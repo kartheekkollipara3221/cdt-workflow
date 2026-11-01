@@ -1,4 +1,33 @@
-# RESUME HERE - 2026-10-31 (late night). Phase B DONE (steps 1-14, no step 10). Package rebuilt. NOT pushed.
+# RESUME HERE - 2026-11-01. Phase B PUSHED (origin at 7fe3d0c). Step 15 (test hygiene) DONE, NOT pushed. NEXT: target dev integration.
+
+## State
+- Pushed 2026-11-01: Phase B (2a9710b..7fe3d0c) to origin/console-code-first-0518. Gates green before the push.
+- Step 15 commits (not pushed): 15b0539 15a (fresh clone runs the suite: root found by atlas-platform alone;
+  TargetCopyFact/TargetCopyTheory skip the 2 target-copy tests when target-implementation-read-only is absent; detail
+  tests dropped or trimmed) | 7719786 15b (OnLoad + OnBeforeSave hook tests via a HookModule subclass) | aa8f3b2 15c
+  (TestSupport: FixedTimeProvider, TestHost, EmptyConfigStore; disposable ConfigCopy with Replace/Write that throws when the
+  text is not found; fixture InsertGeneralAsync, one batch runner with stopOnError, TTDV2 registry read in InitializeAsync)
+  | 8cd4112 15d (owner OK: the fixture runs sql/release-p1; five docs/atlas-platform/sql copies and ReleaseScriptTests
+  deleted; links in specs 06/11/12/20/README md+html go to release-p1) | bcb4b2b package (92 files, at 8cd4112).
+- Test counts: dotnet test 305 -> 301 (15a) -> 303 (15b) -> 303 (15c) -> 298 (15d). Fresh clone: 296 pass, 2 skipped.
+  ng test 87. Build 0 warnings; --atlas-check 0/0; check:target-flags ok.
+- Deviations from plan section 4: the renderer-registry register() spec kept (provideAtlasRenderers calls register in
+  production); The_manifests_are_parsed_once kept (step 9 kept it; plan item 2 does not list it); the ScriptName values
+  inside the scripts ('12-ttdv2-app.sql' in CP_Atlas_ScriptLog, RV-L10) not changed (persisted data).
+- No production code changed in step 15. INTEGRATION.md: only the script names (040/020) in text.
+
+## Next
+1. Owner: push step 15 when OK (5 commits after 7fe3d0c).
+2. Dev integration at the target with package bcb4b2b (steps 0-6 in the 2026-10-31 evening entry below). Errors -> fix
+   here, rebuild the package.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Push step 15 | Target step N result: ...>. Keep the broad goal:
+seamless integration at the target, platform generic and simple, nothing breaks the existing system."
+
+---
+
+# DONE (superseded by the entry above) - 2026-10-31 (late night). Phase B DONE (steps 1-14, no step 10). Package rebuilt. NOT pushed.
 
 ## State
 - Branch console-code-first-0518. Commits (one for each step, all gates green after each):
