@@ -55,7 +55,7 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
 
         await using (AtlasPlatformContext context = CreateContext(registry))
         {
-            Dictionary<string, object?> loaded = (await context.FindActiveAsync(General, id))!;
+            Dictionary<string, object?> loaded = context.FindActive(General, id)!;
             Assert.Equal(text, loaded["Account"]);
             Assert.Equal(text, loaded["AccountName"]);
             Assert.Equal(text, loaded["WorkDescription"]);
@@ -99,7 +99,7 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
 
         await using (AtlasPlatformContext context = CreateContext(registry))
         {
-            Dictionary<string, object?>? loaded = await context.FindActiveAsync(General, id);
+            Dictionary<string, object?>? loaded = context.FindActive(General, id);
 
             Assert.NotNull(loaded);
             Assert.Equal("100100", loaded["AccountNumber"]);
@@ -119,8 +119,8 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
 
         await using AtlasPlatformContext context = CreateContext(registry);
 
-        Assert.Null(await context.FindActiveAsync(General, id));
-        Assert.Null(await context.FindActiveAsync(General, int.MaxValue));
+        Assert.Null(context.FindActive(General, id));
+        Assert.Null(context.FindActive(General, int.MaxValue));
     }
 
     [Fact]
@@ -131,8 +131,8 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
 
         await using AtlasPlatformContext first = CreateContext(registry);
         await using AtlasPlatformContext second = CreateContext(registry);
-        Dictionary<string, object?> firstCopy = (await first.FindActiveAsync(General, id))!;
-        Dictionary<string, object?> secondCopy = (await second.FindActiveAsync(General, id))!;
+        Dictionary<string, object?> firstCopy = first.FindActive(General, id)!;
+        Dictionary<string, object?> secondCopy = second.FindActive(General, id)!;
 
         firstCopy["MondayMinute"] = 60;
         await first.SaveChangesAsync();
@@ -167,7 +167,7 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
         await using (AtlasPlatformContext platform = new(
             new DbContextOptionsBuilder<AtlasPlatformContext>().UseSqlServer(connection).Options, registry))
         {
-            await using var transaction = await platform.BeginSharedTransactionAsync(main);
+            await using var transaction = platform.BeginSharedTransaction(main);
 
             main.CPAtlasApplications.Add(new CPAtlasApplication { Code = marker[..10], Name = marker, IsDeleted = false });
             await main.SaveChangesAsync();
@@ -230,7 +230,7 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
 
             await using (AtlasPlatformContext context = CreateContext(registry))
             {
-                Dictionary<string, object?> loaded = (await context.FindActiveAsync(table.FullName, id))!;
+                Dictionary<string, object?> loaded = context.FindActive(table.FullName, id)!;
                 Assert.Equal("Draft", loaded["Status"]);
                 Assert.Equal("none", loaded["Note"]);
                 Assert.Equal(false, loaded["Active"]);
@@ -267,7 +267,7 @@ public class AtlasPlatformContextTests(SqlServerDatabaseFixture database)
 
             int id = await InsertAsync(registry);
             await using AtlasPlatformContext context = CreateContext(registry);
-            Assert.NotNull(await context.FindActiveAsync(General, id));
+            Assert.NotNull(context.FindActive(General, id));
             Assert.Throws<InvalidOperationException>(() => context.Records($"TTDV2.{name}").Count());
         }
         finally

@@ -38,8 +38,6 @@ public interface IAtlasConfigStore
 
 public sealed class AtlasConfigStore : IAtlasConfigStore
 {
-    public static readonly EventId ConfigInvalid = new(41021, "Atlas.ConfigInvalid");
-
     private readonly IConfiguration _configuration;
     private readonly ILogger _logger;
     private readonly TimeProvider _time;

@@ -16,9 +16,6 @@ namespace BBH.CP.Atlas.App.Platform;
 /// </summary>
 public static class AtlasPlatformStartup
 {
-    public static readonly EventId StartupCheck = new(41020, "Atlas.StartupCheck");
-    public static readonly EventId AppDisabled = new(41023, "Atlas.AppDisabled");
-
     /// <summary>
     /// The setting of review HO-04: DisableModule (default since review 2, AR-01) or Stop. The platform runs in the
     /// process of the current apps, so by default a platform error must not stop them.

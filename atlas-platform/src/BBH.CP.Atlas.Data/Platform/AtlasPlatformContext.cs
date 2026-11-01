@@ -7,7 +7,7 @@ namespace BBH.CP.Atlas.Data.Platform;
 /// The platform context (spec 12, question 1). It holds only shared-type entities: one
 /// <c>Dictionary&lt;string, object?&gt;</c> entity for each registered table, with no C# class.
 /// It uses the same connection as <see cref="CPSharepointContext"/> and can join its transaction
-/// (<see cref="AtlasDataExtensions.BeginSharedTransactionAsync"/>).
+/// (<see cref="AtlasDataExtensions.BeginSharedTransaction"/>).
 /// </summary>
 public class AtlasPlatformContext : DbContext
 {

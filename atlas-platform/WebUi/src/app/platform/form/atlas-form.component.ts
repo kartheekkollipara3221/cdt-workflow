@@ -369,5 +369,3 @@ function flatten(values: Record<string, unknown>): Record<string, unknown> {
   return result;
 }
 
-/** Kept for callers that import it from here; the function is in platform/atlas-errors.ts (review NG-12). */
-export { problemText };

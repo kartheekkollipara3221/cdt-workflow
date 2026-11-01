@@ -31,8 +31,6 @@ public interface IAtlasAccessService
 
 public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAccessService> logger) : IAtlasAccessService
 {
-    public static readonly EventId AccessDenied = new(41001, "Atlas.AccessDenied");
-
     public AtlasAccessDecision Evaluate(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasOperation operation,
         IReadOnlyDictionary<string, object?>? record)
     {

@@ -155,6 +155,7 @@ namespace BBH.CP.Atlas.Data.DTO
         public CPEditPermission? Edit { get; set; }
         public List<string>? Delete { get; set; }
         public List<string>? History { get; set; }
+        /// <summary>Reserved; not read by the platform in P1.</summary>
         public Dictionary<string, List<string>>? Execute { get; set; }
     }
 
@@ -214,6 +215,7 @@ namespace BBH.CP.Atlas.Data.DTO
         /// <summary>Target control name to the key in CPKeyValue.Data of the selected option.</summary>
         public Dictionary<string, string>? SetFromOption { get; set; }
 
+        /// <summary>Reserved; not read by the platform in P1.</summary>
         public string? OptionsFromChild { get; set; }
     }
 
@@ -230,6 +232,7 @@ namespace BBH.CP.Atlas.Data.DTO
     {
         /// <summary>Save, Close, Delete, Execute, Navigate.</summary>
         public required string Type { get; set; }
+        /// <summary>Reserved; not read by the platform in P1.</summary>
         public Dictionary<string, string>? Set { get; set; }
     }
 

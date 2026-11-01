@@ -11,7 +11,6 @@ import { AtlasApiService } from './atlas-api.service';
 import { CPAuditChange, CPAuditLog } from './atlas-models';
 
 interface HistoryEntry {
-  event: string;
   by: string;
   when: string;
   changes: CPAuditChange[];
@@ -129,7 +128,6 @@ export function logItems(message: unknown): CPAuditChange[] | null {
 export function toEntry(log: CPAuditLog): HistoryEntry {
   const items = logItems(log.LogMessage);
   return {
-    event: log.Event ?? 'Change',
     by: log.CreatedBy,
     // CreatedDate is the text of the target ("MM-dd-yyyy HH:mm:ss"); a UTC app also sends CreatedDateUtc: the user's time.
     when: log.CreatedDateUtc ? formatDate(new Date(log.CreatedDateUtc), 'MM-dd-yyyy HH:mm:ss', 'en-US') : log.CreatedDate,

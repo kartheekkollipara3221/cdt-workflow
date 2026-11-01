@@ -1,6 +1,7 @@
 // COPY to the target: WebUi/src/app/platform/form/. Value-based client rules (spec 01, 5.1).
 // Conditions: Equals, NotEquals, In, HasValue. Actions: Show, Hide, Require, Unrequire, Enable, Disable, Set, Clear,
-// SetFromOption. No expression language. The server applies Show/Hide/Require/Unrequire again on save.
+// SetFromOption. No expression language. The server applies all of them again on save and sets the Set, Clear and
+// SetFromOption values itself (review B35).
 import { CPApplicationControl, CPEffectCondition, CPKeyValue } from '../atlas-models';
 
 /** The form state that the effects change. The form component implements it. */

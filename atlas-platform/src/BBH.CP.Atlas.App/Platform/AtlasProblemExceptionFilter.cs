@@ -12,8 +12,6 @@ namespace BBH.CP.Atlas.App.Platform;
 /// </summary>
 public sealed class AtlasProblemExceptionFilter(ILogger<AtlasProblemExceptionFilter> logger) : IExceptionFilter
 {
-    public static readonly EventId ConfigError = new(41024, "Atlas.ConfigError");
-
     public void OnException(ExceptionContext context)
     {
         if (context.Exception is not AtlasProblemException problem)

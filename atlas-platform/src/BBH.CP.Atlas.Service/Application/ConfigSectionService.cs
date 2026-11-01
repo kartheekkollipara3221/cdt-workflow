@@ -64,10 +64,6 @@ namespace BBH.CP.Atlas.Service.Application
             AtlasTable.KeyColumnName, "CreatedBy", "CreatedDate", "ModifiedBy", "ModifiedDate", AtlasTable.SoftDeleteColumnName, "RowVersion"
         };
 
-        public static readonly EventId FieldIgnored = new(41010, "Atlas.FieldIgnored");
-        public static readonly EventId SaveFailed = new(41011, "Atlas.SaveFailed");
-        public static readonly EventId AfterSaveFailed = new(41012, "Atlas.AfterSaveFailed");
-
         private Dictionary<string, IAtlasOptionProvider>? _providers;
         private AtlasAppManifest? _manifest;
 

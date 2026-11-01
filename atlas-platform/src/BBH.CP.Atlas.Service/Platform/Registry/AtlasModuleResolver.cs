@@ -37,8 +37,6 @@ public sealed class AtlasModuleResolver(
     ILogger<AtlasModuleResolver>? logger = null,
     AtlasDisabledApps? disabled = null) : IAtlasModuleResolver
 {
-    public static readonly EventId AppNotAvailable = new(41022, "Atlas.AppNotAvailable");
-
     private readonly Dictionary<string, AtlasModuleRegistration> _registrations =
         registrations.ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
 

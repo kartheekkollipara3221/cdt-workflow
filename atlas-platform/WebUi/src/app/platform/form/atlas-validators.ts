@@ -83,16 +83,18 @@ export function atlasValidators(validator: CPValidator | null | undefined, requi
   if (validator.Integer) {
     list.push(atlasInteger);
   }
-  const hasMin = validator.Min !== null && validator.Min !== undefined;
-  const hasMax = validator.Max !== null && validator.Max !== undefined;
+  const min = validator.Min;
+  const max = validator.Max;
+  const hasMin = min !== null && min !== undefined;
+  const hasMax = max !== null && max !== undefined;
   if (validator.Integer || hasMin || hasMax) {
     list.push(atlasNumber);
   }
   if (hasMin) {
-    list.push(atlasMin(validator.Min!));
+    list.push(atlasMin(min));
   }
   if (hasMax) {
-    list.push(atlasMax(validator.Max!));
+    list.push(atlasMax(max));
   }
   return list;
 }

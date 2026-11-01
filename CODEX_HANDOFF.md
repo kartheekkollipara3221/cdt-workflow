@@ -18,7 +18,15 @@
 - Commits so far: 59ffd2f (review + decisions), this handoff commit. Not pushed.
 
 ## Phase B progress
-- (none yet; one commit per step, recorded here by the next session)
+- Step 1 (dead code; F09, F10, F06, F14, F19): done, see the commit "refactor(atlas-platform): step 1". Gates: build 0 warnings;
+  dotnet test 295; --atlas-check 0/0; ng build ok; ng test 77; check:target-flags ok. Package: rebuild once at the end of
+  Phase B (plan rule 7 allows it).
+  Deviations from the plan: (a) AtlasRendererRegistry.types() kept: its reader is the B46 spec "renders each registered
+  control type", not a stray line; deleting it would drop that coverage, so ng test stays 77. (b) The rule-engine line uses
+  `!Enable && (child.Disabled || Disabled || Disable)`; the plan's expression would not let Enable clear a child that was
+  already Disabled (today it does). (c) .p-8 kept in atlas-platform.scss (TTDV2.json uses it). (d) INTEGRATION.md B51 still
+  says the form component re-exports problemText; the re-export is gone (no importer; problemText stays in atlas-errors.ts).
+  Fix the B51 text with the next INTEGRATION.md change (step 6).
 
 ## Next
 1. DONE: owner picked the Phase B steps from FABLE_REVIEW.md section 8 and answers steps 9 and 10.

@@ -129,10 +129,8 @@ public sealed class AtlasRuleEngine : IAtlasRuleEngine
                 if (!child.Visible)
                     continue;
 
-                bool disabled = child.Disabled || (result.Disabled ? !result.Enable.Contains(child.Name) : result.Disable.Contains(child.Name));
-                if (result.Enable.Contains(child.Name))
-                    disabled = false;
-                child.Disabled = disabled;
+                child.Disabled = !result.Enable.Contains(child.Name)
+                    && (child.Disabled || result.Disabled || result.Disable.Contains(child.Name));
                 DisableGrid(child);
             }
         }

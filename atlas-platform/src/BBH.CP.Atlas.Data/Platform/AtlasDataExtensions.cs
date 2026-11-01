@@ -26,21 +26,6 @@ public static class AtlasDataExtensions
     /// Starts a transaction on <paramref name="main"/> and makes <paramref name="platform"/> use it. Both contexts must
     /// use the same connection. The caller commits or disposes the returned transaction.
     /// </summary>
-    public static async Task<IDbContextTransaction> BeginSharedTransactionAsync(this AtlasPlatformContext platform,
-        CPSharepointContext main, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(platform);
-        ArgumentNullException.ThrowIfNull(main);
-
-        if (!ReferenceEquals(platform.Database.GetDbConnection(), main.Database.GetDbConnection()))
-            throw new InvalidOperationException("The platform context and the main context must use the same connection.");
-
-        IDbContextTransaction transaction = await main.Database.BeginTransactionAsync(cancellationToken);
-        await platform.Database.UseTransactionAsync(transaction.GetDbTransaction(), cancellationToken);
-        return transaction;
-    }
-
-    /// <summary>The same as <see cref="BeginSharedTransactionAsync"/>, for the synchronous service methods.</summary>
     public static IDbContextTransaction BeginSharedTransaction(this AtlasPlatformContext platform, CPSharepointContext main)
     {
         ArgumentNullException.ThrowIfNull(platform);
@@ -73,7 +58,10 @@ public static class AtlasDataExtensions
         return record;
     }
 
-    /// <summary>The same as <see cref="FindActiveAsync"/>, for the synchronous service methods.</summary>
+    /// <summary>
+    /// Loads one record by its key in the database (no full table read, spec 05, 6.5). A soft-deleted record is not
+    /// found. Returns null if there is no such record.
+    /// </summary>
     public static Dictionary<string, object?>? FindActive(this AtlasPlatformContext context, string tableFullName, int id)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -89,17 +77,6 @@ public static class AtlasDataExtensions
         ArgumentNullException.ThrowIfNull(context);
         IQueryable<Dictionary<string, object?>> query = ActiveByKey(context, tableFullName, id);
         return (tracking ? query : query.AsNoTracking()).SingleOrDefault();
-    }
-
-    /// <summary>
-    /// Loads one record by its key in the database (no full table read, spec 05, 6.5). A soft-deleted record is not
-    /// found. Returns null if there is no such record.
-    /// </summary>
-    public static async Task<Dictionary<string, object?>?> FindActiveAsync(this AtlasPlatformContext context,
-        string tableFullName, int id, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        return await ActiveByKey(context, tableFullName, id).SingleOrDefaultAsync(cancellationToken);
     }
 
     private static IQueryable<Dictionary<string, object?>> ActiveByKey(AtlasPlatformContext context, string tableFullName, int id)

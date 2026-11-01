@@ -56,14 +56,6 @@ atlas-form {
     max-width: 100%;
   }
 
-  .radio-group {
-    display: inline-flex;
-    align-items: center;
-    margin-right: 20px;
-    white-space: nowrap;
-    margin-top: 10px;
-  }
-
   .required-indicator {
     color: red;
   }
@@ -287,10 +279,6 @@ atlas-dashboard {
 }
 
 // The history dialog content is in a pbdev-dialog (at the target a PrimeNG overlay), so these rules have no host.
-.atlas-muted {
-  color: variables.$gray-800;
-}
-
 // As the target history-report-modal.css (.styled-table).
 .atlas-history-table {
   width: 100%;
