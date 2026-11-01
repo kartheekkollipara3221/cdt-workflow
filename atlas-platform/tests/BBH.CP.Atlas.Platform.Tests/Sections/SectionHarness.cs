@@ -33,7 +33,7 @@ internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
 }
 
 /// <summary>
-/// Makes a CPTTDV2Service on the test database, with the real TTDV2 files of the App project. Each call to
+/// Makes the TTDV2 module (ConfigSectionService) on the test database, with the real TTDV2 files of the App project. Each call to
 /// <see cref="Service"/> is one request: new contexts on one new connection.
 /// </summary>
 internal sealed class SectionHarness : IDisposable
@@ -95,7 +95,7 @@ internal sealed class SectionHarness : IDisposable
         }
     }
 
-    public CPTTDV2Service Service(AtlasTableRegistry registry, string lanId, params AtlasRole[] roles) =>
+    public ConfigSectionService Service(AtlasTableRegistry registry, string lanId, params AtlasRole[] roles) =>
         new(ModuleServices(registry, lanId, roles, NullLoggerFactory.Instance)) { AppCode = "TTDV2" };
 
     /// <summary>The services of a module class, for a test subclass of a module (for example a hook that throws).</summary>
@@ -113,7 +113,8 @@ internal sealed class SectionHarness : IDisposable
             _configStore, context, platform, user, directory, access, new AtlasRuleEngine(),
             new AtlasAuditWriter(platform, user, Time),
             new AtlasDashboardService(_configStore, context, registry, user, directory, access, new AtlasRuleEngine()),
-            [new PBAccountsOptionProvider(_configuration, user), new UsersInRolesOptionProvider(directory)],
+            [new PBAccountsOptionProvider(_configuration, user), new UsersInRolesOptionProvider(directory),
+                new YearsOptionProvider(Time), new WeekEndingsOptionProvider(Time)],
             Time, _configuration, loggerFactory);
 
         return services;

@@ -11,7 +11,7 @@ namespace BBH.CP.Atlas.App.Platform;
 /// Composition root lines for the platform (spec 07, 4.2). At the target, program.cs gets:
 /// <code>
 /// builder.Services.AddAtlasPlatform(configuration);   // the root that program.cs builds (INTEGRATION.md, section 4; review 3 RV-L15)
-/// builder.Services.AddAtlasModule&lt;CPTTDV2Service&gt;("TTDV2");
+/// builder.Services.AddAtlasModule&lt;ConfigSectionService&gt;("TTDV2");
 /// </code>
 /// </summary>
 public static class AtlasPlatformServiceCollectionExtensions

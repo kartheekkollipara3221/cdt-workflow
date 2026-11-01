@@ -66,7 +66,7 @@ TTDV2 does what TTD does (module 1, 10.1 and 10.5), with the new-app rules.
 |---|---|
 | Code | `TTDV2` (pattern `^[A-Z][A-Z0-9]{1,19}$`). Not in `CPApplicationCode`; the client sends `AppCode`. |
 | Schema | `TTDV2`: `General`, `AuditLog`. No attachment table in P1. |
-| Service | `CPTTDV2Service : ConfigSectionService`, one hook: `OnLoad` (grid column dates) |
+| Service | `CPTTDV2Service : ConfigSectionService`, one hook: `OnLoad` (grid column dates). Changed 2026-10-31 (FABLE F03): no class; the platform providers `Years` and `WeekEndings` with `Parameters`. |
 | Option providers | `TaxYears`, `WeekEndings` (TTDV2, with `TimeProvider`); `PBAccounts`, `UsersInRoles` (platform) |
 | Rule mode | `MostPermissive`, `RuleDefault: ReadOnly` |
 | Owner | `OwnerFields: ["CreatedBy", "TaxPreparerLanId"]`, LAN ID match |

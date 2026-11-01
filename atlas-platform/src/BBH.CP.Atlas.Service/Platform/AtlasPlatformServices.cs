@@ -27,6 +27,8 @@ public static class AtlasPlatformServices
         services.AddScoped<IAtlasAuditWriter, AtlasAuditWriter>();
         services.AddScoped<IAtlasOptionProvider, PBAccountsOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, UsersInRolesOptionProvider>();
+        services.AddScoped<IAtlasOptionProvider, YearsOptionProvider>();
+        services.AddScoped<IAtlasOptionProvider, WeekEndingsOptionProvider>();
         services.AddScoped<IAtlasDashboardService, AtlasDashboardService>();
         services.AddScoped<AtlasModuleServices>();
     }

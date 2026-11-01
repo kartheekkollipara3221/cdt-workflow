@@ -58,9 +58,11 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Equal("100100", account.Data!["AccountNumber"]);
 
         CPApplicationControl grid = Control(section, "WeeklyHour");
-        Assert.Equal("Monday 12-Oct-2026", grid.Grid!.Columns![0].headerName);
-        Assert.Equal("Sunday 18-Oct-2026", grid.Grid.Columns[6].headerName);
-        Assert.Equal("Weekly Total", grid.Grid.Columns[7].headerName);
+        // The client shows the dates in the headers from HeaderFromDate (review FABLE F03: no server hook).
+        Assert.Equal("Monday", grid.Grid!.Columns![0].headerName);
+        Assert.Equal(("WeekEnding", -6), (grid.Grid.Columns[0].HeaderFromDate!.Control, grid.Grid.Columns[0].HeaderFromDate!.AddDays));
+        Assert.Equal(0, grid.Grid.Columns[6].HeaderFromDate!.AddDays);
+        Assert.Null(grid.Grid.Columns[7].HeaderFromDate);
         Assert.Single(grid.Grid.Data!);
 
         Assert.Equal("Tax Time Database Time Sheet", section.HeaderName);
@@ -83,7 +85,6 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Equal("2020-01-05", Control(section, "WeekEnding").Options![0].Value);
         Assert.Equal("gone.user", Control(section, "TaxPreparer").Options![0].Value);
         Assert.Equal("30", Control(section, "WeeklyHour").Grid!.Data![0]["MondayMinute"]);
-        Assert.Equal("Monday 30-Dec-2019", Control(section, "WeeklyHour").Grid!.Columns![0].headerName);
         Assert.Equal($"Tax Time Database Time Sheet - {id}", section.HeaderName);
         Assert.NotNull(section.Version);
         Assert.True(section.UserPermissions!.CanDelete);
@@ -355,7 +356,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     {
         // Review 3 RV-L01: the platform context kept the finished shared transaction, so a second save in one scope failed.
         int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
-        CPTTDV2Service service = Svc(Owner, Ttdv2Roles.Owner);
+        ConfigSectionService service = Svc(Owner, Ttdv2Roles.Owner);
 
         CPApplicationSection first = service.LoadPage(new CPAtlasPage { ID = id });
         CPAtlasPage one = service.SavePage(EditInput(id, first.Version, ("Category", "OTHER")), NoFiles);
@@ -443,7 +444,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         // Review SV-10: Category is mapped onto the tracked record before the MondayMinute error stops the save.
         int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
         AtlasModuleServices services = _harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        CPTTDV2Service service = new(services) { AppCode = "TTDV2" };
+        ConfigSectionService service = new(services) { AppCode = "TTDV2" };
         string? version = service.LoadPage(new CPAtlasPage { ID = id }).Version;
 
         CPAtlasPage result = service.SavePage(EditInput(id, version, ("Category", "OTHER"), ("MondayMinute", "1441")), NoFiles);
@@ -460,7 +461,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         // Review SV-12: Atlas.FieldRefused (Warning) for each refusal; bad grid JSON is not an empty row.
         int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
         using ListLoggerFactory logs = new();
-        CPTTDV2Service service = new(_harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], logs)) { AppCode = "TTDV2" };
+        ConfigSectionService service = new(_harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], logs)) { AppCode = "TTDV2" };
         string? version = service.LoadPage(new CPAtlasPage { ID = id }).Version;
         CPAtlasPage input = EditInput(id, version, ("Salary", "999999"), ("WeeklyHour", "{ not json"));
 
@@ -478,7 +479,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         // Review DA-10: the read-only paths keep nothing in the change tracker.
         int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
         AtlasModuleServices services = _harness.ModuleServices(_registry, Owner, [Ttdv2Roles.Owner], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
-        CPTTDV2Service service = new(services) { AppCode = "TTDV2" };
+        ConfigSectionService service = new(services) { AppCode = "TTDV2" };
 
         service.LoadPage(new CPAtlasPage { ID = id });
         service.GetAuditLog("TTDV2", id);
@@ -511,7 +512,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         }
     }
 
-    private sealed class ThrowingAfterSave(AtlasModuleServices services) : CPTTDV2Service(services)
+    private sealed class ThrowingAfterSave(AtlasModuleServices services) : ConfigSectionService(services)
     {
         protected override void OnAfterSave(AtlasSaveContext context) => throw new InvalidOperationException("The notification failed.");
     }
@@ -663,7 +664,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
 
     // ---------- Helpers ----------
 
-    private CPTTDV2Service Svc(string lanId, params AtlasRole[] roles) => _harness.Service(_registry, lanId, roles);
+    private ConfigSectionService Svc(string lanId, params AtlasRole[] roles) => _harness.Service(_registry, lanId, roles);
 
     private static CPApplicationControl Control(CPApplicationSection section, string name) =>
         section.FindControlByName(name) ?? throw new InvalidOperationException($"No control {name}.");

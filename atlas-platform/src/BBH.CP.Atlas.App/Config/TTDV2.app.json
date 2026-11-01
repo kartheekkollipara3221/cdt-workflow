@@ -9,7 +9,7 @@
   "Table": "TTDV2.General",
   "AuditTable": "TTDV2.AuditLog",
   "AttachmentTable": null,
-  "Service": "TTDV2",
+  "Service": null,
   "AccessMode": "LogOnly",
   "AuditMode": "Server",
   "AuditTime": "Utc",

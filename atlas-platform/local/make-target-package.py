@@ -20,8 +20,6 @@ COPY = [
     ('src/BBH.CP.Atlas.Data/Platform/', 'copy/BBH.CP.Atlas.Data/Platform/'),
     ('src/BBH.CP.Atlas.Service/Platform/', 'copy/BBH.CP.Atlas.Service/Platform/'),
     ('src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs', 'copy/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs'),
-    ('src/BBH.CP.Atlas.Service/Application/CPTTDV2Service.cs', 'copy/BBH.CP.Atlas.Service/Application/CPTTDV2Service.cs'),
-    ('src/BBH.CP.Atlas.Service/Application/TTDV2/', 'copy/BBH.CP.Atlas.Service/Application/TTDV2/'),
     ('src/BBH.CP.Atlas.App/Platform/', 'copy/BBH.CP.Atlas.App/Platform/'),
     ('src/BBH.CP.Atlas.App/Config/TTDV2.app.json', 'copy/BBH.CP.Atlas.App/Config/TTDV2.app.json'),
     ('src/BBH.CP.Atlas.App/Config/TTDV2.json', 'copy/BBH.CP.Atlas.App/Config/TTDV2.json'),

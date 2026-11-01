@@ -11,7 +11,7 @@ The projects have the same names and folders as the target. In each project:
 | Folder | Copy to the target? |
 |---|---|
 | `Platform/` | Yes, to the same path |
-| `Application/` new files (`ConfigSectionService.cs`, `CPTTDV2Service.cs`, `TTDV2/`) | Yes |
+| `Application/` new file (`ConfigSectionService.cs`) | Yes |
 | `Config/TTDV2.*.json` | Yes |
 | `StandIn/` | No. Local copies of target parts that are not in this repository. Each file starts with `// STAND-IN: do not copy to the target.` |
 | `BBH.CP.Atlas.Infra` (whole project) | No (stand-in) |

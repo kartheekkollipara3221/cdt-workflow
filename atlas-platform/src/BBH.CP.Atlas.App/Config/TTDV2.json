@@ -92,7 +92,7 @@
             "Label": "Tax Year",
             "Type": "select",
             "PlaceHolder": "Tax Year",
-            "OptionsSource": { "Provider": "TaxYears" },
+            "OptionsSource": { "Provider": "Years", "Parameters": { "Before": "3", "After": "1" } },
             "KeepSavedValue": true,
             "Validator": { "Required": true }
           },
@@ -151,7 +151,7 @@
             "Label": "Week Ending",
             "Type": "select",
             "PlaceHolder": "Week Ending",
-            "OptionsSource": { "Provider": "WeekEndings" },
+            "OptionsSource": { "Provider": "WeekEndings", "Parameters": { "Count": "4", "DayOfWeek": "Sunday" } },
             "KeepSavedValue": true,
             "Validator": { "Required": true }
           }
