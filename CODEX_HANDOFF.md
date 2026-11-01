@@ -1,4 +1,4 @@
-# RESUME HERE - 2026-11-01. Phase B PUSHED (origin at 7fe3d0c). Step 15 (test hygiene) DONE, NOT pushed. NEXT: target dev integration.
+# RESUME HERE - 2026-11-01. Phase B and step 15 PUSHED (origin at 231915c). NEXT: target dev integration.
 
 ## State
 - Pushed 2026-11-01: Phase B (2a9710b..7fe3d0c) to origin/console-code-first-0518. Gates green before the push.
@@ -17,12 +17,12 @@
 - No production code changed in step 15. INTEGRATION.md: only the script names (040/020) in text.
 
 ## Next
-1. Owner: push step 15 when OK (5 commits after 7fe3d0c).
+1. DONE 2026-11-01: step 15 pushed (7fe3d0c..231915c).
 2. Dev integration at the target with package bcb4b2b (steps 0-6 in the 2026-10-31 evening entry below). Errors -> fix
    here, rebuild the package.
 
 ## Next-session prompt
-"Resume. Read the top entry of CODEX_HANDOFF.md. <Push step 15 | Target step N result: ...>. Keep the broad goal:
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Target step N result: ...>. Keep the broad goal:
 seamless integration at the target, platform generic and simple, nothing breaks the existing system."
 
 ---
