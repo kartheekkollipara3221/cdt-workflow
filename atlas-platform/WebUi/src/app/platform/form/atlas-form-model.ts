@@ -58,17 +58,26 @@ export function toModelValue(control: CPApplicationControl, text: string | null 
 
 /** The server text of a form value (null when empty). */
 export function toOutputValue(control: CPApplicationControl, value: unknown): string | null {
+  const kind = valueKind(control);
   if (isNil(value)) {
-    return valueKind(control) === 'bool' ? 'false' : null;
+    return kind === 'bool' ? 'false' : null;
   }
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'true' : 'false';
-  }
-  if (Array.isArray(value)) {
-    return value.length ? value.map((x) => String(x)).join(LIST_SEPARATOR) : null;
+  switch (kind) {
+    case 'date':
+      if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+      }
+      break;
+    case 'bool':
+      if (typeof value === 'boolean') {
+        return value ? 'true' : 'false';
+      }
+      break;
+    case 'list':
+      if (Array.isArray(value)) {
+        return value.length ? value.map((x) => String(x)).join(LIST_SEPARATOR) : null;
+      }
+      break;
   }
   return value === '' ? null : String(value);
 }

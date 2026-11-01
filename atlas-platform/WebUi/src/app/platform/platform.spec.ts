@@ -78,8 +78,8 @@ describe('effects (spec 01, 5.1)', () => {
     expect(cleared.calls).toEqual(['visible X false', 'value AccountNumber null']);
   });
 
-  it('falls back to the " - " split when an option has no Data', () => {
-    expect(optionData([{ Value: '12345 - Smith Trust' }], '12345 - Smith Trust')).toEqual({ AccountNumber: '12345', AccountName: 'Smith Trust' });
+  it('gives no data when an option has no Data, as the server (review FABLE F14)', () => {
+    expect(optionData([{ Value: '12345 - Smith Trust' }], '12345 - Smith Trust')).toBeNull();
   });
 });
 

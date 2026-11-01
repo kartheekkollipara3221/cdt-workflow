@@ -1,5 +1,6 @@
 // COPY to the target as a reference: WebUi/src/app/platform/dashboard/. At the target, the current dashboard
-// component gets only the navigation change (formRoute first, then the current if chain) and the Columns support.
+// component gets only the navigation change (AtlasDashboardNavigation first, then the current if chain) and the
+// Columns support.
 // Locally this component is the dashboard of a platform app (route dashboard/:code).
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -7,11 +8,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ClientSideRowModelModule, ColDef, Module, RowClassParams } from 'ag-grid-community';
 import { AgLoadingOverlayComponent, DialogComponent, LoaderComponent } from '../atlas-pbdev';
-import { forkJoin } from 'rxjs';
 import { AtlasApiService } from '../atlas-api.service';
 import { AtlasHistoryDialog } from '../atlas-history-dialog';
-import { CPApplicationRow, CPAtlasDashboard, CPAtlasTab, CPButton } from '../atlas-models';
-import { formRoute, formTypeOf } from '../atlas-navigation';
+import { CPAtlasDashboard, CPAtlasTab, CPButton, CPButtonTarget } from '../atlas-models';
+import { AtlasDashboardNavigation } from '../atlas-navigation';
 import { AtlasNoticeService } from '../atlas-notice.service';
 import { problemText } from '../atlas-errors';
 import { columnDefs, sumsRow } from './atlas-dashboard-columns';
@@ -26,6 +26,7 @@ export class AtlasDashboardComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(AtlasApiService);
+  private readonly navigation = inject(AtlasDashboardNavigation);
   private readonly notice = inject(AtlasNoticeService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -69,7 +70,6 @@ export class AtlasDashboardComponent implements OnInit {
   });
 
   code = '';
-  private apps: CPApplicationRow[] = [];
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -83,9 +83,8 @@ export class AtlasDashboardComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.error.set(null);
-    forkJoin({ apps: this.api.applications(), dashboard: this.api.dashboard(this.code) }).subscribe({
-      next: ({ apps, dashboard }) => {
-        this.apps = apps;
+    this.api.dashboard(this.code).subscribe({
+      next: (dashboard) => {
         this.dashboard.set(dashboard);
         if (this.tabIndex() >= this.tabs().length) {
           this.tabIndex.set(0);
@@ -105,8 +104,7 @@ export class AtlasDashboardComponent implements OnInit {
 
   /** The add button: Target first (spec 03, 4.5). */
   onButton(button: CPButton): void {
-    const target = button.Target ?? { AppCode: this.code, Id: 0 };
-    this.navigate(target.AppCode, target.Id);
+    this.navigate(this.code, 0, button.Target ?? { AppCode: this.code, Id: 0 });
   }
 
   selectTab(index: number): void {
@@ -167,10 +165,12 @@ export class AtlasDashboardComponent implements OnInit {
     });
   }
 
-  private navigate(code: string, recordId: number): void {
-    const route = formRoute(formTypeOf(this.apps, code), code, recordId);
-    // At the target: with no FormType, the current if chain runs here.
-    this.router.navigate(route ?? ['/form', code, recordId]);
+  /** The FormType route of the app (AtlasDashboardNavigation, as at the target); with no FormType, the platform form. */
+  private async navigate(code: string, recordId: number, target?: CPButtonTarget): Promise<void> {
+    if (!(await this.navigation.open(code, recordId, target))) {
+      // At the target: with no FormType, the current if chain runs here.
+      await this.router.navigate(['/form', target?.AppCode ?? code, target ? (target.Id ?? 0) : recordId]);
+    }
   }
 }
 

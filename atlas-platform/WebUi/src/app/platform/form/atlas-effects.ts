@@ -39,19 +39,14 @@ export function matches(when: CPEffectCondition | null | undefined, value: unkno
 }
 
 /**
- * The option data for SetFromOption (spec 01, 5.2): Data of the selected option. With no Data, the current
- * " - " split is used (part 1 = number, part 2 = name), so the current options keep working.
+ * The option data for SetFromOption (spec 01, 5.2): Data of the selected option; null when it has no Data. The server
+ * (AtlasServerEffects) reads only Data too (review FABLE F14).
  */
 export function optionData(options: CPKeyValue[] | null | undefined, value: unknown): Record<string, string> | null {
   if (!hasValue(value)) {
     return null;
   }
-  const option = (options ?? []).find((x) => x.Value === String(value));
-  if (option?.Data) {
-    return option.Data;
-  }
-  const parts = String(value).split(' - ');
-  return parts.length >= 2 ? { AccountNumber: parts[0].trim(), AccountName: parts.slice(1).join(' - ').trim() } : null;
+  return (options ?? []).find((x) => x.Value === String(value))?.Data ?? null;
 }
 
 /** Runs the effects of one control for its current value. */
