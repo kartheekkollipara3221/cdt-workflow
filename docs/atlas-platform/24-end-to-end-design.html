@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas platform end to end</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--amber:#8a5a00;--amberbg:#fff7e6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.1rem;margin:12px 0}h2{font-size:1.4rem;margin:0 0 14px}h3{font-size:1.05rem;margin:18px 0 6px}
+section{border-top:1px solid var(--line);margin-top:32px;padding-top:26px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.12rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.warn{padding:14px 18px;border-left:4px solid #c58a1a;background:var(--amberbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+ol li,ul li{margin:5px 0}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:16px 0}
+.flow .box{flex:1 1 150px;border:1px solid var(--line);border-top:4px solid var(--blue);border-radius:8px;padding:10px 12px;background:#fbfdfe}
+.flow .box b{display:block;color:var(--navy)}
+.flow .box span{font-size:.86rem;color:var(--muted)}
+.flow .arrow{align-self:center;color:var(--muted);font-weight:700}
+@media (max-width:720px){main{margin:0;padding:22px 16px;border-radius:0}.flow .arrow{display:none}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Atlas platform · module 24 · 2026-11-02</div>
+<h1>How the new design works, end to end</h1>
+<p class="lead">This report gives a short overview of the generic Atlas platform. It tells you what the parts are and how a request goes through them. It does not give the full details. The full details are in modules 01 to 23.</p>
+<p class="small">Written in ASD-STE100 Simplified Technical English. Pilot app: TTDV2. Code: <code>atlas-platform/</code>. Target bundle: <code>bcb4b2b</code>.</p>
+
+<section>
+<h2>1. The idea in one paragraph</h2>
+<p>Each old Atlas app has its own C# service, its own entity classes and its own form code. The new design replaces this with <b>one generic service</b> for all apps. Each app is only <b>data</b>: JSON files and a SQL table. The platform reads the table columns from the database. It reads the form, the rules and the dashboard from the JSON. Then it shows the form, checks the values and saves the record. A new app does not need new C# code or new Angular code.</p>
+<div class="good">TTDV2 is the first app on the platform. It has no C# code of its own. The old TTD app does not change. It continues to work as before.</div>
+</section>
+
+<section>
+<h2>2. The main parts</h2>
+<div class="table-wrap"><table>
+<tr><th>Part</th><th>What it does</th></tr>
+<tr><td><b>App config (JSON)</b><br><code>TTDV2.app.json</code>, <code>TTDV2.json</code>, <code>TTDV2.Dashboard.json</code></td><td>The manifest names the app, its tables and its settings. The form file gives the sections, fields, rules, effects and permissions. The dashboard file gives the tabs and the columns.</td></tr>
+<tr><td><b>Table metadata</b><br><code>AtlasColumnMetadataReader</code>, <code>AtlasTableRegistry</code></td><td>Reads the columns of each app table from SQL Server at start-up. The platform knows the names, types, sizes, the key, <code>IsDeleted</code> and <code>RowVersion</code>.</td></tr>
+<tr><td><b>Generic data access</b><br><code>AtlasPlatformContext</code></td><td>An EF Core context that maps each table as a set of column values. It uses the same connection and transaction as the target context.</td></tr>
+<tr><td><b>Generic service</b><br><code>ConfigSectionService</code></td><td>Loads a form, saves a record, deletes a record (soft delete), loads the dashboard and loads the history. All apps use this service.</td></tr>
+<tr><td><b>Rule engine</b><br><code>AtlasRuleEngine</code></td><td>Uses the role, the record state and the owner of the record. It makes fields hidden, read-only or editable.</td></tr>
+<tr><td><b>Access check</b><br><code>AtlasAccessService</code></td><td>Checks that the user can open, create, change or delete the record.</td></tr>
+<tr><td><b>Audit</b></td><td>Writes one history row for each create, update and delete, in the same transaction as the data.</td></tr>
+<tr><td><b>Angular form</b><br><code>atlas-form.component</code></td><td>Draws the form from the JSON. A renderer registry selects the control for each field type.</td></tr>
+<tr><td><b>Angular dashboard</b><br><code>atlas-dashboard.component</code></td><td>Draws the tabs and the grid from the dashboard JSON.</td></tr>
+<tr><td><b>Start-up check</b><br><code>--atlas-check</code></td><td>Compares each JSON file with the database. It finds errors before users see them.</td></tr>
+</table></div>
+</section>
+
+<section>
+<h2>3. How to add an app</h2>
+<ol>
+<li>Write a SQL script that makes the app table, the audit table, the app row and the roles. For TTDV2, this is <code>040-ttdv2-app.sql</code>.</li>
+<li>Write the three JSON files: the manifest, the form and the dashboard.</li>
+<li>Register the app with one line: <code>AddAtlasModule&lt;ConfigSectionService&gt;("TTDV2")</code>.</li>
+<li>Run <code>--atlas-check</code>. Correct all errors.</li>
+<li>Set the app to <code>Enabled</code> and restart the app pool.</li>
+</ol>
+<p>An app that needs special behavior can add a small subclass with hooks: <code>OnLoad</code>, <code>OnBeforeSave</code> and <code>OnAfterSave</code>. Most apps do not need it.</p>
+</section>
+
+<section>
+<h2>4. Start-up</h2>
+<div class="flow">
+<div class="box"><b>1. Read config</b><span>The platform reads all JSON files one time.</span></div><div class="arrow">→</div>
+<div class="box"><b>2. Read tables</b><span>It reads the columns of each app table from <code>sys.columns</code>.</span></div><div class="arrow">→</div>
+<div class="box"><b>3. Check</b><span>It compares the JSON with the tables. It logs each error.</span></div><div class="arrow">→</div>
+<div class="box"><b>4. Ready</b><span>Apps with no errors start. An app with errors is disabled. The host continues to run.</span></div>
+</div>
+<div class="note">The platform reads the config and the table metadata only at start-up. If you change a JSON file or a table, restart the app pool.</div>
+</section>
+
+<section>
+<h2>5. The user flow</h2>
+
+<h3>5.1 Open the dashboard</h3>
+<ol>
+<li>The user selects the app on the home page. The home page shows only the apps for which the user has a role.</li>
+<li>The browser asks the API for the dashboard.</li>
+<li>For each tab, the server makes one SQL query from the dashboard JSON. Column names come only from the table metadata. User values are SQL parameters. The query always shows only the records that are not deleted.</li>
+<li>The browser shows the tabs and the grid. The user clicks a row or "New" to open the form.</li>
+</ol>
+
+<h3>5.2 Open the form</h3>
+<ol>
+<li>The browser asks the API for the form of the record. If the user opens a different record before the answer comes, the browser cancels the old request.</li>
+<li>The server checks the access. It reads the record from the table.</li>
+<li>The server puts the values into the form controls. It applies the rules: some fields become hidden or read-only. It removes the values of the hidden fields.</li>
+<li>The server sends the form, the values and the version of the record.</li>
+<li>The browser draws each section and each field with the correct control.</li>
+</ol>
+
+<h3>5.3 Change values</h3>
+<p>When the user changes a value, the browser runs the effects and the computed values from the JSON. For example, it calculates the weekly total. It shows field errors immediately. The server does the same checks again at save. The server does not trust the browser.</p>
+
+<h3>5.4 Save</h3>
+<ol>
+<li>The browser sends the field values and the version.</li>
+<li>The server checks the access and applies the rules again. It accepts only the fields that the user can change. Other fields give an error.</li>
+<li>The server converts each value to the column type and checks it. It runs the effects and the computed values again. It adds the system values: created by, modified by, dates.</li>
+<li>The server writes the record and the history row in one transaction. If another user changed the record after the load, the version is different. Then the server saves nothing and shows a conflict message.</li>
+<li>The server sends back the record ID and the new version.</li>
+</ol>
+
+<h3>5.5 Delete</h3>
+<p>The platform never removes a row. It sets <code>IsDeleted</code> to 1 and writes a history row. The record then disappears from the dashboard and the form. It stays in the table and in the history.</p>
+
+<h3>5.6 History</h3>
+<p>The user clicks "History". The server reads the history rows of the record, oldest first. If the rules hide a field from the user, its old and new values show as <code>***</code>.</p>
+</section>
+
+<section>
+<h2>6. Safety</h2>
+<ul>
+<li><b>Access:</b> each operation checks the role of the user. Roles come from the existing <code>dbo.CP_Atlas_*</code> tables, through a read-only view.</li>
+<li><b>No SQL injection:</b> table and column names come only from the database metadata. All values are SQL parameters.</li>
+<li><b>The server decides:</b> the server applies the rules, effects and checks again. A change in the browser cannot bypass them.</li>
+<li><b>No lost updates:</b> the record version stops two users from overwriting each other.</li>
+<li><b>All or nothing:</b> the data and its history row commit together. If one fails, nothing is saved.</li>
+<li><b>Hidden data stays hidden:</b> hidden values are not sent on load and show as <code>***</code> in the history.</li>
+</ul>
+</section>
+
+<section>
+<h2>7. How it fits into the target</h2>
+<ul>
+<li>The platform code goes into new <code>Platform/</code> folders in the four target projects. The existing code does not change, except for a small number of hand edits. INTEGRATION.md gives each edit.</li>
+<li>The existing apps (TTD, CDT, SQMS, AIN) continue to use their own services. TTDV2 uses the generic service.</li>
+<li>The platform uses the existing users, roles and app tables. It reads them and does not change them.</li>
+<li>The workflow engine does not change.</li>
+</ul>
+
+<h3>Release scripts (<code>atlas-platform/sql/release-p1</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Script</th><th>When</th><th>What it does</th></tr>
+<tr><td>020, 030, 040</td><td>Install (dev integration)</td><td>Make new objects only: the script log, the roles view, the TTDV2 schema and tables, the app row and the roles. They do not change existing rows.</td></tr>
+<tr><td>050</td><td>Cutover day only</td><td>Copy the TTD data into TTDV2. Move each user from the TTD role to the TTDV2 role.</td></tr>
+<tr><td>090</td><td>Rollback only</td><td>Give back the TTD roles. Switch off TTDV2.</td></tr>
+</table></div>
+<div class="warn">Do not run 050 in the shared dev database. It stops TTD access for all users.</div>
+</section>
+
+<section>
+<h2>8. Known limits</h2>
+<ul>
+<li>A change to the config or to a table needs an app-pool restart.</li>
+<li>The dashboard cannot run a tab from a stored procedure yet (RV-N1). Correct this before app #2.</li>
+<li>Start-up does not try again after a short SQL failure (RV-07). Restart the app pool.</li>
+<li>Rollback 090 gives back only the TTD roles that 050 removed in the hour before the copy.</li>
+<li>Performance work comes after the integration and the review with the target team.</li>
+</ul>
+<p class="small">Related: module 14 (platform design and flow), module 18 (whole redesign and integration), INTEGRATION.md, CODEX_HANDOFF.md.</p>
+</section>
+</main>
+</body>
+</html>
