@@ -1,4 +1,19 @@
-# RESUME HERE - 2026-11-01. Phase B and step 15 PUSHED (origin at 231915c). NEXT: target dev integration.
+# RESUME HERE - 2026-11-01. Phase B and step 15 PUSHED (origin at c3529ad). NEXT: target dev integration.
+
+## Owner Q&A 2026-11-01 (no code change; record so the next session does not re-derive it)
+- Shared dev DB (the target team works in it): running 020, 030, 040 does NOT impact them. No ALTER/DROP/UPDATE on
+  existing tables; only new objects (schema TTDV2 + 2 tables, dbo.CP_Atlas_ScriptLog, view vw_CP_Atlas_ActiveUserRole)
+  and INSERTs (1 row CP_Atlas_Application 'TTDV2', 3 rows CP_Atlas_Entitlement). Target code looks up apps by its own
+  codes (Single(Code == ...)); home list dbo.Get_Application shows only apps the user has a role for -> TTDV2 invisible.
+  TTD.General/TTD.AuditLog are never changed (050 only reads them).
+- Cautions told to the owner: (1) do NOT run 050 in the shared DB (it soft-revokes all TTD roles); 050 only on cutover
+  day, 090 only to roll back; (2) give TTDV2 roles only to own testers (old target code has no TTDV2 handler: the tile
+  would error for that user); (3) a database-first re-scaffold of CPSharepointContext would pick up the new tables
+  (harmless; leave them out).
+- Open items list given (nothing blocks dev integration): target-side checks (hand edits, browser checks, NULL-row query,
+  GRANT on schema TTDV2 for the API login); target-team questions RV-L11, RV-L13; before app #2 RV-N1, RV-07, RV-L03;
+  known limits (090 1-hour window, restart for config change, perf PF1/RV-L14 after integration); backlog RV-L20/22/23/25.
+- Local servers were stopped by Claude Code (low memory). Restart only on request (atlas-platform/local/README.md).
 
 ## State
 - Pushed 2026-11-01: Phase B (2a9710b..7fe3d0c) to origin/console-code-first-0518. Gates green before the push.
