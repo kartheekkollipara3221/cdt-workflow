@@ -1,4 +1,107 @@
-# RESUME HERE - 2026-11-07. Target dev integration with package bcb4b2b: steps 0-6 ALL DONE. NEXT: user bug summary.
+# CP Atlas hand-off - read this first (updated 2026-11-07, end of session; model Fable 5.1)
+
+CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
+(src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
+2026-11-07; the user approved governance points 1-4). Section A = platform (active), section B = engine (paused).
+The dated history entries below are unchanged, newest first: platform and target-analysis entries, then the divider
+"HISTORY: workflow engine and CDT v2", then the engine entries.
+
+## A. Atlas platform (atlas-platform/) - ACTIVE
+
+### State
+- Target dev integration with package bcb4b2b: steps 0-6 ALL DONE (user-reported, each "complete, no errors"). TTDV2
+  dashboard, form, save, history and delete work at the target. Dev settings: Enabled true, AccessMode Enforce.
+- Step 5/6 "small bugs": the user has NOT sent the list yet (PENDING_DECISIONS.html Q01).
+- Hand-off documents (docs/atlas-platform/, ASD-STE100 ~80%): ATLAS_CODE_MAP.html (19 sections; commits 9c3e5a2,
+  f11307d, 73ba67b, 7dba558), ATLAS_TEAM_NOTES.html (3fb38d8), both PUSHED (origin at 3fb38d8);
+  PENDING_DECISIONS.html (51 questions, 9 categories, options + recommendations + "Copy answers"; NOT committed).
+- Governance edits 2026-11-07 (NOT committed; show the diff to the user first): PROJECT.md section 0 (product context),
+  AGENTS.md (CP Atlas note, GSD/gates scoped to the engine, new "Atlas platform" section with rules, gates,
+  stop-and-ask, working style; handoff layout), this file (A/B layout), PENDING_DECISIONS.html (category 8 renamed,
+  Q51 engine adapter, Q50 text).
+- Behaviour corrections recorded in the team notes (my step texts had them wrong): save returns to the dashboard;
+  WeekEndings = last Sunday (today if Sunday) + next 3 Sundays, default = last Sunday; Years = this year+1 down to this
+  year-3, default {Options[1]} = this year; dashboard dates dd-MMM-yyyy.
+- Independent review 2026-11-01 (untracked: atlas-platform/CODEX_HANDOFF.md, atlas-platform/review/2026-11-01/,
+  WebUi/src/app/platform/review-contracts.spec.ts): 4 test-reproduced, UNFIXED findings. R01 High (090 restores roles
+  revoked on purpose before 050), R02 High (re-cutover after rollback loses newer TTD data/history, then revokes TTD
+  roles again), R04 Medium (All Report Total sums only the 5000 loaded rows, no warning), R03 Medium (multi-select
+  delimiter #$# vs comma; TTDV2 unaffected). Decide before 050/090 run anywhere (Q07-Q10).
+- Known: Service/StandIn/CPAtlasService.cs header names a reference file that does not exist (fix at the next package
+  rebuild, Q06). Local servers stopped; restart only on request (atlas-platform/local/README.md).
+
+### Pending (full detail with options = docs/atlas-platform/PENDING_DECISIONS.html)
+1 TTDV2 at target: Q01 bug summary, Q02 step-0 numbers (RowsLeftOut, warnings), Q03 GRANT on schema TTDV2 (QC/prod),
+  Q04 CP_Atlas_Application code list (AR-02), Q05 pbdev-select + exact @pbdev/pbdev-core version, Q06 package rebuild.
+2 Review R01-R04: Q07-Q10 fix choices; Q11 MaxRows 5000 confirm.
+3 Design choices B3/B4/B7/B9/B10/B14/B15 confirm or change: Q12-Q18 (B3 was asked 2026-10-25, never answered).
+4 Go-live/target team: Q19 LogOnly then Enforce, Q20 Enabled approver, Q21 when 050 runs (AR-11), Q22 team review
+  format, Q23 owner + author guide/JSON Schema (AR-08, SV-07), Q24 RV-L11 time base, Q25 RV-L13 LanID index.
+5 Before app #2: Q26 which app, Q27 RV-N1 procedure tabs, Q28 RV-07 start-up retry, Q29 RV-L03 user-control validation,
+  Q30 AR-09 feature table, Q31 CreatedByLanId in 05 template, Q32 N5 multi-row grids.
+6 Performance/backlog: Q33 PF9 first then PF1, Q34 deferred SV-13/DA-10/NG-11/HO-04, Q35 RV-L20/22/23/25, Q36 delete
+  atlas-tailwind-classes.ts.
+7 Specs/current target: Q37 module 2 Step Master, Q38 P3 security fixes H1/H2/DB-01, Q39 Confirm items
+  H10-H12/M17/M24/M6/L18.
+9 Housekeeping: Q46 commit the 2026-11-01 review files, Q47 engine/CDT review reports, Q48 .agents/skills-lock/ghcp
+  parked files, Q49 scratch DBs (cdtv2_*, burrito_*) + smtp4dev, Q50 record answers here.
+
+### Next
+1. Commit the governance edits after the user has seen the PROJECT.md/AGENTS.md diff.
+2. User answers PENDING_DECISIONS.html: Q01 (bug summary) first; Q07/Q08 before 050 or 090 run anywhere.
+3. Fix the step 5/6 bugs and R01/R02 as decided: fix here, platform gates, rebuild the package, user re-copies.
+4. Team review (Q22), go-live decisions (Q19-Q21), then the "before app #2" items as decided.
+
+## B. Workflow engine (src/, workflow-api/) - PAUSED until the platform work is stable
+
+### State
+- Published on origin/console-code-first-0518, NOT deployed to the target workers: C06 (code ad47084, notes c0983b4),
+  PKCS 10.0.13 (df270b2), C13 (7350a4a), C14 (f47c99c), H01 (d881c15), CDT v2 (55728f6).
+- CDT v2 at the target (TEST database, 2026-10-19, all user-reported, not independently verified): SQL 20261014 outbox
+  retry, 20261019_01 v2 DDL, _02 inactive v2 creation, _03 membership (5 groups), bulk placeholder deactivation, _04
+  verification PASS; v1 form loads; 13 runtime files + DI options + PKCS merged; CPCDTService selectedCcUsers v2-only
+  edit; final build OK; target commit/push reported. v2 remains INACTIVE.
+- BDRM "No" -> BdrmTradeFulfilled is by design (F01; memory cdt-bdrm-no-maps-to-fulfilled). The 2026-10-19 "mismatch"
+  check is closed.
+- Open defects, each needs user approval: SaveDraft race (High; WorkflowExecutionService.cs ~582/613; recommended
+  first), D06, D09, D10, D02 status reconcile, F07-F09. Ordered backlog WP1-WP8:
+  .planning/paused/engine-defect-fixes/.continue-here.md. Settled, do not re-raise: D1 auth, D7 IDs, D8 Draft names, no
+  parallel approvals, timers never move state, no condition expressions in the engine.
+- Consolidated review C01-C25 (docs/WORKFLOW_ENGINE_FINAL_CONSOLIDATED_REVIEW.html): deployment evidence (build,
+  runner, schema) and the C01/C02 tests still open. Archive/retention (C14) deferred.
+- Engine adapter for the platform (module 10, docs/atlas-platform/10-engine-adapter.md): design only; needed by the
+  first platform app that has a workflow (Q51).
+
+### Pending (PENDING_DECISIONS.html category 8)
+Q40 when to start, Q41 first fix (SaveDraft race), Q42 CDT v2 at the target (adapter checks: date/desk forwarding, SLA
+error propagation; controlled activation 20261019_05; full v1/SQMS/v2 acceptance with SMTP), Q43 deploy the published
+fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
+
+### Next
+1. Nothing until the user answers Q40 and Q41.
+2. Then, in this order: the first approved defect fix (section 21 gates + completion summary); CDT v2 adapter checks and
+   controlled activation; deploy the published fixes with the next target release.
+
+## How we work (both components)
+- One step or question at a time; short answers; ASD-STE100 for explanations; record answers, do not rewrite.
+- Platform bugs: fix in atlas-platform/ here, platform gates (AGENTS.md), rebuild the package
+  (python atlas-platform/local/make-target-package.py atlas-platform/local/package/atlas-target-package.ps1; refuses
+  uncommitted changes), user re-copies the changed files. Never edit platform files at the target.
+- Engine work: PROJECT.md sections 1-28, GSD phases, section 21 gates.
+- Commit/push only when asked. Commit trailer: Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>.
+
+## Next-session prompt
+"Resume. Read the top of CODEX_HANDOFF.md (sections A and B). <Pasted answers from PENDING_DECISIONS.html | Commit the
+governance edits: yes/no>. Keep the broad goal: CP Atlas = engine + platform, one product; seamless integration at the
+target, platform generic and simple, nothing breaks the existing system."
+
+---
+
+# HISTORY (newest first; entries unchanged)
+
+---
+
+# DONE (superseded by the entry above) - 2026-11-07 (morning). Steps 0-6 done at the target.
 
 ## State
 - User runs the steps at the target, one step at a time; each step explained in ASD-STE100 (this session).
@@ -1124,6 +1227,10 @@ Known risks:
 Next-session prompt: "Continue CP Atlas target analysis. Flow and issues docs are in docs/TARGET_ATLAS_*.html (ASD-STE100 ~80%). Ask whether to index in docs/README.md, commit, or publish; follow up on Confirm items and H9 migration scripts."
 
 ---
+# HISTORY: workflow engine and CDT v2 entries (2026-10-14 to 2026-10-19), newest first. Platform and target-analysis entries are above.
+
+---
+
 # Manual integration: Target publication reported complete, action mapping check next - 2026-10-19
 
 User says "all done" after target commit/push checklist. Record target commit/publication as user-reported complete; target commit SHA/remote result not supplied or independently verified. Do not perform local/target Git writes or remote actions. Next gated read-only check: inspect target Config/CDT.json Workflow.Notifications.BdrmTradeNotExecutedProperly.ActionKey. Snapshot incorrectly maps this entry to BdrmTradeFulfilled; ask user to show live entry before changing it. Desired correct action key is BdrmTradeNotExecutedProperly, preserving Trading Desk Rework branch. V2 remains inactive absent later activation confirmation. Do not claim full integration acceptance.

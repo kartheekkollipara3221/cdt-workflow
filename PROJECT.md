@@ -1,5 +1,29 @@
 # Project Requirements: Reusable .NET Workflow Engine Console Demo
 
+## 0. Product context: CP Atlas (read first)
+
+Added 2026-11-07. This section tells what this repository is today. It does not change sections 1 to 28.
+
+The product is **CP Atlas**, the business application of the target team. This repository holds two components of CP Atlas and the design of a third:
+
+| Component | Folder | Governed by | Status |
+|---|---|---|---|
+| **Workflow engine** | `src/`, `workflow-api/` | Sections 1 to 28 of this document; GSD phases in `AGENTS.md` | Built. Published fixes C06, C13, C14, H01 and the PKCS package are on the branch, not yet deployed. Open defects are tracked in `docs/OPEN-ISSUES.md` and `.planning/paused/engine-defect-fixes/`. Work is paused until the platform work is stable. |
+| **Atlas platform** | `atlas-platform/` | Specs in `docs/atlas-platform/` (modules 01 to 24; `README.md` is the index), `atlas-platform/INTEGRATION.md`, and the "Atlas platform" section of `AGENTS.md` | Active. Pilot app TTDV2 (release P1) is integrated in the target development region (2026-11-07). |
+| **Engine adapter** (platform module 10) | design only: `docs/atlas-platform/10-engine-adapter.md` | The same spec | Not built. Needed by the first platform app that has a workflow. |
+
+How the components connect:
+
+- CP Atlas calls the workflow engine **in-process**. The CDT (Portfolio Trade), SQMSO and SQMSB apps use it; TTD and AIN do not. The engine instance ID is `WF-` + the business object ID.
+- The Atlas platform is the generic, metadata-driven app layer (form, dashboard, rules, security, audit). A new CP Atlas app is JSON files + one SQL script + one registration line; no app-specific C# or TypeScript.
+- The engine adapter will connect a platform app to the same engine: workflow binding from JSON, engine call last, then commit. It needs no engine change.
+
+History: the repository started as the workflow engine proof of concept (the console demo in sections 1 to 28). On 2026-10-24 the direction changed to the platform build. Both components stay in this one repository, because they serve one product and the adapter will join them.
+
+Rules that apply to both components: backward compatible by default (`AGENTS.md`); the target code belongs to the target team; database changes are delivered as SQL scripts; `TimeProvider`; warnings as errors; no secrets in the repository; documents for the user and the target team are written in ASD-STE100 (about 80%).
+
+Which sections apply to platform work: 16.2 (simplicity rule), 16.3 (surgical changes), 16.5 (research rule), 22 (stop-and-ask triggers, where they apply), and 23 (completion summary; write `not applicable (platform)` for the seed and sample lines). The platform quality gates are in `AGENTS.md`. In sections 1 to 28, "this project" means the engine component.
+
 ## 1. Purpose
 
 Build a reusable .NET workflow engine that can replace SharePoint Designer workflow behavior.

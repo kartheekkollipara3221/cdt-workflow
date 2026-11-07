@@ -7,8 +7,10 @@ Before planning or implementing, read `PROJECT.md`.
 Do not summarize it from memory.
 Do not replace its milestones with a new roadmap.
 
+`PROJECT.md` section 0 describes the product, CP Atlas, and its two components in this repo: the workflow engine (`src/`, `workflow-api/`) and the Atlas platform (`atlas-platform/`). They are one product, not two; never propose a repository split. Sections 1 to 28 of `PROJECT.md` govern the engine. The platform rules are in the section "Atlas platform" below.
+
 ## GSD workflow
-Use GSD end-to-end, but map GSD phases directly to `PROJECT.md` section 24:
+This mapping applies to the workflow engine component. Use GSD end-to-end, but map GSD phases directly to `PROJECT.md` section 24:
 
 - Phase 1 = Milestone 1: Solution skeleton
 - Phase 2 = Milestone 2: SQL schema and seed data
@@ -53,7 +55,7 @@ All future changes must be backward compatible by default.
 Follow all stop-and-ask triggers in `PROJECT.md` section 22.
 
 ## Quality gates
-Before marking a phase done, run the relevant commands from `PROJECT.md` section 21.
+Before marking an engine phase done, run the relevant commands from `PROJECT.md` section 21. For platform work, run the platform gates in the section "Atlas platform" below.
 
 Always include this completion summary:
 
@@ -65,9 +67,58 @@ Sample JSON executed:
 Files updated:
 Open issues:
 
+## Atlas platform (`atlas-platform/`)
+
+The platform is the generic, metadata-driven app layer of CP Atlas, so that the next 16+ apps are JSON + SQL + one registration line. Pilot app: TTDV2 (release P1). The rules above (architecture, backward compatibility, stop-and-ask) also apply; these rules are in addition.
+
+### Scope and ownership
+- Specs: `docs/atlas-platform/` (modules 01 to 24; `README.md` is the index). Integration guide: `atlas-platform/INTEGRATION.md`. Hand-off documents for the target team: `docs/atlas-platform/ATLAS_CODE_MAP.html` and `ATLAS_TEAM_NOTES.html`.
+- Platform files are owned in this repo. Never edit them at the target. A fix is: change here, run the gates, rebuild the package, and the user copies the changed files to the target.
+- The target code (CP Atlas: `program.cs`, `CPAtlasService`, the controllers, `cp-atlas-dashboard.ts`, ...) belongs to the target team. State what the target must change as integration steps in `INTEGRATION.md`; the user does the copy and the wiring. `target-implementation-read-only/` is a read-only, git-ignored copy of target code: never edit it, and never copy its license keys.
+- Keep the platform generic. A new app must not need new C# or TypeScript. Never copy target hardcoding into the platform (field-name `if` chains, fixed field lists, redirects). TTDV2 is pilot metadata, not a special case in the code.
+- Look and control usage follow the target (layout, `@pbdev` controls, ag-grid, toastr, messages). Behaviour stays metadata-driven (rules, effects, computed values, registries).
+- Target stack: .NET 10 / C# 14, EF Core 10, SQL Server, Angular 21 (`atlas-platform/WebUi`). No new packages: use only what the target already has (`ag-grid` 33, `@ng-select/ng-select` 21, `ngx-toastr` 20, `@pbdev/pbdev-core`).
+
+### Backward compatibility (platform)
+- The current CP Atlas apps (TTD, CDT, SQMSO, SQMSB, AIN) must not change. A platform line in a shared target file runs first and falls through to the current `if` chain.
+- Changes to the `v1/...` requests and responses are additive. New fields are optional.
+- App codes, role names, table and column names, JSON keys, control names and log event IDs (41001 to 41024) are stable identifiers. Do not rename them.
+- Database changes: SQL scripts only, in `atlas-platform/sql/release-p1/` (additive, idempotent, with a `CP_Atlas_ScriptLog` row). Never EF migrations, `EnsureCreated` or automatic seeding for platform tables. Never run `050` in the shared development database; `050` runs only on the change-over day, and `090` only to roll back.
+- Config files and table metadata are read one time at start-up. A change needs an app pool restart; this is documented, not a defect.
+
+### Platform quality gates
+Run before marking a step or fix done. Stop the local API first; a running API locks the App dll.
+
+```bash
+dotnet build atlas-platform/AtlasPlatform.slnx -warnaserror
+dotnet test atlas-platform/AtlasPlatform.slnx
+dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn -- --atlas-check
+cd atlas-platform/WebUi && npx ng build && npx ng test --watch=false
+cd atlas-platform/WebUi && npm run check:target-flags
+```
+
+Expected: 0 warnings; all .NET tests pass (the SQL tests make and drop their own databases); `--atlas-check` prints `0 error(s), 0 warning(s)` and exits 0; `ng build` 0 warnings; all specs pass; the target-flags type check is clean.
+
+Rebuild the target package when a copied file or `INTEGRATION.md` changes (the script refuses uncommitted changes):
+`python atlas-platform/local/make-target-package.py atlas-platform/local/package/atlas-target-package.ps1`
+
+Completion summary for platform work: the same format as above. Write `not applicable (platform)` for "Seed verification run" and "Sample JSON executed", and add a line `Package rebuilt:` (yes with the commit, or no).
+
+### Stop-and-ask (platform)
+- A change to a persisted column, a stable identifier, or a `v1/...` contract.
+- A new package, or a new target file that must change.
+- A fix that needs app-specific code in the platform.
+- Any change to `050` or `090` (migration and rollback), including the review findings R01 and R02.
+- The `PROJECT.md` section 22 triggers that apply (for example the complexity list, `DateTime.UtcNow`, engine adapter work).
+
+### Working style
+- One question or step at a time; short, plain answers; record answers, do not rewrite specs.
+- Explanations and documents for the user and the target team: ASD-STE100 (about 80%).
+- Commit for each step or fix; push only when the user asks.
+
 ## Long-running Codex work
 
-For multi-step work, maintain `CODEX_HANDOFF.md`.
+For multi-step work, maintain `CODEX_HANDOFF.md`. Its top has two sections: A (Atlas platform) and B (workflow engine), each with state, pending items and next steps. Dated history entries follow.
 
 Update it before ending a session or when context is getting low. Include:
 

@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pending Decisions</title>
+<style>
+:root{color-scheme:light;--bg:#edf1f5;--paper:#fff;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--amber:#8a5a00;--amberbg:#fff7e6;--red:#a3271f;--redbg:#fdeeee;--codebg:#f4f6f8;--th:#eff4f7;--box:#fbfdfe;--shadow:#17334a12;--sel:#e3effa}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--red:#f19a92;--redbg:#3a1c1a;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006;--sel:#1d3a4f}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--red:#f19a92;--redbg:#3a1c1a;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006;--sel:#1d3a4f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1050px;margin:32px auto;background:var(--paper);padding:40px;border-radius:12px;box-shadow:0 8px 28px var(--shadow)}
+h1,h2,h3{line-height:1.22;color:var(--navy)}h1{font-size:1.9rem;margin:10px 0}h2{font-size:1.3rem;margin:0 0 6px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:var(--codebg);padding:1px 5px;border-radius:4px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.06rem}.small{font-size:.88rem;color:var(--muted)}
+.note{padding:12px 16px;border-left:4px solid var(--blue);background:var(--bluebg);margin:14px 0}
+.warn{padding:12px 16px;border-left:4px solid #c58a1a;background:var(--amberbg);margin:14px 0}
+section.cat{border-top:1px solid var(--line);margin-top:28px;padding-top:22px}
+.catdesc{color:var(--muted);margin:0 0 12px;font-size:.94rem}
+.q{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0;background:var(--box)}
+.q.done{border-left:4px solid var(--green)}
+.qhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.qid{font:700 .8rem ui-monospace,Consolas,monospace;color:var(--blue);background:var(--bluebg);padding:2px 7px;border-radius:6px}
+.qtitle{font-weight:650;color:var(--navy)}
+.sev{font-size:.72rem;font-weight:700;padding:1px 8px;border-radius:10px}
+.sev.high{background:var(--redbg);color:var(--red)}.sev.med{background:var(--amberbg);color:var(--amber)}.sev.info{background:var(--bluebg);color:var(--blue)}
+.ctx{margin:6px 0 10px;font-size:.93rem}
+.opts{display:grid;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--paper)}
+.opt:has(input:checked){background:var(--sel);border-color:var(--blue)}
+.opt input{margin-top:4px;flex:none}
+.opt b{color:var(--navy)}
+.rec{font-size:.72rem;font-weight:700;color:var(--green);background:var(--greenbg);padding:1px 7px;border-radius:10px;margin-left:6px}
+textarea,input[type=text]{width:100%;font:inherit;font-size:.92rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px}
+textarea{min-height:44px;resize:vertical}
+label.nl{display:block;font-size:.82rem;color:var(--muted);margin-top:8px}
+.bar{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--line);padding:10px 0;margin:16px 0 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar button{font:inherit;font-weight:650;padding:8px 14px;border-radius:8px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer}
+.bar button.sec{background:transparent;color:var(--blue)}
+.prog{font-size:.9rem;color:var(--muted)}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+nav.toc a{font-size:.85rem;color:var(--blue);text-decoration:none;border:1px solid var(--line);border-radius:14px;padding:3px 10px}
+#out{display:none;width:100%;min-height:240px;font:.84rem/1.45 ui-monospace,Consolas,monospace}
+#msg{font-size:.88rem;color:var(--green)}
+@media (max-width:720px){main{margin:0;padding:20px 16px;border-radius:0}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Atlas platform · decisions · 2026-11-07</div>
+<h1>Pending items: your decisions</h1>
+<p class="lead">This page lists the open items from <code>CODEX_HANDOFF.md</code> and the review of 2026-11-01. For each item, select one option or write your answer. Then click <b>Copy answers</b> and paste the text into the chat.</p>
+<p class="small">Written in ASD-STE100 Simplified Technical English (about 80%). <span class="rec" style="margin:0">Recommended</span> marks my recommendation. You do not have to answer all items at one time. This browser keeps your selections on this computer.</p>
+<div class="warn"><b>Start with categories 1 and 2.</b> Category 2 has 2 High findings in the rollback and re-cutover path. Decide them before <code>050</code> or <code>090</code> runs in any environment.</div>
+<nav class="toc" id="toc"></nav>
+<div class="bar">
+<button id="copy" type="button">Copy answers</button>
+<button id="recs" class="sec" type="button">Fill empty items with recommendations</button>
+<button id="clear" class="sec" type="button">Clear all</button>
+<span class="prog" id="prog"></span><span id="msg"></span>
+</div>
+<textarea id="out" readonly aria-label="Copied answers"></textarea>
+<div id="cats"></div>
+</main>
+<script>
+const R = 'rec';
+const CATS = [
+{id:'c1', title:'1. TTDV2 at the target (current work)', desc:'Items that come from the dev integration, steps 0 to 6.', qs:[
+ {id:'Q01', t:'Bug summary for steps 5 and 6', sev:'high', ctx:'You said that there are small bugs. Write each bug: screen or call, action, result, expected.', type:'text', ph:'1. Form / Save / ... / ... \n2. ...'},
+ {id:'Q02', t:'Step 0 baseline numbers', sev:'info', ctx:'The <code>RowsLeftOut</code> result of the NULL-row query, and the build warning count of step 0.', type:'line', ph:'RowsLeftOut = 0; warnings = ...'},
+ {id:'Q03', t:'API login rights on schema TTDV2 (QC and production)', sev:'med', ctx:'Step 6 of <code>040</code> has a commented <code>GRANT</code> line. Save works in dev, so dev has the rights.', opts:[
+  ['A','Ask the DBA which method QC and production use, then decide',R],
+  ['B','The API login gets its rights from a database role: no GRANT'],
+  ['C','Use the GRANT line in 040 for QC and production']]},
+ {id:'Q04', t:'List of CP_Atlas_Application codes (AR-02 check)', sev:'info', ctx:'The menu hides a row whose code is not a current enum value and not a platform app. The list confirms that no current row is hidden.', opts:[
+  ['A','I will send the list of codes (SELECT Code FROM dbo.CP_Atlas_Application)',R],
+  ['B','The home menu shows all current apps; this is enough']]},
+ {id:'Q05', t:'pbdev-select and the exact @pbdev/pbdev-core version (AR-10, N1, N2)', sev:'info', ctx:'The target build passed. The local code used a stand-in for <code>pbdev-select</code>.', opts:[
+  ['A','The TTDV2 drop-downs work at the target; I will send the version from package-lock.json',R],
+  ['B','Not checked yet'],
+  ['C','There is a problem (write it in the notes)']]},
+ {id:'Q06', t:'Next package rebuild', sev:'info', ctx:'The header comment of <code>StandIn/CPAtlasService.cs</code> names a file that does not exist. Fix it in the next package.', opts:[
+  ['A','Rebuild one time, with the bug fixes of Q01 and the fixes of category 2',R],
+  ['B','Rebuild now for this comment only']]},
+]},
+{id:'c2', title:'2. Review findings R01 to R04 (rollback, re-cutover, totals)', desc:'Source: atlas-platform/review/2026-11-01/REVIEW.md. Each finding has a test that shows the defect. None is fixed.', qs:[
+ {id:'Q07', t:'R01: rollback restores a role that was revoked on purpose', sev:'high', ctx:'<code>090</code> finds the roles to restore by operator and a 1-hour time window. If an admin revoked a TTD role in that hour, <code>090</code> gives it back. A removed user gets access again.', opts:[
+  ['A','Fix: 050 writes the exact entitlement IDs that it revokes to a new log table; 090 restores only those IDs',R],
+  ['B','Document it as a known limit; the DBA checks the role list before 090'],
+  ['C','Remove the role restore from 090; the DBA restores roles by hand']]},
+ {id:'Q08', t:'R02: re-cutover after a rollback loses newer TTD data and history', sev:'high', ctx:'After a rollback, users work in TTD again. A new run of <code>050</code> skips rows whose ID is already in TTDV2, and then revokes the TTD roles again. TTDV2 shows old data.', opts:[
+  ['A','Fix now: 050 stops (no change, no revoke) when TTDV2 already has copied rows; write a reconciliation procedure later, before a second cutover',R],
+  ['B','Fix now with a full reconciliation procedure (changes on both sides, audit identity)'],
+  ['C','Rule only: no second cutover after a rollback; document it']]},
+ {id:'Q09', t:'R04: the All Report Total shows only the first 5000 rows', sev:'med', ctx:'<code>MaxRows: 5000</code> limits the rows. The Total row adds the loaded rows and does not tell the user that rows are missing.', opts:[
+  ['A','Show a message "Showing the first 5000 rows" and label the row "Total of loaded rows"',R],
+  ['B','The server calculates the totals of all matching rows; show those totals'],
+  ['C','Increase or remove MaxRows (write the number in the notes)'],
+  ['D','Accept: TTDV2 will not have more than 5000 active rows']]},
+ {id:'Q10', t:'R03: multiple-select values (client and server use different delimiters)', sev:'med', ctx:'The client joins values with <code>#$#</code>; the server splits on a comma. Only a control with <code>Multiple: true</code> is affected. TTDV2 has none.', opts:[
+  ['A','Fix now: one delimiter on both sides, with the shared case file',R],
+  ['B','Defer until an app uses Multiple: true']]},
+ {id:'Q11', t:'MaxRows value on the All Report', sev:'info', ctx:'I picked 5000. Nobody asked you for a number.', opts:[
+  ['A','Keep 5000',R],
+  ['B','Use a different number (write it in the notes)']]},
+]},
+{id:'c3', title:'3. Design choices B3 to B15 (confirm or change)', desc:'I made these choices during the build, without your answer. INTEGRATION.md section 6.', qs:[
+ {id:'Q12', t:'B3: a rule does not enable a control that the JSON disables', sev:'info', ctx:'<code>AccountNumber</code> (filled by <code>SetFromOption</code>) stays disabled unless a rule names it in <code>EnableControls</code>. The current section master enables it.', opts:[['A','Confirm',R],['B','Change (write how)']]},
+ {id:'Q13', t:'B4: button rules use the default Hidden', sev:'info', ctx:'When the app default is <code>ReadOnly</code> or <code>Hidden</code>, a button with no matched rule is hidden. A read-only button has no use.', opts:[['A','Confirm',R],['B','Change (write how)']]},
+ {id:'Q14', t:'B7: allow list at save', sev:'info', ctx:'An unknown field name is refused. A hidden or disabled field with a changed value is refused; the same value is ignored. System, Computed and SetFromOption fields are set by the server; a client value is ignored.', opts:[['A','Confirm',R],['B','Change (write how)']]},
+ {id:'Q15', t:'B9: ModifiedBy and ModifiedDate are also set on create', sev:'info', ctx:'TTD sets them only on update. The platform sets them on create too, so the dashboard order <code>ModifiedDate DESC</code> shows new records first.', opts:[['A','Confirm',R],['B','Change (write how)']]},
+ {id:'Q16', t:'B10: SetFromOption targets come from the option data', sev:'info', ctx:'The server sets <code>AccountNumber</code> and <code>AccountName</code> from the selected option. If the option is no longer in the list, the stored values stay.', opts:[['A','Confirm',R],['B','Change (write how)']]},
+ {id:'Q17', t:'B14: dashboard rules', sev:'info', ctx:'A tab with rules and no matched rule is hidden and gets no rows. A tab with no Menus gets Edit, History and Delete from Permissions. Add New is hidden with no Create permission.', opts:[['A','Confirm',R],['B','Change (write how)']]},
+ {id:'Q18', t:'B15: row shape of a Table tab', sev:'info', ctx:'Rows are keyed by column Name; <code>ID</code> is always in the row; dates are text (<code>yyyy-MM-dd</code> or ISO UTC).', opts:[['A','Confirm',R],['B','Change (write how)']]},
+]},
+{id:'c4', title:'4. Go-live and the target team', desc:'Decisions before QC and production.', qs:[
+ {id:'Q19', t:'AccessMode in the first production release', sev:'med', ctx:'<code>LogOnly</code> writes <code>Atlas.AccessDenied</code> and permits the action. <code>Enforce</code> gives 403. Dev uses <code>Enforce</code>.', opts:[
+  ['A','LogOnly for one release, review the log, then Enforce',R],
+  ['B','Enforce from the first release']]},
+ {id:'Q20', t:'Who approves Enabled = true in production', sev:'info', ctx:'Production stays <code>Enabled: false</code> until the business approves.', type:'line', ph:'Name / role, and the planned date'},
+ {id:'Q21', t:'When 050 runs (AR-11)', sev:'med', ctx:'<code>050</code> copies TTD data and revokes the TTD roles.', opts:[
+  ['A','On the change-over day, after the business sign-off and after R01 and R02 are fixed',R],
+  ['B','On the change-over day, with R01 and R02 documented as known limits'],
+  ['C','Not decided yet']]},
+ {id:'Q22', t:'Review with the target team', sev:'info', ctx:'Documents: code map, team notes, INTEGRATION.md, reviews 16, 19, 20.', opts:[
+  ['A','One walk-through meeting with the code map and team notes; reviews as reference',R],
+  ['B','Send the documents only'],
+  ['C','Full review of all documents with the team']]},
+ {id:'Q23', t:'Owner of the platform and author guide (AR-08, SV-07)', sev:'info', ctx:'Who owns the platform code and the JSON format? Do we write an author guide and a JSON Schema file for the next apps?', opts:[
+  ['A','I own the platform; write an author guide and a JSON Schema before app #2',R],
+  ['B','The target team owns it after hand-off; they write the guide'],
+  ['C','Shared ownership (write the split in the notes)']]},
+ {id:'Q24', t:'RV-L11: time base of the dbo.CP_Atlas_* rows', sev:'info', ctx:'The platform scripts write <code>GETUTCDATE()</code> in the shared tables. The current apps may write local time.', opts:[
+  ['A','Ask the target team, then decide',R],
+  ['B','Change the scripts to GETDATE() (local time) for the shared tables'],
+  ['C','Keep UTC and document it']]},
+ {id:'Q25', t:'RV-L13: index on CP_Atlas_User.LanID', sev:'info', ctx:'The role query joins on <code>LanID</code>, which has no index. It is not a regression.', opts:[
+  ['A','Ask the target team to add a filtered index; I write the script',R],
+  ['B','Not needed now']]},
+]},
+{id:'c5', title:'5. Before app #2', desc:'Gaps that do not affect TTDV2, but can affect the next app.', qs:[
+ {id:'Q26', t:'Which app is #2, and when', sev:'info', ctx:'The 13 planned codes: TD, PBSP, AR, CIO, TARU, CAT, IMPBBW, IPEW, CA, CF, BBHILLQTT, CRRFIR, IMGUIGU.', type:'line', ph:'App code, planned month'},
+ {id:'Q27', t:'RV-N1: dashboard Procedure tabs', sev:'med', ctx:'The platform dashboard runs only <code>Source: Table</code> tabs. A Procedure tab is a start-up error now.', opts:[
+  ['A','Build it when an app needs a procedure tab',R],
+  ['B','Build it before app #2'],
+  ['C','Never: new apps use Table tabs only']]},
+ {id:'Q28', t:'RV-07: recovery after a short SQL failure at start-up', sev:'med', ctx:'Today a disabled app comes back only after an app pool restart.', opts:[
+  ['A','Add an automatic retry before app #2',R],
+  ['B','Keep the restart; document it in the run book']]},
+ {id:'Q29', t:'RV-L03: validation of a user control value (LAN ID)', sev:'info', ctx:'TTDV2 has only a disabled user control. An editable one needs a rule.', opts:[
+  ['A','The LAN ID must be an active row in CP_Atlas_User',R],
+  ['B','The LAN ID must be in the provider list of the control'],
+  ['C','Decide with the first app that has an editable user control']]},
+ {id:'Q30', t:'AR-09: feature table of the 16 apps', sev:'info', ctx:'A table of the features that each planned app needs (attachments, workflow, multi-row grid, procedure tabs ...).', opts:[
+  ['A','Make it when app #2 is chosen',R],
+  ['B','Make it now for all 16 apps']]},
+ {id:'Q31', t:'Add CreatedByLanId to the audit table of the 05 template', sev:'info', ctx:'TTDV2 has it (040). The new-app template does not.', opts:[['A','Add it now',R],['B','Add it with app #2']]},
+ {id:'Q32', t:'N5: multi-row grids', sev:'info', ctx:'The platform grid supports only <code>SingleRowFields</code>. The current section master also shows multi-row grids.', opts:[['A','Build it when an app needs it',R],['B','Build it before app #2']]},
+]},
+{id:'c6', title:'6. Performance and backlog', desc:'None of these is necessary for TTDV2 load.', qs:[
+ {id:'Q33', t:'First performance step', sev:'info', ctx:'PF9 = a slow-request log event. It gives numbers for the PF1 (async I/O) decision.', opts:[
+  ['A','Add PF9 after the bug fixes, measure in dev, then decide PF1',R],
+  ['B','Answer the questionnaire (15-performance-questionnaire.html) first'],
+  ['C','Defer all performance work until app #2']]},
+ {id:'Q34', t:'Deferred items: SV-13, DA-10, NG-11, HO-04', sev:'info', ctx:'Lazy dashboards, async overloads, per-field view model, health check.', opts:[
+  ['A','Keep them deferred',R],
+  ['B','Do some of them (write which in the notes)']]},
+ {id:'Q35', t:'Backlog RV-L20, RV-L22, RV-L23, RV-L25', sev:'info', ctx:'Low findings from review 3.', opts:[['A','Keep in the backlog',R],['B','Fix with the next package']]},
+ {id:'Q36', t:'Delete atlas-tailwind-classes.ts', sev:'info', ctx:'It is a fallback for the Tailwind safelist.', opts:[['A','Delete it after the target confirms that the safelist works',R],['B','The safelist works at the target: delete it in the next package']]},
+]},
+{id:'c7', title:'7. Design specs and the current target app', desc:'Items from the Atlas design work and the target analysis.', qs:[
+ {id:'Q37', t:'Module 2 Step Master', sev:'info', ctx:'On hold. Used by CDT and one more app.', opts:[['A','Keep on hold',R],['B','Start it (write when)']]},
+ {id:'Q38', t:'P3 security fixes H1, H2, DB-01 in the current target', sev:'med', ctx:'Path traversal in download/upload, and hidden tab rows sent to the browser. You accepted the risk until P3.', opts:[
+  ['A','Keep them in P3',R],
+  ['B','Bring them forward (before P2)']]},
+ {id:'Q39', t:'Target-analysis Confirm items: H10, H11, H12, M17, M24, M6, L18', sev:'info', ctx:'They need files or answers from the target team or the business.', opts:[
+  ['A','Ask the target team and the business in the team review (Q22)',R],
+  ['B','Close them as not confirmed']]},
+]},
+{id:'c8', title:'8. Workflow engine (CP Atlas component), paused', desc:'CP Atlas is one product. The Atlas platform and the workflow engine are its two components in this repo. CP Atlas calls the engine in-process (CDT, SQMSO, SQMSB). The engine work is paused until the platform work is stable.', qs:[
+ {id:'Q40', t:'When to start the engine defects', sev:'info', ctx:'SaveDraft race (High), D06, D09, D10, D02 status, F07 to F09. Ordered list WP1 to WP8.', opts:[
+  ['A','After the Atlas bug fixes and the team review',R],
+  ['B','Now, in parallel'],
+  ['C','Not this quarter']]},
+ {id:'Q41', t:'First engine fix', sev:'high', ctx:'SaveDraft can commit Draft data after a concurrent transition (no version guard).', opts:[
+  ['A','SaveDraft race',R],
+  ['B','A different item (write which)']]},
+ {id:'Q42', t:'CDT v2 at the target', sev:'info', ctx:'Not finished: adapter checks, controlled v2 activation (<code>20261019_05</code>), full v1/SQMS/v2 acceptance with SMTP.', opts:[
+  ['A','Continue after the Atlas work',R],
+  ['B','Continue now'],
+  ['C','Stop CDT v2 (write why)']]},
+ {id:'Q43', t:'Deploy the published engine fixes (C06, C13, C14, H01, PKCS)', sev:'med', ctx:'They are published on the branch but not deployed to the target workers.', opts:[
+  ['A','With the next target release',R],
+  ['B','As a separate release now']]},
+ {id:'Q44', t:'Consolidated review C01 to C25: deployment evidence', sev:'info', ctx:'Evidence of the deployed build, runner and schema, and the C01/C02 test cases.', opts:[['A','Ask the target team for the evidence',R],['B','Park it']]},
+ {id:'Q45', t:'Archive and retention decisions (C14)', sev:'info', ctx:'Deferred to the end of the issue list.', opts:[['A','Keep deferred',R],['B','Decide now (write how)']]},
+ {id:'Q51', t:'Engine adapter (platform module 10): when to build it', sev:'info', ctx:'The adapter connects a platform app that has a workflow to the engine: workflow binding from JSON, engine call last, then commit, no engine change. It is design only today (<code>docs/atlas-platform/10-engine-adapter.md</code>). TTDV2 has no workflow.', opts:[
+  ['A','With the first platform app that has a workflow (a Step Master app, or the SQMS migration in P4)',R],
+  ['B','Before app #2, so that app #2 can have a workflow'],
+  ['C','Now, in parallel with the bug fixes']]},
+]},
+{id:'c9', title:'9. Housekeeping', desc:'Files and local resources.', qs:[
+ {id:'Q46', t:'Atlas review files of 2026-11-01 (untracked)', sev:'info', ctx:'<code>atlas-platform/review/</code>, <code>atlas-platform/CODEX_HANDOFF.md</code>, <code>WebUi/.../review-contracts.spec.ts</code>.', opts:[
+  ['A','Commit them (the tests prove the fixes of category 2)',R],
+  ['B','Keep them untracked'],
+  ['C','Delete them']]},
+ {id:'Q47', t:'Engine and CDT review reports (untracked)', sev:'info', ctx:'<code>.planning/audits/</code>, the 3 review files in <code>.planning/quick/261018-cdt-...</code>, <code>.planning/quick/261018-target-integration-...</code>, and the <code>docs/</code> HTML reports (CDT_V2_*, H01_*, WORKFLOW_ENGINE_*), <code>docs/CDT_requirements/</code>.', opts:[
+  ['A','Commit them as one documentation commit',R],
+  ['B','Keep them untracked'],
+  ['C','Decide file by file (write in the notes)']]},
+ {id:'Q48', t:'Other untracked files', sev:'info', ctx:'<code>.agents/</code>, <code>skills-lock.json</code>, and the parked <code>docs/ghcp-codebase-map-*</code>.', opts:[
+  ['A','Keep them untracked',R],
+  ['B','Add .agents/ and skills-lock.json to .gitignore'],
+  ['C','Delete the parked ghcp files']]},
+ {id:'Q49', t:'Scratch databases and smtp4dev', sev:'info', ctx:'<code>cdtv2_ddl_manual</code>, <code>cdtv2_ddl_ef</code>, <code>cdtv2_scripts</code>, <code>cdtv2_gates</code>, <code>burrito_review_362404d</code>, <code>burrito_cdt_happy_*</code>. smtp4dev can still run from 2026-10-18.', opts:[
+  ['A','Drop the databases and stop smtp4dev',R],
+  ['B','Keep them']]},
+ {id:'Q50', t:'Record your answers in CODEX_HANDOFF.md', sev:'info', ctx:'The pending list is already in the top of <code>CODEX_HANDOFF.md</code> (section A platform, section B engine). Put your answers there too, so the next session starts from them.', opts:[['A','Yes, after I send the answers',R],['B','No']]},
+]},
+];
+
+const KEY = 'atlas-pending-decisions-v1';
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+const cats = document.getElementById('cats'), toc = document.getElementById('toc');
+for (const c of CATS) {
+  toc.insertAdjacentHTML('beforeend', `<a href="#${c.id}">${esc(c.title)}</a>`);
+  const sec = document.createElement('section'); sec.className = 'cat'; sec.id = c.id;
+  sec.innerHTML = `<h2>${esc(c.title)}</h2><p class="catdesc">${esc(c.desc)}</p>`;
+  for (const q of c.qs) {
+    const s = state[q.id] || {};
+    const sevText = {high:'High', med:'Medium', info:'Info'}[q.sev];
+    let body = '';
+    if (q.opts) {
+      body = '<div class="opts" role="radiogroup">' + q.opts.map(o =>
+        `<label class="opt"><input type="radio" name="${q.id}" value="${o[0]}" ${s.choice===o[0]?'checked':''}><span><b>${o[0]}.</b> ${esc(o[1])}${o[2]?'<span class="rec">Recommended</span>':''}</span></label>`).join('') + '</div>';
+      body += `<label class="nl" for="${q.id}-n">Notes (optional)</label><textarea id="${q.id}-n" data-q="${q.id}" data-k="note">${esc(s.note||'')}</textarea>`;
+    } else if (q.type === 'text') {
+      body = `<textarea id="${q.id}-n" data-q="${q.id}" data-k="note" style="min-height:120px" placeholder="${esc(q.ph||'')}">${esc(s.note||'')}</textarea>`;
+    } else {
+      body = `<input type="text" id="${q.id}-n" data-q="${q.id}" data-k="note" placeholder="${esc(q.ph||'')}" value="${esc(s.note||'')}">`;
+    }
+    sec.insertAdjacentHTML('beforeend', `<div class="q" id="box-${q.id}"><div class="qhead"><span class="qid">${q.id}</span><span class="qtitle">${esc(q.t)}</span><span class="sev ${q.sev}">${sevText}</span></div><div class="ctx">${q.ctx}</div>${body}</div>`);
+  }
+  cats.appendChild(sec);
+}
+const ALL = CATS.flatMap(c => c.qs.map(q => ({...q, cat:c.title})));
+function answered(q){ const s = state[q.id] || {}; return q.opts ? !!s.choice : !!(s.note && s.note.trim()); }
+function refresh(){
+  let n = 0;
+  for (const q of ALL) { const a = answered(q); if (a) n++; document.getElementById('box-'+q.id).classList.toggle('done', a); }
+  document.getElementById('prog').textContent = `${n} of ${ALL.length} answered`;
+}
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.type === 'radio') { (state[t.name] ||= {}).choice = t.value; save(); refresh(); }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.q) { (state[t.dataset.q] ||= {})[t.dataset.k] = t.value; save(); refresh(); }
+});
+document.getElementById('recs').addEventListener('click', () => {
+  for (const q of ALL) {
+    if (!q.opts || (state[q.id] && state[q.id].choice)) continue;
+    const r = q.opts.find(o => o[2]); if (!r) continue;
+    (state[q.id] ||= {}).choice = r[0];
+    const el = document.querySelector(`input[name="${q.id}"][value="${r[0]}"]`); if (el) el.checked = true;
+  }
+  save(); refresh();
+});
+document.getElementById('clear').addEventListener('click', () => {
+  state = {}; save();
+  document.querySelectorAll('input[type=radio]').forEach(i => i.checked = false);
+  document.querySelectorAll('textarea[data-q], input[type=text][data-q]').forEach(i => i.value = '');
+  refresh();
+});
+document.getElementById('copy').addEventListener('click', async () => {
+  const lines = ['Pending decisions (' + new Date().toISOString().slice(0,10) + ')'];
+  let cat = '';
+  for (const q of ALL) {
+    if (!answered(q)) continue;
+    if (q.cat !== cat) { cat = q.cat; lines.push('', '## ' + cat); }
+    const s = state[q.id] || {};
+    let line = q.id + ' ' + q.t + ': ';
+    if (q.opts) { const o = q.opts.find(x => x[0] === s.choice); line += s.choice + ' - ' + (o ? o[1] : ''); if (s.note && s.note.trim()) line += ' | Note: ' + s.note.trim(); }
+    else line += s.note.trim();
+    lines.push(line);
+  }
+  const open = ALL.filter(q => !answered(q)).map(q => q.id);
+  if (open.length) lines.push('', 'Not answered: ' + open.join(', '));
+  const text = lines.join('\n');
+  const out = document.getElementById('out'); out.value = text; out.style.display = 'block';
+  const msg = document.getElementById('msg');
+  try { await navigator.clipboard.writeText(text); msg.textContent = 'Copied. Paste it into the chat.'; }
+  catch (e) { out.select(); msg.textContent = 'Select the text below and copy it.'; }
+});
+refresh();
+</script>
+</body>
+</html>
