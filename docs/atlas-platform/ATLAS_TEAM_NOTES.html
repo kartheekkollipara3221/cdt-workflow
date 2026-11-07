@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas Platform Team Notes</title>
+<style>
+:root{color-scheme:light;--bg:#edf1f5;--paper:#fff;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--amber:#8a5a00;--amberbg:#fff7e6;--codebg:#f4f6f8;--th:#eff4f7;--box:#fbfdfe;--shadow:#17334a12}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1150px;margin:32px auto;background:var(--paper);padding:44px;border-radius:12px;box-shadow:0 8px 28px var(--shadow)}
+h1,h2,h3{line-height:1.22;color:var(--navy)}h1{font-size:2rem;margin:10px 0}h2{font-size:1.35rem;margin:0 0 12px}h3{font-size:1.05rem;margin:20px 0 6px}
+section{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:var(--codebg);padding:1px 5px;border-radius:4px}
+pre{background:var(--codebg);padding:12px 14px;border-radius:8px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace}
+pre code{background:none;padding:0}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.08rem}
+.note{padding:12px 16px;border-left:4px solid var(--blue);background:var(--bluebg);margin:16px 0}
+.good{padding:12px 16px;border-left:4px solid var(--green);background:var(--greenbg);margin:16px 0}
+.warn{padding:12px 16px;border-left:4px solid #c58a1a;background:var(--amberbg);margin:16px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:10px 0}
+th,td{padding:8px 10px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:var(--th);font-weight:650}
+td:first-child{white-space:nowrap}
+ol li,ul li{margin:4px 0}
+nav.toc{columns:2;column-gap:32px;font-size:.92rem}
+nav.toc a{color:var(--blue);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:14px 0}
+.flow .box{flex:1 1 150px;border:1px solid var(--line);border-top:4px solid var(--blue);border-radius:8px;padding:10px 12px;background:var(--box)}
+.flow .box b{display:block;color:var(--navy)}
+.flow .box span{font-size:.85rem;color:var(--muted)}
+.flow .arrow{align-self:center;color:var(--muted);font-weight:700}
+.layers{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.layers .box{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--box)}
+.layers .box b{display:block;color:var(--navy);margin-bottom:4px}
+.layers .box span{font-size:.85rem;color:var(--muted)}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:10px;background:var(--bluebg);color:var(--blue);margin-left:4px}
+.tag.new{background:var(--greenbg);color:var(--green)}.tag.edit{background:var(--amberbg);color:var(--amber)}
+@media (max-width:760px){main{margin:0;padding:22px 16px;border-radius:0}.flow .arrow{display:none}.layers{grid-template-columns:1fr 1fr}nav.toc{columns:1}td:first-child{white-space:normal}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Atlas platform · team notes · hand-off · 2026-11-07</div>
+<h1>Atlas platform: what the code does not tell you</h1>
+<p class="lead">You can read the code. This page gives the things that the code does not show: the reasons for some designs, the things that must stay the same, the known limits, and how to report a platform bug.</p>
+<p class="small">Written in ASD-STE100 Simplified Technical English (about 80%). Read it with <code>ATLAS_CODE_MAP.html</code> (where the code is). Package: <code>bcb4b2b</code>. Pilot app: <code>TTDV2</code>.</p>
+
+<nav class="toc">
+<ol>
+<li><a href="#decisions">Decisions and reasons</a></li>
+<li><a href="#keep">Things that must stay the same</a></li>
+<li><a href="#limits">Known limits</a></li>
+<li><a href="#open">Open items</a></li>
+<li><a href="#testers">Behavior that testers can think is a bug</a></li>
+<li><a href="#report">How to report a platform bug</a></li>
+</ol>
+</nav>
+
+<section id="decisions">
+<h2>1. Decisions and reasons</h2>
+<p>Each item below can look like extra code or a strange choice. Do not "simplify" it. The reason is given.</p>
+<div class="table-wrap"><table>
+<tr><th>Design</th><th>Reason</th><th>If you remove it</th></tr>
+<tr><td>The current <code>if</code> chains stay in <code>CPAtlasService</code>. The <code>PLATFORM</code> line runs first.</td><td>The current apps must not change. The platform is additive.</td><td>The current apps stop.</td></tr>
+<tr><td><code>AtlasAppCode.ToLegacy(...)</code> in place of <code>Enum.Parse&lt;CPApplicationCode&gt;</code></td><td>It gives the same enum for the current codes. For a disabled platform app, it gives 404, not a logged 500.</td><td>A switched-off TTDV2 gives 500 errors.</td></tr>
+<tr><td>The server runs the rules, effects, validators and computed values again at save.</td><td>The client is only for user feedback. A user can change the browser request.</td><td>A user can save read-only fields or values that are not permitted.</td></tr>
+<tr><td><code>ClearRuleHiddenValues</code> at load</td><td>A field that a rule hides must not be in the response JSON. Hidden on the screen is not enough.</td><td>Hidden data goes to the browser.</td></tr>
+<tr><td><code>RuleMode: MostPermissive</code> for TTDV2</td><td>A <code>Prepare</code> user matches the <code>@Read</code> rule (read-only) and the owner rule (editable). With <code>FirstMatch</code>, only the first rule counts.</td><td><code>Prepare</code> users cannot edit their own records.</td></tr>
+<tr><td><code>KeepSavedValue</code> on the drop-downs</td><td>The lists change with time (years, week endings, users, accounts). An old record must still show its saved value.</td><td>Old records show empty fields, and a save can lose the value.</td></tr>
+<tr><td>The dashboard query takes names only from the table registry. Each value is a SQL parameter.</td><td>The JSON is data. It must not be able to inject SQL.</td><td>SQL injection risk.</td></tr>
+<tr><td><code>IsDeleted</code> is <code>bit NOT NULL DEFAULT 0</code>, and the filtered indexes use <code>WHERE [IsDeleted] = 0</code>.</td><td>The query uses <code>= 0</code>, so SQL Server can use the filtered indexes.</td><td>The "Current Tax Timesheet" tab becomes slow.</td></tr>
+<tr><td>Free-text columns are <code>nvarchar</code>.</td><td>Names and descriptions can have non-Latin characters.</td><td>Characters are lost.</td></tr>
+<tr><td>Audit is on the server (<code>AuditMode: Server</code>) and in the same transaction as the data.</td><td>The history must be complete and correct. A client audit call can be lost or changed.</td><td>The history can have gaps.</td></tr>
+<tr><td>No audit row when nothing changed</td><td>The History Log shows only real changes.</td><td>The history fills with empty updates.</td></tr>
+<tr><td><code>LogMessage</code> is JSON text in the target format</td><td>The target History Log does <code>JSON.parse(LogMessage)</code>.</td><td>The History Log breaks for TTDV2.</td></tr>
+<tr><td>Config files and table metadata are read one time at start-up.</td><td>Simple and fast. No file watchers, no cache timing.</td><td>—</td></tr>
+<tr><td><code>OnStartupError: DisableModule</code> (default)</td><td>A config error in one platform app must not stop the current apps.</td><td>One bad JSON file stops the whole host.</td></tr>
+<tr><td>The start-up also runs as a hosted service.</td><td>If <code>program.cs</code> does not call <code>StartAtlasPlatformAsync</code>, the tables still load before the first request.</td><td>The first requests fail.</td></tr>
+<tr><td>The settings come only from the configuration given to <code>AddAtlasPlatform(configuration)</code>.</td><td>The target <code>program.cs</code> builds its own root from <code>appsettings.json</code>. The platform uses the same source.</td><td>Settings in other places are not read.</td></tr>
+<tr><td>The Tailwind <code>safelist</code></td><td>Tailwind reads only <code>src/**/*.{html,ts}</code>. The classes in the server JSON are not found.</td><td>The form layout is one long column.</td></tr>
+<tr><td>Shared case files (<code>atlas-validator-cases.ts</code>, <code>atlas-effect-cases.ts</code>)</td><td>The client tests and the server tests read the same cases, so the two sides stay the same.</td><td>The client and the server can give different results.</td></tr>
+</table></div>
+</section>
+
+<section id="keep">
+<h2>2. Things that must stay the same</h2>
+<ul>
+<li><b>Platform files:</b> the source repo (<code>atlas-platform/</code>) owns them. Do not edit them at the target. A local fix is lost at the next package copy.</li>
+<li><b>Stable identifiers:</b> do not rename app codes, role names (<code>Read</code>, <code>Prepare</code>, <code>Owner</code>), table names, column names, JSON keys, control names or log event IDs (41001 to 41024). Other parts and saved data use them.</li>
+<li><b>Database changes:</b> SQL scripts only, additive, and safe to run again. Do not use EF migrations for platform tables. Do not alter or drop the current tables.</li>
+<li><b>Scaffold:</b> if you scaffold <code>CPSharepointContext</code> from the database again, leave out the TTDV2 tables, <code>CP_Atlas_ScriptLog</code> and the view. <code>AtlasPlatformContext</code> maps them.</li>
+<li><b>Public contracts:</b> changes to the <code>v1/...</code> requests and responses must be additive. New fields must be optional.</li>
+<li><b>Platform DTO properties:</b> they are in <code>Data/Platform/Dto/CPPlatformDto.cs</code> and are optional. Null means the current behavior.</li>
+<li><b>Platform app code:</b> a new app must not need new C# or TypeScript. If it does, ask first. The need can be a missing generic feature.</li>
+</ul>
+</section>
+
+<section id="limits">
+<h2>3. Known limits</h2>
+<div class="table-wrap"><table>
+<tr><th>Limit</th><th>What to do</th></tr>
+<tr><td>A change to a config file or an app table is not seen until a restart.</td><td>Restart the app pool. Then run <code>--atlas-check</code>.</td></tr>
+<tr><td>The platform I/O is synchronous, as the target code is (review AR-04, PF1).</td><td>Measure in dev with real data. A decision on async I/O comes after the measurements.</td></tr>
+<tr><td>The start-up check opens a second SQL connection (RV-L14).</td><td>It works. It changes with the next change in that method.</td></tr>
+<tr><td>After a short SQL failure at start-up, a disabled app does not come back by itself (RV-07, part).</td><td>Restart the app pool when SQL is available again.</td></tr>
+<tr><td>The platform dashboard runs only <code>Source: "Table"</code> tabs. It does not run <code>Procedure</code> tabs (RV-N1).</td><td>Use <code>Table</code> tabs. Fix this before an app needs a procedure tab.</td></tr>
+<tr><td>A <code>user</code> control value (a LAN ID) is not validated (RV-L03).</td><td>TTDV2 has only a disabled <code>user</code> control. Decide the rule before an app has an editable one.</td></tr>
+<tr><td><code>090</code> gives back only the TTD roles that <code>050</code> revoked in the hour before the <code>050</code> log row.</td><td>Run <code>090</code> only for a rollback, soon after <code>050</code>.</td></tr>
+<tr><td><code>CPAtlasDashboard.Code</code> is the enum, not nullable. For TTDV2 it is <code>0</code> (= CDT).</td><td>A client must use <code>AppCode</code> when it is there.</td></tr>
+<tr><td>No attachments in P1</td><td>TTDV2 has no attachment table.</td></tr>
+</table></div>
+<div class="warn"><b>CAUTION:</b> Do not run <code>050</code> in the shared dev database. It soft-revokes the TTD roles of all users. It runs only on the change-over day. Run <code>090</code> only for a rollback.</div>
+</section>
+
+<section id="open">
+<h2>4. Open items</h2>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Owner</th><th>Status</th></tr>
+<tr><td>RV-L11: the platform scripts write <code>GETUTCDATE()</code> into the shared <code>dbo.CP_Atlas_*</code> tables. Which time do the current apps use for these tables?</td><td>Target team</td><td>Question</td></tr>
+<tr><td>RV-L13: the role query joins <code>CP_Atlas_User.LanID</code>, which has no index. A filtered index is recommended.</td><td>Target team</td><td>Request (not a regression)</td></tr>
+<tr><td>API login rights on schema <code>TTDV2</code> in QC and production (<code>040</code>, step 6)</td><td>DBA</td><td>Before QC</td></tr>
+<tr><td><code>AccessMode</code>: <code>LogOnly</code> in the first production release, <code>Enforce</code> after one release of log review</td><td>Business + team</td><td>Plan</td></tr>
+<tr><td><code>Modules:TTDV2:Enabled</code> in production</td><td>Business</td><td><code>false</code> until approved</td></tr>
+<tr><td>Delete <code>platform/atlas-tailwind-classes.ts</code> when the <code>safelist</code> is confirmed</td><td>Platform</td><td>Later release</td></tr>
+<tr><td>Performance review with dev data (PF1, PF9, RV-L14)</td><td>Platform + team</td><td>After integration</td></tr>
+<tr><td>Before app #2: RV-N1, RV-07 (automatic recovery), RV-L03</td><td>Platform</td><td>Before app #2</td></tr>
+</table></div>
+</section>
+
+<section id="testers">
+<h2>5. Behavior that testers can think is a bug</h2>
+<div class="table-wrap"><table>
+<tr><th>Behavior</th><th>Why it is correct</th></tr>
+<tr><td>After a save, the form goes back to the dashboard.</td><td>This is the same as the current section master.</td></tr>
+<tr><td><code>WeekEnding</code> shows the last Sunday and the next 3 Sundays. The default is the last Sunday (today, if today is Sunday).</td><td><code>WeekEndings</code> provider, <code>Count: 4</code>.</td></tr>
+<tr><td><code>TaxYear</code> shows next year down to 3 years ago. The default is this year.</td><td><code>Years</code> provider (<code>Before: 3</code>, <code>After: 1</code>). The list starts with the latest year, so <code>{Options[1]}</code> is this year.</td></tr>
+<tr><td>Dashboard dates show as <code>dd-MMM-yyyy</code>, for example <code>18-Oct-2026</code>.</td><td>The platform date format.</td></tr>
+<tr><td>A <code>Prepare</code> user sees another user's record as read-only, with no Save button.</td><td><code>Edit.Own: [Prepare]</code> and the owner rule.</td></tr>
+<tr><td>A save with no change writes no History entry.</td><td>By design (section 1).</td></tr>
+<tr><td>Minutes like <code>1.5</code>, <code>1:30</code>, <code>-5</code> or <code>1441</code> are refused.</td><td>Whole minutes from 0 to 1440 only.</td></tr>
+<tr><td><code>AccountNumber</code> and <code>AccountName</code> cannot be typed.</td><td>They come from the selected <code>Account</code>.</td></tr>
+<tr><td>A deleted record is not in any tab.</td><td>Soft delete: <code>IsDeleted = 1</code>. The row stays in the table.</td></tr>
+<tr><td>In <code>LogOnly</code> mode, a user without access can still do the action.</td><td>The denial is only logged (<code>Atlas.AccessDenied</code>). <code>Enforce</code> gives 403.</td></tr>
+</table></div>
+</section>
+
+<section id="report">
+<h2>6. How to report a platform bug</h2>
+<h3>6.1 What to send</h3>
+<ol>
+<li><b>App and screen:</b> for example TTDV2, form, record 10005.</li>
+<li><b>User role:</b> <code>Read</code>, <code>Prepare</code> or <code>Owner</code>, and if the user owns the record.</li>
+<li><b>Action:</b> what the user did.</li>
+<li><b>Result:</b> the message on the screen, the browser console error, and the failed network call (URL, status, response body).</li>
+<li><b>Server log:</b> the lines with <code>Atlas.</code> and the event ID (for example <code>Atlas.FieldRefused 41013</code>).</li>
+<li><b>Expected:</b> what you expected.</li>
+<li><b>Current apps:</b> do they still operate? If not, this is the highest priority.</li>
+</ol>
+<h3>6.2 Release path</h3>
+<div class="flow">
+<div class="box"><b>Report</b><span>section 6.1</span></div><div class="arrow">→</div>
+<div class="box"><b>Fix in source repo</b><span><code>atlas-platform/</code></span></div><div class="arrow">→</div>
+<div class="box"><b>Tests</b><span>.NET, Angular, <code>--atlas-check</code>, target flags</span></div><div class="arrow">→</div>
+<div class="box"><b>New package</b><span>changed files listed</span></div><div class="arrow">→</div>
+<div class="box"><b>Copy at target</b><span>changed files only</span></div><div class="arrow">→</div>
+<div class="box"><b>Retest</b><span>TTDV2 + one current app</span></div>
+</div>
+<h3>6.3 Is it a platform bug?</h3>
+<div class="table-wrap"><table>
+<tr><th>Where the error is</th><th>Who fixes it</th></tr>
+<tr><td><code>Platform/</code> folders, <code>ConfigSectionService.cs</code>, <code>WebUi/src/app/platform/</code></td><td>Platform (source repo)</td></tr>
+<tr><td><code>TTDV2*.json</code>, <code>040</code></td><td>Platform (source repo), because they are the reference for the next apps</td></tr>
+<tr><td>The platform lines in <code>program.cs</code>, <code>CPAtlasService</code>, <code>CPAtlasController</code>, <code>cp-atlas-dashboard.ts</code>, <code>app.routes.ts</code>, <code>app.config.ts</code>, <code>angular.json</code>, <code>tailwind.config.js</code></td><td>Target team, with the exact edit from the platform</td></tr>
+<tr><td>Settings, roles, database rights</td><td>Target team or DBA</td></tr>
+</table></div>
+</section>
+
+</main>
+</body>
+</html>
