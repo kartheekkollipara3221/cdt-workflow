@@ -70,6 +70,7 @@ nav.toc a{color:var(--blue);text-decoration:none}nav.toc a:hover{text-decoration
 <li><a href="#newapp">How to add a new app</a></li>
 <li><a href="#rules">Rules for the team</a></li>
 <li><a href="#form">How the form works</a></li>
+<li><a href="#dashboard">How the dashboard works</a></li>
 </ol>
 </nav>
 
@@ -504,6 +505,78 @@ await app.Services.StartAtlasPlatformAsync();</code></pre>
 
 <h3>17.6 The main rule</h3>
 <div class="good"><b>The client is for the user. The server is the authority.</b> Rules, validators, effects and computed values run on both sides. The client gives the user fast feedback. The server makes the decision. The shared case files (<code>atlas-validator-cases.ts</code>, <code>atlas-effect-cases.ts</code>) are tested on both sides, so the two sides stay the same.</div>
+</section>
+
+<section id="dashboard">
+<h2>18. How the dashboard works</h2>
+<p>The dashboard has <b>no new Angular component</b> at the target. The <b>current</b> dashboard (<code>cp-atlas-dashboard.ts</code>) shows TTDV2. The platform adds 2 things:</p>
+<ul>
+<li><b>Server:</b> <code>AtlasDashboardService</code> builds the tabs, rows, menus and buttons from <code>TTDV2.Dashboard.json</code>.</li>
+<li><b>Client:</b> 3 small edits from step 6 (columns, totals row, navigation).</li>
+</ul>
+
+<h3>18.1 The parts of the dashboard JSON</h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th>What it does</th><th>TTDV2 example</th></tr>
+<tr><td><code>Tabs</code></td><td>One grid for each tab.</td><td>Current Tax Timesheet, Tax-Time All Report, Tax Time Report</td></tr>
+<tr><td><code>Code</code> of a tab</td><td>The app whose rows the tab shows.</td><td><code>TTDV2</code></td></tr>
+<tr><td><code>Source: "Table"</code></td><td>Rows come from the app table, not from a procedure.</td><td><code>TTDV2.General</code></td></tr>
+<tr><td><code>Filter</code></td><td>Row filter. Filters are joined with AND. An <code>Any</code> group is joined with OR. Operators: <code>Eq</code>, <code>NotEq</code>, <code>In</code>, <code>IsNull</code>, <code>NotNull</code>, <code>Gt</code>, <code>Lt</code>.</td><td>"My rows": <code>CreatedBy</code> or <code>TaxPreparerLanId</code> or <code>ModifiedBy</code> = <code>{LanId}</code></td></tr>
+<tr><td>Value tokens</td><td><code>{LanId}</code>, <code>{AppCode}</code>, <code>{TabCode}</code></td><td><code>{LanId}</code> = the current user</td></tr>
+<tr><td><code>OrderBy</code></td><td>Sort order.</td><td><code>ModifiedDate DESC, CreatedDate DESC</code></td></tr>
+<tr><td><code>MaxRows</code></td><td>Row limit (<code>TOP</code>). The log shows when the limit is reached.</td><td><code>5000</code> on the All Report</td></tr>
+<tr><td><code>Columns</code></td><td><code>Name</code>, <code>Label</code>, <code>Type</code> (<code>number</code>, <code>date</code>, <code>user</code>), <code>Hidden</code>, <code>Width</code>, <code>Link: "Edit"</code>, <code>Sum</code></td><td><code>WeeklyTotal</code> with <code>Sum: true</code></td></tr>
+<tr><td><code>Rules</code> of a tab</td><td>Shows or hides the tab by role.</td><td>—</td></tr>
+<tr><td><code>Menus</code></td><td>Row menu items. If there are none, the server makes Edit, History and Delete from <code>Permissions</code>.</td><td>From <code>TTDV2.json</code> <code>Permissions</code></td></tr>
+<tr><td><code>Buttons</code></td><td>Dashboard buttons with a <code>Target</code>.</td><td>"Add New" → <code>{ AppCode: TTDV2, Id: 0 }</code></td></tr>
+</table></div>
+
+<h3>18.2 Load the dashboard: server</h3>
+<p><code>GET v1/Dashboard?code=TTDV2</code> → the <code>PLATFORM</code> line in <code>CPAtlasService.LoadDashboard</code> → <code>ConfigSectionService.LoadDashboard</code> → <code>AtlasDashboardService.Load</code>.</p>
+<ol>
+<li><b>App check:</b> the app must be registered and <code>Enabled</code>. If not, the result is 404.</li>
+<li><b>Access check:</b> the user must have <b>View</b> access. If not, the result is 403 in <code>Enforce</code> mode.</li>
+<li><b>For each tab:</b>
+<ol>
+<li>It runs the tab <code>Rules</code>. A hidden tab gets <b>no rows</b>, and no query runs for it.</li>
+<li>If the tab shows rows of a different app, that app must be enabled and the user must have View access to it.</li>
+<li><b>Rows:</b> <code>AtlasTabQueryBuilder</code> makes one SQL query. Table and column names come only from the table registry, and each name is quoted. Each filter value is a SQL parameter. The platform always adds <code>IsDeleted = 0</code>.</li>
+<li><b>User columns</b> (<code>Type: "user"</code>): one query gets the display names of all LAN IDs in the rows.</li>
+<li><b>Dates:</b> dates and booleans are changed to the same text format as the form.</li>
+<li><b>Menus:</b> Edit, History and Delete are visible only if <code>Permissions</code> permits them for the user.</li>
+</ol></li>
+<li><b>Buttons:</b> "Add New" shows only if the user has <b>Create</b> access.</li>
+<li>The response has <code>AppCode = "TTDV2"</code>.</li>
+</ol>
+
+<h3>18.3 Show the dashboard: client</h3>
+<div class="table-wrap"><table>
+<tr><th>Edit in <code>cp-atlas-dashboard.ts</code></th><th>What it does</th></tr>
+<tr><td><code>GenerateColumns(tab)</code> → <code>columnDefs(...)</code></td><td>For a tab with <code>Columns</code>, this makes the AG Grid columns. The current tabs have no <code>Columns</code>, so they keep <code>GenerateColumns</code>.</td></tr>
+<tr><td><code>pinnedBottomRowData</code> ← <code>sumsRow(...)</code></td><td>Adds a <b>Total</b> row at the bottom for the columns with <code>Sum: true</code>.</td></tr>
+<tr><td><code>onClick</code>, <code>editRow</code> → <code>AtlasDashboardNavigation.open(...)</code></td><td>Opens <code>form/TTDV2/:id</code>. For a current app, it returns <code>false</code> and the current code runs.</td></tr>
+</table></div>
+<p><b>Columns</b> (<code>atlas-dashboard-columns.ts</code>)</p>
+<ul>
+<li><code>number</code> → numeric column and number filter.</li>
+<li><code>date</code> → shown as <code>dd-MMM-yyyy</code> (for example <code>18-Oct-2026</code>), with a date filter. The filter uses the day that the user sees.</li>
+<li><code>Link: "Edit"</code> → the cell is a link that opens the form.</li>
+<li><code>Hidden: true</code> → the column is in the data but not shown (for example <code>ID</code>).</li>
+<li><b>Actions</b> column (⋮): the first column, if one or more menus are visible. It uses the current <code>ActionMenuComponent</code>, so TTDV2 rows get the same menu and the same History Log as the current apps.</li>
+</ul>
+
+<h3>18.4 Navigation</h3>
+<p><code>AtlasDashboardNavigation.open(code, id, target)</code>:</p>
+<ol>
+<li>It reads the <code>v1/Application</code> rows one time and keeps them.</li>
+<li>It finds the <code>FormType</code> of the app. TTDV2 has <code>FORM</code>.</li>
+<li>If there is a <code>FormType</code>, it opens <code>form/&lt;code&gt;/&lt;id&gt;</code> and returns <code>true</code>.</li>
+<li>If there is no <code>FormType</code> (all current apps), it returns <code>false</code>. The current <code>if</code> chain then runs.</li>
+</ol>
+<p>"Add New" uses the button <code>Target</code> (<code>Id: 0</code>). Edit uses the row <code>ID</code>.</p>
+
+<h3>18.5 The main rule</h3>
+<div class="good"><b>The server decides what the user can see. The client only draws it.</b> Hidden tabs get no rows. Menus and buttons come from <code>Permissions</code>. Each Edit and Delete is checked again on the server for each record.</div>
 </section>
 
 </main>
