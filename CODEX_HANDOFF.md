@@ -1,3 +1,26 @@
+# RESUME HERE - 2026-11-07. Target dev integration with package bcb4b2b: steps 0-6 ALL DONE. NEXT: user bug summary.
+
+## State
+- User runs the steps at the target, one step at a time; each step explained in ASD-STE100 (this session).
+- Step 0 baseline, step 1 DTO partial, step 2 platform core + SQL 020/030, step 3 program.cs/CPAtlasService/controller
+  wiring (AddAtlasPlatform, no module), step 4 SQL 040 + TTDV2 config files + AddAtlasModule + dev settings
+  (Enabled true, AccessMode Enforce) + Owner role for the user's own tester: all reported "complete, no errors".
+- Step 5 (Angular platform folder, atlas routes, provideAtlasGridComponents, angular.json style, Tailwind safelist):
+  user reports "going okay, small bugs"; a bug summary is coming.
+- Step 6 (cp-atlas-dashboard.ts: AtlasDashboardNavigation in onClick/editRow, columnDefs in GenerateColumns, sumsRow
+  pinned row; menu filter HasDashboard !== false): user reports complete (2026-11-07).
+- Note: the header of Service/StandIn/CPAtlasService.cs names local/package/reference/CPAtlasService.target.cs, which
+  does not exist; the package has reference/StandIn/CPAtlasService.cs. Fix the comment at the next package rebuild.
+
+## Next
+1. Take the step 5 bug summary; fix here (no target-code edits by us), rebuild the package, user re-copies.
+2. Step 6 DONE. Open: bug summary for steps 5-6; target-side items from the 2026-11-01 open-items list.
+
+## Next-session prompt
+"Resume. Read the top entry of CODEX_HANDOFF.md. <Step 5 bugs: ...>. Keep explanations in ASD-STE100, one step at a time."
+
+---
+
 # RESUME HERE - 2026-11-01. Phase B and step 15 PUSHED (origin at c3529ad). NEXT: target dev integration.
 
 ## Owner Q&A 2026-11-01 (no code change; record so the next session does not re-derive it)
