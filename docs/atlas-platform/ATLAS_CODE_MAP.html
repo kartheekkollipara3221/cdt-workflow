@@ -71,6 +71,7 @@ nav.toc a{color:var(--blue);text-decoration:none}nav.toc a:hover{text-decoration
 <li><a href="#rules">Rules for the team</a></li>
 <li><a href="#form">How the form works</a></li>
 <li><a href="#dashboard">How the dashboard works</a></li>
+<li><a href="#rulesengine">How the rules engine works</a></li>
 </ol>
 </nav>
 
@@ -577,6 +578,101 @@ await app.Services.StartAtlasPlatformAsync();</code></pre>
 
 <h3>18.5 The main rule</h3>
 <div class="good"><b>The server decides what the user can see. The client only draws it.</b> Hidden tabs get no rows. Menus and buttons come from <code>Permissions</code>. Each Edit and Delete is checked again on the server for each record.</div>
+</section>
+
+<section id="rulesengine">
+<h2>19. How the rules engine works</h2>
+<p>The rules engine is one class: <code>AtlasRuleEngine</code> (<code>Service/Platform/Rules/AtlasRuleEngine.cs</code>). It runs <b>only on the server</b>. It uses <b>who the user is</b> to decide which parts of the form or dashboard are visible, hidden, editable or read-only. The record owner and the record state are also inputs.</p>
+
+<h3>19.1 Rules, Effects and Permissions</h3>
+<div class="table-wrap"><table>
+<tr><th>Mechanism</th><th>Input</th><th>Output</th><th>Runs on</th></tr>
+<tr><td><b>Permissions</b></td><td>Roles, owner</td><td>Allow or deny an <b>operation</b> (View, Create, Edit, Delete, History). Deny gives 403.</td><td>Server (<code>AtlasAccessService</code>)</td></tr>
+<tr><td><b>Rules</b></td><td>Roles, owner, states</td><td>Visible, hidden, read-only or editable <b>parts</b> (controls, buttons, tabs, menus)</td><td>Server (<code>AtlasRuleEngine</code>)</td></tr>
+<tr><td><b>Effects</b></td><td><b>Field values</b></td><td>Show, hide, require, set or clear other fields while the user types</td><td>Client and server</td></tr>
+</table></div>
+<p>Rules do not look at field values. Effects do that.</p>
+
+<h3>19.2 The inputs (<code>AtlasRuleContext</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Input</th><th>Source</th><th>TTDV2</th></tr>
+<tr><td><code>RoleTokens</code></td><td>The role names of the user, plus a flag token for each flag of those roles: <code>@Read</code>, <code>@Write</code>, <code>@Admin</code>. They come from <code>vw_CP_Atlas_ActiveUserRole</code>.</td><td><code>Prepare</code> user → <code>Prepare</code>, <code>@Read</code>, <code>@Write</code></td></tr>
+<tr><td><code>IsOwner</code></td><td>True when the user's LAN ID is in one of the <code>OwnerFields</code> of the record. A new record is always owned.</td><td><code>OwnerFields: [CreatedBy, TaxPreparerLanId]</code></td></tr>
+<tr><td><code>States</code></td><td>The record state (for a workflow app)</td><td>Empty (no workflow in P1)</td></tr>
+</table></div>
+
+<h3>19.3 One rule</h3>
+<pre><code>{ "Roles": ["Prepare"], "IsOwner": true, "Disabled": false }</code></pre>
+<p>A rule <b>matches</b> when all of its conditions are true. A condition that the rule does not give counts as true.</p>
+<ul>
+<li><code>Roles</code>: the user has <b>one or more</b> of these tokens.</li>
+<li><code>States</code>: the record is in <b>one or more</b> of these states.</li>
+<li><code>IsOwner</code>: the owner value is the same.</li>
+</ul>
+<p>When a rule matches, it gives <code>Visible</code> (default <code>true</code>) and <code>Disabled</code> (default <code>false</code>) for the target, and optional lists of child controls: <code>ShowControls</code>, <code>HideControls</code>, <code>EnableControls</code>, <code>DisableControls</code>.</p>
+
+<h3>19.4 The two modes (manifest <code>RuleMode</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Mode</th><th>How the matched rules are combined</th></tr>
+<tr><td><code>FirstMatch</code></td><td>Only the first matched rule counts. This is the behavior of the current apps.</td></tr>
+<tr><td><code>MostPermissive</code> (TTDV2)</td><td>All matched rules count. <b>Visible</b> if any rule makes it visible. <b>Disabled</b> only if all rules disable it. Show wins over Hide. Enable wins over Disable.</td></tr>
+</table></div>
+
+<h3>19.5 When no rule matches (manifest <code>RuleDefault</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Default</th><th>Result</th></tr>
+<tr><td><code>Keep</code></td><td>No change. The JSON values stay.</td></tr>
+<tr><td><code>ReadOnly</code> (TTDV2)</td><td>Visible, but disabled</td></tr>
+<tr><td><code>Hidden</code></td><td>Hidden and disabled</td></tr>
+</table></div>
+<p>If a target has no rules, nothing changes.</p>
+
+<h3>19.6 Where the rules apply</h3>
+<p><b>Form</b> (<code>ApplyToSection</code>, in <code>LoadPage</code> and again in <code>SavePage</code>)</p>
+<ol>
+<li>Each top-level control (a section container) uses its own <code>Rules</code>. If it has none, it uses the app-level <code>Rules</code> of the form.</li>
+<li>The result goes to the container, and then to each child control:
+<ul>
+<li>A hidden container hides its children.</li>
+<li><code>HideControls</code> and <code>ShowControls</code> change single children.</li>
+<li>A child that the JSON disables stays disabled, unless a rule names it in <code>EnableControls</code>.</li>
+<li>A disabled <code>grid</code> control also disables its cell editors.</li>
+</ul></li>
+<li>Buttons use their own <code>Rules</code>.</li>
+<li>The engine returns the fields that the rules <b>hid</b> and <b>disabled</b> (<code>AtlasRuleOutcome</code>). The service then:
+<ul>
+<li>at <b>load</b>, removes the values of hidden fields, so the hidden data does not go to the browser;</li>
+<li>at <b>save</b>, refuses a value for a hidden or disabled field (<code>Atlas.FieldRefused</code>).</li>
+</ul></li>
+</ol>
+<p><b>Dashboard</b> (<code>AtlasDashboardService</code>)</p>
+<ul>
+<li>Tab <code>Rules</code>: the default is <code>Hidden</code>. A hidden tab gets no rows.</li>
+<li>Button <code>Rules</code> and menu <code>Rule</code>: these show, hide or disable the item.</li>
+</ul>
+
+<h3>19.7 TTDV2 worked example</h3>
+<pre><code>"Rules": [
+  { "Roles": ["@Read"],   "Disabled": true },
+  { "Roles": ["Prepare"], "IsOwner": true, "Disabled": false },
+  { "Roles": ["@Admin"],  "Disabled": false }
+]</code></pre>
+<p>Mode <code>MostPermissive</code>, default <code>ReadOnly</code>:</p>
+<div class="table-wrap"><table>
+<tr><th>User</th><th>Matched rules</th><th>Result</th></tr>
+<tr><td><code>Read</code></td><td>1</td><td>Read-only</td></tr>
+<tr><td><code>Prepare</code>, own record</td><td>1 + 2</td><td><b>Editable</b> (rule 2 does not disable)</td></tr>
+<tr><td><code>Prepare</code>, other user's record</td><td>1</td><td>Read-only</td></tr>
+<tr><td><code>Prepare</code>, new record</td><td>1 + 2 (a new record is owned)</td><td>Editable</td></tr>
+<tr><td><code>Owner</code></td><td>1 + 3</td><td>Editable</td></tr>
+</table></div>
+<p>With <code>FirstMatch</code>, a <code>Prepare</code> user gets only rule 1, so the form is always read-only. That is the reason why TTDV2 uses <code>MostPermissive</code>.</p>
+
+<h3>19.8 Notes for the team</h3>
+<ul>
+<li>Rules only make parts read-only or hidden. <b>Permissions</b> decide if the operation is permitted at all. Both must agree. For example, <code>Edit.Own: [Prepare]</code> and rule 2 above agree.</li>
+<li>The client does not run the rules again. It shows the states that the server sent. The server runs the rules again at save, so a changed browser cannot edit a disabled field.</li>
+</ul>
 </section>
 
 </main>
