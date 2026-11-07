@@ -69,6 +69,7 @@ nav.toc a{color:var(--blue);text-decoration:none}nav.toc a:hover{text-decoration
 <li><a href="#find">Where to look for a problem</a></li>
 <li><a href="#newapp">How to add a new app</a></li>
 <li><a href="#rules">Rules for the team</a></li>
+<li><a href="#form">How the form works</a></li>
 </ol>
 </nav>
 
@@ -413,6 +414,96 @@ await app.Services.StartAtlasPlatformAsync();</code></pre>
 <li>After a change to a config file, restart the app pool and run <code>--atlas-check</code>.</li>
 <li>After each change, test one current app (dashboard, add, edit, history) and TTDV2.</li>
 </ul>
+</section>
+
+<section id="form">
+<h2>17. How the form works</h2>
+<p>The form is <b>one generic Angular component</b> (<code>AtlasFormComponent</code>, route <code>form/:code/:id</code>) with <b>one generic server service</b> (<code>ConfigSectionService</code>). The form has no app logic of its own. All of the app logic comes from the form JSON (<code>TTDV2.json</code>).</p>
+
+<h3>17.1 The parts of the form JSON</h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th>What it does</th><th>TTDV2 example</th></tr>
+<tr><td><code>Section.Controls</code></td><td>The fields and the layout. A control of <code>Type: "section"</code> is a container. Its <code>ChildControls</code> are the fields.</td><td>"Account Details" with <code>Class: "grid grid-cols-3 ..."</code></td></tr>
+<tr><td><code>Type</code> of a control</td><td>Selects the renderer.</td><td><code>text</code>, <code>ngselect</code>, <code>date</code>, <code>grid</code>, ...</td></tr>
+<tr><td><code>Field</code></td><td>The column in the table.</td><td><code>Account</code> → <code>TTDV2.General.Account</code></td></tr>
+<tr><td><code>Validator</code></td><td>Required, length, pattern, min, max.</td><td><code>Required: true</code></td></tr>
+<tr><td><code>OptionsSource</code></td><td>Gets a drop-down list from a provider.</td><td><code>PBAccounts</code>, <code>Years</code>, <code>WeekEndings</code></td></tr>
+<tr><td><code>Effects</code></td><td>Value-based changes: Show, Hide, Require, Enable, Disable, Set, Clear, SetFromOption.</td><td>Account selected → set <code>AccountNumber</code> and <code>AccountName</code></td></tr>
+<tr><td><code>Rules</code></td><td>Role, owner and state rules. They make the form read-only or editable.</td><td><code>@Read</code> → disabled; <code>Prepare</code> + owner → editable</td></tr>
+<tr><td><code>Permissions</code></td><td>Who can View, Create, Edit, Delete and see History.</td><td><code>Edit: { Own: [Prepare], All: [Owner] }</code></td></tr>
+<tr><td><code>Defaults</code></td><td>Values for a new record.</td><td><code>TaxPreparer: "{User.LanID}"</code></td></tr>
+<tr><td><code>Computed</code></td><td>Calculated fields.</td><td><code>WeeklyTotal = Sum(MondayMinute, ...)</code></td></tr>
+<tr><td><code>SoftDelete</code></td><td>The delete column.</td><td><code>IsDeleted</code></td></tr>
+</table></div>
+
+<h3>17.2 Open the form (load)</h3>
+<p><b>Client</b> (<code>atlas-form.component.ts</code>, <code>ngOnInit</code>)</p>
+<ol>
+<li>The route gives <code>code</code> and <code>id</code>. <code>id = 0</code> means a new record.</li>
+<li>The form calls <code>GET v1/SectionPage?AppCode=TTDV2&amp;ID=n</code>. If you go to a different record before the answer comes, <code>switchMap</code> cancels the old call.</li>
+</ol>
+<p><b>Server</b> (<code>ConfigSectionService.LoadPage</code>)</p>
+<ol>
+<li>It reads the record (<code>ID &gt; 0</code>) and checks <b>View</b> access, or it checks <b>Create</b> access for a new record. If the record does not exist, it gives 404. If the user has no access, it gives 403 in <code>Enforce</code> mode.</li>
+<li>It puts the saved values into the controls, or the <code>Defaults</code> for a new record (<code>BindValues</code>).</li>
+<li>It loads the drop-down options (<code>LoadOptions</code>).</li>
+<li>It runs the <code>OnLoad</code> hook. TTDV2 has no hook.</li>
+<li>It runs the <b>rules</b> (<code>AtlasRuleEngine</code>) and sets each field to hidden, read-only or editable.</li>
+<li>It removes the values of fields that a rule hides. The hidden data then does not go to the browser.</li>
+<li>It adds the header text, <code>Version</code> (the row version, for conflict checks), <code>UserPermissions</code> and <code>Computed</code>.</li>
+</ol>
+<p><b>Client</b> (<code>build</code>)</p>
+<ol>
+<li>It makes an Angular <code>FormGroup</code> from the controls (<code>buildFormGroup</code>).</li>
+<li>For each control <code>Type</code>, the <b>renderer registry</b> gives the component. A type with no renderer is disabled and is not sent.</li>
+<li>It connects the <b>effects</b>. They run one time at load, and again each time the source value changes.</li>
+<li>It connects the <b>computed</b> values. The client shows <code>WeeklyTotal</code> while the user types.</li>
+<li>If <code>UserPermissions</code> does not permit the save, the form is read-only and has no Save button.</li>
+</ol>
+
+<h3>17.3 While the user types</h3>
+<ul>
+<li><b>Validators</b> (<code>atlas-validators.ts</code>) show field errors.</li>
+<li><b>Effects</b> (<code>atlas-effects.ts</code>) show, hide, require, set or clear other fields.</li>
+<li><b>Computed</b> fields update.</li>
+</ul>
+<p>All of this is only for the user. The server does each check again at save, so a changed browser cannot get past the rules.</p>
+
+<h3>17.4 Save</h3>
+<p><b>Client</b> (<code>save</code>)</p>
+<ol>
+<li>It marks the shown fields as touched. If a shown field is not valid, it opens the "mandatory fields" modal and stops.</li>
+<li>It sends <code>POST v1/ManagePage</code> with <code>AppCode</code>, <code>ID</code>, <code>Version</code> and <code>Outputs</code>. <code>Outputs</code> has only the shown fields.</li>
+</ol>
+<p><b>Server</b> (<code>ConfigSectionService.SavePage</code>)</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Step</th><th>What it does</th></tr>
+<tr><td>1</td><td><code>LoadStored</code></td><td>Reads the current record and checks Edit or Create access.</td></tr>
+<tr><td>2</td><td><code>ApplyRules</code></td><td>Runs the rules again on the server.</td></tr>
+<tr><td>3</td><td><code>ReadAndFilter</code></td><td>Uses the allow list. It <b>refuses</b> an unknown or disabled field (<code>Atlas.FieldRefused</code>). It <b>ignores</b> a server-set or unchanged field (<code>Atlas.FieldIgnored</code>).</td></tr>
+<tr><td>4</td><td><code>ValidateFields</code></td><td>Runs the same validators as the client.</td></tr>
+<tr><td>5</td><td><code>CheckVersion</code></td><td>Compares <code>Version</code> with the row version. If another user saved first, it gives a conflict.</td></tr>
+<tr><td>6</td><td><code>MapRecord</code></td><td>Converts each text value to the column type (<code>AtlasValueConverter</code>).</td></tr>
+<tr><td>7</td><td><code>ComputeAndSystemFields</code></td><td>Calculates <code>WeeklyTotal</code> again, and sets Created/Modified By and Date.</td></tr>
+<tr><td>8</td><td><code>RunBeforeSave</code></td><td>The <code>OnBeforeSave</code> hook.</td></tr>
+<tr><td>9</td><td><code>Persist</code></td><td>Saves the record and the audit row in <b>one transaction</b>. If nothing changed, it writes no audit row.</td></tr>
+<tr><td>10</td><td><code>Complete</code></td><td>Runs <code>OnAfterSave</code> and returns the result.</td></tr>
+</table></div>
+<p>If steps 1 to 8 find errors, the server returns HTTP 200 with an <code>Errors</code> list and <code>ID = 0</code>. Nothing is saved.</p>
+<p><b>Client after the answer</b></p>
+<ul>
+<li><b>Errors:</b> a field error goes under its field. Other errors go at the top of the form.</li>
+<li><b>Success:</b> the message "Record saved successfully" shows, and the form goes back to the dashboard.</li>
+</ul>
+
+<h3>17.5 Delete and History</h3>
+<ul>
+<li><b>Delete:</b> the form asks for confirmation, then calls <code>v1/RemovePage</code>. The server checks Delete access, sets <code>IsDeleted</code>, and writes a <code>Delete</code> audit row.</li>
+<li><b>History:</b> the button shows only when <code>UserPermissions.CanViewHistory</code> is true. It opens <code>atlas-history-dialog.ts</code>, which uses <code>v1/GetAuditLog</code>.</li>
+</ul>
+
+<h3>17.6 The main rule</h3>
+<div class="good"><b>The client is for the user. The server is the authority.</b> Rules, validators, effects and computed values run on both sides. The client gives the user fast feedback. The server makes the decision. The shared case files (<code>atlas-validator-cases.ts</code>, <code>atlas-effect-cases.ts</code>) are tested on both sides, so the two sides stay the same.</div>
 </section>
 
 </main>
