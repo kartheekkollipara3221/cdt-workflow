@@ -1,0 +1,1314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implicit state machines explained</title>
+<style>
+:root{color-scheme:light;--bg:#edf1f5;--paper:#fff;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--amber:#8a5a00;--amberbg:#fff7e6;--amberline:#c58a1a;--red:#a3271f;--redbg:#fdeeee;--code:#f4f6f8;--th:#eff4f7;--node:#f7fafc;--nodeline:#7f98ad;--edge:#4f6679;--lane:#f3f7fa}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--amberline:#d9a441;--red:#f19a92;--redbg:#3a1c1a;--code:#1f2e3a;--th:#1c2b37;--node:#1b2935;--nodeline:#6f8ba3;--edge:#a9bccb;--lane:#122029}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--amberline:#d9a441;--red:#f19a92;--redbg:#3a1c1a;--code:#1f2e3a;--th:#1c2b37;--node:#1b2935;--nodeline:#6f8ba3;--edge:#a9bccb;--lane:#122029}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:24px auto;background:var(--paper);padding:36px 40px;border-radius:12px}
+h1,h2,h3,h4{color:var(--navy);line-height:1.25}
+h1{font-size:1.85rem;margin:6px 0 10px}
+h2{font-size:1.35rem;margin:42px 0 10px;border-top:1px solid var(--line);padding-top:22px}
+h3{font-size:1.1rem;margin:26px 0 8px}
+h4{font-size:1rem;margin:0 0 6px}
+p{margin:10px 0}
+a{color:var(--blue);text-underline-offset:3px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.12rem}
+.small{font-size:.88rem;color:var(--muted)}
+code{font:.86em ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow:auto;font:13px/1.5 ui-monospace,Consolas,monospace;margin:8px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.note,.warn,.ok,.stop,.decide{padding:12px 16px;margin:14px 0;border-left:4px solid var(--blue);background:var(--bluebg);border-radius:0 8px 8px 0}
+.warn{border-color:var(--amberline);background:var(--amberbg)}
+.ok{border-color:var(--green);background:var(--greenbg)}
+.stop{border-color:var(--red);background:var(--redbg)}
+.tbl{overflow-x:auto;margin:10px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--th)}
+.tag,.lab{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 8px;border-radius:10px;white-space:nowrap;vertical-align:1px;margin:1px 2px 1px 0}
+.t-act,.lab-inf{background:var(--redbg);color:var(--red)}
+.t-known,.lab-known{background:var(--amberbg);color:var(--amber)}
+.t-dec,.lab-fact{background:var(--bluebg);color:var(--blue)}
+.t-ok{background:var(--greenbg);color:var(--green)}
+.hn{display:inline-flex;align-items:center;justify-content:center;min-width:1.5em;height:1.5em;padding:0 4px;border-radius:999px;background:var(--red);color:var(--paper);font-size:.78rem;font-weight:700;flex:none}
+nav ul{columns:2;padding-left:18px;margin:8px 0}
+nav li{margin:3px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:0}
+.machine{margin-top:36px}
+.machine h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:0;border-bottom:1px solid var(--line);padding-bottom:8px}
+.machine h3 .id{color:var(--muted)}
+.short{font-size:1.02rem}
+.finding{border:1px solid var(--line);border-left:4px solid var(--red);border-radius:0 8px 8px 0;padding:10px 16px;margin:12px 0}
+.finding.k{border-left-color:var(--amberline)}
+.finding.f{border-left-color:var(--blue)}
+.finding h4{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.finding ol,.finding ul{margin:6px 0;padding-left:22px}
+.finding li{margin:3px 0}
+.fig{margin:16px 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:620px;height:auto}
+.fig figcaption{font-size:.86rem;color:var(--muted);margin-top:6px}
+svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.s-box{fill:var(--node);stroke:var(--nodeline);stroke-width:1.5}
+.s-term{fill:var(--greenbg);stroke:var(--green);stroke-width:1.8}
+.s-bad{fill:var(--redbg);stroke:var(--red);stroke-width:1.5}
+.s-der{fill:var(--node);stroke:var(--nodeline);stroke-width:1.5;stroke-dasharray:6 4}
+.s-dash{stroke-dasharray:6 4}
+.s-lane{fill:var(--lane)}
+.s-edge{fill:none;stroke:var(--edge);stroke-width:1.6}
+.s-edge-bad{fill:none;stroke:var(--red);stroke-width:1.6;stroke-dasharray:6 4}
+.s-head{fill:var(--edge)}
+.s-head-bad{fill:var(--red)}
+.s-dot{fill:var(--ink)}
+.s-t{fill:var(--ink);font-size:14px;font-weight:650}
+.s-l{fill:var(--ink);font-size:12.5px}
+.s-m{fill:var(--muted);font-size:12px}
+.mid{text-anchor:middle}
+.end{text-anchor:end}
+.hm circle{fill:var(--red)}
+.hm text{fill:var(--paper);font-size:12px;font-weight:700;text-anchor:middle}
+.words{columns:2;column-gap:30px;margin:10px 0}
+.words div{break-inside:avoid;margin-bottom:9px}
+.words dt{font-weight:650}
+.words dd{margin:0}
+.q{border:1px solid var(--line);border-radius:10px;padding:12px 18px;margin:14px 0}
+.q h3{margin-top:4px}
+footer{border-top:1px solid var(--line);margin-top:40px;padding-top:18px;font-size:.9rem}
+footer dt{font-weight:650}
+footer dd{margin:0 0 10px}
+@media (max-width:700px){main{padding:18px 16px;margin:0;border-radius:0}nav ul,.words{columns:1}.two{grid-template-columns:1fr}h1{font-size:1.5rem}th,td{padding:6px 8px}}
+@media print{body{background:#fff}main{max-width:none;margin:0;padding:0}nav{display:none}.fig svg{min-width:0}.finding,.fig,.q,tr{break-inside:avoid}h2,h3{break-after:avoid}}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+<div class="eyebrow">CP Atlas · workflow engine and Atlas platform · explanation of the inventory · 2026-11-09</div>
+<h1>Implicit state machines: the findings explained</h1>
+<p class="lead">This page explains <code>docs/IMPLICIT_STATE_MACHINES.md</code> in simple words. For each finding it gives the meaning, an example, the effect and the decision that you must make. It does not replace the inventory. It does not approve work.</p>
+<div class="note"><b>Basis.</b> Commit <code>c729452</code>, branch <code>console-code-first-0518</code>. The inventory uses the same commit, so its line numbers are correct. No code changed. No build or test ran. For this page I read the code again for the 7 items with the label "Inference - verify" and for the main code facts. The code agrees with the inventory. A test must still prove each inference.</div>
+<p class="small">Writing target: about 80% ASD-STE100. This is a style target, not a measured score. Code names stay as they are.</p>
+<nav aria-label="Contents">
+<ul>
+<li><a href="#idea">1. The idea</a></li>
+<li><a href="#labels">2. How to read the labels</a></li>
+<li><a href="#map">3. Map of the 24 machines</a></li>
+<li><a href="#connect">4. How the engine machines connect</a></li>
+<li><a href="#engine">5. Engine machines (E01 to E13)</a></li>
+<li><a href="#platform">6. Platform machines (P01 to P11)</a></li>
+<li><a href="#work">7. Candidate work items (W1 to W13)</a></li>
+<li><a href="#questions">8. The 7 questions for you</a></li>
+<li><a href="#words">9. Words used on this page</a></li>
+<li><a href="#sources">10. Sources</a></li>
+</ul>
+</nav>
+</header>
+
+<!-- ============================================================ 1 -->
+<h2 id="idea">1. The idea</h2>
+<p>A state machine is a thing with a life cycle. It has four parts:</p>
+<div class="tbl"><table>
+<tr><th>Part</th><th>Meaning</th><th>Example from the engine</th></tr>
+<tr><td>State</td><td>A condition that the thing can have.</td><td>A task is <code>Pending</code> or <code>Completed</code>.</td></tr>
+<tr><td>Move (transition)</td><td>A permitted change from one state to another state.</td><td><code>Pending</code> to <code>Completed</code>.</td></tr>
+<tr><td>Trigger</td><td>The event that starts a move.</td><td>An action that closes the task.</td></tr>
+<tr><td>Guard</td><td>A check that must pass before the move.</td><td>The version in the request is the same as the version in the database.</td></tr>
+</table></div>
+<p>An <b>explicit</b> state machine has one place in the code that declares the states and the moves. All writers use that place. A test can walk the full table. An <b>implicit</b> state machine has no such place. Its states are text values, flags or empty dates. Its moves are <code>if</code> statements and <code>UPDATE</code> statements in many files.</p>
+
+<div class="two">
+<div class="card">
+<h4>Implicit (the engine today)</h4>
+<pre><code>// ProcessNotificationOutboxService.cs
+row.Status == "Pending"
+.SetProperty(item =&gt; item.Status, "Sent")
+
+// WorkflowActionNotificationDispatcher.cs
+.SetProperty(item =&gt; item.Status, "Processing")
+
+// WorkflowSlaSynchronizationService.cs
+row.Status = "Cancelled";</code></pre>
+<p>Six files write the e-mail status. Each file has its own text values and its own checks. Only the SQL <code>CHECK</code> constraint knows the full list of values.</p>
+</div>
+<div class="card">
+<h4>Explicit (the shape that the project rules permit)</h4>
+<pre><code>// Example only. Not approved code.
+public static class OutboxStatus
+{
+    public const string Pending = "Pending";
+    public const string Processing = "Processing";
+    public const string Sent = "Sent";
+    public const string Cancelled = "Cancelled";
+}
+// + one small class with the permitted moves
+// + one test that walks the table</code></pre>
+<p>One place has the values and the permitted moves. The stored text stays the same. No library is necessary.</p>
+</div>
+</div>
+
+<h3>Why this is important</h3>
+<ol>
+<li><b>Two copies of one rule can become different.</b> The e-mail delivery (E05) is written two times. Three differences exist today.</li>
+<li><b>A state with no name is difficult to monitor.</b> A reminder that cannot be queued (E04, "Blocked") is only a warning text. The warning comes back at each scan.</li>
+<li><b>A typing error in a text value compiles.</b> If code compares with <code>"Canceled"</code> in place of <code>"Cancelled"</code>, the query finds no rows and gives no error. If code writes that value, the SQL <code>CHECK</code> constraint refuses it at run time. The engine has 96 such values in 13 files (inventory, appendix A).</li>
+<li><b>A rule between two machines can break, and nobody sees it.</b> Example: a completed workflow can keep an open task (rule I1, section 4).</li>
+</ol>
+<div class="ok"><b>This is not a defect list.</b> Most of the 24 machines work correctly today. The inventory is a map. The main workflow state machine (states, actions and transitions in the metadata) is already explicit, and it is the design of the engine. The inventory lists only the life cycles around it.</div>
+
+<!-- ============================================================ 2 -->
+<h2 id="labels">2. How to read the labels</h2>
+<div class="tbl"><table>
+<tr><th>Label</th><th>Meaning</th><th>What to do</th></tr>
+<tr><td><span class="lab lab-fact">Code fact</span></td><td>The author read it in the code.</td><td>Trust it. Read the code again before a change, because line numbers move.</td></tr>
+<tr><td><span class="lab lab-known">Known: ID</span></td><td>An earlier review has it. Many of these have a decision or a fix plan.</td><td>Do not count it as new. Use the ID to find the decision.</td></tr>
+<tr><td><span class="lab lab-inf">Inference - verify</span></td><td>A conclusion from reading. No test showed it.</td><td>Write a test first. If the test does not show the problem, close the finding.</td></tr>
+</table></div>
+
+<h3>My second read of the 7 inferences</h3>
+<div class="tbl"><table>
+<tr><th>#</th><th>Inference</th><th>What I read again</th><th>Result</th></tr>
+<tr><td>1</td><td><a href="#e03">E03</a>: an SLA-only request for an instance with no open task gives HTTP 500.</td><td><code>SLASYNC:171-178</code> (<code>.Single()</code>), <code>APIACT:92-98</code> (one catch only), <code>GlobalExceptionHandler.cs:69-73</code> (500 for all other exceptions)</td><td>The code path agrees.</td></tr>
+<tr><td>2</td><td><a href="#e05">E05</a>: an e-mail can go out while its row becomes <code>Cancelled</code>.</td><td><code>SLASYNC:219-231</code> (cancels <code>Processing</code> rows and clears the token), <code>OUTBOX:139-155</code> ("mark Sent" needs the token)</td><td>The code path agrees.</td></tr>
+<tr><td>3</td><td><a href="#e10">E10</a>: a second open of an opportunity gives two candidates.</td><td><code>SqlSqmsDataStore.cs:66-70</code> (joins all opening audit rows), <code>SqmsScheduledService.cs:41-48</code> (close rule for each row)</td><td>The code path agrees.</td></tr>
+<tr><td>4</td><td><a href="#p01">P01</a>: a save with no change changes the <code>RowVersion</code>.</td><td><code>CSS:460-478</code> (<code>ModifiedBy</code> and <code>ModifiedDate</code> at each save)</td><td>The code path agrees.</td></tr>
+<tr><td>5</td><td><a href="#p03">P03</a>: the client does not know the rule locks.</td><td>No match for <code>HiddenByRule</code> or <code>DisabledByRule</code> in <code>WebUi/src</code>; <code>atlas-form.component.ts:184-191</code></td><td>The main case agrees. I did not find the "read-only form" case. See P03.</td></tr>
+<tr><td>6</td><td><a href="#p05">P05</a>: a dashboard tab can show the rows of an app that the start-up check disabled.</td><td><code>AtlasDashboardService.cs:98-111</code> (reads <code>Enabled</code> and the View check only)</td><td>The code path agrees.</td></tr>
+<tr><td>7</td><td><a href="#p08">P08</a>: after a second cut-over, <code>090</code> uses the time of the first <code>050</code> run.</td><td><code>050:206-208</code> (one log row only), <code>090:25-26</code> (the latest log row)</td><td>The code path agrees. The effect is serious. See P08, item 3.</td></tr>
+</table></div>
+<p class="small">A code path that agrees is not a proof. Each item keeps its label until a test shows it.</p>
+
+<h3>IDs used on this page</h3>
+<div class="tbl"><table>
+<tr><th>ID</th><th>Meaning</th><th>Status</th></tr>
+<tr><td>D01</td><td>Authentication belongs to the target.</td><td><span class="tag t-ok">Settled</span></td></tr>
+<tr><td>D02 / F06</td><td>The API sends e-mail inside the HTTP request, after the commit.</td><td><span class="tag t-known">Open</span></td></tr>
+<tr><td>D03</td><td>Business failures return HTTP 500.</td><td><span class="tag t-dec">Understood</span> A change needs a new versioned endpoint.</td></tr>
+<tr><td>D04</td><td>No maximum number of attempts and no dead-letter state for e-mail rows.</td><td><span class="tag t-known">Owner decision open</span></td></tr>
+<tr><td>D06</td><td>The engine is synchronous and has no cancellation.</td><td><span class="tag t-known">Major, open</span></td></tr>
+<tr><td>D07</td><td>The caller keeps business object IDs unique.</td><td><span class="tag t-ok">Settled</span></td></tr>
+<tr><td>D08 / O3</td><td>The literals <code>Draft</code> (first state) and <code>SaveDraft</code> (action).</td><td><span class="tag t-ok">Settled</span> ("manageable")</td></tr>
+<tr><td>D09</td><td>The seed changes version 1 in place. There is no publication procedure.</td><td><span class="tag t-known">Major, open</span></td></tr>
+<tr><td>F07</td><td>The assignment role is not in the request hash.</td><td><span class="tag t-known">Open</span></td></tr>
+<tr><td>F09</td><td>An SLA change and a task completion at the same time.</td><td><span class="tag t-known">Open</span></td></tr>
+<tr><td>H01</td><td>Failed e-mails could block later e-mails.</td><td><span class="tag t-ok">Fixed</span> in <code>d881c15</code>; low residuals</td></tr>
+<tr><td>L1</td><td>An HTTP caller cannot send its own idempotency key.</td><td><span class="tag t-known">Open</span></td></tr>
+<tr><td>L4</td><td>The duplicate-key check reads the SQL message text.</td><td><span class="tag t-known">Open</span></td></tr>
+<tr><td>O4, O5, O6</td><td>No parallel approvals. Timers never move engine state. No condition expressions in the engine.</td><td><span class="tag t-ok">Settled</span></td></tr>
+<tr><td>R01, R02</td><td>Two High findings for script <code>090</code> and for a second cut-over.</td><td><span class="tag t-known">Tested, not fixed</span></td></tr>
+<tr><td>SV-06</td><td>A failure in <code>OnAfterSave</code> is logged. The save still succeeds.</td><td><span class="tag t-ok">Decision</span></td></tr>
+<tr><td>Q07 to Q10</td><td>Fix choices for the review findings R01 to R04.</td><td><span class="tag t-dec">Open</span> <code>PENDING_DECISIONS.html</code></td></tr>
+<tr><td>Q19, Q20</td><td>LogOnly first, then Enforce. Who approves <code>Enabled</code>.</td><td><span class="tag t-dec">Open</span></td></tr>
+<tr><td>Q40, Q41</td><td>When engine work starts again. The first engine fix (SaveDraft race).</td><td><span class="tag t-dec">Open</span></td></tr>
+<tr><td>Q51</td><td>When the engine adapter (platform module 10) starts.</td><td><span class="tag t-dec">Open</span></td></tr>
+</table></div>
+<div class="warn"><b>Settled decisions.</b> Do not raise these again as defects: D08 / O3, O4, O5, O6, D01 and D07.</div>
+
+<!-- ============================================================ 3 -->
+<h2 id="map">3. Map of the 24 machines</h2>
+<p>The status column uses four tags: <span class="tag t-act">Act</span> an open gap with no decision. <span class="tag t-known">Known</span> open, from an earlier review. <span class="tag t-dec">Decide</span> a contract or an owner decision. <span class="tag t-ok">Stable</span> no action necessary.</p>
+<div class="tbl"><table>
+<tr><th>ID</th><th>Machine</th><th>The question that it answers</th><th>Status</th><th>Work item</th></tr>
+<tr><td><a href="#e01">E01</a></td><td>Workflow instance</td><td>Does the workflow run, or is it finished? At which step is it?</td><td><span class="tag t-known">Known High</span><span class="tag t-act">Act</span></td><td>W1, W4, W7</td></tr>
+<tr><td><a href="#e02">E02</a></td><td>Task</td><td>Is the work of a role open or closed?</td><td><span class="tag t-ok">Stable</span></td><td>W1, W7</td></tr>
+<tr><td><a href="#e03">E03</a></td><td>SLA schedule</td><td>When is the task overdue? Which schedule is in use?</td><td><span class="tag t-known">Known F09</span><span class="tag t-act">Act</span></td><td>W1, W6, W8</td></tr>
+<tr><td><a href="#e04">E04</a></td><td>SLA reminder cursor</td><td>When is the next reminder due?</td><td><span class="tag t-act">Act</span></td><td>W1, W7</td></tr>
+<tr><td><a href="#e05">E05</a></td><td>E-mail outbox</td><td>Does the e-mail wait, is it in work, sent or cancelled?</td><td><span class="tag t-act">Act</span><span class="tag t-known">Known D04</span></td><td>W1, W2, W3, W5</td></tr>
+<tr><td><a href="#e06">E06</a></td><td>Idempotency record</td><td>Did this request run before?</td><td><span class="tag t-known">Known L1, L4, F07</span></td><td>W1</td></tr>
+<tr><td><a href="#e07">E07</a></td><td>Request path</td><td>Which kind of request is this?</td><td><span class="tag t-ok">Settled D08</span></td><td>-</td></tr>
+<tr><td><a href="#e08">E08</a></td><td>Version activation</td><td>Which version do new workflows use?</td><td><span class="tag t-act">Act</span><span class="tag t-known">Known D09</span></td><td>W7</td></tr>
+<tr><td><a href="#e09">E09</a></td><td>Result code to HTTP status</td><td>What does the caller get back?</td><td><span class="tag t-dec">Contract</span><span class="tag t-known">Known D02</span></td><td>-</td></tr>
+<tr><td><a href="#e10">E10</a></td><td>SQMS timer rules</td><td>When does the scheduler close an opportunity or classify a bid?</td><td><span class="tag t-known">Known</span><span class="tag t-act">Act</span></td><td>-</td></tr>
+<tr><td><a href="#e11">E11</a></td><td>SQMS state copies</td><td>Do the three copies of one state agree?</td><td><span class="tag t-known">Known</span></td><td>-</td></tr>
+<tr><td><a href="#e12">E12</a></td><td>Participant capture</td><td>Who are the named people of a workflow?</td><td><span class="tag t-ok">Stable</span></td><td>-</td></tr>
+<tr><td><a href="#e13">E13</a></td><td>Actor access (read only)</td><td>Can this user act now?</td><td><span class="tag t-ok">Stable</span></td><td>-</td></tr>
+<tr><td><a href="#p01">P01</a></td><td>Record</td><td>Is the record new, active or deleted?</td><td><span class="tag t-act">Act</span></td><td>-</td></tr>
+<tr><td><a href="#p02">P02</a></td><td>Save steps and result</td><td>Did the save succeed?</td><td><span class="tag t-ok">Stable</span></td><td>-</td></tr>
+<tr><td><a href="#p03">P03</a></td><td>Field state</td><td>Is the field visible, enabled and required?</td><td><span class="tag t-act">Act</span></td><td>W11</td></tr>
+<tr><td><a href="#p04">P04</a></td><td>Record workflow state</td><td>At which workflow step is the record?</td><td><span class="tag t-dec">Not connected (Q51)</span></td><td>W12</td></tr>
+<tr><td><a href="#p05">P05</a></td><td>App availability</td><td>Can users use app X now?</td><td><span class="tag t-act">Act</span></td><td>W9</td></tr>
+<tr><td><a href="#p06">P06</a></td><td>Platform start-up</td><td>Did the platform load?</td><td><span class="tag t-ok">Stable</span></td><td>-</td></tr>
+<tr><td><a href="#p07">P07</a></td><td>Access mode</td><td>Do we log a denial or refuse it?</td><td><span class="tag t-known">Known</span></td><td>-</td></tr>
+<tr><td><a href="#p08">P08</a></td><td>TTDV2 cut-over</td><td>Do users work in TTD or in TTDV2?</td><td><span class="tag t-known">Known High</span><span class="tag t-act">Act</span><span class="tag t-dec">Stop-and-ask</span></td><td>W13</td></tr>
+<tr><td><a href="#p09">P09</a></td><td>User role (data)</td><td>Does the user have this role?</td><td><span class="tag t-ok">Stable</span></td><td>-</td></tr>
+<tr><td><a href="#p10">P10</a></td><td>Form page (client)</td><td>Does the form load, wait or save?</td><td><span class="tag t-act">Act</span></td><td>W10</td></tr>
+<tr><td><a href="#p11">P11</a></td><td>Dashboard, history, menu cache (client)</td><td>Does the list load, or did it fail?</td><td><span class="tag t-ok">Stable</span></td><td>W10</td></tr>
+</table></div>
+
+<!-- ============================================================ 4 -->
+<h2 id="connect">4. How the engine machines connect</h2>
+<p>One user action can move six machines. The figure shows the order for one transition, for example <code>SubmitForChecker</code>.</p>
+<figure class="fig">
+<svg viewBox="0 0 960 300" role="img" aria-labelledby="cas-t">
+<title id="cas-t">The cascade of one transition: seven steps in one transaction, then two background steps</title>
+<defs><marker id="cas-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker></defs>
+<rect class="s-lane" x="8" y="8" width="944" height="150" rx="10"/>
+<text class="s-m" x="22" y="30">In the transaction of one user action: one commit</text>
+<rect class="s-lane" x="8" y="170" width="944" height="122" rx="10"/>
+<text class="s-m" x="22" y="192">Later: jobs on a timer, or the API at once</text>
+<rect class="s-box" x="24" y="46" width="116" height="80" rx="10"/>
+<text class="s-m mid" x="82" y="68">1 · E01</text><text class="s-l mid" x="82" y="90">Instance moves</text><text class="s-t mid" x="82" y="111">Version + 1</text>
+<rect class="s-box" x="156" y="46" width="116" height="80" rx="10"/>
+<text class="s-m mid" x="214" y="68">2 · E02</text><text class="s-l mid" x="214" y="90">Old task</text><text class="s-t mid" x="214" y="111">Completed</text>
+<rect class="s-box" x="288" y="46" width="116" height="80" rx="10"/>
+<text class="s-m mid" x="346" y="68">3 · E03</text><text class="s-l mid" x="346" y="90">Old schedule</text><text class="s-t mid" x="346" y="111">Completed</text>
+<rect class="s-box" x="420" y="46" width="116" height="80" rx="10"/>
+<text class="s-m mid" x="478" y="68">4 · E05</text><text class="s-l mid" x="478" y="90">Unsent reminders</text><text class="s-t mid" x="478" y="111">Cancelled</text>
+<rect class="s-box" x="552" y="46" width="116" height="80" rx="10"/>
+<text class="s-m mid" x="610" y="68">5 · E02</text><text class="s-l mid" x="610" y="90">New task</text><text class="s-t mid" x="610" y="111">Pending</text>
+<rect class="s-box" x="684" y="46" width="116" height="80" rx="10"/>
+<text class="s-m mid" x="742" y="68">6 · E03</text><text class="s-l mid" x="742" y="90">New schedule</text><text class="s-t mid" x="742" y="111">Active</text>
+<rect class="s-box" x="816" y="46" width="116" height="80" rx="10"/>
+<text class="s-m mid" x="874" y="68">7 · E05</text><text class="s-l mid" x="874" y="90">E-mail row</text><text class="s-t mid" x="874" y="111">Pending</text>
+<path class="s-edge" d="M140 86H155" marker-end="url(#cas-a)"/>
+<path class="s-edge" d="M272 86H287" marker-end="url(#cas-a)"/>
+<path class="s-edge" d="M404 86H419" marker-end="url(#cas-a)"/>
+<path class="s-edge" d="M536 86H551" marker-end="url(#cas-a)"/>
+<path class="s-edge" d="M668 86H683" marker-end="url(#cas-a)"/>
+<path class="s-edge" d="M800 86H815" marker-end="url(#cas-a)"/>
+<text class="s-m" x="22" y="222">The SLA scan and the outbox worker run on a timer.</text>
+<text class="s-m" x="22" y="240">The API dispatcher sends the e-mail rows of its own</text>
+<text class="s-m" x="22" y="258">action at once, during the HTTP request.</text>
+<rect class="s-box" x="552" y="208" width="180" height="64" rx="10"/>
+<text class="s-t mid" x="642" y="232">8 · E04 SLA scan</text><text class="s-l mid" x="642" y="254">queues reminder rows</text>
+<rect class="s-box" x="760" y="208" width="180" height="64" rx="10"/>
+<text class="s-t mid" x="850" y="232">9 · E05 Worker or API</text><text class="s-l mid" x="850" y="254">sends the rows: Sent</text>
+<path class="s-edge" d="M742 126L690 205" marker-end="url(#cas-a)"/>
+<path class="s-edge" d="M874 126L858 205" marker-end="url(#cas-a)"/>
+<path class="s-edge" d="M732 240H757" marker-end="url(#cas-a)"/>
+</svg>
+<figcaption>Each box runs only when the metadata of the transition asks for it. Boxes 2 to 4 need <code>TaskToCloseKey</code>. Boxes 5 and 6 need <code>TaskToCreateKey</code> (box 6 also needs an SLA policy). Box 7 needs a notification route. If one step in the transaction fails, the database keeps none of the changes.</figcaption>
+</figure>
+
+<h3>Rules between the machines</h3>
+<p>These rules connect two or more machines. The inventory calls them I1 to I10. Three of them have no guard at all.</p>
+<div class="tbl"><table>
+<tr><th>#</th><th>Rule in simple words</th><th>What keeps it today</th><th>Status</th></tr>
+<tr><td>I1</td><td>A completed workflow has no open task.</td><td>Only correct metadata (<a href="#e01">E01</a>, item 3).</td><td><span class="tag t-act">Not kept</span></td></tr>
+<tr><td>I2</td><td>A closed task has no Active schedule.</td><td>The same transaction (<code>WES:712-716</code>). Race F09 is open.</td><td><span class="tag t-known">Partly</span></td></tr>
+<tr><td>I3</td><td>A schedule that is not Active has no e-mail row that waits or is in work.</td><td><code>SLASYNC:219-231</code>, and the worker checks again. Gap: cancel during send (<a href="#e05">E05</a>, item 4).</td><td><span class="tag t-known">Partly</span></td></tr>
+<tr><td>I4</td><td>An open task with an SLA policy has one Active schedule.</td><td>The same transaction, and a filtered index ("at most one").</td><td><span class="tag t-ok">Kept</span></td></tr>
+<tr><td>I5</td><td>The due time of the task is the overdue time of its Active schedule.</td><td>One writer (<code>SLASYNC:134</code>).</td><td><span class="tag t-ok">Kept</span></td></tr>
+<tr><td>I6</td><td>Each workflow has at most one open task.</td><td>The database (filtered unique index).</td><td><span class="tag t-ok">Kept</span></td></tr>
+<tr><td>I7</td><td>Each workflow key has one active version.</td><td>Only the scripts and the seed (<a href="#e08">E08</a>). The database does not check it.</td><td><span class="tag t-act">Not in the database</span></td></tr>
+<tr><td>I8</td><td>A task with an SLA policy has a first e-mail.</td><td>Nothing. The scan finds the gap later, as a warning (<a href="#e04">E04</a>, item 2).</td><td><span class="tag t-act">Not kept</span></td></tr>
+<tr><td>I9</td><td>The SQMS copy columns are the same as the engine state.</td><td>Nothing. Two owners write them (<a href="#e11">E11</a>).</td><td><span class="tag t-act">Not kept</span></td></tr>
+<tr><td>I10</td><td>The client shows the same field state as the server.</td><td>Shared test cases for effects and validators. The rule locks are not shared (<a href="#p03">P03</a>).</td><td><span class="tag t-known">Partly</span></td></tr>
+</table></div>
+
+<!-- ============================================================ 5 -->
+<h2 id="engine">5. Engine machines (E01 to E13)</h2>
+<p class="small">Short names: <code>WES</code> = WorkflowExecutionService.cs, <code>SWS</code> = StartWorkflowService.cs, <code>SLASYNC</code> = WorkflowSlaSynchronizationService.cs, <code>RUNSLA</code> = RunSlaService.cs, <code>OUTBOX</code> = ProcessNotificationOutboxService.cs, <code>DISPATCH</code> = WorkflowActionNotificationDispatcher.cs, <code>APIACT</code> = WorkflowActionService.cs (API), <code>CTX</code> = WorkflowContextReader.cs, <code>DBC</code> = WorkflowDbContext.cs. The red numbers in each figure are the numbers of the findings below the figure.</p>
+
+<!-- E01 -->
+<section class="machine" id="e01">
+<h3><span class="id">E01</span> Workflow instance life cycle <span class="tag t-known">Known High</span><span class="tag t-act">Act</span></h3>
+<p class="short">One row in <code>WorkflowInstance</code> stands for one business object, for example one trade. <code>Status</code> tells if the workflow runs (<code>Active</code>) or is finished (<code>Completed</code>). <code>CurrentStateKey</code> tells the business step, for example <code>Draft</code> or <code>PendingChecker</code>. <code>Version</code> counts the moves. Each move adds 1.</p>
+<figure class="fig">
+<svg viewBox="0 0 860 290" role="img" aria-labelledby="e01-t">
+<title id="e01-t">E01: start, Active with moves and SaveDraft, then Completed. Any action on Completed is refused.</title>
+<defs>
+<marker id="e01-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker>
+<marker id="e01-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head-bad" d="M0 0L10 5L0 10z"/></marker>
+</defs>
+<circle class="s-dot" cx="40" cy="150" r="8"/>
+<path class="s-edge" d="M48 150H147" marker-end="url(#e01-a)"/>
+<text class="s-l mid" x="98" y="140">Start</text>
+<g class="hm" transform="translate(78,174)"><circle r="10"/><text y="4">2</text></g>
+<g class="hm" transform="translate(112,174)"><circle r="10"/><text y="4">5</text></g>
+<rect class="s-box" x="150" y="110" width="290" height="80" rx="12"/>
+<text class="s-t mid" x="295" y="138">Active</text>
+<text class="s-m mid" x="295" y="158">First state: Draft, Version 1</text>
+<text class="s-m mid" x="295" y="176">Each move: new state, Version + 1</text>
+<path class="s-edge" d="M235 110C235 48 355 48 355 107" marker-end="url(#e01-a)"/>
+<text class="s-l mid" x="295" y="42">Action with a transition (not terminal)</text>
+<path class="s-edge" d="M235 190C235 252 355 252 355 193" marker-end="url(#e01-a)"/>
+<text class="s-l mid" x="295" y="270">SaveDraft: no change of state or Version</text>
+<g class="hm" transform="translate(386,230)"><circle r="10"/><text y="4">1</text></g>
+<path class="s-edge" d="M440 150H637" marker-end="url(#e01-a)"/>
+<text class="s-l mid" x="539" y="140">Action to a terminal state</text>
+<g class="hm" transform="translate(539,170)"><circle r="10"/><text y="4">3</text></g>
+<rect class="s-term" x="640" y="120" width="190" height="60" rx="12"/>
+<text class="s-t mid" x="735" y="147">Completed</text>
+<text class="s-m mid" x="735" y="166">CompletedAtUtc = now</text>
+<g class="hm" transform="translate(826,122)"><circle r="10"/><text y="4">4</text></g>
+<path class="s-edge-bad" d="M735 180V221" marker-end="url(#e01-ar)"/>
+<text class="s-m" x="745" y="206">Any action</text>
+<rect class="s-bad" x="640" y="224" width="190" height="40" rx="10"/>
+<text class="s-m mid" x="735" y="249">Refused: InvalidTransition</text>
+</svg>
+<figcaption>Not in the figure: <code>Reset</code> (console only) deletes the instance and starts it again. The API and SQMS always send <code>Reset: false</code>.</figcaption>
+</figure>
+
+<div class="finding k">
+<h4><span class="hn">1</span> SaveDraft does not use the version check <span class="lab lab-known">Known: SaveDraft race, High, open</span></h4>
+<p>All other actions change the instance with one guarded <code>UPDATE</code>: "write the new state WHERE <code>Version</code> = the version that I read". If another request changed the instance first, zero rows change, and the action stops with <code>ConcurrencyConflict</code>. <code>SaveDraft</code> does not run this <code>UPDATE</code> (<code>WES:675-676</code>).</p>
+<ol>
+<li>The trade is in <code>Draft</code>, <code>Version</code> 3. User A and user B open it.</li>
+<li>User B sends <code>SubmitForChecker</code>. At the same time, user A sends <code>SaveDraft</code>.</li>
+<li>Both requests read <code>Draft</code>, <code>Version</code> 3. All checks pass for both.</li>
+<li>The guarded <code>UPDATE</code> of B writes <code>PendingChecker</code>, <code>Version</code> 4. B commits.</li>
+<li>The <code>SaveDraft</code> of A has no guarded <code>UPDATE</code>. Nothing reads the version again. A commits its audit row ("SaveDraft, Draft to Draft") and its idempotency record.</li>
+</ol>
+<p><b>Effect.</b> The engine tells user A that the draft save succeeded. But the trade is already with the checker. The audit shows a draft save in a state that the trade had left. In the console path, the section data of A is also saved.</p>
+<p><b>Decision.</b> Q41 and W4. The fix must decide the answer for a <code>SaveDraft</code> that comes after another move. <code>ConcurrencyConflict</code> agrees with the behaviour of all other actions.</p>
+</div>
+
+<div class="finding f">
+<h4><span class="hn">2</span> Start does not check that the first state exists <span class="lab lab-fact">Code fact</span></h4>
+<p>Start always writes the literal <code>Draft</code> as the first state (<code>SWS:400</code>). It does not check that the active version has a state with the key <code>Draft</code>. The literal itself is accepted (D08). The gap is only the missing check.</p>
+<p><b>Example.</b> A new workflow calls its first state <code>New</code>. Start makes the instance in <code>Draft</code>. No transition starts at <code>Draft</code>. Each action gets <code>InvalidTransition</code>: "No transition exists for state 'Draft'". The instance cannot move. W7 adds this check.</p>
+</div>
+
+<div class="finding f">
+<h4><span class="hn">3</span> A move to a terminal state does not check the open task <span class="lab lab-fact">Code fact</span></h4>
+<p><code>PROJECT.md</code> section 15 says that no <code>Pending</code> task can stay when the workflow completes. The code closes a task only when the transition row names it in <code>TaskToCloseKey</code> (<code>WES:702-724</code>). Nothing checks the result.</p>
+<ol>
+<li>A new workflow has the transition <code>Approve</code>: <code>PendingChecker</code> to <code>Approved</code>. <code>Approved</code> is terminal.</li>
+<li>The metadata author forgets <code>TaskToCloseKey</code> on this row.</li>
+<li>The checker approves. The instance becomes <code>Completed</code>.</li>
+<li>The checker task stays <code>Pending</code>. Its SLA schedule stays <code>Active</code>.</li>
+<li>The SLA scan reads only instances that are <code>Active</code>. It never selects this schedule again.</li>
+</ol>
+<p><b>Effect.</b> No wrong e-mail goes out. But the data shows an open task and an active SLA for a finished workflow, for all time. Each report that counts open tasks counts it. The current PortfolioTrade and SQMS metadata do not have this error. The risk is in new metadata. W7 can find the error before a version becomes active.</p>
+</div>
+
+<div class="finding f">
+<h4><span class="hn">4</span> Two sources say "finished" <span class="lab lab-fact">Code fact</span></h4>
+<p>Source 1 is <code>Status = 'Completed'</code>. Source 2 is <code>IsTerminal = 1</code> on the state definition of <code>CurrentStateKey</code>. All guards read source 1. If a person changes <code>IsTerminal</code> in place on a version that has instances (see D09), the old instances get two different answers. A report that reads <code>IsTerminal</code> then disagrees with the engine.</p>
+</div>
+
+<div class="finding f">
+<h4><span class="hn">5</span> The switch for the whole workflow is not read at Start <span class="lab lab-fact">Code fact</span></h4>
+<p><code>WorkflowDefinition.IsActive</code> is the switch for the whole workflow. Start reads only the switch of the version (<code>SWS:441-452</code>). If an operator sets the workflow inactive and the version stays active, new instances still start. Only the notifications without an instance read the workflow switch (<code>QueueWorkflowNotificationService.cs:36</code>).</p>
+</div>
+<div class="decide"><b>What you decide.</b> Q40 (start engine work), Q41 (SaveDraft first), and if you want W7 (metadata check command).</div>
+</section>
+
+<!-- E02 -->
+<section class="machine" id="e02">
+<h3><span class="id">E02</span> Task life cycle <span class="tag t-ok">Stable</span></h3>
+<p class="short">A task is work for one role, for example the checker review. It is <code>Pending</code> (open) or <code>Completed</code> (closed). The database permits at most one <code>Pending</code> task for each instance (filtered unique index, <code>DBC:310-312</code>). There is no <code>Cancelled</code> state; the specification does not have one. A workflow with no tasks is valid (SQMS).</p>
+<figure class="fig">
+<svg viewBox="0 0 800 130" role="img" aria-labelledby="e02-t">
+<title id="e02-t">E02: a transition creates the task as Pending; a later transition closes it as Completed.</title>
+<defs><marker id="e02-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker></defs>
+<circle class="s-dot" cx="40" cy="80" r="8"/>
+<path class="s-edge" d="M48 80H227" marker-end="url(#e02-a)"/>
+<text class="s-m mid" x="138" y="56">Transition with</text>
+<text class="s-m mid" x="138" y="72">TaskToCreateKey</text>
+<rect class="s-box" x="230" y="55" width="170" height="50" rx="12"/>
+<text class="s-t mid" x="315" y="85">Pending</text>
+<g class="hm" transform="translate(232,57)"><circle r="10"/><text y="4">2</text></g>
+<path class="s-edge" d="M400 80H587" marker-end="url(#e02-a)"/>
+<text class="s-m mid" x="494" y="56">Transition with</text>
+<text class="s-m mid" x="494" y="72">TaskToCloseKey = this task</text>
+<g class="hm" transform="translate(494,102)"><circle r="10"/><text y="4">1</text></g>
+<rect class="s-term" x="590" y="55" width="170" height="50" rx="12"/>
+<text class="s-t mid" x="675" y="85">Completed</text>
+</svg>
+<figcaption>Not in the figure: <code>Reset</code> (console only) deletes the tasks.</figcaption>
+</figure>
+<div class="finding f">
+<h4><span class="hn">1</span> A metadata error looks like a concurrency error <span class="lab lab-fact">Code fact</span></h4>
+<p>Before a move, the engine checks that the task in <code>TaskToCloseKey</code> is the open task (<code>WES:1061-1072</code>). If the names are different, the result is <code>ConcurrencyConflict</code> with the field <code>expectedCurrentTaskKey</code>.</p>
+<p><b>Example.</b> The transition says "close <code>CheckerReview</code>". The open task is <code>MakerRework</code>. The user gets "the workflow changed; load it again". The user loads it again and tries again. The same error comes back each time, because the cause is in the metadata, not in another user. Support can look in the wrong place.</p>
+</div>
+<div class="finding f">
+<h4><span class="hn">2</span> Three ways to read "the open task" <span class="lab lab-fact">Code fact</span></h4>
+<p><code>WES</code> uses <code>OrderBy(Id).FirstOrDefault</code> (it takes the oldest). <code>CTX</code> uses <code>SingleOrDefault</code> (it fails if there are two). <code>SLASYNC</code> uses <code>Single</code> (it fails if there are none or two). Today the index permits at most one, so the three agree. If a script or a schema change ever permits two open tasks, the three places act differently. W1 can pin this.</p>
+</div>
+<div class="decide"><b>What you decide.</b> Nothing now. Both items are part of W1 and W7.</div>
+</section>
+
+<!-- E03 -->
+<section class="machine" id="e03">
+<h3><span class="id">E03</span> SLA schedule life cycle <span class="tag t-known">Known F09</span><span class="tag t-act">Act</span></h3>
+<p class="short">A task with an SLA policy gets a schedule. The schedule says when the task becomes overdue and when the reminders go out. <code>Active</code>: in use. <code>Superseded</code>: replaced, because the target date changed. <code>Completed</code>: the task closed. Each task has at most one <code>Active</code> schedule (filtered unique index). <code>WorkflowTask.DueAtUtc</code> is a copy of <code>OverdueAtUtc</code> of the <code>Active</code> schedule.</p>
+<figure class="fig">
+<svg viewBox="0 0 820 280" role="img" aria-labelledby="e03-t">
+<title id="e03-t">E03: a schedule row starts Active, then becomes Superseded (new target date) or Completed (task closes).</title>
+<defs><marker id="e03-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker></defs>
+<circle class="s-dot" cx="40" cy="140" r="8"/>
+<path class="s-edge" d="M48 140H167" marker-end="url(#e03-a)"/>
+<text class="s-m mid" x="108" y="116">Task with an</text>
+<text class="s-m mid" x="108" y="132">SLA policy</text>
+<g class="hm" transform="translate(108,164)"><circle r="10"/><text y="4">2</text></g>
+<rect class="s-box" x="170" y="115" width="160" height="50" rx="12"/>
+<text class="s-t mid" x="250" y="145">Active</text>
+<g class="hm" transform="translate(172,117)"><circle r="10"/><text y="4">3</text></g>
+<path class="s-edge" d="M215 165C215 225 285 225 285 168" marker-end="url(#e03-a)"/>
+<text class="s-l mid" x="250" y="246">Same date, or duration mode: no change</text>
+<path class="s-edge" d="M330 128L597 46" marker-end="url(#e03-a)"/>
+<text class="s-l mid" x="420" y="74">New target date</text>
+<path class="s-edge" d="M330 152L597 234" marker-end="url(#e03-a)"/>
+<text class="s-l mid" x="410" y="222">The task closes</text>
+<g class="hm" transform="translate(470,170)"><circle r="10"/><text y="4">1</text></g>
+<rect class="s-term" x="600" y="20" width="180" height="50" rx="12"/>
+<text class="s-t mid" x="690" y="50">Superseded</text>
+<rect class="s-term" x="600" y="210" width="180" height="50" rx="12"/>
+<text class="s-t mid" x="690" y="240">Completed</text>
+</svg>
+<figcaption>Superseded and Completed are final for one schedule row. A new target date also adds a new <code>Active</code> row (version + 1) in the same transaction. Both moves cancel the reminder rows of the old schedule that are not sent yet.</figcaption>
+</figure>
+<div class="finding k">
+<h4><span class="hn">1</span> An SLA change and a task completion at the same time <span class="lab lab-known">Known: F09, open</span></h4>
+<ol>
+<li>The target application sends a new target date for task T (an SLA-only request).</li>
+<li>At the same time, a user completes task T.</li>
+<li>The SLA request reads task T as <code>Pending</code>. It does not lock the row (<code>SLASYNC:171-178</code>).</li>
+<li>The completion commits: task T is <code>Completed</code>, schedule v1 is <code>Completed</code>.</li>
+<li>The SLA request can then write schedule v2 as <code>Active</code> for task T.</li>
+</ol>
+<p><b>Effect.</b> A closed task has an <code>Active</code> schedule, so rule I2 breaks. The scan does not select it, because the task is not <code>Pending</code>. No wrong e-mail goes out, but the data is not correct. Work item W8.</p>
+</div>
+<div class="finding">
+<h4><span class="hn">2</span> An SLA-only request with no open task gives HTTP 500 <span class="lab lab-inf">Inference - verify</span> <span class="small">(code path agrees)</span></h4>
+<ol>
+<li>The caller sends an action request with <code>workflowInstanceId</code> and <code>slaTargetDate</code>, and no <code>actionKey</code>.</li>
+<li>The instance has no <code>Pending</code> task. Examples: it is in <code>Draft</code>, it is <code>Completed</code>, or the ID does not exist.</li>
+<li>The SLA service looks for the one open task with <code>.Single()</code>. There is none, so .NET throws <code>InvalidOperationException</code>.</li>
+<li>The API catches only <code>WorkflowSlaValidationException</code> (<code>APIACT:92-98</code>).</li>
+<li>The global exception handler gives HTTP 500 for all other exceptions: "An unexpected error occurred."</li>
+</ol>
+<p><b>Effect.</b> Compare: an action request with an unknown ID gets the structured result <code>WorkflowInstanceNotFound</code>. The SLA-only request with the same ID gets a general 500. The caller cannot tell "wrong ID" from "server error". The log records an error for a mistake of the caller. Work item W6 (contract change: stop-and-ask, see question 5).</p>
+</div>
+<div class="finding f">
+<h4><span class="hn">3</span> Only a task completion ends an Active schedule <span class="lab lab-fact">Code fact</span></h4>
+<p>No other code ends an <code>Active</code> schedule. If a task stays <code>Pending</code> on a completed instance (<a href="#e01">E01</a>, item 3), its schedule stays <code>Active</code> for all time.</p>
+</div>
+<div class="decide"><b>What you decide.</b> W8 (F09) and W6 (the answer for the SLA-only case).</div>
+</section>
+
+<!-- E04 -->
+<section class="machine" id="e04">
+<h3><span class="id">E04</span> SLA reminder cursor <span class="tag t-act">Act</span></h3>
+<p class="short">In an <code>Active</code> schedule, the column <code>NextReminderAtUtc</code> is a cursor. It tells when the next reminder is due. The SLA scan runs on a timer. It finds the schedules with a cursor that is due, queues one e-mail row for each reminder, and moves the cursor to the next time. The kind of reminder (<code>DueToday</code> or <code>Overdue</code>) is not a column. The scan calculates it again each time.</p>
+<figure class="fig">
+<svg viewBox="0 0 900 280" role="img" aria-labelledby="e04-t">
+<title id="e04-t">E04: four derived states of the reminder cursor: Waiting, Due, Exhausted and Blocked.</title>
+<defs>
+<marker id="e04-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker>
+<marker id="e04-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head-bad" d="M0 0L10 5L0 10z"/></marker>
+</defs>
+<rect class="s-der" x="40" y="110" width="180" height="50" rx="12"/>
+<text class="s-t mid" x="130" y="132">Waiting</text>
+<text class="s-m mid" x="130" y="150">cursor later than now</text>
+<rect class="s-der" x="330" y="110" width="180" height="50" rx="12"/>
+<text class="s-t mid" x="420" y="132">Due</text>
+<text class="s-m mid" x="420" y="150">cursor now or earlier</text>
+<g class="hm" transform="translate(332,158)"><circle r="10"/><text y="4">3</text></g>
+<rect class="s-der" x="640" y="25" width="220" height="50" rx="12"/>
+<text class="s-t mid" x="750" y="47">Exhausted</text>
+<text class="s-m mid" x="750" y="65">cursor empty, still Active</text>
+<rect class="s-bad s-dash" x="640" y="195" width="220" height="50" rx="12"/>
+<text class="s-t mid" x="750" y="217">Blocked</text>
+<text class="s-m mid" x="750" y="235">cannot queue the reminder</text>
+<g class="hm" transform="translate(858,197)"><circle r="10"/><text y="4">1</text></g>
+<path class="s-edge" d="M220 128H327" marker-end="url(#e04-a)"/>
+<text class="s-l mid" x="274" y="118">Time passes</text>
+<path class="s-edge" d="M400 160C400 215 150 215 150 163" marker-end="url(#e04-a)"/>
+<text class="s-l mid" x="275" y="230">Queued: cursor = next time</text>
+<path class="s-edge" d="M510 122L637 54" marker-end="url(#e04-a)"/>
+<text class="s-l end" x="560" y="84">No next time</text>
+<path class="s-edge-bad" d="M510 148L637 216" marker-end="url(#e04-ar)"/>
+<text class="s-l end" x="560" y="206">Cannot queue</text>
+<g class="hm" transform="translate(612,186)"><circle r="10"/><text y="4">2</text></g>
+<path class="s-edge-bad" d="M860 210C892 210 892 232 863 232" marker-end="url(#e04-ar)"/>
+<text class="s-m mid" x="750" y="268">Each scan: rollback, warning, the same row again</text>
+</svg>
+<figcaption>All four states are derived: the code calculates them, and no column stores them. Dashed borders show derived states.</figcaption>
+</figure>
+<div class="finding f">
+<h4><span class="hn">1</span> "Blocked" is not stored and does not end <span class="lab lab-fact">Code fact</span></h4>
+<p>If the scan cannot queue a reminder, it rolls back, adds a warning to the run result, and does not move the cursor. The next scan selects the same schedule and fails again. This continues until the task closes or a person corrects the data. There are six causes (<code>RUNSLA:178-240, 280-287</code>):</p>
+<ul>
+<li>The recipient list (snapshot) is missing or not valid.</li>
+<li>The route key of the reminder is missing.</li>
+<li>The task context JSON is not valid.</li>
+<li>The first e-mail of the task (the "primary" row) is missing, or there are two.</li>
+<li>The subject is longer than 300 characters.</li>
+<li>The calendar data has an error.</li>
+</ul>
+<p><b>Effect.</b> This is the specified behaviour ("warned and skipped"). The gap: nobody can count blocked schedules in the database, and the same warning comes back at each scan. The task owner gets no reminder.</p>
+</div>
+<div class="finding f">
+<h4><span class="hn">2</span> A rule between machines that no code checks early <span class="lab lab-fact">Code fact</span></h4>
+<p>A reminder copies its subject and body from the first e-mail of the task. That is the outbox row with the same task and no reminder kind (<code>RUNSLA:219-231</code>). This row exists only if the transition that created the task has a notification route.</p>
+<p><b>Effect.</b> A task with an SLA policy must come from a transition with a route. If that transition has no route, the schedule is Blocked at each scan. Nothing checks this before the first scan. W7 can check it when the metadata is made.</p>
+</div>
+<div class="finding f">
+<h4><span class="hn">3</span> The kind of reminder is calculated in three places <span class="lab lab-fact">Code fact</span></h4>
+<p>(1) The calculator, when the schedule is made. It does not store the value. (2) The scan, with its own expression (<code>RUNSLA:366</code>). (3) The workflow context shows <code>OnTrack</code> or <code>Overdue</code>. It compares <code>DueAtUtc</code> with the clock (<code>CTX:165-201</code>), as <code>PROJECT.md</code> section 13 specifies. Places 1 and 2 must agree. If somebody changes only one of them, they disagree. W1 can pin them.</p>
+</div>
+<div class="decide"><b>What you decide.</b> If you want W7 (check the route rule early). A stored "blocked" state is not in the inventory list; it would be a new item.</div>
+</section>
+
+<!-- E05 -->
+<section class="machine" id="e05">
+<h3><span class="id">E05</span> E-mail outbox delivery <span class="tag t-act">Act</span><span class="tag t-known">Known D04</span></h3>
+<p class="short">Each e-mail is first a row in <code>NotificationOutbox</code>. A sender claims the row: it writes <code>Processing</code>, a token and a start time. Then it sends the e-mail and marks the row <code>Sent</code>. If the send fails, the row goes back to <code>Pending</code> with a later retry time. There are two senders: the <b>outbox worker</b> (a job on a timer) and the <b>API dispatcher</b> (it sends the e-mails of one action during the HTTP request).</p>
+<figure class="fig">
+<svg viewBox="0 0 920 345" role="img" aria-labelledby="e05-t">
+<title id="e05-t">E05: Pending, claim to Processing, then Sent; a failure goes back to Pending; cancel moves to Cancelled.</title>
+<defs>
+<marker id="e05-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker>
+<marker id="e05-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head-bad" d="M0 0L10 5L0 10z"/></marker>
+</defs>
+<circle class="s-dot" cx="40" cy="140" r="8"/>
+<path class="s-edge" d="M48 140H107" marker-end="url(#e05-a)"/>
+<text class="s-l mid" x="78" y="128">Queued</text>
+<rect class="s-box" x="110" y="110" width="180" height="60" rx="12"/>
+<text class="s-t mid" x="200" y="136">Pending</text>
+<text class="s-m mid" x="200" y="156">ready or deferred</text>
+<path class="s-edge" d="M290 132H417" marker-end="url(#e05-a)"/>
+<text class="s-l mid" x="354" y="122">Claim</text>
+<g class="hm" transform="translate(354,98)"><circle r="10"/><text y="4">1</text></g>
+<rect class="s-box" x="420" y="110" width="180" height="60" rx="12"/>
+<text class="s-t mid" x="510" y="136">Processing</text>
+<text class="s-m mid" x="510" y="156">token + 15-minute lease</text>
+<path class="s-edge" d="M480 110C480 55 560 55 560 107" marker-end="url(#e05-a)"/>
+<text class="s-l mid" x="520" y="46">Lease older than 15 minutes: claim again</text>
+<g class="hm" transform="translate(682,42)"><circle r="10"/><text y="4">3</text></g>
+<path class="s-edge" d="M600 140H727" marker-end="url(#e05-a)"/>
+<text class="s-l mid" x="664" y="130">Send OK</text>
+<rect class="s-term" x="730" y="110" width="160" height="60" rx="12"/>
+<text class="s-t mid" x="810" y="145">Sent</text>
+<path class="s-edge" d="M470 170C470 228 240 228 240 173" marker-end="url(#e05-a)"/>
+<text class="s-l mid" x="355" y="242">Send failed: wait, then retry</text>
+<g class="hm" transform="translate(480,238)"><circle r="10"/><text y="4">2</text></g>
+<path class="s-edge" d="M585 170L727 268" marker-end="url(#e05-a)"/>
+<text class="s-l end" x="652" y="238">Schedule not Active</text>
+<rect class="s-term" x="730" y="255" width="160" height="50" rx="12"/>
+<text class="s-t mid" x="810" y="285">Cancelled</text>
+<path class="s-edge-bad" d="M200 170C200 335 620 335 727 292" marker-end="url(#e05-ar)"/>
+<text class="s-l mid" x="420" y="336">SLA schedule superseded or completed</text>
+<g class="hm" transform="translate(662,328)"><circle r="10"/><text y="4">4</text></g>
+</svg>
+<figcaption>Sent and Cancelled are final. Claim, send, "mark Sent" and the release after a failure are written two times: in the worker and in the API dispatcher (marker 1). The SLA service makes the red dashed move, not a sender. It cancels rows in <code>Pending</code> and in <code>Processing</code>.</figcaption>
+</figure>
+<div class="finding f">
+<h4><span class="hn">1</span> The delivery is written two times <span class="lab lab-fact">Code fact</span></h4>
+<p>Claim, send, "mark Sent" and release are in the worker (<code>OUTBOX</code>) and again in the API dispatcher (<code>DISPATCH</code>). In total, six files write the status: three insert rows (<code>WES</code>, <code>RUNSLA</code>, <code>QueueWorkflowNotificationService.cs</code>) and three change rows (<code>OUTBOX</code>, <code>DISPATCH</code>, <code>SLASYNC</code>). The two copies are not the same:</p>
+<div class="tbl"><table>
+<tr><th>Topic</th><th>Worker</th><th>API dispatcher</th><th>A difference in behaviour?</th></tr>
+<tr><td>Claims a stale <code>Processing</code> row</td><td>Yes (<code>:85-87</code>)</td><td>No, only <code>Pending</code> (<code>:61-62</code>)</td><td>Yes. Small effect: the API handles only the new rows of its own request.</td></tr>
+<tr><td>Retry time after a failure with zero delay and a batch size</td><td>The failure time (<code>:265-268</code>)</td><td>Empty (<code>:172, 179</code>)</td><td>Yes. The failed row keeps its old place at the front of the queue. This is the known low residual of H01.</td></tr>
+<tr><td>Checks the SLA schedule after the claim</td><td>Yes (<code>:104-136</code>)</td><td>No</td><td>No. API rows are action e-mails. They have no schedule.</td></tr>
+<tr><td>A <code>Pending</code> row that waits for its retry time</td><td>Not selected</td><td>Returns a failure text (<code>:30-35</code>)</td><td>Yes. The API answer becomes <code>NotificationDeliveryFailed</code> (HTTP 500).</td></tr>
+<tr><td>Row to delivery object (<code>ToDelivery</code>)</td><td><code>:202-249</code></td><td><code>:113-157</code></td><td>No. The same code, two times.</td></tr>
+<tr><td>Call style</td><td><code>async</code></td><td>Blocks with <code>.GetAwaiter().GetResult()</code></td><td>Known D02 and D06.</td></tr>
+</table></div>
+<p class="small">My reading: the "three differences" of the inventory (W3 and question 4) are rows 1, 2 and 4 of this table.</p>
+</div>
+<div class="finding k">
+<h4><span class="hn">2</span> No maximum number of attempts <span class="lab lab-known">Known: D04, owner decision open</span></h4>
+<p>A row that always fails goes back to <code>Pending</code> each time, and <code>RetryCount</code> grows. With the default settings (zero delay), the worker tries it again at each run. With a delay, the delay doubles after each failure, up to the maximum (default 3600 seconds). There is no dead-letter state.</p>
+</div>
+<div class="finding k">
+<h4><span class="hn">3</span> "At least once" <span class="lab lab-known">Known: by design</span></h4>
+<p>After a send, "mark Sent" can change zero rows. A stopped process can also leave a stale claim, and the worker claims it again. Then the same e-mail can go out two times. This is accepted.</p>
+</div>
+<div class="finding">
+<h4><span class="hn">4</span> Cancel during send <span class="lab lab-inf">Inference - verify</span> <span class="small">(code path agrees)</span></h4>
+<ol>
+<li>09:00:00 The worker claims an SLA reminder row: <code>Processing</code>, token T.</li>
+<li>The worker checks the schedule: it is <code>Active</code>. The worker calls the SMTP server.</li>
+<li>09:00:01 A checker closes the task. The same transaction completes the schedule, sets the reminder row to <code>Cancelled</code> and clears the token (<code>SLASYNC:219-231</code>).</li>
+<li>09:00:02 The SMTP server accepts the e-mail. The reminder goes out.</li>
+<li>The worker runs "mark Sent WHERE <code>Status</code> = <code>Processing</code> AND token = T" (<code>OUTBOX:141-155</code>). Zero rows match.</li>
+<li>The run result has only the warning "row N was claimed but could not be marked Sent".</li>
+</ol>
+<p><b>Effect.</b> The e-mail went out, but the row says <code>Cancelled</code> (reason <code>WorkflowTaskCompleted</code>). A person who reads the outbox thinks that no reminder went out. The business effect is small: one reminder at the moment of completion. But the record is not true. Work item W5: write the test first.</p>
+<p class="small">Example of a design, not approved: the cancel does not change a row in <code>Processing</code> with a fresh lease. The worker then marks that row <code>Sent</code> or <code>Cancelled</code>.</p>
+</div>
+<div class="finding f">
+<h4><span class="hn">5</span> The requirement text is older than the code <span class="lab lab-fact">Code fact</span> <span class="small">(not in the figure)</span></h4>
+<p><code>PROJECT.md</code> section 14 says that the command stops at the first failure. The code continues with the next rows (<code>OUTBOX:168-187</code>). <code>docs/OUTBOX_RETRY_ROLLOUT.md</code> describes the code. This is a gap in the text, not a code defect. Only you can approve a change to <code>PROJECT.md</code>.</p>
+</div>
+<div class="decide"><b>What you decide.</b> W3 and each of its three differences (question 4), W5, and D04 (maximum attempts).</div>
+</section>
+
+<!-- E06 -->
+<section class="machine" id="e06">
+<h3><span class="id">E06</span> Idempotency record <span class="tag t-known">Known L1, L4, F07</span></h3>
+<p class="short">An idempotency key names one request. If the same request comes again (for example a retry), the engine gives back the first result and does not do the action a second time.</p>
+<div class="tbl"><table>
+<tr><th>State of the key</th><th>Request</th><th>What the engine does</th></tr>
+<tr><td>Unknown</td><td>Any</td><td>It runs the action. On success, it stores the record in the same transaction (<code>WES:885-891</code>).</td></tr>
+<tr><td>Stored</td><td>Same request hash</td><td>It returns the stored result with <code>Replay = true</code>. This check comes first, before all other checks (<code>WES:61-65</code>).</td></tr>
+<tr><td>Stored</td><td>Different request hash</td><td>It returns <code>IdempotencyConflict</code> (<code>WES:962-969</code>).</td></tr>
+<tr><td>Unknown, two requests at the same time</td><td>Same key</td><td>The second insert breaks the unique index. The engine reads the record and returns the replay (<code>WES:892-903</code>).</td></tr>
+</table></div>
+<p>The source of the key is different for each caller. The API makes a new GUID for each HTTP request. SQMS makes a fixed key from the entity, the version and the action. Start uses the key of the request, or a new GUID.</p>
+<div class="finding f">
+<h4>Only a success is stored <span class="lab lab-fact">Code fact</span></h4>
+<p>A failed request with the same key runs again. This is usually correct, because a retry after a failure can succeed. Do not expect a replay of a failure.</p>
+</div>
+<div class="finding k">
+<h4>Known items <span class="lab lab-known">Known: L1, L4, F07, retention</span></h4>
+<ul>
+<li><b>L1.</b> An HTTP caller cannot send its own key. So a retry after a timeout is a new action. If the first call committed, the retry usually gets <code>InvalidTransition</code>, because the state moved.</li>
+<li><b>L4.</b> The duplicate check reads the SQL message text (error 2601 or 2627 and the text "IdempotencyRecord", <code>WES:944-950</code>). A new index name or a message in another language breaks it.</li>
+<li><b>F07.</b> The assignment role is not in the request hash. The same key with another role gives the old result, not <code>IdempotencyConflict</code>.</li>
+<li><b>Retention (deferred).</b> No rule removes old records. The table grows.</li>
+</ul>
+</div>
+<div class="decide"><b>What you decide.</b> Nothing new. W1 pins the four rows of the table.</div>
+</section>
+
+<!-- E07 -->
+<section class="machine" id="e07">
+<h3><span class="id">E07</span> Request path (kind of action) <span class="tag t-ok">Settled D08</span></h3>
+<p class="short">This is not stored. Each request takes one of five paths. Text values, empty values and flags select the path.</p>
+<div class="tbl"><table>
+<tr><th>Path</th><th>Selected by</th><th>Effect</th></tr>
+<tr><td>SLA-only change</td><td>No action key, and <code>slaTargetDate</code> is given (API only)</td><td>No state change, no audit, no version change.</td></tr>
+<tr><td>SaveDraft</td><td>The action key is the literal <code>SaveDraft</code></td><td>No state change. See E01, item 1.</td></tr>
+<tr><td>State change</td><td>Any other action key</td><td>The normal move.</td></tr>
+<tr><td>Admin override</td><td>A console flag</td><td>Role <code>AdminDemoOverride</code>. The reason starts with <code>[ADMIN OVERRIDE]</code>.</td></tr>
+<tr><td>Start with a first action</td><td><code>InitialActionKey</code> is given</td><td>Start and the first action in one transaction.</td></tr>
+</table></div>
+<p>Three flags give the profile of the caller: <code>ValidateActionEcho</code>, <code>PersistSectionData</code> and <code>DeriveIdentityFromPersistence</code>. The console uses the default values (true, true, false). The API, SQMS and Start set the opposite values. A new caller must set all three flags. If it forgets them, it gets the behaviour of the console.</p>
+<p class="small">D08 is settled: the PortfolioTrade names in the shared validator of the console path (<code>WorkflowActionEnvelopeValidator.cs:120-147</code>) follow <code>PROJECT.md</code> section 7.</p>
+</section>
+
+<!-- E08 -->
+<section class="machine" id="e08">
+<h3><span class="id">E08</span> Version activation and metadata <code>IsActive</code> <span class="tag t-act">Act</span><span class="tag t-known">Known D09</span></h3>
+<p class="short">A workflow has versions, for example PortfolioTrade v1 and v2. One version is active, and new instances use it. A running instance keeps its own version. Each metadata row also has <code>IsActive</code>. Rows become inactive. They are never deleted.</p>
+<div class="finding f">
+<h4>The database does not keep "one active version" <span class="lab lab-fact">Code fact</span></h4>
+<p>No filtered unique index exists. The SQL scripts check the rule (error 52502), and the seed service keeps it. <code>SeedVerificationService</code> checks it only for PortfolioTrade. If a script leaves zero or two active versions, Start throws an exception for that workflow key (<code>SWS:441-452</code>). No new workflow of that kind can start.</p>
+</div>
+<div class="finding f">
+<h4>The <code>IsActive</code> filter is not the same in all readers <span class="lab lab-fact">Code fact</span></h4>
+<p><b>Example.</b> An administrator sets a task definition inactive, but a transition still names it.</p>
+<ol>
+<li>The action creates the task. <code>WES:728-732</code> reads the definition with no <code>IsActive</code> filter.</li>
+<li>If the task has an SLA policy, the SLA service reads the same definition with the filter (<code>SLASYNC:32-35</code>, <code>.Single</code>). It throws, and the action fails with an error.</li>
+<li>If the task has no SLA policy, the action succeeds. It makes a task from an inactive definition.</li>
+</ol>
+</div>
+<div class="finding f">
+<h4>SQMS sends version 1 as a literal <span class="lab lab-fact">Code fact</span></h4>
+<p><code>SqmsScheduledService.cs:246</code> asks for the route of version 1. The queue needs that version to be active (<code>QueueWorkflowNotificationService.cs:37-38</code>). If SQMS gets an active version 2, the open and reminder e-mails fail with <code>NotFound</code>.</p>
+</div>
+<div class="finding k">
+<h4>The seed changes version 1 in place <span class="lab lab-known">Known: D09, Major, open</span></h4>
+<p>There is no publication procedure for a new version.</p>
+</div>
+<div class="decide"><b>What you decide.</b> If you want W7. It checks "one active version" for all workflows, not only PortfolioTrade.</div>
+</section>
+
+<!-- E09 -->
+<section class="machine" id="e09">
+<h3><span class="id">E09</span> Result code, <code>Success</code> and HTTP status <span class="tag t-dec">Contract</span><span class="tag t-known">Known D02</span></h3>
+<p class="short">Each result has a text code (for example <code>InvalidTransition</code>) and a <code>Success</code> flag. The controllers send HTTP 200 when <code>Success</code> is true and HTTP 500 when it is false (<code>WorkflowActionController.cs:24-30</code>, <code>WorkflowStartController.cs:24-30</code>). The codes and this mapping are a public contract.</p>
+<div class="tbl"><table>
+<tr><th>Source</th><th>Codes</th></tr>
+<tr><td>Engine (<code>WorkflowActionResultBuilder.cs</code>)</td><td><code>AcceptedForPhase3Validation</code>, <code>ValidationFailed</code>, <code>WorkflowInstanceNotFound</code>, <code>WorkflowDefinitionVersionMismatch</code>, <code>InvalidTransition</code>, <code>Forbidden</code>, <code>AmbiguousRoleMatch</code>, <code>ConcurrencyConflict</code>, <code>IdempotencyConflict</code>, <code>AlreadyExists</code>, <code>Success</code>, <code>SlaSynchronized</code></td></tr>
+<tr><td>API only</td><td><code>NotificationDeliveryFailed</code></td></tr>
+<tr><td>SQMS layer</td><td><code>TargetNotFound</code>, <code>NotWorkflowManaged</code>, <code>ValidationFailed</code></td></tr>
+<tr><td>Notification queue</td><td><code>Success</code>, <code>NotFound</code>, <code>ValidationFailed</code></td></tr>
+</table></div>
+<div class="finding k">
+<h4>The two-phase result <span class="lab lab-known">Known: D02 / F06, open</span></h4>
+<ol>
+<li>The action commits: the new state, the task, the audit, the e-mail row, and an idempotency record that says <code>Success</code>.</li>
+<li>Then the API sends the e-mail in the same HTTP request.</li>
+<li>The SMTP server refuses it.</li>
+<li>The API changes the answer to <code>Success = false</code> and <code>NotificationDeliveryFailed</code> (<code>APIACT:139-173</code>). The caller gets HTTP 500.</li>
+<li>The caller thinks that the action failed. But the workflow moved. A retry is a new action (L1), and it usually gets <code>InvalidTransition</code>.</li>
+</ol>
+<p>The e-mail row stays <code>Pending</code> with a retry time. The worker sends it later.</p>
+</div>
+<div class="finding k">
+<h4>Business failures return HTTP 500 <span class="lab lab-known">Known: D03, understood</span></h4>
+<p>A change of the status rules needs a new versioned endpoint.</p>
+</div>
+<div class="decide"><b>Limit.</b> You can add constants for the codes, with the same text. A change of a code value, or of the mapping to HTTP, is stop-and-ask.</div>
+</section>
+
+<!-- E10 -->
+<section class="machine" id="e10">
+<h3><span class="id">E10</span> SQMS timer rules (in C#) <span class="tag t-known">Known</span><span class="tag t-act">Act</span></h3>
+<p class="short">SQMS has rules that depend on time, for example "after the bidding days, the opportunity closes". The engine has no timers (O5). So a C# service (<code>SqmsScheduledService</code>) runs on a schedule, acts as the role <code>System</code>, and sends normal actions to the engine. The states and transitions are SQMS metadata. <code>SqmsKeys.cs</code> repeats the same keys as C# constants.</p>
+<div class="tbl"><table>
+<tr><th>Entity</th><th>Move or result</th><th>Rule</th></tr>
+<tr><td>Opportunity</td><td><code>OPEN TO BIDDING</code> to <code>CLOSED TO BIDDING</code></td><td>The local date is on or after: open date + <code>BiddingDays</code> + 1.</td></tr>
+<tr><td>Bid</td><td><code>SUBMITTED</code> to <code>NOT ALLOCATED</code></td><td>The opportunity is closed. The FairValue and Premium bids together are more than the sale amount. This bid is a Discount bid.</td></tr>
+<tr><td>Bid</td><td><code>SUBMITTED</code> to <code>IPG REVIEW</code></td><td>The opportunity is closed. All other bids.</td></tr>
+<tr><td>E-mail</td><td><code>OpportunityOpen</code> queued</td><td>The local date is on or after: open date + 1. One e-mail for each year, quarter and date.</td></tr>
+<tr><td>E-mail</td><td><code>OpportunityReminder</code> queued</td><td>The local date is on or after: open date + <code>BiddingDays</code> - 1.</td></tr>
+</table></div>
+<p><b>Where the timer state is.</b> The "open date" is the time of the audit row of the action <code>OpenOpportunityForBidding</code>. "This bid is classified" is an audit row. "This e-mail was queued" is a unique occurrence key, for example <code>SQMS:OpportunityOpen:2026:Q4:2026-11-09</code>. So the audit table is also a timer store.</p>
+<div class="finding f">
+<h4>The candidates come from the SSQMS copy, not from the engine <span class="lab lab-fact">Code fact</span></h4>
+<p>If the copy is behind (<a href="#e11">E11</a>), the engine refuses the move with <code>InvalidTransition</code>. This is safe: no wrong move occurs. But the run result shows failures.</p>
+</div>
+<div class="finding">
+<h4>A second open gives two candidates <span class="lab lab-inf">Inference - verify</span> <span class="small">(code path agrees)</span></h4>
+<p>The open-date query joins all audit rows of <code>OpenOpportunityForBidding</code> (<code>SqlSqmsDataStore.cs:66-70</code>). Today the metadata permits this action one time for each instance. If the metadata later permits a second open, the query returns the opportunity two times, with two open dates. The close rule then also tests the first, older date (<code>SqmsScheduledService.cs:41-48</code>). So the scheduler can close a re-opened opportunity too early. This is only a risk if the metadata changes.</p>
+</div>
+<div class="finding f">
+<h4>Version 1 is a literal <span class="lab lab-fact">Code fact</span></h4>
+<p>See <a href="#e08">E08</a>.</p>
+</div>
+</section>
+
+<!-- E11 -->
+<section class="machine" id="e11">
+<h3><span class="id">E11</span> SQMS state copies <span class="tag t-known">Known</span></h3>
+<p class="short">One SQMS state has three copies: <code>WorkflowInstance.CurrentStateKey</code> (the engine, the authority), and two columns of the SSQMS table (<code>WorkflowState</code> and <code>Status</code>) that the SQMS screens read.</p>
+<div class="tbl"><table>
+<tr><th>Who moves the state</th><th>Who writes the two SSQMS columns</th></tr>
+<tr><td>A user action</td><td>The target application, outside this repository (<code>SqmsWorkflowService.cs:172-204</code>).</td></tr>
+<tr><td>The scheduler</td><td>This module, in the same transaction. Both columns get the same value. Exactly one row must change (<code>SqmsWorkflowService.cs:206-238</code>, <code>SqlSqmsDataStore.cs:199-257</code>).</td></tr>
+</table></div>
+<p>A private flag of each call selects the owner (<code>SqmsWorkflowService.cs:558-562</code>). No code compares the three copies (rule I9). If the target forgets to write the columns after a user action, the SQMS screen shows an old state, and the scheduler selects the wrong candidates (E10). The inventory has no work item for E11.</p>
+</section>
+
+<!-- E12 / E13 -->
+<section class="machine" id="e12">
+<h3><span class="id">E12</span> Participant capture <span class="tag t-ok">Stable</span></h3>
+<p>The engine captures each participant key one time, at Start (<code>CaptureStage = 'Start'</code>). A second capture is an error. There is no update and no delete. <code>Reset</code> removes the rows together with the instance. CHECK constraints protect <code>Cardinality</code> and <code>CaptureStage</code>. Small and stable.</p>
+</section>
+<section class="machine" id="e13">
+<h3><span class="id">E13</span> Derived actor access (read model) <span class="tag t-ok">Stable</span></h3>
+<p><code>CanAct</code> is true when the user has at least one available action. Available actions are the active transitions from the current state for the roles of the user. A completed instance has none. <code>ReadOnlyReason</code> comes from a chain of four <code>if</code> statements. This is read only. No code writes it.</p>
+</section>
+
+<!-- ============================================================ 6 -->
+<h2 id="platform">6. Platform machines (P01 to P11)</h2>
+<p class="small">Short names: <code>CSS</code> = ConfigSectionService.cs, <code>PLAT</code> = BBH.CP.Atlas.Service/Platform, <code>APP</code> = BBH.CP.Atlas.App/Platform, <code>DATA</code> = BBH.CP.Atlas.Data/Platform, <code>SQLP</code> = atlas-platform/sql/release-p1, <code>WEB</code> = atlas-platform/WebUi/src/app/platform.</p>
+
+<!-- P01 -->
+<section class="machine" id="p01">
+<h3><span class="id">P01</span> Record life cycle <span class="tag t-act">Act</span></h3>
+<p class="short">Each app has a main table (pilot: <code>TTDV2.General</code>). A record is New (<code>ID = 0</code>, not saved yet), Active, or Deleted. Delete is a soft delete: <code>IsDeleted</code> becomes 1, the row stays, and the platform treats the row as "not found". <code>RowVersion</code> is the version token: a save must send the version that the user loaded.</p>
+<figure class="fig">
+<svg viewBox="0 0 880 190" role="img" aria-labelledby="p01-t">
+<title id="p01-t">P01: New, then Active after a save, then Deleted. There is no way back from Deleted.</title>
+<defs><marker id="p01-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker></defs>
+<rect class="s-box" x="40" y="95" width="170" height="50" rx="12"/>
+<text class="s-t mid" x="125" y="117">New</text>
+<text class="s-m mid" x="125" y="135">ID = 0, not saved</text>
+<path class="s-edge" d="M210 120H357" marker-end="url(#p01-a)"/>
+<text class="s-l mid" x="284" y="110">Save (Create)</text>
+<rect class="s-box" x="360" y="95" width="170" height="50" rx="12"/>
+<text class="s-t mid" x="445" y="125">Active</text>
+<path class="s-edge" d="M405 95C405 35 485 35 485 92" marker-end="url(#p01-a)"/>
+<text class="s-l mid" x="445" y="24">Save (Edit) with the loaded Version: new RowVersion</text>
+<g class="hm" transform="translate(522,56)"><circle r="10"/><text y="4">3</text></g>
+<path class="s-edge" d="M530 120H687" marker-end="url(#p01-a)"/>
+<text class="s-l mid" x="609" y="110">Delete</text>
+<g class="hm" transform="translate(609,140)"><circle r="10"/><text y="4">2</text></g>
+<rect class="s-term" x="690" y="95" width="170" height="50" rx="12"/>
+<text class="s-t mid" x="775" y="117">Deleted</text>
+<text class="s-m mid" x="775" y="135">IsDeleted = 1</text>
+<g class="hm" transform="translate(858,97)"><circle r="10"/><text y="4">1</text></g>
+<text class="s-m mid" x="775" y="172">No move back (no restore)</text>
+</svg>
+<figcaption>A save or a delete writes its audit entry in the same transaction: <code>Create</code>, <code>Update</code> or <code>Delete</code>. Exception: an <code>Update</code> with no changed field writes no audit entry.</figcaption>
+</figure>
+<div class="finding f">
+<h4><span class="hn">1</span> No restore <span class="lab lab-fact">Code fact</span></h4>
+<p>Only the delete sets <code>IsDeleted</code> to 1 (<code>CSS:739</code>). Only a new record sets it to 0 (<code>CSS:473</code>). A deleted record can come back only with SQL. If users need an "undo", that is a new feature.</p>
+</div>
+<div class="finding f">
+<h4><span class="hn">2</span> Delete sends no version token <span class="lab lab-fact">Code fact</span></h4>
+<ol>
+<li>10:00 User A opens record 42.</li>
+<li>10:05 User B opens record 42, changes the hours, and saves. The <code>RowVersion</code> changes.</li>
+<li>10:10 User A clicks Delete on the old screen and confirms.</li>
+<li>The server deletes record 42. It does not compare versions, because <code>RemovePage(int id)</code> has no version (<code>CSS:725</code>; client <code>WEB/atlas-api.service.ts:44-47</code>).</li>
+</ol>
+<p><b>Effect.</b> User A deletes a record with changes that A did not see. A save in the same situation gets <code>Conflict</code>. No data is lost: it is a soft delete, and the audit has the <code>Delete</code> entry. The inventory has no work item for this. A fix needs a version in the delete request. That is a <code>v1</code> contract change, and <code>RemovePage(int id)</code> is a method that the target code calls. Both are stop-and-ask.</p>
+</div>
+<div class="finding">
+<h4><span class="hn">3</span> A save with no change still changes the RowVersion <span class="lab lab-inf">Inference - verify</span> <span class="small">(code path agrees)</span></h4>
+<ol>
+<li>User A and user B open record 42.</li>
+<li>User A clicks Save with no change. The server writes <code>ModifiedBy</code> and <code>ModifiedDate</code> (<code>CSS:476-477</code>), so the <code>RowVersion</code> changes. The audit writes no entry, because no field changed.</li>
+<li>User B changes a field and saves. B gets <code>Conflict</code>.</li>
+<li>The History shows no change by user A. User B cannot see why the conflict occurred.</li>
+</ol>
+<p><b>Effect.</b> The data is safe. The message can confuse users. A possible change: no <code>UPDATE</code> when no field changed. That is a change of behaviour, so it is your decision.</p>
+</div>
+</section>
+
+<!-- P02 -->
+<section class="machine" id="p02">
+<h3><span class="id">P02</span> Save steps and result protocol <span class="tag t-ok">Stable</span></h3>
+<p class="short">The save runs 12 steps in a fixed order with one state object (<code>SaveState</code>, <code>CSS:263-326</code>): load, rules, read and filter, validate, check the version, map, stop on errors, computed and system fields, <code>OnBeforeSave</code>, stop on errors, save, complete. This part is already clear.</p>
+<p>Two parts are implicit:</p>
+<ul>
+<li><b>Two channels for a failure.</b> A business failure returns HTTP 200 with <code>ID = 0</code> and a list of <code>Errors</code> (<code>CSS:843-850</code>). An access failure or "not found" returns an HTTP problem: 403, 404, 400 or 500 (<code>APP/AtlasProblemExceptionFilter.cs</code>). A client must check both channels. The platform client does.</li>
+<li><b>Error codes are text values:</b> <code>NotAllowed</code>, <code>NotInOptions</code>, <code>InvalidGrid</code>, <code>VersionRequired</code>, <code>Conflict</code>, <code>SaveFailed</code>, and the codes of the validator and the value converter. The client adds <code>Http</code> and <code>Invalid</code>.</li>
+</ul>
+<p>Decision SV-06: a failure in <code>OnAfterSave</code> is logged, and the save still returns success.</p>
+</section>
+
+<!-- P03 -->
+<section class="machine" id="p03">
+<h3><span class="id">P03</span> Field state <span class="tag t-act">Act</span></h3>
+<p class="short">For each field the platform decides: visible or hidden, enabled or disabled, required or not. Five layers decide it, in this order. The server has all five layers. The client has its own copy of layers 1 and 4.</p>
+<div class="tbl"><table>
+<tr><th>Layer</th><th>What it does</th><th>Server</th><th>Client</th></tr>
+<tr><td>1 Form JSON</td><td><code>Visible</code>, <code>Disabled</code>, <code>Validator.Required</code></td><td>Yes</td><td>Yes: the JSON as the server sends it, after layer 2</td></tr>
+<tr><td>2 Rules (role, owner)</td><td>Hide or disable. A rule can show or enable a child control by name. Modes <code>FirstMatch</code> and <code>MostPermissive</code>.</td><td>Yes</td><td>Only the result in the JSON</td></tr>
+<tr><td>3 Rule locks</td><td><code>HiddenByRule</code>, <code>DisabledByRule</code>. An effect cannot undo them.</td><td>Yes</td><td><b>No</b></td></tr>
+<tr><td>4 Effects (field values)</td><td>Show, Hide, Require, Unrequire, Enable, Disable</td><td>Yes</td><td>Yes, its own copy. Shared test cases keep the two copies equal.</td></tr>
+<tr><td>5 Use</td><td>A hidden or disabled field can send only its stored value, else <code>NotAllowed</code>. Only visible and enabled fields are validated. A rule-hidden field gets no value in the load, the save result and the history.</td><td>Yes</td><td>No (server only)</td></tr>
+</table></div>
+<div class="finding">
+<h4>The client does not know the rule locks <span class="lab lab-inf">Inference - verify</span> <span class="small">(code path agrees)</span></h4>
+<ol>
+<li>A rule disables field X for the role of user U.</li>
+<li>The server sends field X as disabled. The client shows it disabled.</li>
+<li>User U changes field Y. An effect of Y says "Enable X".</li>
+<li>The client enables X. <code>setEnabled</code> has no guard (<code>atlas-form.component.ts:184-191</code>). The names <code>HiddenByRule</code> and <code>DisabledByRule</code> do not occur in <code>WebUi</code>.</li>
+<li>User U types a value in X and saves.</li>
+<li>The server refuses the value: <code>NotAllowed</code> for X.</li>
+</ol>
+<p><b>Effect.</b> The data is safe, because the server refuses the value. But the user sees an editable field and then an error. TTDV2 has only <code>SetFromOption</code> and <code>Clear</code> effects, so the pilot does not reach this case. App number 2 can reach it.</p>
+<p class="small"><b>About the read-only form case in the inventory.</b> In my reading, the form applies the first effects before it disables a read-only form (<code>build()</code>, lines 117-121). In a read-only form the user cannot change a value, so no effect starts. I did not find a path that enables a control in a read-only form. A test must confirm this.</p>
+</div>
+<div class="decide"><b>What you decide.</b> W11. It needs an optional field in the load response, for example the list of locked fields. That is a <code>v1</code> contract change, so it is stop-and-ask (question 5).</div>
+</section>
+
+<!-- P04 -->
+<section class="machine" id="p04">
+<h3><span class="id">P04</span> Record workflow state (declared, not connected) <span class="tag t-dec">Not connected (Q51)</span></h3>
+<p class="short">The platform has places for the workflow state of a record. No code gives them a value. They wait for the engine adapter (module 10, <code>docs/atlas-platform/10-engine-adapter.md</code>, design only).</p>
+<div class="tbl"><table>
+<tr><th>Place</th><th>What the code does today</th></tr>
+<tr><td>Rule input <code>States</code></td><td>Always an empty list (<code>CSS:800-801</code>, <code>AtlasDashboardService.cs:39</code>).</td></tr>
+<tr><td><code>CPRule.States</code> in the JSON</td><td>A rule with <code>States</code> never matches. If no other rule of the target matches, <code>RuleDefault</code> applies (Keep, ReadOnly or Hidden). The start-up check gives no message.</td></tr>
+<tr><td><code>CPAtlasPage.Step</code></td><td>Copied from the request to the result. Not used.</td></tr>
+<tr><td>Button actions <code>Execute</code> and <code>Navigate</code></td><td>The lint warns: "the platform form does not do yet". The form closes.</td></tr>
+<tr><td><code>CPAuditLog.Source</code></td><td>Always <code>App</code>. The comment says <code>App</code> or <code>Workflow</code>.</td></tr>
+</table></div>
+<div class="finding f">
+<h4>A rule with <code>States</code> is ignored and gives no warning <span class="lab lab-fact">Code fact</span></h4>
+<p><b>Example.</b> An app author writes the rule "Roles: Maker, States: Draft, enable Save". The rule never matches (<code>AtlasRuleEngine.cs:185-191</code>). The author gets the <code>RuleDefault</code> behaviour and no warning. Spec 04 (4.1) says that an unknown state is an error. The code does not have this check. The FABLE review called the <code>States</code> and <code>Execute</code> paths dead code.</p>
+</div>
+<div class="decide"><b>What you decide.</b> Q51: when the engine adapter starts (W12). Until then, do not write <code>States</code> rules in app JSON.</div>
+</section>
+
+<!-- P05 -->
+<section class="machine" id="p05">
+<h3><span class="id">P05</span> App availability <span class="tag t-act">Act</span></h3>
+<p class="short">"Can users use app X now?" Five inputs decide it. The result is one of six derived states. The first five states all give HTTP 404, each with a different text. Only a restart makes an app available again.</p>
+<figure class="fig">
+<svg viewBox="0 0 940 190" role="img" aria-labelledby="p05-t">
+<title id="p05-t">P05: five checks in a row lead to Available; each failed check gives HTTP 404.</title>
+<defs><marker id="p05-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker></defs>
+<rect class="s-box" x="20" y="30" width="130" height="56" rx="10"/>
+<text class="s-t mid" x="85" y="54">1 Registered</text><text class="s-m mid" x="85" y="73">registration line</text>
+<rect class="s-box" x="174" y="30" width="130" height="56" rx="10"/>
+<text class="s-t mid" x="239" y="54">2 Manifest</text><text class="s-m mid" x="239" y="73">file can be read</text>
+<rect class="s-box" x="328" y="30" width="130" height="56" rx="10"/>
+<text class="s-t mid" x="393" y="54">3 Enabled</text><text class="s-m mid" x="393" y="73">setting is true</text>
+<rect class="s-box" x="482" y="30" width="130" height="56" rx="10"/>
+<text class="s-t mid" x="547" y="54">4 Start-up</text><text class="s-m mid" x="547" y="73">check: no error</text>
+<g class="hm" transform="translate(610,32)"><circle r="10"/><text y="4">1</text></g>
+<rect class="s-box" x="636" y="30" width="130" height="56" rx="10"/>
+<text class="s-t mid" x="701" y="54">5 Tables</text><text class="s-m mid" x="701" y="73">loaded at start-up</text>
+<rect class="s-term" x="790" y="30" width="130" height="56" rx="10"/>
+<text class="s-t mid" x="855" y="63">Available</text>
+<path class="s-edge" d="M150 58H171" marker-end="url(#p05-a)"/>
+<path class="s-edge" d="M304 58H325" marker-end="url(#p05-a)"/>
+<path class="s-edge" d="M458 58H479" marker-end="url(#p05-a)"/>
+<path class="s-edge" d="M612 58H633" marker-end="url(#p05-a)"/>
+<path class="s-edge" d="M766 58H787" marker-end="url(#p05-a)"/>
+<path class="s-edge" d="M85 86V128" marker-end="url(#p05-a)"/><text class="s-m" x="92" y="112">no</text>
+<path class="s-edge" d="M239 86V128" marker-end="url(#p05-a)"/><text class="s-m" x="246" y="112">no</text>
+<path class="s-edge" d="M393 86V128" marker-end="url(#p05-a)"/><text class="s-m" x="400" y="112">no</text>
+<path class="s-edge" d="M547 86V128" marker-end="url(#p05-a)"/><text class="s-m" x="554" y="112">no</text>
+<path class="s-edge" d="M701 86V128" marker-end="url(#p05-a)"/><text class="s-m" x="708" y="112">no</text>
+<rect class="s-bad" x="20" y="131" width="746" height="46" rx="10"/>
+<text class="s-l mid" x="393" y="159">Not available: HTTP 404, with a different text for each cause. Only a restart changes this.</text>
+</svg>
+<figcaption>Each arrow to the right means "yes". Marker 1: the dashboard tab of another app does not read input 4.</figcaption>
+</figure>
+<p>No function returns "the state of app X and the reason". Seven places read the inputs, and they do not read the same inputs:</p>
+<div class="tbl"><table>
+<tr><th>Place that reads</th><th>Inputs that it reads</th></tr>
+<tr><td><code>IsPlatformApp</code> (<code>AtlasModuleResolver.cs:45-53</code>)</td><td>1, 2, 3, 4, 5</td></tr>
+<tr><td><code>Get&lt;TService&gt;</code> (<code>AtlasModuleResolver.cs:65-94</code>)</td><td>1, 2, 3, then 4, then 5: the same rule, written again, with messages</td></tr>
+<tr><td><code>ConfigSectionService.Manifest</code> (<code>CSS:85-88</code>)</td><td>2, 3</td></tr>
+<tr><td>Dashboard of the app (<code>AtlasDashboardService.cs:30-32</code>)</td><td>2, 3</td></tr>
+<tr><td>Dashboard tab with rows of another app (<code>AtlasDashboardService.cs:87-111</code>)</td><td>2, 3 and the View check. <b>Not 4.</b></td></tr>
+<tr><td>Menu rows (<code>AtlasApplicationMenu.cs:35-59</code>)</td><td><code>IsPlatformApp</code>, else "current app"</td></tr>
+<tr><td>Fall-through to the current <code>if</code> chains (<code>AtlasAppManifest.cs:121-129</code>)</td><td>A manifest exists and the code is not a current app: 404</td></tr>
+</table></div>
+<div class="finding">
+<h4><span class="hn">1</span> A dashboard tab can show the rows of a disabled app <span class="lab lab-inf">Inference - verify</span> <span class="small">(code path agrees)</span></h4>
+<p>A dashboard tab of app A can show rows of app B. For that tab, the dashboard checks only the <code>Enabled</code> setting of B and the View permission of B (<code>AtlasDashboardService.cs:98-111</code>). It does not check the start-up errors of B (input 4). If the start-up check disabled B, but B is enabled by setting and its table is loaded, the tab still shows the rows of B. Low risk: the start-up check of A usually finds the same causes.</p>
+</div>
+<div class="decide"><b>What you decide.</b> W9: one function that returns the state and the reason, used by all seven places. No change of behaviour is intended, except this tab case.</div>
+</section>
+
+<!-- P06 -->
+<section class="machine" id="p06">
+<h3><span class="id">P06</span> Platform start-up <span class="tag t-ok">Stable</span></h3>
+<div class="tbl"><table>
+<tr><th>From</th><th>To</th><th>Trigger</th></tr>
+<tr><td>Not started</td><td>Starting</td><td>The hosted service, or the call in <code>program.cs</code>. A second call does nothing.</td></tr>
+<tr><td>Starting</td><td>Loaded (all apps)</td><td>The check finds no errors.</td></tr>
+<tr><td>Starting</td><td>Loaded (the apps with errors are disabled)</td><td>Errors, and the mode is <code>DisableModule</code> (the default).</td></tr>
+<tr><td>Starting</td><td>The host does not start</td><td>Errors, and the mode is <code>Stop</code>.</td></tr>
+</table></div>
+<p><code>--atlas-check</code> runs the same checks, prints a report and stops. It does not mark the registry as loaded. The config files and the table metadata are read one time. A change needs a restart. This is documented. It is not a defect.</p>
+</section>
+
+<!-- P07 -->
+<section class="machine" id="p07">
+<h3><span class="id">P07</span> Access decision and rollout modes <span class="tag t-known">Known</span></h3>
+<p class="short"><code>AccessMode</code> tells what occurs when the access check says "no". <code>LogOnly</code> writes a log entry and continues. <code>Enforce</code> refuses with HTTP 403. Delete, and Create at save, always refuse.</p>
+<div class="tbl"><table>
+<tr><th>Operation</th><th><code>LogOnly</code></th><th><code>Enforce</code></th><th>Where</th></tr>
+<tr><td>View, Edit, History</td><td>Log and continue</td><td>403</td><td><code>AtlasAccessService.cs:42-53</code></td></tr>
+<tr><td>Delete</td><td>403</td><td>403</td><td><code>AtlasAccessService.cs:51</code></td></tr>
+<tr><td>Create at save</td><td>403</td><td>403</td><td><code>CSS:344-346</code> (a second check)</td></tr>
+<tr><td>Create at load (new form)</td><td>Log and continue</td><td>403</td><td><code>CSS:137</code></td></tr>
+<tr><td><code>CanEdit</code> flag for the client</td><td>True</td><td>The real decision</td><td><code>AtlasAccessService.cs:87</code></td></tr>
+</table></div>
+<p>Rollout path of an app (settings, not code): <code>Enabled = false</code>, then <code>Enabled = true</code> with <code>LogOnly</code>, then <code>Enforce</code>. The start-up check warns about <code>LogOnly</code> outside Development. An <code>AccessMode</code> value that is not valid gives <code>Enforce</code>.</p>
+<div class="finding f">
+<h4>The decision table is in three places <span class="lab lab-fact">Code fact</span></h4>
+<p>The rule "Delete and Create at save always refuse" is in two different places, and the main rule is in a third. A change of the rule must change all three.</p>
+</div>
+<div class="decide"><b>What you decide.</b> Q19 and Q20 (in <code>PENDING_DECISIONS.html</code>).</div>
+</section>
+
+<!-- P08 -->
+<section class="machine" id="p08">
+<h3><span class="id">P08</span> TTDV2 cut-over and rollback (SQL scripts) <span class="tag t-known">Known High</span><span class="tag t-act">Act</span><span class="tag t-dec">Stop-and-ask</span></h3>
+<div class="stop"><b>Stop-and-ask.</b> Do not change <code>050</code> or <code>090</code> without your approval (<code>AGENTS.md</code>). Do not run <code>050</code> in the shared development database. <code>050</code> runs only on the change-over day, and <code>090</code> only to roll back. Open decisions: Q07 to Q10.</div>
+<p class="short">The cut-over moves the users from TTD to TTDV2 on one day. Three SQL scripts do it. No column stores the cut-over state. The state comes from the rows of <code>dbo.CP_Atlas_ScriptLog</code> and from <code>IsDeleted</code> on the app row and the role rows.</p>
+<figure class="fig">
+<svg viewBox="0 0 920 250" role="img" aria-labelledby="p08-t">
+<title id="p08-t">P08: Not installed, 040 to Installed, 050 to Cut over, 090 to Rolled back, and by hand back to Installed.</title>
+<defs><marker id="p08-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker></defs>
+<rect class="s-box" x="20" y="100" width="150" height="50" rx="12"/>
+<text class="s-t mid" x="95" y="130">Not installed</text>
+<path class="s-edge" d="M170 125H247" marker-end="url(#p08-a)"/>
+<text class="s-l mid" x="209" y="115">040</text>
+<rect class="s-box" x="250" y="100" width="150" height="50" rx="12"/>
+<text class="s-t mid" x="325" y="130">Installed</text>
+<path class="s-edge" d="M400 125H497" marker-end="url(#p08-a)"/>
+<text class="s-l mid" x="449" y="115">050</text>
+<g class="hm" transform="translate(449,147)"><circle r="10"/><text y="4">2</text></g>
+<rect class="s-box" x="500" y="100" width="150" height="50" rx="12"/>
+<text class="s-t mid" x="575" y="130">Cut over</text>
+<path class="s-edge" d="M650 125H747" marker-end="url(#p08-a)"/>
+<text class="s-l mid" x="699" y="115">090</text>
+<g class="hm" transform="translate(686,147)"><circle r="10"/><text y="4">1</text></g>
+<g class="hm" transform="translate(712,147)"><circle r="10"/><text y="4">3</text></g>
+<rect class="s-box" x="750" y="100" width="150" height="50" rx="12"/>
+<text class="s-t mid" x="825" y="130">Rolled back</text>
+<path class="s-edge" d="M325 100C325 30 825 30 825 97" marker-end="url(#p08-a)"/>
+<text class="s-l mid" x="575" y="36">090 (when 050 did not run)</text>
+<path class="s-edge" d="M825 150C825 225 325 225 325 153" marker-end="url(#p08-a)"/>
+<text class="s-l mid" x="575" y="234">By hand: IsDeleted = 0 on the app row and its roles, then 040</text>
+</svg>
+<figcaption>The run-time side of the same switch is <code>AppSettings:Modules:TTDV2:Enabled</code> (P05) and the roles view (P09).</figcaption>
+</figure>
+<div class="finding k">
+<h4><span class="hn">1</span> 090 gives back roles that a person revoked on purpose <span class="lab lab-known">Known: R01, High, not fixed</span></h4>
+<p><code>090</code> cannot read which TTD roles <code>050</code> revoked, because <code>050</code> does not store this. <code>090</code> uses a rule: a TTD role row with <code>IsDeleted = 1</code>, <code>ModifiedBy</code> = the person who ran <code>050</code>, and <code>ModifiedDate</code> in the hour before the <code>050</code> log row (<code>090:31-39</code>).</p>
+<ol>
+<li>13:20 The DBA (LAN ID <code>dba1</code>) revokes the TTD role of a user who leaves the team. <code>ModifiedBy</code> = <code>dba1</code>.</li>
+<li>14:00 The same DBA runs <code>050</code> with <code>@RunBy</code> = <code>dba1</code>. <code>050</code> revokes all other TTD roles. The log row has the time 14:00.</li>
+<li>The next day, the DBA runs <code>090</code> with <code>@CopyRunBy</code> = <code>dba1</code>.</li>
+<li><code>090</code> gives back all TTD roles with <code>ModifiedBy</code> = <code>dba1</code> and <code>ModifiedDate</code> from 13:00 to 14:00. This includes the role of the user who left.</li>
+</ol>
+</div>
+<div class="finding k">
+<h4><span class="hn">2</span> A second cut-over after a rollback loses newer TTD data <span class="lab lab-known">Known: R02, High, not fixed</span></h4>
+<ol>
+<li>Day 1: <code>050</code> copies record 42 (10 hours) to TTDV2.</li>
+<li>Day 2: a problem occurs. <code>090</code> rolls back. Users work in TTD again. They change record 42 to 12 hours. <code>TTD.AuditLog</code> gets a new entry.</li>
+<li>Day 5: the team installs TTDV2 again (by hand, then <code>040</code>) and runs <code>050</code> again.</li>
+<li><code>050</code> copies only IDs that are not in TTDV2 (<code>050:191</code>). ID 42 is there, so TTDV2 keeps 10 hours.</li>
+<li><code>050</code> copies audit entries only for records with no copied entry (<code>050:203</code>). The new entry of day 2 is not copied.</li>
+<li><code>050</code> also revokes all TTD roles again.</li>
+</ol>
+<p><b>Effect.</b> TTDV2 shows old data and old history for each record that users changed between the two cut-overs.</p>
+</div>
+<div class="finding">
+<h4><span class="hn">3</span> After a second cut-over, 090 looks at the wrong hour <span class="lab lab-inf">Inference - verify</span> <span class="small">(code path agrees)</span></h4>
+<p>This continues the example of item 2.</p>
+<ol>
+<li>Day 5: <code>050</code> revokes the TTD roles again. It writes no new log row, because the log row of day 1 exists (<code>050:206-208</code>).</li>
+<li>Day 6: a problem occurs again. The DBA runs <code>090</code>.</li>
+<li><code>090</code> reads the time of the latest <code>050</code> log row. There is only one: day 1 (<code>090:25-26</code>). So its one-hour window is on day 1.</li>
+<li>The roles that <code>050</code> revoked on day 5 have <code>ModifiedDate</code> = day 5. <code>090</code> does not give them back.</li>
+<li><code>090</code> also soft-deletes all TTDV2 roles.</li>
+</ol>
+<p><b>Effect, if the inference is correct.</b> The users have no TTD role and no TTDV2 role. Nobody can work in either app until a DBA gives back the roles by hand. This makes the decisions Q07 to Q10 more important.</p>
+</div>
+<p class="small">Also note: the log names are not the file names (<code>11-script-log.sql</code>, <code>12-ttdv2-app.sql</code>, <code>12-ttdv2-copy-from-ttd.sql</code>, <code>12-ttdv2-rollback.sql</code>). They are stable identifiers. Do not rename them. The review files are in <code>atlas-platform/review/2026-11-01/</code> (not committed).</p>
+<div class="decide"><b>What you decide.</b> Q07 to Q10, then W13 (store what <code>050</code> revoked; a rule for a second cut-over). Decide before a change-over date is set.</div>
+</section>
+
+<!-- P09 -->
+<section class="machine" id="p09">
+<h3><span class="id">P09</span> User role life cycle (data) <span class="tag t-ok">Stable</span></h3>
+<p>A role is active when four rows are not deleted and three values are not empty: the user, the user entitlement, the entitlement and the application (<code>SQLP/030-active-user-roles-view.sql:15-41</code>). The platform reads the view one time for each request. The platform does not write these tables at run time. The target and the scripts of P08 write them.</p>
+</section>
+
+<!-- P10 -->
+<section class="machine" id="p10">
+<h3><span class="id">P10</span> Form page (client) <span class="tag t-act">Act</span></h3>
+<p class="short">The form page keeps its state in eight independent signals: <code>loading</code>, <code>saving</code>, <code>loadError</code>, <code>pageErrors</code>, <code>section</code>, <code>historyOpen</code>, <code>confirmDelete</code> and <code>invalidOpen</code>. It also uses the route values and <code>canSave</code>. The template reads three of the signals in an <code>if</code> chain.</p>
+<figure class="fig">
+<svg viewBox="0 0 940 300" role="img" aria-labelledby="p10-t">
+<title id="p10-t">P10: Loading, Ready, Saving and the delete request. The delete request has no state of its own.</title>
+<defs><marker id="p10-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="s-head" d="M0 0L10 5L0 10z"/></marker></defs>
+<rect class="s-box" x="20" y="110" width="140" height="50" rx="12"/>
+<text class="s-t mid" x="90" y="140">Loading</text>
+<path class="s-edge" d="M90 160V217" marker-end="url(#p10-a)"/>
+<text class="s-m" x="98" y="194">HTTP error</text>
+<rect class="s-bad" x="20" y="220" width="140" height="50" rx="12"/>
+<text class="s-t mid" x="90" y="250">Load failed</text>
+<path class="s-edge" d="M160 135H257" marker-end="url(#p10-a)"/>
+<text class="s-l mid" x="209" y="125">Data arrives</text>
+<rect class="s-box" x="260" y="110" width="150" height="50" rx="12"/>
+<text class="s-t mid" x="335" y="140">Ready</text>
+<path class="s-edge" d="M400 110L517 52" marker-end="url(#p10-a)"/>
+<text class="s-l end" x="452" y="72">Save</text>
+<rect class="s-box" x="520" y="20" width="140" height="50" rx="12"/>
+<text class="s-t mid" x="590" y="50">Saving</text>
+<path class="s-edge" d="M660 52L787 120" marker-end="url(#p10-a)"/>
+<text class="s-l" x="735" y="76">No errors</text>
+<path class="s-edge" d="M560 70C540 120 470 140 413 140" marker-end="url(#p10-a)"/>
+<text class="s-l" x="524" y="130">Errors</text>
+<rect class="s-term" x="790" y="110" width="140" height="50" rx="12"/>
+<text class="s-t mid" x="860" y="132">Left the form</text>
+<text class="s-m mid" x="860" y="150">back to dashboard</text>
+<path class="s-edge" d="M380 160L517 222" marker-end="url(#p10-a)"/>
+<text class="s-l" x="455" y="176">Delete, Yes</text>
+<rect class="s-bad s-dash" x="520" y="200" width="180" height="50" rx="12"/>
+<text class="s-t mid" x="610" y="222">Delete request</text>
+<text class="s-m mid" x="610" y="240">no busy state</text>
+<g class="hm" transform="translate(698,202)"><circle r="10"/><text y="4">1</text></g>
+<path class="s-edge" d="M700 220L788 152" marker-end="url(#p10-a)"/>
+<text class="s-l" x="752" y="206">OK</text>
+<path class="s-edge" d="M560 250C520 290 360 290 335 163" marker-end="url(#p10-a)"/>
+<text class="s-l mid" x="440" y="294">Errors</text>
+</svg>
+<figcaption>Not in the figure: the "mandatory fields" dialog (a save with a shown field that is not valid) and the History dialog. Both open on top of Ready.</figcaption>
+</figure>
+<div class="finding f">
+<h4><span class="hn">1</span> Delete has no busy state <span class="lab lab-fact">Code fact</span></h4>
+<ol>
+<li>The user clicks Delete, then Yes. The dialog closes, and the request starts (<code>atlas-form.component.ts:331-333</code>).</li>
+<li>The buttons check only <code>saving()</code> (<code>atlas-form.component.html:71-72</code>). They stay enabled.</li>
+<li>The user clicks Delete and Yes again, or clicks Save.</li>
+<li>The server already deleted the record. The second request gets "not found" (404).</li>
+</ol>
+<p><b>Effect.</b> The user can see an error for a delete that succeeded. No data is damaged, because the server checks each request. The delete on the dashboard (P11) has the same gap.</p>
+</div>
+<div class="finding f">
+<h4><span class="hn">2</span> The signals are independent <span class="lab lab-fact">Code fact</span> <span class="small">(not in the figure)</span></h4>
+<p><code>saving</code> and the dialogs do not know each other. Only the disabled buttons stop a delete dialog during a save.</p>
+</div>
+<div class="decide"><b>What you decide.</b> W10: one page status in place of the independent flags, and a busy state for delete on the form and on the dashboard. The look must stay the same as the target.</div>
+</section>
+
+<!-- P11 -->
+<section class="machine" id="p11">
+<h3><span class="id">P11</span> Dashboard, History dialog and menu cache (client) <span class="tag t-ok">Stable</span></h3>
+<ul>
+<li><b>Dashboard</b> (<code>atlas-dashboard.component.ts</code>): Loading, then Ready or Failed. It loads again after a delete. Its delete also has no busy state.</li>
+<li><b>History dialog</b> (<code>atlas-history-dialog.ts</code>): Loading, then Ready or Failed. A new record or a close cancels the request.</li>
+<li><b>Menu cache</b> (<code>atlas-navigation.ts</code>): the menu rows (<code>FormType</code>) are read one time and kept for the life of the page. A failed read is not kept. <code>FormType</code> selects the route.</li>
+</ul>
+<p>Small. The inventory lists them so that the next agent does not search for them again.</p>
+</section>
+
+<!-- ============================================================ 7 -->
+<h2 id="work">7. Candidate work items (W1 to W13)</h2>
+<p>These are candidates. You select. Nothing here is approved. This list does not replace the milestones of <code>PROJECT.md</code>.</p>
+<div class="tbl"><table>
+<tr><th>#</th><th>What it does</th><th>What users see</th><th>Needed first</th><th>Size</th></tr>
+<tr><td>W1</td><td>Tests that walk each transition table of E01 to E06. Each permitted move passes. Each move that is not permitted is refused, or cannot occur.</td><td>Nothing</td><td>Q40 (engine restart)</td><td>Small to medium</td></tr>
+<tr><td>W2</td><td><code>const string</code> values for the stored status texts, reminder kinds and cancellation reasons, in <code>WorkflowEngine.Domain</code>. 96 literals in 13 files.</td><td>Nothing</td><td>Q40. You accept that the target merges the changed runtime files again.</td><td>Medium (many files, small edits)</td></tr>
+<tr><td>W3</td><td>One delivery helper for the worker and the API dispatcher: claim, mark sent, release, row to delivery object.</td><td>Only if you remove the differences</td><td>Your decision for each difference (question 4)</td><td>Medium</td></tr>
+<tr><td>W4</td><td>Fix the SaveDraft race.</td><td>A <code>SaveDraft</code> after a concurrent move gets a refusal</td><td>Q41</td><td>Small</td></tr>
+<tr><td>W5</td><td>Cancel during send. First a test that shows it.</td><td>The outbox record becomes true</td><td>Your decision</td><td>Small</td></tr>
+<tr><td>W6</td><td>A structured answer for an SLA-only request with no open task.</td><td>A clear answer in place of HTTP 500</td><td>Stop-and-ask: the answer shape and the status (question 5)</td><td>Small</td></tr>
+<tr><td>W7</td><td>A check command for all workflows: the first state exists; a terminal move closes the open task and makes no new task; an SLA task comes from a transition with a route; one active version.</td><td>Nothing at run time</td><td>Your decision. Related to D09.</td><td>Medium</td></tr>
+<tr><td>W8</td><td>Fix F09 (SLA change and task completion at the same time).</td><td>No Active schedule on a closed task</td><td>Your decision</td><td>Medium</td></tr>
+<tr><td>W9</td><td>One availability function that returns the state and the reason. The resolver, the menu, the dashboard and <code>ToLegacy</code> use it.</td><td>Nothing intended. The tab case of P05 changes.</td><td>Platform gates; package rebuild</td><td>Small to medium</td></tr>
+<tr><td>W10</td><td>Form: one page status in place of the independent flags. A busy state for delete on the form and the dashboard.</td><td>The buttons are disabled during a delete</td><td>Platform gates; package rebuild; the look stays as the target</td><td>Small</td></tr>
+<tr><td>W11</td><td>Client rule locks: the client must not enable or show a field that a rule locked.</td><td>No editable field that the server then refuses</td><td>Stop-and-ask: optional field in the load response (<code>v1</code>). First a spec that shows the problem.</td><td>Small to medium</td></tr>
+<tr><td>W12</td><td>Record state for rules, the <code>Execute</code> action, the workflow source in the history.</td><td>A new feature</td><td>Q51. This is the engine adapter (module 10).</td><td>Large</td></tr>
+<tr><td>W13</td><td>Cut-over state: store what <code>050</code> revoked; a rule for a second cut-over.</td><td>A safe rollback</td><td>Stop-and-ask: Q07 to Q10 (R01, R02)</td><td>Medium</td></tr>
+</table></div>
+
+<div class="note">
+<h4>Why <code>const</code>, and not <code>static readonly</code> or an enum (W2)</h4>
+<p>EF Core writes a <code>const</code> value into the SQL as a fixed text: <code>WHERE [Status] = N'Pending'</code>. That is the same SQL as today. A <code>static readonly</code> field or a variable becomes a SQL parameter: <code>WHERE [Status] = @p0</code>. Then the SQL text changes, and SQL Server can stop using a filtered index for that query, because a filtered index matches fixed values. An enum changes the type of the property and needs a value converter. So <code>const</code> is the smallest change that keeps the database behaviour the same.</p>
+</div>
+
+<h3>A possible order (my suggestion; you select)</h3>
+<div class="two">
+<div class="card">
+<h4>Platform (the active component)</h4>
+<ol>
+<li><b>Answer Q07 to Q10</b> (W13) before a change-over date is set. Reason: R01, R02 and P08 item 3 affect production data and user access on the change-over day.</li>
+<li><b>W10.</b> Small, visible and safe.</li>
+<li><b>W9.</b> Small. No change of behaviour is intended.</li>
+<li><b>W11</b> when app number 2 has Enable or Show effects. TTDV2 does not reach the case.</li>
+<li><b>W12</b> when Q51 names the first app with a workflow.</li>
+</ol>
+</div>
+<div class="card">
+<h4>Engine (only after Q40)</h4>
+<ol>
+<li><b>W1</b> first: the safety net for all other items.</li>
+<li><b>W4</b>: the only High engine item. Q41 already proposes it as the first fix.</li>
+<li><b>W7</b>: it protects the activation of CDT v2 and of new workflows.</li>
+<li><b>W5, W6, W8</b> as you decide.</li>
+<li><b>W2 and W3</b> last, one machine at a time, the outbox first. Send all engine changes to the target in one release, so that the target merges each file one time.</li>
+</ol>
+</div>
+</div>
+
+<!-- ============================================================ 8 -->
+<h2 id="questions">8. The 7 questions for you</h2>
+<p>These are the questions of section 8 of the inventory, with their meaning and the effect of each answer.</p>
+
+<div class="q">
+<h3>Question 1. What is the goal?</h3>
+<p><b>The question.</b> (a) Make the machines explicit with no change of behaviour (W1, W2, W3, W9, W10), (b) close the gaps (W4 to W8, W11), or (c) both? Which machines first?</p>
+<ul>
+<li><b>(a)</b> lowers the risk of future changes. Users see no change. Many files change.</li>
+<li><b>(b)</b> changes the behaviour in rare cases. Each item changes few files.</li>
+<li><b>(c)</b> does both: tests first, then the gaps, then the constants.</li>
+</ul>
+<p><b>Suggestion.</b> (c), in the order of section 7. Start with the platform items, because the platform is the active component.</p>
+</div>
+
+<div class="q">
+<h3>Question 2. Does this work start the engine again?</h3>
+<p><b>Meaning.</b> Engine work is paused. <code>CODEX_HANDOFF.md</code> section B says: nothing until you answer Q40 (when to start) and Q41 (the first fix). If the answer is "not now", only W9 to W13 can start.</p>
+<p><b>Suggestion.</b> Your decision. If you start, do W1 first and then W4 (Q41).</p>
+</div>
+
+<div class="q">
+<h3>Question 3. W2: all files at one time, or one machine at a time?</h3>
+<p><b>Meaning.</b> The target has copies of 13 engine runtime files. Each changed file must be merged at the target again. "All at one time" gives one large merge. "One machine at a time" gives small reviews, but the same file can come back more than one time. For example, <code>WES</code> has literals of three machines.</p>
+<p><b>Suggestion.</b> One machine at a time in this repository, the outbox first, together with W3, because they change the same files. Then send all engine changes to the target in one release.</p>
+</div>
+
+<div class="q">
+<h3>Question 4. W3: keep each difference, or make the API dispatcher the same as the worker?</h3>
+<div class="tbl"><table>
+<tr><th>Difference</th><th>Effect today</th><th>If the API becomes the same as the worker</th><th>Suggestion</th></tr>
+<tr><td>1. Claim of a stale <code>Processing</code> row</td><td>The API never claims one. It handles only the new rows of its own request, so the effect is almost zero.</td><td>No visible change.</td><td>Keep. Align only if W3 shares the code.</td></tr>
+<tr><td>2. Retry time after a failure (zero delay, with a batch size)</td><td>The API writes no retry time. The failed row keeps its old place at the front of the queue (low residual of H01).</td><td>The failed row goes behind the waiting e-mails. This completes the H01 fix.</td><td>Align.</td></tr>
+<tr><td>3. A <code>Pending</code> row that waits for its retry time</td><td>The API answer becomes <code>NotificationDeliveryFailed</code> (HTTP 500).</td><td>The API needs another answer for this case. That is a contract question (D02).</td><td>Keep until D02 is decided.</td></tr>
+</table></div>
+</div>
+
+<div class="q">
+<h3>Question 5. W6 and W11 touch a public contract. Is an additive change permitted?</h3>
+<p><b>Meaning.</b> <code>AGENTS.md</code> permits only additive contract changes, and new fields must be optional. Status-code behaviour must stay the same for current callers.</p>
+<p><b>W6</b> (SLA-only request with no open task). Today: HTTP 500, "An unexpected error occurred."</p>
+<ul>
+<li><b>Option A.</b> HTTP 400 with the problem body that the same request already gives for other SLA input errors ("Invalid workflow SLA input.").</li>
+<li><b>Option B.</b> A structured result (<code>Success = false</code> and a new result code) with HTTP 500, the same as other business failures (D03).</li>
+</ul>
+<p>Both options change the answer for one case. Both need your approval. Option A is the smallest change, because it uses an answer that the same request already gives.</p>
+<p><b>W11</b> (client rule locks). An optional field in the load response, for example the list of locked fields. Old clients ignore it. It is additive, but it is a <code>v1</code> contract change, so it needs your approval.</p>
+</div>
+
+<div class="q">
+<h3>Question 6. When does the engine adapter (W12) start?</h3>
+<p><b>Meaning.</b> Until the adapter exists, the platform places for a workflow state stay empty (P04). Only an app with a workflow needs it. TTDV2 has no workflow.</p>
+<p><b>Suggestion.</b> Decide it together with Q26 (which app is number 2).</p>
+</div>
+
+<div class="q">
+<h3>Question 7. W13 needs the answers to Q07 to Q10.</h3>
+<p><b>Meaning.</b> R01 and R02 are High and tested. P08 item 3 adds a possible result: after a second cut-over and a second rollback, users have no role in either app. All three touch production data and access on the change-over day.</p>
+<p><b>Suggestion.</b> Answer Q07 and Q08 first, as the hand-off file also says. Do not run <code>050</code> or <code>090</code> in any environment before the decision.</p>
+</div>
+
+<!-- ============================================================ 9 -->
+<h2 id="words">9. Words used on this page</h2>
+<dl class="words">
+<div><dt>Action</dt><dd>A request to move a workflow, for example <code>SubmitForChecker</code>.</dd></div>
+<div><dt>At least once</dt><dd>An e-mail can go out two times, but it does not stay unsent when the system works.</dd></div>
+<div><dt>Audit row</dt><dd>A record of who did what, and when.</dd></div>
+<div><dt>CHECK constraint</dt><dd>A database rule that refuses a value that is not in a list.</dd></div>
+<div><dt>Claim</dt><dd>A sender marks a row as its own work: <code>Processing</code> and a token.</dd></div>
+<div><dt>Commit, rollback</dt><dd>Keep all changes of a transaction; undo all changes of a transaction.</dd></div>
+<div><dt>const</dt><dd>A C# value that the compiler copies into each place that uses it.</dd></div>
+<div><dt>Cursor (SLA)</dt><dd>The time of the next reminder (<code>NextReminderAtUtc</code>).</dd></div>
+<div><dt>Derived state</dt><dd>A state that the code calculates from other columns. No column stores it.</dd></div>
+<div><dt>Dispatcher (API)</dt><dd>The part of the API that sends the e-mails of one action during the HTTP request.</dd></div>
+<div><dt>Filtered unique index</dt><dd>A database index that permits one row for each key among the rows that match a filter, for example <code>Status = 'Pending'</code>.</dd></div>
+<div><dt>Guard</dt><dd>A check that must pass before a move.</dd></div>
+<div><dt>Idempotency key</dt><dd>A key that names one request, so that a retry gives the same result.</dd></div>
+<div><dt>Lease</dt><dd>The time that a claim stays valid: 15 minutes for the outbox.</dd></div>
+<div><dt>Literal</dt><dd>A value written directly in the code, for example <code>"Pending"</code>.</dd></div>
+<div><dt>Metadata</dt><dd>The rows that define a workflow: states, actions, transitions, tasks, SLA policies and routes.</dd></div>
+<div><dt>Outbox</dt><dd>The table of e-mails to send (<code>NotificationOutbox</code>).</dd></div>
+<div><dt>Projection, copy</dt><dd>A copy of a state in another table, for a screen to read.</dd></div>
+<div><dt>Race</dt><dd>Two requests at the same time. The result depends on which one is first.</dd></div>
+<div><dt>Request hash</dt><dd>A fingerprint of the content of a request.</dd></div>
+<div><dt>RowVersion</dt><dd>A database value that changes at each update. The platform uses it as the version token.</dd></div>
+<div><dt>SLA</dt><dd>Service level agreement. Here: the time limit of a task.</dd></div>
+<div><dt>Soft delete</dt><dd>The row stays. A flag (<code>IsDeleted</code>) hides it.</dd></div>
+<div><dt>Stale lease</dt><dd>A claim that is older than the lease.</dd></div>
+<div><dt>Terminal state</dt><dd>A state with no move out (<code>IsTerminal = 1</code>).</dd></div>
+<div><dt>Token</dt><dd>A random value that shows which sender owns a claim.</dd></div>
+<div><dt>Transaction</dt><dd>A group of database changes that all succeed or all fail.</dd></div>
+<div><dt>Worker</dt><dd>The outbox job that sends e-mails on a timer.</dd></div>
+</dl>
+
+<!-- ============================================================ 10 -->
+<h2 id="sources">10. Sources</h2>
+<ul>
+<li>The inventory: <a href="IMPLICIT_STATE_MACHINES.md">docs/IMPLICIT_STATE_MACHINES.md</a> (sections 1 to 10 and appendix A).</li>
+<li>Rules: <a href="../AGENTS.md">AGENTS.md</a>, <a href="../PROJECT.md">PROJECT.md</a>. State and questions: <a href="../CODEX_HANDOFF.md">CODEX_HANDOFF.md</a> (sections A, B and C), <a href="atlas-platform/PENDING_DECISIONS.html">docs/atlas-platform/PENDING_DECISIONS.html</a>, <a href="OPEN-ISSUES.md">docs/OPEN-ISSUES.md</a>.</li>
+<li>Related pages: <a href="H01_OUTBOX_BATCH_BLOCKING_EXPLAINED.html">H01 explained</a>, <a href="OUTBOX_RETRY_ROLLOUT.md">OUTBOX_RETRY_ROLLOUT.md</a>, <a href="SLA_BATCH_PROCESSING.md">SLA_BATCH_PROCESSING.md</a>, <a href="atlas-platform/10-engine-adapter.md">10-engine-adapter.md</a>, <a href="atlas-platform/04-rules-engine.md">04-rules-engine.md</a>.</li>
+<li>Code that I read again for this page:
+<ul>
+<li>Engine: <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs">WorkflowExecutionService.cs</a> (53-209, 630-1075), <a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs">StartWorkflowService.cs</a> (65-142, 387-452), <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs">WorkflowSlaSynchronizationService.cs</a> (all), <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs">RunSlaService.cs</a> (40-300), <a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs">ProcessNotificationOutboxService.cs</a> (1-200, 250-279), <a href="../src/WorkflowEngine.Infrastructure/Notifications/OutboxProcessingOptions.cs">OutboxProcessingOptions.cs</a>, <a href="../src/WorkflowEngine.Infrastructure/Notifications/QueueWorkflowNotificationService.cs">QueueWorkflowNotificationService.cs</a> (20-59).</li>
+<li>API: <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs">WorkflowActionService.cs</a> (all), <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs">WorkflowActionNotificationDispatcher.cs</a> (1-115, 155-183), <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Infrastructure/GlobalExceptionHandler.cs">GlobalExceptionHandler.cs</a>.</li>
+<li>SQMS: <a href="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs">SqmsScheduledService.cs</a> (38-82, 200-294), <a href="../src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs">SqlSqmsDataStore.cs</a> (50-99).</li>
+<li>Platform: <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs">ConfigSectionService.cs</a> (400-519, 660-769), <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Rules/AtlasRuleEngine.cs">AtlasRuleEngine.cs</a> (40-199), <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs">AtlasDashboardService.cs</a> (25-119), <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts">atlas-form.component.ts</a> (80-369), <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.html">atlas-form.component.html</a>, <a href="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql">050-ttdv2-copy-from-ttd.sql</a> (135-214), <a href="../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql">090-ttdv2-rollback.sql</a> (all).</li>
+</ul>
+</li>
+</ul>
+
+<footer>
+<h2>Document record</h2>
+<dl>
+<dt>Changed</dt><dd>Made this page. No code, SQL, test or metadata changed. The inventory file did not change.</dd>
+<dt>Why</dt><dd>The user asked for more explanation of the inventory, in ASD-STE100, as HTML.</dd>
+<dt>Basis</dt><dd>Commit <code>c729452</code>. The inventory, and a second read of the code for the 7 inferences and the main code facts (section 10).</dd>
+<dt>Tests run</dt><dd>None. The 7 inferences stay "Inference - verify".</dd>
+<dt>Added by this page</dt><dd>The examples, the figures, the reading of the three outbox differences (E05), the read-only form note (P03), the effect of P08 item 3 (no role in either app), and the suggestions in sections 7 and 8. The suggestions are not decisions.</dd>
+<dt>Open issues</dt><dd>All decisions of section 8. Nothing on this page is approved work.</dd>
+</dl>
+</footer>
+
+</main>
+</body>
+</html>

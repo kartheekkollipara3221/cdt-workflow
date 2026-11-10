@@ -82,6 +82,24 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 2. Then, in this order: the first approved defect fix (section 21 gates + completion summary); CDT v2 adapter checks and
    controlled activation; deploy the published fixes with the next target release.
 
+## C. Implicit state machine inventory (added 2026-11-09; analysis only, no code change)
+
+- File: docs/IMPLICIT_STATE_MACHINES.md (NOT committed). Made from the code at c729452. No build or test was run for it.
+- Explanation for the user (ASD-STE100 HTML, 2026-11-09, committed; its links to the inventory file need that file
+  committed too): docs/IMPLICIT_STATE_MACHINES_EXPLAINED.html.
+  Examples and figures for each finding, the meaning of W1-W13 and of the 7 questions, with suggestions (not
+  decisions). Second read of the code for the 7 inferences: all code paths agree; no test was run. It adds one
+  consequence of the P08 inference: after a second cut-over and a second rollback, users have no TTD and no TTDV2 role.
+- Content: 13 engine machines (E01-E13) and 11 platform machines (P01-P11): states, transitions, code lines, holes,
+  tests; the rules that connect the machines; 13 candidate work items (W1-W13); 7 questions for the user.
+- Main findings: the engine has no constant or enum for a persisted status (96 literals in 13 files); the outbox
+  delivery machine is written two times (worker + API dispatcher, 3 behaviour differences); the platform has the places
+  for a record workflow state (CPRule.States, Step, action Execute) but nothing gives them a value (engine adapter,
+  Q51); app availability is derived at 7 locations with rules that are not the same.
+- Next: the user selects work items and answers section 8 of the file. Engine items need Q40/Q41 first. W13 (050/090)
+  is stop-and-ask (Q07-Q10). Nothing in the file is approved work.
+- Prompt: section 10 of the file.
+
 ## How we work (both components)
 - One step or question at a time; short answers; ASD-STE100 for explanations; record answers, do not rewrite.
 - Platform bugs: fix in atlas-platform/ here, platform gates (AGENTS.md), rebuild the package
