@@ -111,6 +111,41 @@ Completion summary for platform work: the same format as above. Write `not appli
 - Any change to `050` or `090` (migration and rollback), including the review findings R01 and R02.
 - The `PROJECT.md` section 22 triggers that apply (for example the complexity list, `DateTime.UtcNow`, engine adapter work).
 
+### Code comments (platform)
+Comments follow the Google style guides (TypeScript, C++ and the engineering practices), written in ASD-STE100.
+- A doc comment tells the contract: what the member does, what the inputs and the result mean, what can go wrong.
+  Not how the code does it.
+- The first sentence is a summary that starts with a verb ("Applies...", "Returns...", "Removes...").
+- An inline comment tells why, when the code cannot show it. Do not repeat what the code says.
+- No history and no references in comments: no review, defect, decision or question IDs (RV-.., SV-.., DA-.., B12,
+  Q07, D2, ...), no spec, module or section numbers, no document names (INTEGRATION.md, 01-....md), no "fix for",
+  "was", "now". Put the link from code to spec, review and decision in `docs/atlas-platform/CODE_TRACE.md`
+  (file and member, no line numbers). The commit message holds the history.
+- References to other code stay ("see atlas-effects.ts", `<see cref="..."/>`).
+- C#: `/// <summary>` on each public type and member; `<param>`, `<returns>`, `<exception>` only when they add
+  information; `<remarks>` for the reason or a limit. TypeScript: JSDoc `/** ... */` with no types (TypeScript has
+  them); `@param` and `@returns` only when they add information.
+- Short sentences (20 words or fewer), active voice, one statement in each sentence.
+- The test `CodeCommentRulesTests` (platform tests) fails when a comment has a reference ID, or when a row of
+  `CODE_TRACE.md` names a file or member that does not exist. Test files and `050`/`090` are not checked.
+
+```csharp
+/// <summary>
+/// Removes the value and the options of each field that an access rule hides from the current user.
+/// </summary>
+/// <remarks>
+/// The server clears the values, so a hidden value is never in the response.
+/// </remarks>
+```
+
+```ts
+/**
+ * Runs the effects of a control for a new value.
+ *
+ * Does nothing when the effects of this control already run.
+ */
+```
+
 ### Working style
 - One question or step at a time; short, plain answers; record answers, do not rewrite specs.
 - Explanations and documents for the user and the target team: ASD-STE100 (about 80%).
