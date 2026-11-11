@@ -1,5 +1,4 @@
-// COPY to the target: WebUi/src/app/platform/form/. The renderer registry (spec 01, 5.5): control Type to
-// component. A new control type is one provideAtlasRenderers entry (or register() call); the form does not change.
+// COPY to the target: WebUi/src/app/platform/form/.
 import { EnvironmentProviders, Injectable, Type, inject, provideEnvironmentInitializer } from '@angular/core';
 import {
   AtlasAmountRenderer,
@@ -16,6 +15,11 @@ import {
 } from './renderers/atlas-renderers';
 import { AtlasGridRenderer } from './renderers/atlas-grid-renderer';
 
+/**
+ * The renderer registry: it maps a control Type to a component.
+ *
+ * A new control type needs one provideAtlasRenderers entry (or one register() call). The form does not change.
+ */
 @Injectable({ providedIn: 'root' })
 export class AtlasRendererRegistry {
   private readonly renderers = new Map<string, Type<unknown>>([
@@ -35,18 +39,25 @@ export class AtlasRendererRegistry {
   ]);
 
   /** Types that render no input with the id "ctl_" + Name, so the form label gets no "for" attribute. */
-  // A checkbox has its own (empty) label inside the library control; a second label "for" it gives two labels
-  // (review NG-08), so the form uses aria-labelledby for it.
+  // A checkbox has its own (empty) label inside the library control. A second label "for" it gives two labels,
+  // so the form uses aria-labelledby for it.
   private readonly noInput = new Set<string>(['user', 'grid', 'checkbox', 'check']);
 
-  /** Types whose pbdev control draws its own error text (pbdev-input-messages); the form does not draw it again. */
+  /** Types whose pbdev control draws its own error text (pbdev-input-messages). The form does not draw it again. */
   private readonly ownMessages = new Set<string>(['text', 'currency', 'percent', 'select', 'textarea', 'datetimepicker', 'date']);
 
-  /** True when the control of the type shows its error text itself (review R2, decision D2). */
+  /** Returns true when the control of the type shows its error text itself. */
   drawsMessages(type: string | null | undefined): boolean {
     return this.ownMessages.has((type ?? '').toLowerCase());
   }
 
+  /**
+   * Registers a renderer for a control type. Replaces the renderer of a type that is already registered.
+   *
+   * The form draws the error text of a registered type.
+   *
+   * @param hasInput False when the renderer has no input with the id "ctl_" + Name for the label.
+   */
   register(type: string, component: Type<unknown>, hasInput = true): void {
     const key = type.toLowerCase();
     this.renderers.set(key, component);
@@ -58,34 +69,37 @@ export class AtlasRendererRegistry {
     }
   }
 
-  /** True when the renderer of the type has an input that a label can point to. */
+  /** Returns true when the renderer of the type has an input that a label can point to. */
   hasInput(type: string | null | undefined): boolean {
     return !this.noInput.has((type ?? '').toLowerCase());
   }
 
+  /** Returns the renderer of the type, or null. The type ignores case. */
   get(type: string | null | undefined): Type<unknown> | null {
     return this.renderers.get((type ?? '').toLowerCase()) ?? null;
   }
 
+  /** Returns true when the type has a renderer. */
   has(type: string | null | undefined): boolean {
     return this.get(type) !== null;
   }
 
-  /** The registered types (for example for a test that renders each type). */
+  /** Returns the registered types, for example for a test that renders each type. */
   types(): string[] {
     return [...this.renderers.keys()];
   }
 
-  /** The renderer of the type, or the "unsupported" note for a type with no renderer (review NG-04). */
+  /** Returns the renderer of the type. A type with no renderer gets the "unsupported" note. */
   resolve(type: string | null | undefined): Type<unknown> {
     return this.get(type) ?? AtlasUnsupportedRenderer;
   }
 }
 
 /**
- * Adds renderers of an app (review NG-04), for example in app.config.ts:
+ * Adds the renderers of an app, for example in app.config.ts:
  * provideAtlasRenderers({ rating: RatingRenderer }). A renderer extends AtlasRendererBase.
- * Types in noInput have no input for the label (as "user" and "grid").
+ *
+ * @param noInput The types that have no input for the label (as "user" and "grid").
  */
 export function provideAtlasRenderers(
   renderers: Record<string, Type<AtlasRendererBase>>,

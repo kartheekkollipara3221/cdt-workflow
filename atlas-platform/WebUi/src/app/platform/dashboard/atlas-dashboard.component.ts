@@ -1,6 +1,6 @@
-// COPY to the target as a reference: WebUi/src/app/platform/dashboard/. At the target, the current dashboard
-// component gets only the navigation change (AtlasDashboardNavigation first, then the current if chain) and the
-// Columns support.
+// COPY to the target as a reference: WebUi/src/app/platform/dashboard/.
+// The target dashboard component gets only two changes: the navigation and the Columns support.
+// The navigation calls AtlasDashboardNavigation first, then the current if chain.
 // Locally this component is the dashboard of a platform app (route dashboard/:code).
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,11 +17,12 @@ import { AtlasNoticeService } from '../atlas-notice.service';
 import { problemText } from '../atlas-errors';
 import { columnDefs, sumsRow } from './atlas-dashboard-columns';
 
+/** The dashboard of a platform app: the buttons, the tabs and a grid of rows for each tab. */
 @Component({
   selector: 'atlas-dashboard',
   imports: [AgGridAngular, LoaderComponent, DialogComponent, AtlasHistoryDialog],
   templateUrl: './atlas-dashboard.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AtlasDashboardComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -53,7 +54,7 @@ export class AtlasDashboardComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly dashboard = signal<CPAtlasDashboard | null>(null);
   readonly tabIndex = signal(0);
-  /** Review NG-07: the app of the row is the tab Code (spec 03), not always the dashboard app. */
+  /** The row whose history shows. Its app is the Code of the tab, which can differ from the dashboard app. */
   readonly historyRow = signal<AtlasRowRef | null>(null);
   readonly deleteRow = signal<AtlasRowRef | null>(null);
 
@@ -118,21 +119,31 @@ export class AtlasDashboardComponent implements OnInit {
 
   readonly visibleButtons = computed<CPButton[]>(() => (this.dashboard()?.Buttons ?? []).filter((x) => x.Visible));
 
-  /** The add button: Target first (spec 03, 4.5). */
+  /**
+   * Opens the form for a header button.
+   *
+   * Uses the Target of the button when it has one. Otherwise opens a new record of the dashboard app.
+   */
   onButton(button: CPButton): void {
     this.navigate(this.code, 0, button.Target ?? { AppCode: this.code, Id: 0 });
   }
 
+  /** Selects a tab and clears the search text. */
   selectTab(index: number): void {
     this.tabIndex.set(index);
     this.search.set('');
   }
 
+  /** Sets the search text from the search box. */
   onSearchChange(event: Event): void {
     this.search.set((event.target as HTMLInputElement).value);
   }
 
-  /** Review NG-08 (WAI-ARIA tabs): arrow keys, Home and End move between the tabs; the new tab gets the focus. */
+  /**
+   * Moves between the tabs with the keyboard, as in the WAI-ARIA tabs pattern.
+   *
+   * The arrow keys, Home and End select a tab. The new tab gets the focus.
+   */
   onTabKey(event: KeyboardEvent): void {
     const count = this.tabs().length;
     const current = this.tabIndex();
@@ -151,16 +162,18 @@ export class AtlasDashboardComponent implements OnInit {
     queueMicrotask(() => document.getElementById('tab_' + id)?.focus());
   }
 
+  /** Opens the form of a row. */
   open(row: Record<string, unknown>): void {
     const ref = this.rowRef(row);
     this.navigate(ref.code, ref.id);
   }
 
-  /** The app and the ID of a row of the current tab. */
+  /** Returns the app and the ID of a row of the current tab. */
   rowRef(row: Record<string, unknown>): AtlasRowRef {
     return { code: this.tab()?.Code || this.code, id: id(row) };
   }
 
+  /** Deletes the row of the open delete dialog, then shows the result and loads the dashboard again. */
   confirmRemove(): void {
     const ref = this.deleteRow();
     this.deleteRow.set(null);
@@ -181,7 +194,11 @@ export class AtlasDashboardComponent implements OnInit {
     });
   }
 
-  /** The FormType route of the app (AtlasDashboardNavigation, as at the target); with no FormType, the platform form. */
+  /**
+   * Opens the FormType route of the app through AtlasDashboardNavigation, as at the target.
+   *
+   * When the app has no FormType, opens the platform form.
+   */
   private async navigate(code: string, recordId: number, target?: CPButtonTarget): Promise<void> {
     if (!(await this.navigation.open(code, recordId, target))) {
       // At the target: with no FormType, the current if chain runs here.
@@ -190,6 +207,7 @@ export class AtlasDashboardComponent implements OnInit {
   }
 }
 
+/** The app code and the record ID of a dashboard row. */
 export interface AtlasRowRef {
   code: string;
   id: number;

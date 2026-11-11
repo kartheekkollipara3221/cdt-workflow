@@ -1,5 +1,5 @@
-// COPY to the target: WebUi/src/app/platform/. The audit history of one record (v1/GetAuditLog, spec 09, 4.5).
-// All values are shown as text (no HTML). The layout is the target History Log (history-report-modal.ts): one block
+// COPY to the target: WebUi/src/app/platform/. The audit history of one record (v1/GetAuditLog).
+// The dialog shows all values as text (no HTML). The layout is the target History Log (history-report-modal.ts): one block
 // for each entry, "Modified On : ..." and "Modified By : ...", then one "Name - Value" line for each changed field.
 import { formatDate } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
@@ -19,10 +19,11 @@ interface HistoryEntry {
   text: string | null;
 }
 
+/** Dialog that loads and shows the audit history of one record while `open` is true. */
 @Component({
   selector: 'atlas-history-dialog',
   imports: [DialogComponent, LoaderComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<pbdev-dialog [visible]="open()" header="History Log" [style]="dialogStyle" (visibleChange)="!$event && closed.emit()">
     @if (loading()) {
       <pbdev-loader />
@@ -65,8 +66,8 @@ interface HistoryEntry {
   </pbdev-dialog>`,
 })
 export class AtlasHistoryDialog {
-  // Review NG-10: signal inputs (the bindings of the callers do not change) and one load at a time: a new record or a
-  // close cancels the request before it, so a late answer for record 5 cannot show under record 7.
+  // One load at a time: a new record or a close cancels the request before it.
+  // Thus a late answer for record 5 cannot show under record 7.
   readonly open = input(false);
   readonly appCode = input.required<string>();
   readonly recordId = input.required<number>();
@@ -111,8 +112,11 @@ export class AtlasHistoryDialog {
 }
 
 /**
- * The changed fields of a LogMessage: JSON text (the server answer, as the target) or a JSON list. The _Event item is
- * left out. Null: not a JSON list (old text form).
+ * Returns the changed fields of a LogMessage, without the _Event item.
+ *
+ * The message is JSON text (the server answer, as at the target) or a JSON list.
+ *
+ * @returns The changed fields, or null when the message is not a JSON list (old text form).
  */
 export function logItems(message: unknown): CPAuditChange[] | null {
   let value = message;
@@ -126,6 +130,7 @@ export function logItems(message: unknown): CPAuditChange[] | null {
   return Array.isArray(value) ? (value as CPAuditChange[]).filter((x) => x?.Name !== '_Event') : null;
 }
 
+/** Converts an audit log row to the entry that the dialog shows. */
 export function toEntry(log: CPAuditLog): HistoryEntry {
   const items = logItems(log.LogMessage);
   return {

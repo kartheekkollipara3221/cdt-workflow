@@ -11,39 +11,55 @@ using Microsoft.Extensions.Configuration;
 
 namespace BBH.CP.Atlas.Service
 {
+    /// <summary>The local stand-in of the base class of the app services.</summary>
     public abstract class CPApplicationService : IApplicationService
     {
         #region Properties
 
+        /// <inheritdoc/>
         public CPSharepointContext? Context { get; set; }
+        /// <inheritdoc/>
         public IConfiguration? Configuration { get; set; }
+        /// <inheritdoc/>
         public CPUser? User { get; set; }
+        /// <inheritdoc/>
         public CPApplicationCode Code { get; set; }
+        /// <inheritdoc/>
         public CPApplicationCode? ParentCode { get; set; }
+        /// <inheritdoc/>
         public CPAtlasApplicationConfig? AppConfig { get; set; }
+        /// <inheritdoc/>
         public CPAtlasDashboard? Dashboard { get; set; }
 
         #endregion Properties
 
         #region Abstract Method
 
+        /// <inheritdoc/>
         public abstract CPAtlasPage SavePage(CPAtlasPage input, IFormFileCollection files);
+        /// <inheritdoc/>
         public abstract CPAtlasPage RemovePage(int id);
 
         #endregion Abstract Method
 
         #region Virtual Method
 
+        /// <summary>Throws in the stand-in. The platform overrides it.</summary>
+        /// <exception cref="NotSupportedException">Always.</exception>
         public virtual CPAtlasDashboard LoadDashboard()
         {
             throw new NotSupportedException("Stand-in: the legacy LoadDashboard is not available locally.");
         }
 
+        /// <summary>Throws in the stand-in. The platform overrides it.</summary>
+        /// <exception cref="NotSupportedException">Always.</exception>
         public virtual void AuditLog(CPAtlasPage page)
         {
             throw new NotSupportedException("Stand-in: the legacy AuditLog is not available locally.");
         }
 
+        /// <summary>Throws in the stand-in. The platform overrides it.</summary>
+        /// <exception cref="NotSupportedException">Always.</exception>
         public virtual List<CPAuditLog> GetAuditLog(string appCode, int refID)
         {
             throw new NotSupportedException("Stand-in: the legacy GetAuditLog is not available locally.");

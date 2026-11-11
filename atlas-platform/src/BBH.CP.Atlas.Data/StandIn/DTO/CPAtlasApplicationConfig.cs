@@ -2,8 +2,8 @@
 // Target: Data/Data/DTO/CPAtlasApplicationConfig.cs. Same classes, properties and namespaces.
 // Differences from the target copy:
 //   * The classes are "partial". The platform adds its new optional properties in Platform/ partial files.
-//     Integration: add the word "partial" to these class declarations at the target (INTEGRATION.md).
-//   * CPWorkflowNotification.Request is left out (workflow engine type; no workflow in P1).
+//     Integration: add the word "partial" to these class declarations at the target.
+//   * CPWorkflowNotification.Request is left out (workflow engine type; release P1 has no workflow).
 //   * Only the extension methods that the platform uses are copied.
 using BBH.CP.Atlas.Data.Enumerations;
 
@@ -179,8 +179,13 @@ namespace BBH.CP.Atlas.Data.DTO
         public List<string>? HideControls { get; set; }
     }
 
+    /// <summary>Finds the controls and buttons of a form section (a copy of the target methods).</summary>
     public static class CPApplicationConfigExtension
     {
+        /// <summary>
+        /// Returns the child controls whose Field is equal to <paramref name="field"/> (ignore case).
+        /// Returns null if the section has no controls.
+        /// </summary>
         public static List<CPApplicationControl>? FindControlByField(this CPApplicationSection section, string field)
         {
             List<CPApplicationControl>? lstResult = [];
@@ -201,6 +206,10 @@ namespace BBH.CP.Atlas.Data.DTO
                 return null;
         }
 
+        /// <summary>
+        /// Returns the control or child control with the name (ignore case). The last match wins.
+        /// Returns null if there is no match or the section has no controls.
+        /// </summary>
         public static CPApplicationControl? FindControlByName(this CPApplicationSection section, string name)
         {
             CPApplicationControl? result = null;
@@ -223,6 +232,8 @@ namespace BBH.CP.Atlas.Data.DTO
                 return null;
         }
 
+        /// <summary>Returns the button with the name (ignore case), or null if there is no such button.</summary>
+        /// <exception cref="InvalidOperationException">The section has more than one button with the name.</exception>
         public static CPButton? FindButton(this CPApplicationSection section, string name)
         {
             if (section != null && section.Buttons != null && section.Buttons.Count > 0

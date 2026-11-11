@@ -1,5 +1,5 @@
 // STAND-IN: do not copy to the target.
-// The local demo host (spec 12, 11.3). Program.cs and the endpoint tests use it.
+// The local demo host. Program.cs and the endpoint tests use it.
 using BBH.CP.Atlas.App.Platform;
 using BBH.CP.Atlas.App.UserAuthentication;
 using BBH.CP.Atlas.Data;
@@ -12,10 +12,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BBH.CP.Atlas.App.StandIn;
 
+/// <summary>Builds the local demo host with the platform lines, the stand-in authentication and the controllers.</summary>
 public static class StandInHost
 {
+    /// <summary>The name of the CORS policy for the client origins in AppSettings:HostedClientURL.</summary>
     public const string CorsPolicy = "_corsOrigins";
 
+    /// <summary>
+    /// Creates the local web application.
+    /// </summary>
+    /// <param name="args">The command-line arguments.</param>
+    /// <param name="configure">An optional change to the builder before the services are added. The tests use it.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The authentication is "Fixed" and the environment is not Development.
+    /// </exception>
     public static WebApplication Create(string[] args, Action<WebApplicationBuilder>? configure = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -34,7 +44,7 @@ public static class StandInHost
         if (string.Equals(configuration["StandIn:Authentication"], "Negotiate", StringComparison.OrdinalIgnoreCase))
             builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme).AddNegotiate();
         else if (!builder.Environment.IsDevelopment())
-            // Review HO-10: on a shared QC or demo machine each caller would be the service account, with its roles.
+            // On a shared QC or demo machine, each caller would be the service account, with its roles.
             throw new InvalidOperationException(
                 $"The stand-in Fixed authentication runs only in Development (this is {builder.Environment.EnvironmentName}). Set StandIn:Authentication = Negotiate.");
         else

@@ -1,4 +1,4 @@
--- CP Atlas: active user roles view (spec 06, section 4.4, finding SE-03).
+-- CP Atlas: active user roles view. It returns only the roles of active rows.
 -- Additive DDL. Makes one view. Changes no data. Safe to run again (CREATE OR ALTER).
 -- Run in the CP Atlas database (cp_sharepoint). In QC and production the DBA runs it.
 --
@@ -35,7 +35,7 @@ WHERE ISNULL(u.IsDeleted, 0) = 0
   AND ISNULL(ue.IsDeleted, 0) = 0
   AND ISNULL(e.IsDeleted, 0) = 0
   AND ISNULL(a.IsDeleted, 0) = 0
-  -- Review 3 RV-08: a row with no LAN ID, app code or role name gives no role (the target owns this data).
+  -- A row with no LAN ID, app code or role name gives no role. The target owns this data.
   AND u.LanID IS NOT NULL
   AND a.Code IS NOT NULL
   AND e.Name IS NOT NULL;

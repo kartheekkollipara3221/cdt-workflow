@@ -1,16 +1,24 @@
 namespace BBH.CP.Atlas.Data.Platform;
 
-/// <summary>Maps SQL Server column types to CLR types and EF Core store types (spec 05, 6.2 and 6.4).</summary>
+/// <summary>Maps SQL Server column types to CLR types and EF Core store types.</summary>
 public static class AtlasSqlTypes
 {
+    /// <summary>Returns the SQL type name in lowercase, with no spaces at the start or end.</summary>
     public static string Normalize(string sqlType) => sqlType.Trim().ToLowerInvariant();
 
+    /// <summary>Returns true for a rowversion (timestamp) type.</summary>
     public static bool IsRowVersion(string sqlType) => Normalize(sqlType) is "timestamp" or "rowversion";
 
+    /// <summary>Returns true for a char, varchar, nchar or nvarchar type.</summary>
     public static bool IsText(string sqlType) => Normalize(sqlType) is "char" or "varchar" or "nchar" or "nvarchar";
 
+    /// <summary>Returns true if the platform can map the type of the column.</summary>
     public static bool IsSupported(AtlasColumn column) => ClrType(column) != null;
 
+    /// <summary>
+    /// Returns the CLR type of the column, or null if the platform does not support the SQL type.
+    /// A nullable column of a value type gives a <see cref="Nullable{T}"/> type.
+    /// </summary>
     public static Type? ClrType(AtlasColumn column)
     {
         Type? baseType = Normalize(column.SqlType) switch
@@ -34,6 +42,7 @@ public static class AtlasSqlTypes
         return baseType.IsValueType && column.IsNullable ? typeof(Nullable<>).MakeGenericType(baseType) : baseType;
     }
 
+    /// <summary>Returns the EF Core store type of the column, with its length, precision or scale.</summary>
     public static string StoreType(AtlasColumn column)
     {
         string type = Normalize(column.SqlType);

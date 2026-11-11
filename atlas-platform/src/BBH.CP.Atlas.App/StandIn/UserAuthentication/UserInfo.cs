@@ -6,13 +6,18 @@ using BBH.CP.Atlas.Data.DTO;
 
 namespace BBH.CP.Atlas.App.UserAuthentication
 {
+    /// <summary>Gives the user of the current request.</summary>
     public interface IUserInfo
     {
+        /// <summary>Returns the user of the current request.</summary>
         CPUser GetCurrentUser();
     }
 
+    /// <summary>Reads the current user from the Windows login and the StandIn:Users settings.</summary>
     public class UserInfo(IHttpContextAccessor httpContextAccessor, IConfiguration configuration) : IUserInfo
     {
+        /// <inheritdoc/>
+        /// <exception cref="InvalidOperationException">The request has no identity name.</exception>
         public CPUser GetCurrentUser()
         {
             var username = httpContextAccessor.HttpContext?.User?.Identity?.Name;

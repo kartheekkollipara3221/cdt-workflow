@@ -1,14 +1,20 @@
-// COPY to the target: WebUi/src/app/platform/form/. Review NG-08: the accessible name, state and error of the input
-// inside a renderer. It works on the rendered DOM, so it does not need inputs of the @pbdev controls.
+// COPY to the target: WebUi/src/app/platform/form/.
 import { AfterViewChecked, Directive, ElementRef, inject, input } from '@angular/core';
 
+/**
+ * Sets the accessible name, state and error of the input inside a renderer.
+ *
+ * It works on the rendered DOM, so it does not need inputs of the @pbdev controls.
+ */
 @Directive({ selector: '[atlasFieldA11y]' })
 export class AtlasFieldA11yDirective implements AfterViewChecked {
-  /** The control name: the error has the id "err_" + name, the label text has the id "lbl_" + name. */
+  /** The control name. The error has the id "err_" + name. The label text has the id "lbl_" + name. */
   readonly atlasFieldA11y = input.required<string>();
+  /** True when the field is required. */
   readonly required = input(false);
+  /** True when the field has an error. The input then refers to the error text. */
   readonly invalid = input(false);
-  /** True when the label has no "for" (for example a checkbox): the input gets aria-labelledby. */
+  /** True when the label has no "for" attribute, for example on a checkbox. The input then gets aria-labelledby. */
   readonly labelledBy = input(false);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

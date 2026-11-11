@@ -20,23 +20,38 @@ namespace BBH.CP.Atlas.Service.Application
     /// <summary>The state of one load, for the <see cref="ConfigSectionService.OnLoad"/> hook.</summary>
     public sealed class AtlasLoadContext
     {
+        /// <summary>The manifest of the app.</summary>
         public required AtlasAppManifest Manifest { get; init; }
+
+        /// <summary>The form configuration of the app.</summary>
         public required CPAtlasApplicationConfig Form { get; init; }
+
+        /// <summary>The section that the load returns. A hook can change it.</summary>
         public required CPApplicationSection Section { get; init; }
+
+        /// <summary>The fields of the section.</summary>
         public required AtlasFormFields Fields { get; init; }
 
         /// <summary>The stored record, or null for a new record.</summary>
         public IReadOnlyDictionary<string, object?>? Record { get; init; }
 
+        /// <summary>True when the load is for a new record.</summary>
         public bool IsNew => Record == null;
     }
 
     /// <summary>The state of one save, for the <see cref="ConfigSectionService.OnBeforeSave"/> and OnAfterSave hooks.</summary>
     public sealed class AtlasSaveContext
     {
+        /// <summary>The manifest of the app.</summary>
         public required AtlasAppManifest Manifest { get; init; }
+
+        /// <summary>The form configuration of the app.</summary>
         public required CPAtlasApplicationConfig Form { get; init; }
+
+        /// <summary>The section of the form.</summary>
         public required CPApplicationSection Section { get; init; }
+
+        /// <summary>The fields of the section, with the rules for this user and record.</summary>
         public required AtlasFormFields Fields { get; init; }
 
         /// <summary>The record that is saved. A hook can change the values (column name to CLR value).</summary>
@@ -45,20 +60,24 @@ namespace BBH.CP.Atlas.Service.Application
         /// <summary>The wire values before the save (empty for a new record).</summary>
         public required IReadOnlyDictionary<string, string?> Previous { get; init; }
 
+        /// <summary>True when the save creates a new record.</summary>
         public required bool IsNew { get; init; }
 
-        /// <summary>A hook adds an error to stop the save (OnBeforeSave only).</summary>
+        /// <summary>The errors that stop the save. Only OnBeforeSave can add to them.</summary>
         public List<CPPageError> Errors { get; } = [];
     }
 
     /// <summary>
-    /// The generic Section Master service (spec 01, 5.7-5.13; spec 12). A new app needs no class: the manifest names
-    /// the tables and the form JSON gives the behaviour. A module class inherits from this class only to add option
-    /// providers or a hook (OnLoad, OnBeforeSave, OnAfterSave).
+    /// Loads, saves, deletes and audits the records of a platform app from its metadata.
     /// </summary>
+    /// <remarks>
+    /// A new app needs no class. The manifest names the tables, and the form JSON gives the behaviour.
+    /// A module class inherits from this class only to add option providers or a hook
+    /// (OnLoad, OnBeforeSave, OnAfterSave).
+    /// </remarks>
     public partial class ConfigSectionService : CPApplicationService, ISectionService, IAtlasModule
     {
-        /// <summary>Columns that only the server writes (spec 01, 5.9 step 9).</summary>
+        /// <summary>The columns that only the server writes.</summary>
         public static readonly IReadOnlySet<string> SystemColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             AtlasTable.KeyColumnName, "CreatedBy", "CreatedDate", "ModifiedBy", "ModifiedDate", AtlasTable.SoftDeleteColumnName, "RowVersion"
@@ -67,6 +86,8 @@ namespace BBH.CP.Atlas.Service.Application
         private Dictionary<string, IAtlasOptionProvider>? _providers;
         private AtlasAppManifest? _manifest;
 
+        /// <summary>Creates the service with the shared platform services.</summary>
+        /// <exception cref="ArgumentNullException"><paramref name="services"/> is null.</exception>
         public ConfigSectionService(AtlasModuleServices services)
         {
             Services = services ?? throw new ArgumentNullException(nameof(services));
@@ -75,49 +96,67 @@ namespace BBH.CP.Atlas.Service.Application
             Logger = services.LoggerFactory.CreateLogger("BBH.CP.Atlas.Platform.Section");
         }
 
-        /// <summary>Set by the resolver (IAtlasModule).</summary>
+        /// <summary>The code of the app. The module resolver sets it (IAtlasModule).</summary>
         public string AppCode { get; set; } = "";
 
+        /// <summary>The shared platform services.</summary>
         protected AtlasModuleServices Services { get; }
 
+        /// <summary>The logger of the section service.</summary>
         protected ILogger Logger { get; }
 
+        /// <summary>
+        /// The manifest of the app. A missing or disabled app gives a "not found" problem.
+        /// </summary>
         protected AtlasAppManifest Manifest =>
             _manifest ??= Services.ConfigStore.FindManifest(AppCode) is { Enabled: true } manifest
                 ? manifest
                 : throw AtlasProblemException.NotFound($"App '{AppCode}' is not registered.");
 
-        /// <summary>Option providers of the app. They win over a platform provider with the same name.</summary>
+        /// <summary>The option providers of the app. They have priority over a platform provider with the same name.</summary>
         protected virtual IEnumerable<IAtlasOptionProvider> AppOptionProviders => [];
 
         #region Hooks
 
-        /// <summary>After the values, options and defaults; before the rules.</summary>
+        /// <summary>Runs in a load after the values, options and defaults, and before the rules.</summary>
         protected virtual void OnLoad(AtlasLoadContext context)
         {
         }
 
-        /// <summary>After the validation and the mapping; before the database save. Add to Errors to stop.</summary>
+        /// <summary>
+        /// Runs in a save after the validation and the mapping, and before the database save.
+        /// Add an error to <see cref="AtlasSaveContext.Errors"/> to stop the save.
+        /// </summary>
         protected virtual void OnBeforeSave(AtlasSaveContext context)
         {
         }
 
         /// <summary>
-        /// After the commit. The hook must not throw: the record is already saved, so an exception is only logged
-        /// (Atlas.AfterSaveFailed) and the save returns success with the ID (review SV-06).
+        /// Runs in a save after the commit.
         /// </summary>
+        /// <remarks>
+        /// The hook must not throw. The record is already saved, so the service only logs an exception
+        /// (Atlas.AfterSaveFailed). The save then returns success with the ID.
+        /// </remarks>
         protected virtual void OnAfterSave(AtlasSaveContext context)
         {
         }
 
         #endregion Hooks
 
-        /// <summary>The names of all option providers of this app (for the start-up check).</summary>
+        /// <summary>Returns the names of all option providers of this app. The start-up check uses them.</summary>
         public IEnumerable<string> OptionProviderNames() =>
             Services.OptionProviders.Concat(AppOptionProviders).Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase);
 
         #region Load
 
+        /// <summary>
+        /// Returns the form section of a record (ID greater than 0) or of a new record, with values, options and rules.
+        /// </summary>
+        /// <remarks>
+        /// The load demands View access for a record and Create access for a new record.
+        /// A field that a rule hides from the user gets no value and no options.
+        /// </remarks>
         public CPApplicationSection LoadPage(CPAtlasPage page)
         {
             ArgumentNullException.ThrowIfNull(page);
@@ -163,10 +202,12 @@ namespace BBH.CP.Atlas.Service.Application
         }
 
         /// <summary>
-        /// Review 3 RV-02: a field that the JSON shows and a rule hides from this user gets no value and no options in
-        /// the load. Hidden on the client only is not enough: the value was in the JSON of the response.
-        /// A field that the JSON hides (an effect can show it) keeps its value.
+        /// Removes the value and the options of each field that a rule hides from the current user.
         /// </summary>
+        /// <remarks>
+        /// A field that is hidden only on the client is not safe, because its value is in the response JSON.
+        /// A field that the JSON hides keeps its value, because an effect can show it.
+        /// </remarks>
         private static void ClearRuleHiddenValues(AtlasFormFields fields)
         {
             foreach (AtlasFormField field in fields.All.Where(x => x.HiddenByRule))
@@ -185,7 +226,7 @@ namespace BBH.CP.Atlas.Service.Application
             }
         }
 
-        /// <summary>Review 3 RV-02: the fields (Name and column) that the rules hide from this user for this record.</summary>
+        /// <summary>Returns the fields (Name and column) that the rules hide from this user for this record.</summary>
         private HashSet<string> RuleHiddenFields(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Dictionary<string, object?>? record)
         {
             HashSet<string> hidden = new(StringComparer.OrdinalIgnoreCase);
@@ -246,13 +287,16 @@ namespace BBH.CP.Atlas.Service.Application
                     && string.IsNullOrEmpty(control.Value))
                     control.Value = ResolveDefault(token, control.Options);
 
-                // A person shown as a name (spec 06, 4.5): the value stays the LAN ID.
+                // The client shows a person as a name. The value stays the LAN ID.
                 if (string.Equals(control.Type, "user", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(control.Value))
                     control.Options = [new CPKeyValue { Label = Services.Directory.DisplayName(control.Value), Value = control.Value }];
             }
         }
 
-        /// <summary>Default tokens (spec 01, 10.2): {User.LanID}, {User.DisplayName}, {Today}, {Options[n]}; else the text.</summary>
+        /// <summary>
+        /// Returns the value of a default token: {User.LanID}, {User.DisplayName}, {Today} or {Options[n]}.
+        /// Other text is the value.
+        /// </summary>
         protected string? ResolveDefault(string token, IReadOnlyList<CPKeyValue>? options) =>
             AtlasDefaultTokens.Resolve(token, Services.User.LanId, Services.User.DisplayName, Services.Time.GetLocalNow(), options);
 
@@ -260,6 +304,13 @@ namespace BBH.CP.Atlas.Service.Application
 
         #region Save
 
+        /// <summary>
+        /// Saves a new or changed record and writes the audit entry.
+        /// </summary>
+        /// <remarks>
+        /// The server accepts only the fields that the user can change, and checks the options, validators and version.
+        /// When a check fails, the result has ID 0, no outputs and the errors. Nothing is saved.
+        /// </remarks>
         public override CPAtlasPage SavePage(CPAtlasPage input, IFormFileCollection files)
         {
             ArgumentNullException.ThrowIfNull(input);
@@ -314,7 +365,7 @@ namespace BBH.CP.Atlas.Service.Application
             /// <summary>The fields that the server effects set (SetFromOption, Set, Clear).</summary>
             public HashSet<string> Derived { get; set; } = [];
 
-            /// <summary>The Computed columns (spec 01, 10.2).</summary>
+            /// <summary>The Computed columns.</summary>
             public HashSet<string> Computed { get; set; } = [];
             public Dictionary<AtlasFormField, string?> Accepted { get; set; } = [];
             public Dictionary<string, object?> Record { get; set; } = null!;
@@ -325,7 +376,7 @@ namespace BBH.CP.Atlas.Service.Application
                 Submitted.TryGetValue(field.Name, out string? value) ? value : Previous.GetValueOrDefault(field.Field);
         }
 
-        /// <summary>Save steps 1-2: the stored record and the access check.</summary>
+        /// <summary>Reads the stored record and checks the access (save steps 1 and 2).</summary>
         private void LoadStored(SaveState state)
         {
             AtlasAppManifest manifest = state.Manifest;
@@ -338,9 +389,9 @@ namespace BBH.CP.Atlas.Service.Application
             else
             {
                 Services.Access.Demand(manifest, state.Form, AtlasOperation.Create, null, 0);
-                // Review 3 RV-04: a new record is never only logged (as a Delete, review SV-02). In LogOnly the rules make
-                // the fields read-only for such a user, so the save would insert a row of defaults only. The load of a
-                // new form stays LogOnly.
+                // A denied create is always refused, also in LogOnly (the same as a Delete). In LogOnly the rules make
+                // the fields read-only for such a user, so the save would insert a row of defaults only.
+                // The load of a new form stays LogOnly.
                 AtlasAccessDecision create = Services.Access.Evaluate(manifest, state.Form, AtlasOperation.Create, null);
                 if (!create.Allowed)
                     throw AtlasProblemException.Forbidden(create.Reason);
@@ -349,7 +400,7 @@ namespace BBH.CP.Atlas.Service.Application
             state.Previous = Snapshot(state.Table, state.Stored);
         }
 
-        /// <summary>Save step 3: the effective section, with the rules for this user and record.</summary>
+        /// <summary>Applies the rules for this user and record to the section (save step 3).</summary>
         private void ApplyRules(SaveState state)
         {
             AtlasAppManifest manifest = state.Manifest;
@@ -360,7 +411,7 @@ namespace BBH.CP.Atlas.Service.Application
             state.Fields = AtlasFormFields.From(state.Section, outcome);
         }
 
-        /// <summary>Save steps 4-5: the outputs, the server part of the Effects, and the allow list.</summary>
+        /// <summary>Reads the outputs, applies the server effects and checks the allow list (save steps 4 and 5).</summary>
         private void ReadAndFilter(SaveState state)
         {
             state.Submitted = ReadOutputs(state.Input, state.Fields, state.Errors);
@@ -378,16 +429,19 @@ namespace BBH.CP.Atlas.Service.Application
                         AtlasLog.FieldIgnored(Logger, state.Manifest.Code, field.Name, "ServerSet");
                 });
 
-            // Review SV-12: a refused field is a warning, so a probe or a client defect can be found in the log.
+            // Log a refused field as a warning. Thus the log shows a probe or a client defect.
             foreach (CPPageError refusal in state.Errors.Where(x => x.Code is "NotAllowed" or "NotInOptions" or "InvalidGrid"))
                 AtlasLog.FieldRefused(Logger, Services.User.LanId, state.Manifest.Code, state.Input.ID, refusal.Field ?? "", refusal.Code);
         }
 
-        /// <summary>A field that only the server writes: a system column, a Computed column or a server effect target.</summary>
+        /// <summary>Returns true for a field that only the server writes: a system column, a Computed column or a server effect target.</summary>
         private static bool IsServerSet(SaveState state, AtlasFormField field) =>
             SystemColumns.Contains(field.Field) || state.Computed.Contains(field.Field) || state.Derived.Contains(field.Name);
 
-        /// <summary>Save step 6: validators and the Require effects (visible and enabled fields only; one error for each field).</summary>
+        /// <summary>
+        /// Runs the validators and the Require effects on the visible and enabled fields (save step 6).
+        /// Each field gets one error at most.
+        /// </summary>
         private void ValidateFields(SaveState state)
         {
             HashSet<string> refused = new(state.Errors.Select(x => x.Field ?? ""), StringComparer.OrdinalIgnoreCase);
@@ -403,7 +457,7 @@ namespace BBH.CP.Atlas.Service.Application
 
                 if (field.IsGridField && string.IsNullOrWhiteSpace(value) && field.Validator?.Integer == true)
                 {
-                    value = "0"; // spec 01, 10.3: an empty day value is 0
+                    value = "0"; // an empty day value is 0
                     state.Accepted[field] = value;
                 }
 
@@ -412,7 +466,12 @@ namespace BBH.CP.Atlas.Service.Application
             }
         }
 
-        /// <summary>Save step 7: the version token. Review DA-02: the rowversion column is found by its type, and an update with no Version is refused.</summary>
+        /// <summary>
+        /// Checks the version token (save step 7). A different version gives a conflict.
+        /// </summary>
+        /// <remarks>
+        /// The service finds the rowversion column by its type. With RequireVersion, an update with no Version is refused.
+        /// </remarks>
         private void CheckVersion(SaveState state)
         {
             if (state.Stored == null || RowVersion(state.Table) == null)
@@ -427,7 +486,7 @@ namespace BBH.CP.Atlas.Service.Application
                 state.Errors.Add(Conflict());
         }
 
-        /// <summary>Save step 8: conversion and mapping of the accepted values, the server effect values and the defaults.</summary>
+        /// <summary>Converts and maps the accepted values, the server effect values and the defaults to the record (save step 8).</summary>
         private void MapRecord(SaveState state)
         {
             AtlasTable table = state.Table;
@@ -456,7 +515,12 @@ namespace BBH.CP.Atlas.Service.Application
             }
         }
 
-        /// <summary>Computed fields (spec 01, 10.2) and step 9, the system fields: UTC from TimeProvider (or local time, SystemTime Local, review DA-11); people as LAN IDs.</summary>
+        /// <summary>
+        /// Sets the Computed fields and the system fields (save step 9).
+        /// </summary>
+        /// <remarks>
+        /// The times come from TimeProvider: UTC, or local time when SystemTime is Local. People are LAN IDs.
+        /// </remarks>
         private void ComputeAndSystemFields(SaveState state)
         {
             AtlasTable table = state.Table;
@@ -477,7 +541,7 @@ namespace BBH.CP.Atlas.Service.Application
             SetIfColumn(table, record, "ModifiedDate", now);
         }
 
-        /// <summary>Step 10: the OnBeforeSave hook. Its errors stop the save.</summary>
+        /// <summary>Runs the OnBeforeSave hook (save step 10). Its errors stop the save.</summary>
         private void RunBeforeSave(SaveState state)
         {
             state.Context = new AtlasSaveContext
@@ -494,7 +558,7 @@ namespace BBH.CP.Atlas.Service.Application
             state.Errors.AddRange(state.Context.Errors);
         }
 
-        /// <summary>Steps 11-12: save and audit in one transaction. False: the errors say why.</summary>
+        /// <summary>Saves the record and the audit entry in one transaction (save steps 11 and 12). Returns false when the save fails; the errors tell why.</summary>
         private bool Persist(SaveState state)
         {
             AtlasTable table = state.Table;
@@ -510,7 +574,7 @@ namespace BBH.CP.Atlas.Service.Application
                 () => Changes(state.Fields, table, state.Previous, state.Record, state.IsNew), state.Errors);
         }
 
-        /// <summary>After the commit: the OnAfterSave hook and the result (ID, Version, Outputs).</summary>
+        /// <summary>Runs the OnAfterSave hook after the commit and returns the result (ID, Version, Outputs).</summary>
         private CPAtlasPage Complete(SaveState state)
         {
             AtlasTable table = state.Table;
@@ -521,7 +585,7 @@ namespace BBH.CP.Atlas.Service.Application
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // Review SV-06: a 500 here would make the user save again with ID = 0 and create a duplicate.
+                // The record is saved. A 500 here would make the user save again with ID = 0 and create a duplicate.
                 AtlasLog.AfterSaveFailed(Logger, ex, state.Manifest.Code, record[table.Key!.Name], Services.User.LanId);
             }
 
@@ -529,20 +593,22 @@ namespace BBH.CP.Atlas.Service.Application
             result.ID = (int)record[table.Key!.Name]!;
             result.Version = VersionOf(table, record);
             result.Outputs = [.. state.Fields.All
-                .Where(x => table.HasColumn(x.Field) && !x.HiddenByRule) // review 3 RV-02
+                .Where(x => table.HasColumn(x.Field) && !x.HiddenByRule) // no value of a rule-hidden field
                 .Select(x => new CPPageOutput { Name = x.Name, Value = Wire(record.GetValueOrDefault(table.Find(x.Field)!.Name), table.Find(x.Field)!) })];
             return result;
         }
 
         /// <summary>
-        /// A changed value of a control with options (Options or OptionsSource) must be one of the options that the server
-        /// gives to this user (review SV-01). An unchanged saved value stays valid (KeepSavedValue, B10).
+        /// Returns an error when a changed value of a control with options is not one of the options for this user.
         /// </summary>
+        /// <remarks>
+        /// The options come from Options or OptionsSource on the server. An unchanged saved value stays valid (KeepSavedValue).
+        /// </remarks>
         private CPPageError? OptionError(AtlasFormField field, string? value, string? previousValue, AtlasTable table)
         {
             CPApplicationControl control = field.Control;
             if (field.IsGridField || string.IsNullOrEmpty(value)
-                || AtlasValueConverter.SameValue(value, previousValue, table.Find(field.Field)) // review 3 RV-L06 (DA-06)
+                || AtlasValueConverter.SameValue(value, previousValue, table.Find(field.Field)) // compare by column type, not as text
                 || string.Equals(control.Type, "user", StringComparison.OrdinalIgnoreCase)
                 || control.OptionsSource == null && control.Options is not { Count: > 0 })
                 return null;
@@ -569,7 +635,7 @@ namespace BBH.CP.Atlas.Service.Application
                 {
                     if (ReadGridRow(output.Value) is not { } row)
                     {
-                        // Review SV-12: grid JSON that does not parse is an error, not an empty row.
+                        // Grid JSON that does not parse is an error, not an empty row.
                         errors.Add(Error(grid.Name, "InvalidGrid", $"{grid.Label ?? grid.Name} has values that are not valid."));
                         continue;
                     }
@@ -594,7 +660,7 @@ namespace BBH.CP.Atlas.Service.Application
             return values;
         }
 
-        /// <summary>The first row of a grid output; null when the text is not valid JSON.</summary>
+        /// <summary>Returns the first row of a grid output, or null when the text is not valid JSON.</summary>
         private static List<(string Name, string? Value)>? ReadGridRow(string? json)
         {
             List<(string Name, string? Value)> values = [];
@@ -611,7 +677,7 @@ namespace BBH.CP.Atlas.Service.Application
                 return null;
             }
 
-            // Review SV-10: the document is disposed (it uses pooled memory).
+            // Dispose the document, because it uses pooled memory.
             using (document)
             {
                 JsonElement root = document.RootElement;
@@ -637,7 +703,7 @@ namespace BBH.CP.Atlas.Service.Application
         {
             AtlasColumn? column = table.Find(fieldName);
             if (column == null)
-                return; // the start-up check reports a field with no column (C8)
+                return; // the start-up check reports a field with no column
 
             AtlasConversionResult converted = AtlasValueConverter.FromWire(value, column);
             if (converted.Success)
@@ -705,7 +771,7 @@ namespace BBH.CP.Atlas.Service.Application
             finally
             {
                 platform.ChangeTracker.Clear();
-                // Review 3 RV-L01: the platform context does not own the shared transaction; let it go, so a second save
+                // The platform context does not own the shared transaction. Release it, so that a second save
                 // in the same scope can start a new one.
                 platform.Database.UseTransaction(null);
             }
@@ -715,13 +781,19 @@ namespace BBH.CP.Atlas.Service.Application
 
         #region Dashboard
 
-        /// <summary>The dashboard of the app (spec 03, 4.1-4.7).</summary>
+        /// <summary>Returns the dashboard of the app.</summary>
         public override CPAtlasDashboard LoadDashboard() => Dashboard = Services.Dashboards.Load(Manifest.Code);
 
         #endregion Dashboard
 
         #region Remove and audit
 
+        /// <summary>
+        /// Marks a record as deleted (soft delete) and writes the audit entry.
+        /// </summary>
+        /// <remarks>
+        /// The app must have a SoftDelete setting. The delete demands Delete access.
+        /// </remarks>
         public override CPAtlasPage RemovePage(int id)
         {
             AtlasAppManifest manifest = Manifest;
@@ -749,12 +821,15 @@ namespace BBH.CP.Atlas.Service.Application
             return result;
         }
 
-        /// <summary>The old client audit call. With AuditMode Server the server already wrote the entry (spec 01, 5.12).</summary>
+        /// <summary>Logs and ignores the old client audit call. With AuditMode Server, the server already wrote the entry.</summary>
         public override void AuditLog(CPAtlasPage page)
         {
             AtlasLog.ClientAuditIgnored(Logger, Manifest.Code, Manifest.AuditMode.ToString());
         }
 
+        /// <summary>
+        /// Returns the History of a record. The value of a field that the rules hide from the user shows as ***.
+        /// </summary>
         public override List<CPAuditLog> GetAuditLog(string appCode, int refID)
         {
             AtlasAppManifest manifest = Manifest;
@@ -763,7 +838,6 @@ namespace BBH.CP.Atlas.Service.Application
             Services.Access.Demand(manifest, form, AtlasOperation.History, record, refID);
             List<CPAuditLog> entries = Services.Audit.Read(manifest, refID);
 
-            // Review 3 RV-02: the History shows *** for a field that the rules hide from this user.
             HashSet<string> hidden = RuleHiddenFields(manifest, form, record);
             if (hidden.Count > 0)
                 foreach (CPAuditLog entry in entries)
@@ -777,11 +851,16 @@ namespace BBH.CP.Atlas.Service.Application
 
         #region Helpers
 
+        /// <summary>Returns the main table of the app. A manifest with no Table gives a configuration problem.</summary>
         protected AtlasTable MainTable(AtlasAppManifest manifest) =>
             string.IsNullOrWhiteSpace(manifest.Table)
                 ? throw AtlasProblemException.Config($"App '{manifest.Code}' has no Table in its manifest.")
                 : Services.PlatformContext.Registry.Get(manifest.Table);
 
+        /// <summary>
+        /// Returns the option provider with this name. An app provider has priority over a platform provider.
+        /// An unknown name gives a configuration problem.
+        /// </summary>
         protected IAtlasOptionProvider Provider(string name)
         {
             _providers ??= Services.OptionProviders.Concat(AppOptionProviders)
@@ -810,7 +889,7 @@ namespace BBH.CP.Atlas.Service.Application
             return values;
         }
 
-        /// <summary>A column value on the wire, with the SystemTime of the app (review DA-11).</summary>
+        /// <summary>Returns a column value as wire text, with the SystemTime of the app.</summary>
         private string? Wire(object? value, AtlasColumn column) => AtlasValueConverter.ToWire(value, column, Manifest.SystemTimeIsUtc);
 
         private DateTime SystemNow() => Manifest.SystemTimeIsUtc ? Services.Time.GetUtcNow().UtcDateTime : Services.Time.GetLocalNow().DateTime;
@@ -837,9 +916,12 @@ namespace BBH.CP.Atlas.Service.Application
             Error("", "Conflict", "Another user changed this record after you opened it. Open the record again and repeat your change.");
 
         /// <summary>
-        /// A save that stops. The mapping may have changed the tracked record already, so the change tracker is cleared:
-        /// a later SaveChanges in the same request (a hook, a future feature) cannot write refused values (review SV-10).
+        /// Returns the result of a save that stops: ID 0, no outputs and the errors.
         /// </summary>
+        /// <remarks>
+        /// The mapping can already change the tracked record, so the method clears the change tracker.
+        /// Thus a later SaveChanges in the same request cannot write refused values.
+        /// </remarks>
         private CPAtlasPage Failed(CPAtlasPage result, List<CPPageError> errors)
         {
             Services.PlatformContext.ChangeTracker.Clear();

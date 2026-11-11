@@ -3,10 +3,12 @@ using Microsoft.Data.SqlClient;
 namespace BBH.CP.Atlas.Data.Platform;
 
 /// <summary>
-/// Reads the columns of the registered tables from sys.columns (spec 05, 6.2 and 6.8).
-/// The API login needs no VIEW DEFINITION grant: SQL Server shows the metadata of the objects on
-/// which the login has a permission (spec 05, question 4).
+/// Reads the columns of the registered tables from sys.columns.
 /// </summary>
+/// <remarks>
+/// The API login needs no VIEW DEFINITION grant. SQL Server shows the metadata of each object on
+/// which the login has a permission.
+/// </remarks>
 public sealed class AtlasColumnMetadataReader
 {
     private const string Query = """

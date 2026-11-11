@@ -10,6 +10,7 @@ import { NumericEditor, SelectEditor, TextEditor } from './stand-in/cell-editors
 import { lookProviders } from './stand-in/shell/look.providers';
 import { standInInterceptor } from './stand-in/shell/stand-in.interceptor';
 
+/** Providers of the local stand-in app: router, HTTP client, toastr, look and grid cell editors. */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),

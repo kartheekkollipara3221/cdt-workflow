@@ -6,12 +6,18 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 namespace BBH.CP.Atlas.App.Platform;
 
 /// <summary>
-/// Changes an <see cref="AtlasProblemException"/> to a problem response with its status (404, 400, 403; 500 for a config
-/// defect). The body comes from the ProblemDetailsFactory of the host (review SV-11), so it has the same type and
-/// traceId as the other errors of the target (AddProblemDetails). Title, status and detail do not change.
+/// Changes an <see cref="AtlasProblemException"/> to a problem response with its status code.
 /// </summary>
+/// <remarks>
+/// The status is 400, 403 or 404, or 500 for a configuration error.
+/// The body comes from the ProblemDetailsFactory of the host. Thus it has the same type and traceId
+/// as the other errors of the target (AddProblemDetails). The filter keeps the title, status and detail.
+/// </remarks>
 public sealed class AtlasProblemExceptionFilter(ILogger<AtlasProblemExceptionFilter> logger) : IExceptionFilter
 {
+    /// <summary>
+    /// Writes the problem response for an <see cref="AtlasProblemException"/>. Other exceptions go to the next handler.
+    /// </summary>
     public void OnException(ExceptionContext context)
     {
         if (context.Exception is not AtlasProblemException problem)

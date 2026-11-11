@@ -4,18 +4,26 @@ using Microsoft.Extensions.Logging;
 
 namespace BBH.CP.Atlas.Service.Platform.Security;
 
+/// <summary>The operations that the access check controls.</summary>
 public enum AtlasOperation { View, Create, Edit, Delete, History }
 
+/// <summary>The result of an access check. Reason is empty when the operation is allowed.</summary>
 public sealed record AtlasAccessDecision(bool Allowed, string Reason);
 
 /// <summary>
-/// One access check for each operation (spec 06, 4.3). The platform calls it before each operation; a module does
-/// not call it itself. AccessMode LogOnly writes Atlas.AccessDenied and continues; Enforce returns 403.
-/// A Delete is never only logged (review SV-02): LogOnly keeps users at work while the role grants are checked, and
-/// that does not need a delete. The save of a new record is not only logged either (review 3 RV-04, in the save).
+/// Checks the access of the current user for each operation.
 /// </summary>
+/// <remarks>
+/// The platform calls the check before each operation. A module does not call it.
+/// In AccessMode LogOnly, a refusal writes Atlas.AccessDenied and the operation continues.
+/// In AccessMode Enforce, a refusal gives 403.
+/// A refused Delete always gives 403. LogOnly keeps users at work while the role grants are checked.
+/// That work does not need a delete. A refused save of a new record also gives 403 in all modes (see the save).
+/// </remarks>
 public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAccessService> logger)
 {
+    /// <summary>Returns the access decision for an operation. It does not log and does not throw.</summary>
+    /// <param name="record">The stored record, or null for a new record or no record.</param>
     public AtlasAccessDecision Evaluate(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasOperation operation,
         IReadOnlyDictionary<string, object?>? record)
     {
@@ -38,7 +46,8 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
         };
     }
 
-    /// <summary>Evaluates, and on denial logs (LogOnly) or throws 403 (Enforce).</summary>
+    /// <summary>Checks the access for an operation and logs a refusal.</summary>
+    /// <exception cref="AtlasProblemException">403 when the access is refused in Enforce mode, or for a Delete.</exception>
     public void Demand(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasOperation operation,
         IReadOnlyDictionary<string, object?>? record, int recordId)
     {
@@ -52,7 +61,10 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
             throw AtlasProblemException.Forbidden(decision.Reason);
     }
 
-    /// <summary>True if the current user is an owner of the record (OwnerFields, LAN ID match). A new record: true.</summary>
+    /// <summary>
+    /// Returns true when the LAN ID of the current user is in one of the OwnerFields of the record.
+    /// For a new record, it returns true.
+    /// </summary>
     public bool IsOwner(CPAtlasApplicationConfig? form, IReadOnlyDictionary<string, object?>? record)
     {
         if (record == null)
@@ -65,9 +77,12 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
     }
 
     /// <summary>
-    /// The value of a column, with the name in any case (review SV-09): the record keys are the SQL column names, and
-    /// the start-up check also ignores case, so "TaxPreparerLanID" must find "TaxPreparerLanId".
+    /// Returns the value of a column. The name can be in any case.
     /// </summary>
+    /// <remarks>
+    /// The record keys are the SQL column names, and the start-up check also ignores case.
+    /// Thus "TaxPreparerLanID" must find "TaxPreparerLanId".
+    /// </remarks>
     private static object? ValueOf(IReadOnlyDictionary<string, object?> record, string field)
     {
         if (record.TryGetValue(field, out object? value))
@@ -78,12 +93,15 @@ public sealed class AtlasAccessService(IAtlasUserContext user, ILogger<AtlasAcce
         return null;
     }
 
+    /// <summary>Returns the permissions of the current user for a record, for the client.</summary>
+    /// <param name="record">The stored record, or null for a new record.</param>
     public CPUserPermissions UserPermissions(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, IReadOnlyDictionary<string, object?>? record) =>
         new()
         {
             CanCreate = Evaluate(manifest, form, AtlasOperation.Create, null).Allowed,
-            // Review 3 RV-17: what the save will accept. In LogOnly a denied Edit is only logged, so the client keeps the
-            // Save button (the rules still make the fields read-only); in Enforce the client hides it.
+            // CanEdit tells what the save accepts. In LogOnly, the save only logs a refused Edit.
+            // Thus the client keeps the Save button, and the rules still make the fields read-only.
+            // In Enforce, the client hides the Save button.
             CanEdit = Evaluate(manifest, form, AtlasOperation.Edit, record).Allowed || manifest.AccessMode == AtlasAccessMode.LogOnly,
             CanDelete = record != null && Evaluate(manifest, form, AtlasOperation.Delete, record).Allowed,
             CanViewHistory = record != null && Evaluate(manifest, form, AtlasOperation.History, record).Allowed

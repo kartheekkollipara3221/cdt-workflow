@@ -1,14 +1,14 @@
--- CP Atlas: TTDV2 app (spec 12, sections 3 and 4; release P1, script 040).
+-- CP Atlas: TTDV2 app (release P1, script 040). Makes the schema, tables, app row and roles of TTDV2.
 -- Made from the new-app template (sql/05-new-app-template.sql) for TTDV2.
 -- DDL + DML. Development: the target team runs it. QC and production: the DBA runs it.
 -- Additive. Safe to run again: each object is made only if it does not exist.
--- It does not change the TTD schema or any existing table, except that it makes TTDV2.General.IsDeleted
--- bit NOT NULL (step 2a, review DA-08) and the free-text columns nvarchar (step 2b, review DA-12) when an earlier
--- run made them bit NULL / varchar. A rerun adds the index IX_General_ModifiedBy (review 2 AR-05; no data change).
+-- It does not change the TTD schema or any existing table. Exception: if an earlier run made
+-- TTDV2.General.IsDeleted bit NULL, step 2a makes it bit NOT NULL. If an earlier run made the free-text
+-- columns varchar, step 2b makes them nvarchar. A rerun adds the index IX_General_ModifiedBy (no data change).
 -- Run in the CP Atlas database (cp_sharepoint).
 SET NOCOUNT ON;
 SET ANSI_NULLS ON;
-SET QUOTED_IDENTIFIER ON;   -- filtered indexes need it (sqlcmd default is OFF; finding B12)
+SET QUOTED_IDENTIFIER ON;   -- filtered indexes need it (sqlcmd default is OFF)
 SET XACT_ABORT ON;
 
 DECLARE @RunBy nvarchar(50) = N'<RUN_BY>';   -- LAN ID of the person who runs the script.
@@ -22,8 +22,8 @@ BEGIN TRY
     IF SCHEMA_ID(N'TTDV2') IS NULL
         EXEC(N'CREATE SCHEMA [TTDV2]');
 
-    -- 2. Main table. Typed columns (spec 05, question 3). People are LAN IDs (spec 06, 4.5).
-    --    System dates are UTC (spec 01, 5.9 step 9).
+    -- 2. Main table. Each field has a typed column. Each person column holds a LAN ID.
+    --    System dates are UTC.
     IF OBJECT_ID(N'TTDV2.General', N'U') IS NULL
         EXEC(N'CREATE TABLE [TTDV2].[General] (
             [ID]               int IDENTITY(10000,1) NOT NULL,
@@ -60,10 +60,10 @@ BEGIN TRY
                 AND ([SundayMinute]    IS NULL OR [SundayMinute]    BETWEEN 0 AND 1440))
         );');
 
-    -- 2a. Review DA-08 (B59, approved 2026-10-25): IsDeleted is bit NOT NULL, so the dashboard filter [IsDeleted] = 0
-    --     can seek the filtered indexes. An earlier run of this script made it bit NULL: stop if a row has NULL
-    --     (no data is changed), else drop the 2 filtered indexes (they block ALTER COLUMN), alter the column and
-    --     make the indexes again below. No data loss. Rollback: ALTER COLUMN [IsDeleted] bit NULL (drop and make
+    -- 2a. IsDeleted is bit NOT NULL, so the dashboard filter [IsDeleted] = 0 can seek the filtered indexes.
+    --     If an earlier run made it bit NULL: stop when a row has NULL (no data is changed).
+    --     Else drop the filtered indexes (they block ALTER COLUMN), alter the column and make the indexes
+    --     again below. No data loss. Rollback: ALTER COLUMN [IsDeleted] bit NULL (drop and make
     --     the indexes again in the same way).
     IF EXISTS (SELECT 1 FROM sys.columns
                WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IsDeleted' AND is_nullable = 1)
@@ -79,8 +79,8 @@ BEGIN TRY
         EXEC(N'ALTER TABLE [TTDV2].[General] ALTER COLUMN [IsDeleted] bit NOT NULL;');
     END
 
-    -- 2b. Review DA-12 (B60, approved 2026-10-25): free text is nvarchar, so pasted Unicode text is not stored as '?'.
-    --     An earlier run of this script made these columns varchar: alter them to nvarchar of the same length.
+    -- 2b. Free text is nvarchar, so pasted Unicode text is not stored as '?'.
+    --     If an earlier run made these columns varchar, alter them to nvarchar of the same length.
     --     No data loss (each varchar value fits in nvarchar). Rollback: ALTER COLUMN back to varchar (loses the
     --     characters that varchar cannot store).
     IF EXISTS (SELECT 1 FROM sys.columns
@@ -99,13 +99,13 @@ BEGIN TRY
     IF NOT EXISTS (SELECT 1 FROM sys.indexes
                    WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_TaxPreparerLanId')
         EXEC(N'CREATE INDEX [IX_General_TaxPreparerLanId] ON [TTDV2].[General] ([TaxPreparerLanId]) WHERE [IsDeleted] = 0;');
-    -- Review 2 AR-05 (2026-10-28): the "Current Tax Timesheet" tab filters CreatedBy OR TaxPreparerLanId OR ModifiedBy.
-    -- An OR can use an index union only when each column has an index; without this one the tab scans the table.
+    -- The "Current Tax Timesheet" tab filters CreatedBy OR TaxPreparerLanId OR ModifiedBy.
+    -- An OR can use an index union only when each column has an index. Without this one, the tab scans the table.
     IF NOT EXISTS (SELECT 1 FROM sys.indexes
                    WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_ModifiedBy')
         EXEC(N'CREATE INDEX [IX_General_ModifiedBy] ON [TTDV2].[General] ([ModifiedBy]) WHERE [IsDeleted] = 0;');
 
-    -- 3. Audit table (standard shape, spec 05, 6.6) + CreatedByLanId (spec 09, 4.2). UTC.
+    -- 3. Audit table in the standard shape, plus CreatedByLanId. Dates are UTC.
     IF OBJECT_ID(N'TTDV2.AuditLog', N'U') IS NULL
         EXEC(N'CREATE TABLE [TTDV2].[AuditLog] (
             [ID]             int IDENTITY(1,1) NOT NULL,
@@ -122,10 +122,10 @@ BEGIN TRY
                    WHERE object_id = OBJECT_ID(N'TTDV2.AuditLog') AND name = N'IX_AuditLog_RefID')
         EXEC(N'CREATE INDEX [IX_AuditLog_RefID] ON [TTDV2].[AuditLog] ([RefID], [RefType]);');
 
-    -- No attachment table: attachments are not in P1 (spec 12, 2.2).
+    -- No attachment table: release P1 has no attachments.
 
     -- 4. Application row. Single app (no parent).
-    --    Review 3 RV-09: a deleted or a second TTDV2 row stops the script; the roles must not go to a deleted row.
+    --    A deleted TTDV2 row or a second TTDV2 row stops the script. The roles must not go to a deleted row.
     IF EXISTS (SELECT 1 FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2' AND ISNULL(IsDeleted, 0) = 1)
         THROW 55010, 'dbo.CP_Atlas_Application has a deleted TTDV2 row. Restore it (IsDeleted = 0) or remove it, then run again.', 1;
     IF (SELECT COUNT(*) FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2') > 1
@@ -136,7 +136,7 @@ BEGIN TRY
 
     DECLARE @AppId int = (SELECT ID FROM dbo.CP_Atlas_Application WHERE Code = 'TTDV2' AND ISNULL(IsDeleted, 0) = 0);
 
-    -- 5. Roles with app-level flags (spec 01, 10.5; spec 06, 4.3).
+    -- 5. Roles with app-level flags.
     DECLARE @Roles TABLE (Name varchar(100) NOT NULL, IsAdmin bit NOT NULL, IsWrite bit NOT NULL, IsRead bit NOT NULL);
     INSERT INTO @Roles (Name, IsAdmin, IsWrite, IsRead) VALUES
         ('Read',    0, 0, 1),
@@ -149,11 +149,11 @@ BEGIN TRY
     WHERE NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_Entitlement AS e
                       WHERE e.CP_Atlas_ApplicationID = @AppId AND e.Name = r.Name);
 
-    -- 6. Permissions for the API login (QC and production; spec 05, question 4).
+    -- 6. Permissions for the API login (QC and production).
     --    Skip if the login gets the rights from a database role.
     -- GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::[TTDV2] TO [<API_PRINCIPAL>];
 
-    -- Log this script in the same transaction: the log says "applied" only when the changes are committed (review DA-07).
+    -- Log this script in the same transaction: the log says "applied" only when the changes are committed.
     IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_ScriptLog WHERE Release = N'P1' AND ScriptName = N'12-ttdv2-app.sql')
         INSERT INTO dbo.CP_Atlas_ScriptLog (ScriptName, Release) VALUES (N'12-ttdv2-app.sql', N'P1');

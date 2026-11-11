@@ -10,18 +10,24 @@ namespace BBH.CP.Atlas.Service.Platform.Dashboard;
 public sealed record AtlasTabQuery(string Sql, IReadOnlyList<SqlParameter> Parameters, IReadOnlyList<AtlasColumn> Columns);
 
 /// <summary>
-/// Makes the list query of a <c>Source: Table</c> tab (spec 03, 4.7; spec 12, 3.2). Table and column names come only
-/// from the table metadata (checked names, in bracket form); each value is a parameter. The platform always adds
-/// <c>IsDeleted = 0</c>. Filters are joined with AND; an <c>Any</c> group is joined with OR (one level only).
+/// Makes the list query of a <c>Source: Table</c> tab.
 /// </summary>
+/// <remarks>
+/// Table and column names come only from the table metadata. They are checked names in bracket form.
+/// Each value is a parameter. The platform always adds <c>IsDeleted = 0</c>.
+/// AND joins the filters. OR joins the items of an <c>Any</c> group. A group cannot contain a group.
+/// </remarks>
 public static class AtlasTabQueryBuilder
 {
+    /// <summary>The filter operators that a tab can use.</summary>
     public static readonly IReadOnlySet<string> Operators = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "Eq", "NotEq", "In", "IsNull", "NotNull", "Gt", "Lt"
     };
 
+    /// <summary>Returns the list query of a tab.</summary>
     /// <param name="resolveToken">Changes a value token ({LanId}, LANID, {AppCode}, {TabCode}) to its value; other text stays.</param>
+    /// <exception cref="InvalidOperationException">The tab has a column, filter, MaxRows or OrderBy that is not valid.</exception>
     public static AtlasTabQuery Build(AtlasTable table, CPAtlasTab tab, Func<string, string> resolveToken)
     {
         ArgumentNullException.ThrowIfNull(table);
@@ -41,8 +47,8 @@ public static class AtlasTabQueryBuilder
         List<string> conditions = [];
         if (table.HasSoftDelete)
         {
-            // Review DA-08: "= 0" on a NOT NULL column matches the filtered indexes (WHERE [IsDeleted] = 0) and can seek;
-            // a nullable column keeps ISNULL, because NULL also means "not deleted" there.
+            // On a NOT NULL column, "= 0" matches the filtered indexes (WHERE [IsDeleted] = 0), so SQL Server can seek.
+            // A nullable column keeps ISNULL, because there NULL also means "not deleted".
             string deleted = Quote(AtlasTable.SoftDeleteColumnName);
             conditions.Add(table.Find(AtlasTable.SoftDeleteColumnName)!.IsNullable ? $"ISNULL({deleted}, 0) = 0" : $"{deleted} = 0");
         }
@@ -153,7 +159,7 @@ public static class AtlasTabQueryBuilder
             items.Add($"{Quote(column.Name)} {direction}");
         }
 
-        // Review DA-09: a unique last item, so the order is stable (paging later gives no duplicate or missing rows).
+        // A unique last item makes the order stable. Then paging gives no duplicate or missing rows.
         if (!hasKey && table.Key != null)
             items.Add(key);
         return string.Join(", ", items);
@@ -162,7 +168,7 @@ public static class AtlasTabQueryBuilder
     private static AtlasColumn Column(AtlasTable table, CPAtlasTab tab, string name) =>
         table.Find(name) ?? throw Invalid(tab, $"names the column '{name}', which is not in {table.FullName}");
 
-    /// <summary>The same result as QUOTENAME for a name of up to 128 characters.</summary>
+    /// <summary>Returns the name in bracket form. The result is the same as QUOTENAME for up to 128 characters.</summary>
     public static string Quote(string name) => "[" + name.Replace("]", "]]", StringComparison.Ordinal) + "]";
 
     private static InvalidOperationException Invalid(CPAtlasTab tab, string problem) =>

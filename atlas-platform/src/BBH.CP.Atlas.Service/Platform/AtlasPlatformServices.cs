@@ -11,19 +11,20 @@ namespace BBH.CP.Atlas.Service.Platform;
 /// <summary>Registers the platform services of this project. Called by AddAtlasPlatform (App/Platform).</summary>
 public static class AtlasPlatformServices
 {
+    /// <summary>Adds the platform services of this project to the service collection.</summary>
     public static void Add(IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Security (module 6).
+        // Security.
         services.AddScoped<IAtlasUserContext, AtlasUserContext>();
         services.AddScoped<IAtlasUserDirectory, AtlasUserDirectory>();
         services.AddScoped<AtlasAccessService>();
 
-        // Rules (module 4).
+        // Rules.
         services.AddSingleton<AtlasRuleEngine>();
 
-        // Audit (module 9), option providers (module 1, 10.2) and the module service bundle.
+        // Audit, option providers and the module service bundle.
         services.AddScoped<AtlasAuditWriter>();
         services.AddScoped<IAtlasOptionProvider, PBAccountsOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, UsersInRolesOptionProvider>();

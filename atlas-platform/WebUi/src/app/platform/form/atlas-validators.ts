@@ -1,10 +1,11 @@
-// COPY to the target: WebUi/src/app/platform/form/. Client validators from CPValidator (spec 01, 10.3).
-// The server checks the same rules (AtlasFieldValidator); the client checks are for the user only. Both sides use
-// the same rules and texts (review SV-04; shared cases in atlas-validator-cases.ts):
-//  - a value of only spaces is empty: Required fails, the other checks do not run;
-//  - Pattern is anchored as Angular Validators.pattern does (^ and $ added when not there);
-//  - Integer, then "a number" (no exponent), then Min and Max;
-//  - Validator.Message, when set, is the text of each failure.
+// COPY to the target: WebUi/src/app/platform/form/.
+// Client validators from CPValidator. The server checks the same rules (AtlasFieldValidator).
+// The client checks only help the user. Both sides use the same rules and texts.
+// The shared test cases are in atlas-validator-cases.ts. The rules:
+//  - A value of only spaces is empty. Required fails, and the other checks do not run.
+//  - Pattern is anchored as Angular Validators.pattern does. It adds ^ and $ when they are not there.
+//  - The number checks run in this order: Integer, then "a number" (no exponent), then Min and Max.
+//  - When Validator.Message is set, it is the text of each failure.
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { isNil } from '../atlas-dates';
 import { CPValidator } from '../atlas-models';
@@ -20,36 +21,43 @@ function text(control: AbstractControl): string {
   return String(control.value);
 }
 
+/** Fails with `required` when the value is empty or has only spaces. */
 export function atlasRequired(control: AbstractControl): ValidationErrors | null {
   return empty(control.value) ? { required: true } : null;
 }
 
+/** Returns a validator that fails with `maxlength` when a value has more than max characters. */
 export function atlasMaxLength(max: number): ValidatorFn {
   return (control) => (empty(control.value) || text(control).length <= max ? null : { maxlength: { requiredLength: max } });
 }
 
+/** Returns a validator that fails with `minlength` when a value has fewer than min characters. */
 export function atlasMinLength(min: number): ValidatorFn {
   return (control) => (empty(control.value) || text(control).length >= min ? null : { minlength: { requiredLength: min } });
 }
 
-/** The anchoring of Angular Validators.pattern(string), which the server copies. */
+/** Returns the pattern anchored as Angular Validators.pattern(string) does. The server uses the same anchoring. */
 export function anchoredPattern(pattern: string): RegExp {
   return new RegExp((pattern.startsWith('^') ? '' : '^') + pattern + (pattern.endsWith('$') ? '' : '$'));
 }
 
+/** Returns a validator that fails with `pattern` when the full value does not match the pattern. */
 export function atlasPattern(pattern: string): ValidatorFn {
   const regex = anchoredPattern(pattern);
   return (control) => (empty(control.value) || regex.test(text(control)) ? null : { pattern: true });
 }
 
+/** Fails with `integer` when the value is not a whole number. */
 export function atlasInteger(control: AbstractControl): ValidationErrors | null {
   return empty(control.value) || integerText.test(text(control).trim()) ? null : { integer: true };
 }
 
+/** Fails with `number` when the value is not a decimal number. An exponent is not valid. */
 export function atlasNumber(control: AbstractControl): ValidationErrors | null {
   return empty(control.value) || numberText.test(text(control).trim()) ? null : { number: true };
 }
 
+/** Returns a validator that fails with `min` when a number is less than min. */
 export function atlasMin(min: number): ValidatorFn {
   return (control) => {
     const value = text(control).trim();
@@ -57,6 +65,7 @@ export function atlasMin(min: number): ValidatorFn {
   };
 }
 
+/** Returns a validator that fails with `max` when a number is more than max. */
 export function atlasMax(max: number): ValidatorFn {
   return (control) => {
     const value = text(control).trim();
@@ -64,6 +73,12 @@ export function atlasMax(max: number): ValidatorFn {
   };
 }
 
+/**
+ * Returns the client validators of a control.
+ *
+ * @param required True when the field is required now. Effects can change it, so it can differ from
+ *     Validator.Required.
+ */
 export function atlasValidators(validator: CPValidator | null | undefined, required: boolean): ValidatorFn[] {
   const list: ValidatorFn[] = [];
   if (required) {
@@ -100,7 +115,7 @@ export function atlasValidators(validator: CPValidator | null | undefined, requi
   return list;
 }
 
-/** The server error code of the first client error (the order of the server checks). */
+/** Returns the server error code of the first client error, in the order of the server checks. */
 export function errorCode(errors: ValidationErrors | null): string | null {
   if (!errors) {
     return null;
@@ -118,7 +133,11 @@ export function errorCode(errors: ValidationErrors | null): string | null {
   return order.find(([key]) => errors[key])?.[1] ?? null;
 }
 
-/** One text for the first error of a control (the same texts as the server). */
+/**
+ * Returns one text for the first error of a control. The texts are the same as on the server.
+ *
+ * A server error comes first, then Validator.Message, then the default text. Returns null when there is no error.
+ */
 export function errorText(errors: ValidationErrors | null, label: string, validator?: CPValidator | null): string | null {
   if (!errors) {
     return null;

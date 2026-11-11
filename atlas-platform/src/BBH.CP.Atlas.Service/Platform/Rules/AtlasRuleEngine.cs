@@ -4,47 +4,68 @@ using BBH.CP.Atlas.Service.Platform.Sections;
 
 namespace BBH.CP.Atlas.Service.Platform.Rules;
 
-/// <summary>The inputs of a rule (spec 04, 4.1): role names + flags (@Read, @Write, @Admin), states, owner.</summary>
+/// <summary>
+/// The inputs of a rule: the role names and flags (@Read, @Write, @Admin), the states and the owner flag.
+/// </summary>
 public sealed record AtlasRuleContext(IReadOnlyList<string> RoleTokens, IReadOnlyList<string> States, bool IsOwner);
 
 /// <summary>
-/// What the rules changed in a section (review FABLE F01): the fields that the section showed (or enabled) before the
-/// rules and the rules hid (or disabled). Names are the output names of <see cref="AtlasFormFields"/>: the control
-/// Name, or the column field of a SingleRowFields grid. A field that the JSON hides is not in HiddenByRule.
+/// The fields of a section that the rules changed.
 /// </summary>
+/// <remarks>
+/// A field is in a set when the section showed (or enabled) it before the rules, and the rules hid (or disabled) it.
+/// The names are the output names of <see cref="AtlasFormFields"/>.
+/// That is the control Name, or the column field of a SingleRowFields grid.
+/// A field that the JSON hides is not in HiddenByRule.
+/// </remarks>
 public sealed record AtlasRuleOutcome(IReadOnlySet<string> HiddenByRule, IReadOnlySet<string> DisabledByRule);
 
-/// <summary>The result for one target (spec 04, 4.1).</summary>
+/// <summary>The result of the rules for one target.</summary>
 public sealed class AtlasRuleResult
 {
+    /// <summary>The result that does not change the target.</summary>
     public static AtlasRuleResult NoChange { get; } = new() { Matched = false };
 
-    /// <summary>False: no rule matched and RuleDefault is Keep (or the target has no rules). Do not change the target.</summary>
+    /// <summary>
+    /// False when no rule matched and RuleDefault is Keep, or when the target has no rules. Then do not change the target.
+    /// </summary>
     public bool Matched { get; init; }
 
+    /// <summary>True when the target is visible.</summary>
     public bool Visible { get; init; } = true;
 
+    /// <summary>True when the target is disabled.</summary>
     public bool Disabled { get; init; }
 
+    /// <summary>The names of the child controls to show.</summary>
     public IReadOnlySet<string> Show { get; init; } = EmptySet;
 
+    /// <summary>The names of the child controls to hide.</summary>
     public IReadOnlySet<string> Hide { get; init; } = EmptySet;
 
+    /// <summary>The names of the child controls to enable.</summary>
     public IReadOnlySet<string> Enable { get; init; } = EmptySet;
 
+    /// <summary>The names of the child controls to disable.</summary>
     public IReadOnlySet<string> Disable { get; init; } = EmptySet;
 
     private static readonly IReadOnlySet<string> EmptySet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
-/// One rule engine for all targets (spec 04, 4.1). FirstMatch = the current behaviour; MostPermissive = all matching
-/// rules count (4.2). RuleDefault applies when a target has rules but none matches (4.3).
+/// Evaluates the rules of all targets: controls, buttons, tabs and menus.
 /// </summary>
+/// <remarks>
+/// FirstMatch uses the first rule that matches. This is the behaviour of the current apps.
+/// MostPermissive uses all the rules that match.
+/// RuleDefault applies when a target has rules but no rule matches.
+/// </remarks>
 public sealed class AtlasRuleEngine
 {
     private static readonly StringComparer Comparer = StringComparer.OrdinalIgnoreCase;
 
+    /// <summary>Returns the result of the rules for one target.</summary>
+    /// <param name="fallback">The result when the target has rules but no rule matches.</param>
     public AtlasRuleResult Evaluate(IReadOnlyList<CPRule>? rules, AtlasRuleContext context, AtlasRuleMode mode, AtlasRuleDefault fallback)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -97,10 +118,14 @@ public sealed class AtlasRuleEngine
     }
 
     /// <summary>
-    /// Applies the rules to the section-level controls (their own Rules, else the app-level rules), their child
-    /// controls and the buttons. The rules can hide or disable; a child control that the JSON disables stays
-    /// disabled unless a rule names it in EnableControls. Returns the fields that the rules hid or disabled.
+    /// Applies the rules to the controls, child controls and buttons of a section.
     /// </summary>
+    /// <remarks>
+    /// A section-level control uses its own Rules. When it has none, it uses the app-level rules.
+    /// The rules can hide or disable a control.
+    /// A child control that the JSON disables stays disabled, unless a rule names it in EnableControls.
+    /// </remarks>
+    /// <returns>The fields that the rules hid or disabled.</returns>
     public AtlasRuleOutcome ApplyToSection(CPApplicationSection section, IReadOnlyList<CPRule>? appRules, AtlasRuleContext context,
         AtlasRuleMode mode, AtlasRuleDefault fallback)
     {
@@ -158,7 +183,9 @@ public sealed class AtlasRuleEngine
 
     private readonly record struct FieldState(string Name, bool Visible, bool Disabled);
 
-    /// <summary>The fields of a control with their effective state, as <see cref="AtlasFormFields.From(CPApplicationSection)"/> finds them.</summary>
+    /// <summary>
+    /// Returns the fields of a control with their effective state, as <see cref="AtlasFormFields.From(CPApplicationSection)"/> finds them.
+    /// </summary>
     private static List<FieldState> FieldStates(CPApplicationControl control, bool parentVisible, bool parentDisabled)
     {
         bool visible = parentVisible && control.Visible;

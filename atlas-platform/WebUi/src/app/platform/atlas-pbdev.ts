@@ -1,6 +1,6 @@
 // COPY to the target: WebUi/src/app/platform/. The only file of the platform that imports @pbdev/pbdev-core.
-// The platform uses only the classes and inputs that the target WebUi already uses (evidence: atlas-platform/PBDEV.md).
-// If the real library differs, change this file and the bindings listed in PBDEV.md section 3.
+// The platform uses only the classes and inputs that the target WebUi already uses.
+// If the real library is different, change this file and the platform bindings of these controls.
 import { AfterViewInit, Directive, ElementRef, Input, inject } from '@angular/core';
 import { CPKeyValue } from './atlas-models';
 
@@ -17,14 +17,20 @@ export {
 } from '@pbdev/pbdev-core';
 export type { SelectOption } from '@pbdev/pbdev-core';
 
-/** The target maps CPKeyValue to the label/value objects of pbdev-select (cp-atlas-sectionmaster.ts transformSelect). */
+/**
+ * Converts the options of a control to the label/value objects of pbdev-select.
+ *
+ * The target does the same in cp-atlas-sectionmaster.ts transformSelect. A missing label gets the value.
+ */
 export function toSelectOptions(items: readonly CPKeyValue[] | null | undefined): { label: string; value: string }[] {
   return (items ?? []).map((x) => ({ label: x.Label ?? x.Value ?? '', value: x.Value ?? '' }));
 }
 
 /**
- * Puts the id (and the name) on the first input, select or textarea inside a library control, so the form label
- * (for="ctl_Name") points to it. It does not depend on an id input of the library control.
+ * Puts the id (and the name) on the first input, select or textarea inside a library control.
+ *
+ * Thus the form label (for="ctl_Name") points to it. It does not need an id input on the library control.
+ * It keeps a name that the element has.
  */
 @Directive({ selector: '[atlasControlId]' })
 export class AtlasControlIdDirective implements AfterViewInit {

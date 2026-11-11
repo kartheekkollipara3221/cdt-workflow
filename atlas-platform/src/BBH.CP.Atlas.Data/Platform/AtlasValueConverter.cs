@@ -2,28 +2,50 @@ using System.Globalization;
 
 namespace BBH.CP.Atlas.Data.Platform;
 
-/// <summary>The result of one value conversion. On failure, <see cref="ErrorCode"/> is the field error code (spec 01, 5.11).</summary>
+/// <summary>The result of one value conversion. On failure, <see cref="ErrorCode"/> is the field error code.</summary>
 public readonly record struct AtlasConversionResult(bool Success, object? Value, string? ErrorCode, string? Message)
 {
+    /// <summary>Returns a successful result with the converted value.</summary>
     public static AtlasConversionResult Ok(object? value) => new(true, value, null, null);
 
+    /// <summary>Returns a failed result with the field error code and a message for the user.</summary>
     public static AtlasConversionResult Fail(string code, string message) => new(false, null, code, message);
 }
 
 /// <summary>
-/// Converts between the wire format (text in <c>CPPageOutput.Value</c> and <c>CPApplicationControl.Value</c>) and the
-/// column value, by the SQL column type, with the invariant culture (spec 05, 6.4). The server culture has no effect.
+/// Converts between the wire format and the column value, by the SQL column type.
 /// </summary>
+/// <remarks>
+/// The wire format is the text in <c>CPPageOutput.Value</c> and <c>CPApplicationControl.Value</c>.
+/// The converter uses the invariant culture. The server culture has no effect.
+/// The constants are the field error codes of a failed conversion.
+/// </remarks>
 public static class AtlasValueConverter
 {
+    /// <summary>The field error code for a missing value in a NOT NULL column.</summary>
     public const string Required = "Required";
+    /// <summary>The field error code for text that is not a number, or a number with too many decimal places.</summary>
     public const string InvalidNumber = "InvalidNumber";
+
+    /// <summary>The field error code for a value outside the range of the column type.</summary>
     public const string OutOfRange = "OutOfRange";
+
+    /// <summary>The field error code for text that is not a date or a date-time in the expected format.</summary>
     public const string InvalidDate = "InvalidDate";
+
+    /// <summary>The field error code for text that is not true or false.</summary>
     public const string InvalidBoolean = "InvalidBoolean";
+
+    /// <summary>The field error code for text that is not a GUID.</summary>
     public const string InvalidGuid = "InvalidGuid";
+
+    /// <summary>The field error code for text that is longer than the column.</summary>
     public const string TooLong = "TooLong";
+
+    /// <summary>The field error code for a value in a column that the database writes.</summary>
     public const string NotWritable = "NotWritable";
+
+    /// <summary>The field error code for a column type that the platform does not support.</summary>
     public const string UnsupportedType = "UnsupportedType";
 
     private static readonly DateTime SqlDateTimeMin = new(1753, 1, 1);
@@ -88,8 +110,9 @@ public static class AtlasValueConverter
     public static string? ToWire(object? value, AtlasColumn column) => ToWire(value, column, utc: true);
 
     /// <summary>
-    /// The same; <paramref name="utc"/> = false writes a date-time with no 'Z' (an app with SystemTime Local, review DA-11).
+    /// Converts a column value to the wire format, with a choice of UTC or local date-time text.
     /// </summary>
+    /// <param name="utc">False writes a date-time with no 'Z'. An app with SystemTime Local uses it.</param>
     public static string? ToWire(object? value, AtlasColumn column, bool utc)
     {
         ArgumentNullException.ThrowIfNull(column);
@@ -110,8 +133,9 @@ public static class AtlasValueConverter
     }
 
     /// <summary>
-    /// True if two wire values give the same column value (review DA-06): "1250000.50" and "1250000.5", or two forms of
-    /// the same time. Empty is null. A value that does not convert is compared as text (ordinal).
+    /// Returns true if two wire values give the same column value.
+    /// For example, "1250000.50" and "1250000.5", or two forms of the same time.
+    /// Empty is null. A value that does not convert is compared as text (ordinal).
     /// </summary>
     public static bool SameValue(string? a, string? b, AtlasColumn? column)
     {

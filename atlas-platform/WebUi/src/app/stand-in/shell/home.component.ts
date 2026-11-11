@@ -6,6 +6,7 @@ import { AtlasApiService } from '../../platform/atlas-api.service';
 import { CPApplicationRow } from '../../platform/atlas-models';
 import { problemText } from '../../platform/atlas-errors';
 
+/** Landing page that shows a card for each app of the user. */
 @Component({
   selector: 'standin-home',
   imports: [RouterLink, LoaderComponent],

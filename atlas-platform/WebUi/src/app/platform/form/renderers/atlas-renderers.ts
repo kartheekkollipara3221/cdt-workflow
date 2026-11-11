@@ -1,8 +1,9 @@
-// COPY to the target: WebUi/src/app/platform/form/renderers/. One small component for each control Type.
-// Each renderer gets the control (JSON) and the form group, and binds the form control by name. The label and the
-// required mark are drawn by the form component (as cp-atlas-sectionmaster.html). The error text of pbdev-input,
-// pbdev-select, pbdev-textarea and pbdev-date-picker is drawn by the control itself (pbdev-input-messages), with
-// the platform texts given as customErrorMessages (review R2); the form draws it for the other types.
+// COPY to the target: WebUi/src/app/platform/form/renderers/.
+// One small component for each control Type. Each renderer gets the control (JSON) and the form group.
+// It binds the form control by name. The form component draws the label and the required mark,
+// as cp-atlas-sectionmaster.html does.
+// pbdev-input, pbdev-select, pbdev-textarea and pbdev-date-picker draw their own error text (pbdev-input-messages).
+// They get the platform texts as customErrorMessages. The form draws the error text for the other types.
 import { Component, Directive, Input, OnInit, isDevMode } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { NgSelectComponent } from '@ng-select/ng-select';
@@ -20,14 +21,19 @@ import { CPApplicationControl, CPKeyValue } from '../../atlas-models';
 import { errorText } from '../atlas-validators';
 
 /**
- * The base class of a renderer (review NG-04). A renderer of an app extends it and is added with
- * provideAtlasRenderers({ myType: MyRenderer }) or AtlasRendererRegistry.register. The form gives the two inputs.
+ * The base class of a renderer.
+ *
+ * A renderer of an app extends it. Add it with provideAtlasRenderers({ myType: MyRenderer })
+ * or AtlasRendererRegistry.register. The form gives the two inputs.
  */
 @Directive()
 export abstract class AtlasRendererBase {
+  /** The control from the section JSON. */
   @Input({ required: true }) control!: CPApplicationControl;
+  /** The form group of the section. */
   @Input({ required: true }) group!: FormGroup;
 
+  /** The form control of this control, found by its name. */
   get formControl(): FormControl {
     return this.group.get(this.control.Name) as FormControl;
   }
@@ -35,7 +41,11 @@ export abstract class AtlasRendererBase {
   private messagesFor: unknown = null;
   private messages: Record<string, string> = {};
 
-  /** customErrorMessages for a pbdev control: one platform text for each error key (same texts as the server). */
+  /**
+   * The customErrorMessages for a pbdev control: one platform text for each error key.
+   *
+   * The texts are the same as on the server. The map is made again only when the errors change.
+   */
   get errorMessages(): Record<string, string> {
     const errors = this.formControl?.errors ?? null;
     if (errors !== this.messagesFor) {
@@ -64,6 +74,7 @@ export abstract class AtlasRendererBase {
   }
 }
 
+/** "text": a pbdev-input. */
 @Component({
   selector: 'atlas-text-renderer',
   imports: [ReactiveFormsModule, InputComponent, AtlasControlIdDirective],
@@ -73,8 +84,10 @@ export abstract class AtlasRendererBase {
 export class AtlasTextRenderer extends AtlasRendererBase {}
 
 /**
- * "currency" and "percent": as cp-atlas-sectionmaster.html, a text input with no mask (decision D1: the target's
- * maskF attribute is not a pbdev input) that clears a value of only the currency sign.
+ * "currency" and "percent": a text input with no mask, as in cp-atlas-sectionmaster.html.
+ *
+ * The maskF attribute of the target is not an input of pbdev-input, so there is no mask.
+ * A value of only the currency sign is cleared.
  */
 @Component({
   selector: 'atlas-amount-renderer',
@@ -83,6 +96,7 @@ export class AtlasTextRenderer extends AtlasRendererBase {}
     [customErrorMessages]="errorMessages" [formControl]="formControl" (input)="onInput($event)" />`,
 })
 export class AtlasAmountRenderer extends AtlasRendererBase {
+  /** Clears the value when the input holds only the currency sign "$ ". */
   onInput(event: Event): void {
     if ((event.target as HTMLInputElement | null)?.value === '$ ') {
       this.formControl.setValue('');
@@ -91,6 +105,7 @@ export class AtlasAmountRenderer extends AtlasRendererBase {
   }
 }
 
+/** "select": a pbdev-select. */
 @Component({
   selector: 'atlas-select-renderer',
   imports: [ReactiveFormsModule, SelectComponent, AtlasControlIdDirective],
@@ -100,8 +115,10 @@ export class AtlasAmountRenderer extends AtlasRendererBase {
 export class AtlasSelectRenderer extends AtlasRendererBase {}
 
 /**
- * "ngselect": a select with search, as cp-atlas-sectionmaster.html (decision D3): the options are mapped to
- * label/value (transformSelect), bindLabel="label" bindValue="value", clearable false, virtual scroll, placeholder "".
+ * "ngselect": a select with search, as in cp-atlas-sectionmaster.html.
+ *
+ * The options are mapped to label/value, as transformSelect does. The settings are bindLabel="label",
+ * bindValue="value", clearable false, virtual scroll and placeholder "".
  */
 @Component({
   selector: 'atlas-ngselect-renderer',
@@ -111,6 +128,7 @@ export class AtlasSelectRenderer extends AtlasRendererBase {}
 })
 export class AtlasNgSelectRenderer extends AtlasRendererBase {}
 
+/** "textarea": a pbdev-textarea with control.Row rows (3 by default). */
 @Component({
   selector: 'atlas-textarea-renderer',
   imports: [ReactiveFormsModule, TextareaComponent, AtlasControlIdDirective],
@@ -119,14 +137,16 @@ export class AtlasNgSelectRenderer extends AtlasRendererBase {}
 })
 export class AtlasTextareaRenderer extends AtlasRendererBase {}
 
+/** "date" and "datetimepicker": a pbdev-date-picker. */
 @Component({
   selector: 'atlas-date-renderer',
   imports: [ReactiveFormsModule, DatePickerComponent, AtlasControlIdDirective],
-  // The form value is a JS Date (the real p-date-picker); the form model sends it as yyyy-MM-dd (review R2).
+  // The form value is a JS Date, as p-date-picker gives it. The form model sends it as yyyy-MM-dd.
   template: `<pbdev-date-picker [atlasControlId]="'ctl_' + control.Name" [customErrorMessages]="errorMessages" [formControl]="formControl" />`,
 })
 export class AtlasDateRenderer extends AtlasRendererBase {}
 
+/** "checkbox" and "check": a pbdev-checkbox with no label of its own. */
 @Component({
   selector: 'atlas-checkbox-renderer',
   imports: [ReactiveFormsModule, CheckboxComponent, AtlasControlIdDirective],
@@ -140,6 +160,7 @@ export class AtlasCheckboxRenderer extends AtlasRendererBase {}
   template: `<div class="atlas-readonly" [attr.title]="formControl.value || null">{{ displayName }}</div>`,
 })
 export class AtlasUserRenderer extends AtlasRendererBase {
+  /** The label of the option for the LAN ID, or the LAN ID. A dash when there is no value. */
   get displayName(): string {
     const value = this.formControl.value as string | null;
     if (!value) {
@@ -165,7 +186,11 @@ export class AtlasUserRenderer extends AtlasRendererBase {
 })
 export class AtlasRadioRenderer extends AtlasRendererBase {}
 
-/** A control Type with no renderer (review NG-04): a visible note instead of a missing field. The form disables it. */
+/**
+ * The renderer of a control Type with no renderer.
+ *
+ * It shows a visible note instead of a missing field. The form disables the control.
+ */
 @Component({
   selector: 'atlas-unsupported-renderer',
   template: `<div class="atlas-unsupported" role="note">Unsupported control type "{{ control.Type }}".</div>`,

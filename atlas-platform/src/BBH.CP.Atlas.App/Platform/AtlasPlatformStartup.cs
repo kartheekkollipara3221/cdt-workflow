@@ -8,24 +8,32 @@ using Microsoft.EntityFrameworkCore;
 namespace BBH.CP.Atlas.App.Platform;
 
 /// <summary>
-/// Start-up of the platform. A hosted service of AddAtlasPlatform runs it before the server takes requests (review
-/// HO-06). program.cs can still call it after Build and before Run; the second call does nothing:
-/// <code>await app.Services.StartAtlasPlatformAsync();</code>
-/// It reads the table metadata of each registered app into the table registry before the first request
-/// (spec 05, 6.2; a new table needs a restart) and runs the start-up check (spec 07, 4.8).
+/// Starts the platform: loads the table metadata of each registered app and runs the start-up check.
 /// </summary>
+/// <remarks>
+/// A hosted service of AddAtlasPlatform runs the start-up before the server takes requests.
+/// program.cs can also call it after Build and before Run. The second call does nothing:
+/// <code>await app.Services.StartAtlasPlatformAsync();</code>
+/// The platform reads the table metadata one time only. A new table needs a restart.
+/// </remarks>
 public static class AtlasPlatformStartup
 {
     /// <summary>
-    /// The setting of review HO-04: DisableModule (default since review 2, AR-01) or Stop. The platform runs in the
-    /// process of the current apps, so by default a platform error must not stop them.
+    /// The name of the setting that tells what a start-up error does: DisableModule (default) or Stop.
     /// </summary>
+    /// <remarks>
+    /// The platform runs in the process of the current apps. By default, a platform error must not stop them.
+    /// </remarks>
     public const string OnStartupErrorKey = AtlasPlatformOptions.OnStartupErrorKey;
 
     /// <summary>
-    /// Loads the table metadata and runs the start-up check. With DisableModule (default) an error removes only the
-    /// platform apps with errors; with Stop an error stops the start-up (spec 07, 4.8).
+    /// Loads the table metadata and runs the start-up check.
     /// </summary>
+    /// <remarks>
+    /// With DisableModule (default), an error disables only the platform apps that have errors.
+    /// With Stop, an error stops the start-up.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The mode is Stop and the check found errors.</exception>
     public static async Task StartAtlasPlatformAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -49,7 +57,7 @@ public static class AtlasPlatformStartup
             }
             catch (Exception ex) when (mode == AtlasStartupErrorMode.DisableModule && ex is not OperationCanceledException)
             {
-                // Review HO-04, AR-01: any start-up failure (for example SQL is not available): no platform app, the host runs.
+                // Any start-up failure (for example, SQL is not available) disables all platform apps. The host runs.
                 items = [new(AtlasCheckSeverity.Error, "*", ex.Message)];
             }
 
@@ -71,10 +79,12 @@ public static class AtlasPlatformStartup
     }
 
     /// <summary>
-    /// The mode, and an error text when the value is not valid. Review AR-01: no value = DisableModule; a value that
-    /// is not valid also gives DisableModule (the host runs) and an error for all platform apps, so a typo does not
-    /// stop the current apps and is seen in the log and in --atlas-check.
+    /// Returns the start-up error mode, and an error text when the setting is not valid.
     /// </summary>
+    /// <remarks>
+    /// No value gives DisableModule. A value that is not valid also gives DisableModule, and an error for all platform apps.
+    /// Thus a typing error does not stop the current apps. The log and --atlas-check show the error.
+    /// </remarks>
     private static (AtlasStartupErrorMode Mode, string? Error) OnStartupError(IServiceProvider services)
     {
         AtlasPlatformOptions options = services.GetService<AtlasPlatformConfiguration>()?.Options
@@ -84,15 +94,15 @@ public static class AtlasPlatformStartup
             : (AtlasStartupErrorMode.DisableModule, $"The setting {OnStartupErrorKey} = '{options.OnStartupError}' is not valid (allowed: DisableModule, Stop).");
     }
 
-    /// <summary>DisableModule: the apps with errors are not available; an error of all apps ("*") disables all of them.</summary>
+    /// <summary>Disables the apps that have errors. An error for all apps ("*") disables all of them.</summary>
     private static void DisableApps(IServiceProvider services, AtlasCheckItem[] errors)
     {
         AtlasDisabledApps disabled = services.GetRequiredService<AtlasDisabledApps>();
         ILogger logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("BBH.CP.Atlas.Platform.Startup");
         string[] all = [.. services.GetServices<AtlasModuleRegistration>().Select(x => x.Code)];
-        // A config file that cannot be read already removes only its own app (review HO-02), so it does not disable all.
-        // Review 3 RV-07: this runs after a failed start-up too; if the config store fails again, disable all apps here
-        // and do not let the exception stop the host.
+        // A config file that the store cannot read already removes only its own app. Thus it does not disable all apps.
+        // This method also runs after a failed start-up. If the config store fails again, disable all apps.
+        // The exception must not stop the host.
         HashSet<string> fileErrors = new(StringComparer.Ordinal);
         try
         {
@@ -115,9 +125,9 @@ public static class AtlasPlatformStartup
     }
 
     /// <summary>
-    /// The --atlas-check command (spec 11, 4.3): the same checks, a report on <paramref name="output"/>, no web server.
-    /// Returns the exit code: 0 = no errors, 1 = errors.
+    /// Runs the --atlas-check command: the start-up checks without a web server, with a report on <paramref name="output"/>.
     /// </summary>
+    /// <returns>The exit code: 0 when there are no errors, 1 when there are errors.</returns>
     public static async Task<int> RunAtlasCheckAsync(this IServiceProvider services, TextWriter output, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(output);
@@ -128,7 +138,7 @@ public static class AtlasPlatformStartup
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // Review 3 RV-06: a report line and exit code 1, not a stack trace, for any failure.
+            // Any failure gives a report line and exit code 1, not a stack trace.
             await output.WriteLineAsync("ERROR *: " + ex.Message);
             return 1;
         }
@@ -155,11 +165,11 @@ public static class AtlasPlatformStartup
 
         IAtlasConfigStore configStore = provider.GetRequiredService<IAtlasConfigStore>();
         HashSet<string> registered = new(provider.GetServices<AtlasModuleRegistration>().Select(x => x.Code), StringComparer.OrdinalIgnoreCase);
-        // All registered manifests, also disabled ones, so an app that is switched on later finds its tables (review HO-05).
+        // Load the tables of all registered manifests, also disabled ones. An app that is enabled later then finds its tables.
         string[] tables = [.. configStore.GetManifests()
             .Where(x => registered.Contains(x.Code))
             .SelectMany(x => new[] { x.Table, x.AuditTable, x.AttachmentTable })
-            .Where(x => AtlasTable.IsValidFullName(x)) // review 3 RV-06: a bad name is a check error of its app only
+            .Where(x => AtlasTable.IsValidFullName(x)) // a bad name is a check error of its app only
             .Select(x => x!)];
 
         CPSharepointContext context = provider.GetRequiredService<CPSharepointContext>();
@@ -181,19 +191,24 @@ public static class AtlasPlatformStartup
     }
 }
 
-/// <summary>One start-up at a time (the hosted service and a program.cs call).</summary>
+/// <summary>Lets only one start-up run at a time (the hosted service or a program.cs call).</summary>
 public sealed class AtlasPlatformStartupGate
 {
     internal SemaphoreSlim Lock { get; } = new(1, 1);
 }
 
 /// <summary>
-/// Runs the platform start-up before the server takes requests (review HO-06), so a host that does not call
-/// StartAtlasPlatformAsync still loads the tables. The start-up token stops it when the host stops.
+/// Runs the platform start-up before the server takes requests.
 /// </summary>
+/// <remarks>
+/// A host that does not call StartAtlasPlatformAsync thus still loads the tables.
+/// The start-up token stops the start-up when the host stops.
+/// </remarks>
 public sealed class AtlasPlatformStartupService(IServiceProvider services) : IHostedService
 {
+    /// <summary>Runs the platform start-up.</summary>
     public Task StartAsync(CancellationToken cancellationToken) => services.StartAtlasPlatformAsync(cancellationToken);
 
+    /// <summary>Does nothing. The platform has no work to stop.</summary>
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

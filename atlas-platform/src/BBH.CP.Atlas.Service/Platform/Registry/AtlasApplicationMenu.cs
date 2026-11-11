@@ -3,15 +3,20 @@ using Microsoft.Extensions.Logging;
 namespace BBH.CP.Atlas.Service.Platform.Registry;
 
 /// <summary>
-/// v1/Application menu data (spec 07, 4.6). Adds FormType and HasDashboard from the registry to each row. A row of
-/// a code that is not a current (enum) app and not an enabled platform app is removed. Current rows do not change.
+/// Adds the platform data to the v1/Application menu rows.
 /// </summary>
+/// <remarks>
+/// Each platform row gets FormType and HasDashboard from the registry.
+/// The step removes a row whose code is not a current (enum) app and not an enabled platform app.
+/// The rows of the current apps do not change.
+/// </remarks>
 public static class AtlasApplicationMenu
 {
+    /// <summary>Returns the menu rows with the platform data added.</summary>
     /// <remarks>
-    /// Review AR-02: the menu is shared with the current apps, so an error in this step does not fail it. On an
-    /// exception the rows of the procedure come back unchanged (as before the platform) and Atlas.ConfigError is
-    /// logged when a logger is given.
+    /// The current apps share the menu, so an error in this step must not fail the menu.
+    /// On an exception, the method returns the rows of the procedure with no change.
+    /// It then logs Atlas.ConfigError when a logger is given.
     /// </remarks>
     public static List<Dictionary<string, object>> Enrich(List<Dictionary<string, object>> rows, IAtlasModuleResolver resolver,
         IAtlasConfigStore configStore, ILogger? logger = null)

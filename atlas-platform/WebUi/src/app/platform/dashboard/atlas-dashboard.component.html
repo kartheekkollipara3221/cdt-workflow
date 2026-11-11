@@ -1,4 +1,4 @@
-<!-- The page layout and classes follow cp-atlas-dashboard.html as of 2026-10-27 (review R5). -->
+<!-- The page layout and the classes are the same as in the target cp-atlas-dashboard.html. -->
 @if (loading()) {
 <div class="absolute flex h-full w-full items-center justify-center">
   <pbdev-loader />
@@ -50,7 +50,7 @@
 
 <atlas-history-dialog [open]="!!historyRow()" [appCode]="historyRow()?.code ?? code" [recordId]="historyRow()?.id ?? 0" (closed)="historyRow.set(null)" />
 
-<!-- As CPAtlasConfirmation in confirmDelete() of the target dashboard. -->
+<!-- The delete confirmation. It is the same as CPAtlasConfirmation in confirmDelete() of the target dashboard. -->
 <pbdev-dialog [visible]="!!deleteRow()" (visibleChange)="!$event && deleteRow.set(null)">
   <div class="modal-confirm-body">Are you sure you want to delete the record?</div>
   <div class="modal-confirm-footer">

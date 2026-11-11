@@ -1,9 +1,9 @@
 // STAND-IN: do not copy to the target. Local look-alikes of the target cell components
-// WebUi/Source/App/Shared/Component/Cell-editors (NumericEditor, TextEditor, SelectEditor) as of 2026-10-27.
-// The platform grid finds them by the cellRenderer name in the JSON (provideAtlasGridComponents); at the target the
-// real components are given. Same selectors, params (disabled, code, ctrlname, options) and value flow
-// (params.setValue on blur / change). Not here: the "code === 'TTD'" weekly total of the target NumericEditor
-// (an app of the platform uses Computed instead).
+// WebUi/Source/App/Shared/Component/Cell-editors (NumericEditor, TextEditor, SelectEditor).
+// The platform grid finds them by the cellRenderer name in the JSON (provideAtlasGridComponents). At the target, the
+// host gives the real components. The selectors, the params (disabled, code, ctrlname, options) and the value flow
+// (params.setValue on blur / change) are the same. The "code === 'TTD'" weekly total of the target NumericEditor is
+// not here. A platform app uses Computed instead.
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ICellEditorAngularComp, ICellRendererAngularComp } from 'ag-grid-angular';
@@ -20,6 +20,7 @@ interface CellParams {
   ngModelChange?: (params: { value: unknown; rowData: unknown }) => void;
 }
 
+/** Grid cell with a number input. It accepts only digits and a dot from the keyboard. */
 @Component({
   selector: 'numeric-cell',
   imports: [FormsModule],
@@ -70,6 +71,7 @@ export class NumericEditor implements ICellRendererAngularComp {
   }
 }
 
+/** Grid cell with a text input of the type in the params (default "text"). */
 @Component({
   selector: 'text-editor-cell',
   imports: [FormsModule],
@@ -102,6 +104,7 @@ export class TextEditor implements ICellEditorAngularComp {
   }
 }
 
+/** Grid cell with a select of the options in the params. */
 @Component({
   selector: 'select-editor-cell',
   template: `<select (change)="onChange($event)" style="width:100%; height:100%;" [disabled]="disabled">

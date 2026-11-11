@@ -3,17 +3,24 @@ using System.Text.Json;
 namespace BBH.CP.Atlas.Service.Platform.Audit;
 
 /// <summary>
-/// Review 3 RV-02: the History of a record shows *** in place of the old and new value of a field that the rules hide
-/// from the reader. The entry and the field name stay, so the reader sees that a change was made.
+/// Masks the values of hidden fields in the history of a record.
 /// </summary>
+/// <remarks>
+/// The history shows *** in place of the old and new value of a field that the rules hide from the reader.
+/// The entry and the field name stay, so the reader sees that a change occurred.
+/// </remarks>
 public static class AtlasAuditMask
 {
+    /// <summary>The text that replaces a hidden value.</summary>
     public const string Hidden = "***";
 
     /// <summary>
-    /// The LogMessage with the values of the hidden fields masked. A message that is not a JSON list (old text format)
-    /// is given as it is: it has no field names to match.
+    /// Returns the LogMessage with the values of the hidden fields masked.
     /// </summary>
+    /// <remarks>
+    /// A message that is not a JSON list (the old text format) is returned with no change.
+    /// It has no field names to match.
+    /// </remarks>
     public static object? Mask(object? logMessage, IReadOnlySet<string> hiddenFields)
     {
         ArgumentNullException.ThrowIfNull(hiddenFields);

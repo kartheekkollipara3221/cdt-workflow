@@ -8,27 +8,42 @@ namespace BBH.CP.Atlas.Service.Platform.Registry;
 /// <summary>A service that the platform makes for an app code. The resolver sets the code.</summary>
 public interface IAtlasModule
 {
+    /// <summary>The app code of the service.</summary>
     string AppCode { get; set; }
 }
 
-/// <summary>One AddAtlasModule line (spec 07, 4.2).</summary>
+/// <summary>The data of one AddAtlasModule line: the app code and the service type.</summary>
 public sealed record AtlasModuleRegistration(string Code, Type ServiceType);
 
 /// <summary>
-/// Replaces the five if chains (spec 07, 4.3). Unknown or disabled app: 404. Missing service type: 400.
-/// An app whose Table or AuditTable was not loaded at start-up (for example the start-up did not run)
-/// is not available: 404 and Atlas.AppNotAvailable (review HO-05). A restart loads the table and runs the checks.
+/// Finds the service of a platform app from its app code. It replaces the five if chains of the target.
 /// </summary>
+/// <remarks>
+/// An unknown or disabled app gives 404. A missing service type gives 400.
+/// An app whose Table or AuditTable did not load at start-up is not available.
+/// For example, the start-up did not run. The resolver then gives 404 and logs Atlas.AppNotAvailable.
+/// A restart loads the table and runs the checks.
+/// </remarks>
 public interface IAtlasModuleResolver
 {
-    /// <summary>True if the code has a registration line and an enabled manifest.</summary>
+    /// <summary>
+    /// Returns true when the code has a registration line, an enabled manifest and loaded tables.
+    /// </summary>
     bool IsPlatformApp(string? appCode);
 
+    /// <summary>The registration lines of the platform apps.</summary>
     IReadOnlyList<AtlasModuleRegistration> Registrations { get; }
 
+    /// <summary>Returns the service of the app for a feature.</summary>
+    /// <param name="appCode">The app code.</param>
+    /// <param name="feature">The name of the feature, for the error message.</param>
+    /// <exception cref="AtlasProblemException">
+    /// 400 when the code is not valid or the service does not supply the feature. 404 when the app is not available.
+    /// </exception>
     TService Get<TService>(string appCode, string feature) where TService : class;
 }
 
+/// <summary>Finds the service of a platform app from its app code. See <see cref="IAtlasModuleResolver"/>.</summary>
 public sealed class AtlasModuleResolver(
     IServiceProvider services,
     IAtlasConfigStore configStore,
@@ -52,7 +67,8 @@ public sealed class AtlasModuleResolver(
             && MissingTable(manifest) == null && disabled?.IsDisabled(code, out _) != true;
     }
 
-    /// <summary>The first table of the manifest that is not in the registry, or null (no registry: null).</summary>
+    /// <summary>Returns the first table of the manifest that is not in the registry, or null.</summary>
+    /// <remarks>When there is no registry, the method returns null.</remarks>
     private string? MissingTable(AtlasAppManifest manifest)
     {
         if (tables == null)

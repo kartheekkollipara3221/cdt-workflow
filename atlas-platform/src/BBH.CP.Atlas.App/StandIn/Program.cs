@@ -1,7 +1,6 @@
 // STAND-IN: do not copy to the target.
-// Local demo host. The target has its own program.cs; at the target, add only the platform lines
-// that INTEGRATION.md lists (AddAtlasPlatform, one AddAtlasModule line for each app, StartAtlasPlatformAsync,
-// and the --atlas-check lines).
+// Local demo host. The target has its own program.cs. At the target, add only the platform lines:
+// AddAtlasPlatform, one AddAtlasModule line for each app, StartAtlasPlatformAsync and the --atlas-check lines.
 using BBH.CP.Atlas.App.Platform;
 using BBH.CP.Atlas.App.StandIn;
 

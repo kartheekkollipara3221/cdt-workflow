@@ -1,20 +1,27 @@
 namespace BBH.CP.Atlas.Service.Platform.Security;
 
-/// <summary>One active role of a user, from dbo.vw_CP_Atlas_ActiveUserRole (spec 06, 4.4).</summary>
+/// <summary>One active role of a user, from dbo.vw_CP_Atlas_ActiveUserRole.</summary>
 public sealed record AtlasRole(string AppCode, string RoleName, bool IsRead, bool IsWrite, bool IsAdmin);
 
 /// <summary>
-/// The roles of the user for one app and its RoleScope (own app + parent, spec 01, 11.2), with the app-level
-/// flags. Flag order (spec 06, question 6): IsAdmin includes write and read; IsWrite includes read.
+/// The roles of the user for one app and its RoleScope (the app and its parent), with the app-level flags.
 /// </summary>
+/// <remarks>
+/// IsAdmin includes write and read. IsWrite includes read.
+/// </remarks>
 public sealed class AtlasAppRoles
 {
+    /// <summary>The token of a user that has read access.</summary>
     public const string ReadFlag = "@Read";
+    /// <summary>The token of a user that has write access.</summary>
     public const string WriteFlag = "@Write";
+    /// <summary>The token of a user that has admin access.</summary>
     public const string AdminFlag = "@Admin";
 
+    /// <summary>No roles.</summary>
     public static AtlasAppRoles None { get; } = new([]);
 
+    /// <summary>Creates the role set and calculates the app-level flags.</summary>
     public AtlasAppRoles(IEnumerable<AtlasRole> roles)
     {
         Roles = [.. roles];
@@ -24,16 +31,22 @@ public sealed class AtlasAppRoles
         IsRead = IsWrite || Roles.Any(x => x.IsRead);
     }
 
+    /// <summary>The active roles.</summary>
     public IReadOnlyList<AtlasRole> Roles { get; }
 
+    /// <summary>The distinct role names.</summary>
     public IReadOnlyList<string> RoleNames { get; }
 
+    /// <summary>True when the user has read access.</summary>
     public bool IsRead { get; }
 
+    /// <summary>True when the user has write access.</summary>
     public bool IsWrite { get; }
 
+    /// <summary>True when the user has admin access.</summary>
     public bool IsAdmin { get; }
 
+    /// <summary>True when the user has one or more roles.</summary>
     public bool HasAnyRole => RoleNames.Count > 0;
 
     /// <summary>The role names plus the flag names that the user has. Rules and Permissions match against these.</summary>
@@ -49,7 +62,9 @@ public sealed class AtlasAppRoles
         }
     }
 
-    /// <summary>True if one entry of the list is a role name or a flag of the user. A null or empty list matches nobody.</summary>
+    /// <summary>
+    /// Returns true when one entry of the list is a role name or a flag of the user. A null or empty list matches nobody.
+    /// </summary>
     public bool MatchesAny(IEnumerable<string>? entries) =>
         entries != null && entries.Any(entry => Tokens.Contains(entry, StringComparer.OrdinalIgnoreCase));
 }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BBH.CP.Atlas.Data;
 
+/// <summary>The EF Core context of the PB data warehouse. Locally it has no entities.</summary>
 public partial class CPPBContext : DbContext
 {
     public CPPBContext(DbContextOptions<CPPBContext> options)

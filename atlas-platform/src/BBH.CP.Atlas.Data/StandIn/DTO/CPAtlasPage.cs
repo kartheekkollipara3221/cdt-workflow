@@ -1,6 +1,6 @@
 // STAND-IN: do not copy to the target.
 // Target: Data/Data/DTO/CPAtlasPage.cs, CPLogin.cs (CPUser), CPAtlasLog.cs (CPAuditLog), CPExternalModel.cs (CPPBAccount),
-// CPAtlasApplication.cs (CPApplication). Same classes and properties; CPAtlasPage and CPAuditLog are "partial" (INTEGRATION.md).
+// CPAtlasApplication.cs (CPApplication). Same classes and properties; CPAtlasPage and CPAuditLog are "partial" (an integration step at the target).
 using BBH.CP.Atlas.Data.Enumerations;
 
 namespace BBH.CP.Atlas.Data.DTO

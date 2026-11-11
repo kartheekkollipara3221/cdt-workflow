@@ -3,16 +3,22 @@ using BBH.CP.Atlas.Data.DTO;
 namespace BBH.CP.Atlas.Service.Platform.Sections;
 
 /// <summary>
-/// The server part of the control Effects (spec 01, 5.2; review SV-03, SV-04): the same actions as the client
-/// (WebUi platform/form/atlas-effects.ts). An effect cannot show a field that a rule hid or enable a field that a
-/// rule disabled.
+/// Applies the control effects of a form on the server.
 /// </summary>
+/// <remarks>
+/// The server uses the same effect actions as the client (see atlas-effects.ts).
+/// A rule has priority over an effect. An effect cannot show a field that a rule hides.
+/// An effect cannot enable a field that a rule disables.
+/// </remarks>
 public static class AtlasServerEffects
 {
     /// <summary>
-    /// Applies Show/Hide/Require/Unrequire/Enable/Disable to the fields. Returns the names that the server sets: the
-    /// SetFromOption targets, and the Set and Clear targets of a matching effect.
+    /// Applies Show, Hide, Require, Unrequire, Enable and Disable to the fields.
     /// </summary>
+    /// <returns>
+    /// The names of the fields that the server sets: the SetFromOption targets, and the Set and Clear targets of a
+    /// matching effect.
+    /// </returns>
     public static HashSet<string> Apply(AtlasFormFields fields, Func<AtlasFormField, string?> current)
     {
         ArgumentNullException.ThrowIfNull(fields);
@@ -44,9 +50,13 @@ public static class AtlasServerEffects
     }
 
     /// <summary>
-    /// The server-set values: SetFromOption from the Data of the selected option, and the Set and Clear values of a
-    /// matching effect. Later effects win, as on the client. <paramref name="optionsOf"/> gives the options of a control.
+    /// Returns the values that the server sets.
     /// </summary>
+    /// <remarks>
+    /// SetFromOption takes the value from the Data of the selected option.
+    /// A matching effect also gives its Set and Clear values. A later effect wins, as on the client.
+    /// </remarks>
+    /// <param name="optionsOf">Returns the options of a control.</param>
     public static IEnumerable<(string Target, string? Value)> Values(AtlasFormFields fields, Func<AtlasFormField, string?> current,
         Func<CPApplicationControl, IReadOnlyList<CPKeyValue>> optionsOf)
     {
@@ -82,7 +92,10 @@ public static class AtlasServerEffects
         }
     }
 
-    /// <summary>The When of an effect: HasValue, Equals, NotEquals and In (ignore case). No When = always.</summary>
+    /// <summary>
+    /// Returns true when the value matches the When of an effect: HasValue, Equals, NotEquals and In (ignore case).
+    /// An effect with no When always matches.
+    /// </summary>
     public static bool Matches(CPEffectCondition? when, string? value)
     {
         if (when == null)

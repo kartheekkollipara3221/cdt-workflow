@@ -1,7 +1,8 @@
-// COPY to the target: WebUi/src/app/platform/form/. Value-based client rules (spec 01, 5.1).
+// COPY to the target: WebUi/src/app/platform/form/.
+// Client rules (effects) that depend on the value of a control.
 // Conditions: Equals, NotEquals, In, HasValue. Actions: Show, Hide, Require, Unrequire, Enable, Disable, Set, Clear,
-// SetFromOption. No expression language. The server applies all of them again on save and sets the Set, Clear and
-// SetFromOption values itself (review B35).
+// SetFromOption. There is no expression language.
+// The server applies all the effects again on save. It sets the Set, Clear and SetFromOption values itself.
 import { isNil } from '../atlas-dates';
 import { CPApplicationControl, CPEffectCondition, CPKeyValue } from '../atlas-models';
 
@@ -13,10 +14,16 @@ export interface AtlasEffectTarget {
   setValue(name: string, value: string | null): void;
 }
 
+/** Returns true when the value is not null, not undefined and not empty text. */
 export function hasValue(value: unknown): boolean {
   return !isNil(value) && String(value) !== '';
 }
 
+/**
+ * Returns true when the value meets all the parts of the condition.
+ *
+ * The text compares ignore case. No condition always matches.
+ */
 export function matches(when: CPEffectCondition | null | undefined, value: unknown): boolean {
   if (!when) {
     return true;
@@ -39,8 +46,10 @@ export function matches(when: CPEffectCondition | null | undefined, value: unkno
 }
 
 /**
- * The option data for SetFromOption (spec 01, 5.2): Data of the selected option; null when it has no Data. The server
- * (AtlasServerEffects) reads only Data too (review FABLE F14).
+ * Returns the Data of the selected option, for SetFromOption.
+ *
+ * Returns null when there is no value or the option has no Data.
+ * The server (AtlasServerEffects) also reads only Data.
  */
 export function optionData(options: CPKeyValue[] | null | undefined, value: unknown): Record<string, string> | null {
   if (!hasValue(value)) {

@@ -1,15 +1,18 @@
-// COPY to the target: WebUi/src/app/platform/form/. Review FABLE section 6.1: one list of effect conditions and one
-// list of Computed values that the client (platform.spec.ts) and the server (EffectParityTests, reads this file) both
-// check, so the two sides stay the same. Each array is strict JSON: double quotes, no trailing commas, no comments
-// inside it.
+// COPY to the target: WebUi/src/app/platform/form/.
+// Shared test cases for the effect conditions and the Computed values.
+// The client tests (platform.spec.ts) and the server tests (EffectParityTests) both check them.
+// Thus the client and the server give the same results.
+// EffectParityTests reads this file. Each array must be strict JSON: double quotes, no trailing commas, no comments.
 import { CPEffectCondition } from '../atlas-models';
 
+/** An effect condition, a control value and the expected result of matches(). */
 export interface AtlasEffectCase {
   when: CPEffectCondition | null;
   value: string;
   matches: boolean;
 }
 
+/** The effect condition cases. */
 export const ATLAS_EFFECT_CASES: AtlasEffectCase[] = [
   { "when": { "HasValue": true }, "value": "", "matches": false },
   { "when": { "HasValue": false }, "value": "", "matches": true },
@@ -19,13 +22,18 @@ export const ATLAS_EFFECT_CASES: AtlasEffectCase[] = [
   { "when": null, "value": "x", "matches": true }
 ];
 
-/** A Computed expression over the values A, B and C (whole numbers or empty); an empty value is left out. */
+/**
+ * A Computed expression over the values A, B and C, and the expected result.
+ *
+ * Each value is a whole number or empty. The expression does not use an empty value.
+ */
 export interface AtlasComputedCase {
   expression: string;
   values: Record<string, string>;
   result: number | null;
 }
 
+/** The Computed value cases. */
 export const ATLAS_COMPUTED_CASES: AtlasComputedCase[] = [
   { "expression": "Sum(A, B, C)", "values": { "A": "1", "B": "", "C": "3" }, "result": 4 },
   { "expression": "Count(A, B, C)", "values": { "A": "1", "B": "", "C": "3" }, "result": 2 },

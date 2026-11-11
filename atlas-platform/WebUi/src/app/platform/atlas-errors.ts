@@ -1,5 +1,12 @@
-// COPY to the target: WebUi/src/app/platform/. The user text of an HTTP error (review NG-12): its own file, so the
-// dashboard and the form chunks do not share the form component code.
+// COPY to the target: WebUi/src/app/platform/. This helper has its own file. Thus the dashboard chunk and the form
+// chunk do not share the form component code.
+
+/**
+ * Returns the text for the user of an HTTP error.
+ *
+ * The text comes from the problem details (detail, then title) of the response. Status 403, 404 and 0 get their own
+ * text.
+ */
 export function problemText(error: unknown): string {
   const response = error as { status?: number; error?: { detail?: string; title?: string } };
   if (response?.status === 403) {

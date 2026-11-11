@@ -6,9 +6,12 @@ using BBH.CP.Atlas.Data.Platform;
 namespace BBH.CP.Atlas.Service.Platform.Sections;
 
 /// <summary>
-/// The Computed fields of a form (spec 01, 10.2): <c>"Target": "Sum(A, B, ...)"</c>. One function table for the save
-/// and the start-up check (review SV-08). Empty sources are left out; Min and Max of no value give null.
+/// Calculates the Computed fields of a form, for example <c>"Target": "Sum(A, B, ...)"</c>.
 /// </summary>
+/// <remarks>
+/// The save and the start-up check use the same function table.
+/// Empty sources are not used. Min and Max of no value give null.
+/// </remarks>
 public static partial class AtlasComputedFields
 {
     private static readonly Dictionary<string, Func<decimal[], decimal?>> FunctionTable = new(StringComparer.OrdinalIgnoreCase)
@@ -22,7 +25,8 @@ public static partial class AtlasComputedFields
     /// <summary>The names of the functions, for messages.</summary>
     public static IReadOnlyCollection<string> Functions => FunctionTable.Keys;
 
-    /// <summary>Splits "Function(A, B)". False if the text is not a call of a known function.</summary>
+    /// <summary>Splits "Function(A, B)" into the function and the sources.</summary>
+    /// <returns>False when the text is not a call of a known function.</returns>
     public static bool TryParse(string? expression, out string function, out IReadOnlyList<string> sources)
     {
         function = "";
@@ -36,13 +40,15 @@ public static partial class AtlasComputedFields
         return true;
     }
 
-    /// <summary>The result of a function for the values that are present.</summary>
+    /// <summary>Returns the result of a function for the values that are present.</summary>
+    /// <exception cref="ArgumentException">The function is not a Computed function.</exception>
     public static decimal? Evaluate(string function, IEnumerable<decimal> values) =>
         FunctionTable.TryGetValue(function, out Func<decimal[], decimal?>? evaluate)
             ? evaluate([.. values])
             : throw new ArgumentException($"'{function}' is not a Computed function.", nameof(function));
 
-    /// <summary>Sets the target column of the record. Returns an error, or null.</summary>
+    /// <summary>Sets the target column of the record to the result of the expression.</summary>
+    /// <returns>An error when the expression or the result is not valid, or null.</returns>
     public static CPPageError? Compute(AtlasTable table, Dictionary<string, object?> record, string target, string expression)
     {
         ArgumentNullException.ThrowIfNull(table);

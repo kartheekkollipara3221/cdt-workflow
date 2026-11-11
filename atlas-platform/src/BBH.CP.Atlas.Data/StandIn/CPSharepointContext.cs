@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace BBH.CP.Atlas.Data;
 
+/// <summary>The EF Core context of the CP Atlas database (the user, role and application tables).</summary>
 public partial class CPSharepointContext : DbContext
 {
     public IConfiguration Configuration { get; }

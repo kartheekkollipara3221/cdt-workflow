@@ -10,11 +10,14 @@ using BBH.CP.Atlas.Service.Platform.Sections;
 namespace BBH.CP.Atlas.App.Platform;
 
 /// <summary>
-/// Typo checks of the JSON files of a platform app (review SV-07), part of the start-up check and --atlas-check.
-/// The loader stays tolerant (unknown members are ignored at run time, B2); this check reports them:
-/// unknown properties (warnings, with the JSON path), and names, tokens, patterns and action types that the
-/// platform does not know (errors).
+/// Finds typing errors in the JSON files of a platform app.
 /// </summary>
+/// <remarks>
+/// The start-up check and --atlas-check use these checks.
+/// The loader ignores unknown members at run time, so this check reports them.
+/// An unknown property gives a warning with the JSON path.
+/// An unknown name, token, pattern or action type gives an error.
+/// </remarks>
 public static partial class AtlasConfigLint
 {
     /// <summary>The highest manifest SchemaVersion that this platform reads.</summary>
@@ -24,7 +27,10 @@ public static partial class AtlasConfigLint
     private static readonly string[] ActionTypes = ["Save", "Close", "Delete", "Execute", "Navigate"];
     private static readonly string[] ClientActionTypes = ["Save", "Close", "Delete"];
 
-    /// <summary>Unknown properties of a JSON file, as warnings: "file: path is not a property of Type".</summary>
+    /// <summary>
+    /// Reports each unknown property of a JSON file as a warning: "file: path is not a property of Type".
+    /// </summary>
+    /// <remarks>A missing file or a file that is not valid JSON gives no warning. The loader reports it.</remarks>
     public static void CheckUnknownProperties(string path, Type type, Action<string> warning)
     {
         ArgumentNullException.ThrowIfNull(warning);
@@ -42,7 +48,7 @@ public static partial class AtlasConfigLint
         }
     }
 
-    /// <summary>Errors of the names and values in a form.</summary>
+    /// <summary>Reports the errors in the names and values of a form, and the button actions that the form does not do.</summary>
     public static void CheckForm(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Action<string> error, Action<string> warning)
     {
         ArgumentNullException.ThrowIfNull(manifest);
@@ -59,7 +65,7 @@ public static partial class AtlasConfigLint
         ButtonActions(form, error, warning);
     }
 
-    /// <summary>A control name used two times is an error. Returns the names of the controls, grid columns and fields.</summary>
+    /// <summary>Reports a control name that occurs more than one time. Returns the names of the controls, grid columns and fields.</summary>
     private static HashSet<string> DuplicateNames(List<CPApplicationControl> controls, Action<string> error)
     {
         HashSet<string> names = new(StringComparer.OrdinalIgnoreCase);
@@ -83,7 +89,7 @@ public static partial class AtlasConfigLint
                 error($"{where} names '{name}', which is not a control or field of the form.");
     }
 
-    /// <summary>The targets of the effects, the HeaderFromDate controls and the Pattern of each control.</summary>
+    /// <summary>Checks the targets of the effects, the HeaderFromDate controls and the Pattern of each control.</summary>
     private static void EffectTargets(List<CPApplicationControl> controls, HashSet<string> names, Action<string> error)
     {
         foreach (CPApplicationControl control in controls)
@@ -112,9 +118,12 @@ public static partial class AtlasConfigLint
     }
 
     /// <summary>
-    /// Review 3 RV-15: a value change runs the effects of the changed control; Set, Clear and SetFromOption change
-    /// other controls, whose effects run in turn. A cycle (A sets B, B sets A, or A sets A) never ends in the client.
+    /// Reports each control whose Set, Clear or SetFromOption effects come back to the same control.
     /// </summary>
+    /// <remarks>
+    /// A value change runs the effects of the changed control. Set, Clear and SetFromOption change other controls.
+    /// The effects of these controls run in turn. A cycle (A sets B, B sets A, or A sets A) never ends in the client.
+    /// </remarks>
     private static void EffectCycles(List<CPApplicationControl> controls, Action<string> error)
     {
         Dictionary<string, HashSet<string>> writes = new(StringComparer.OrdinalIgnoreCase);

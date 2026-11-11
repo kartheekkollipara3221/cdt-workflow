@@ -9,10 +9,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BBH.CP.Atlas.App.Controllers.V1
 {
+    /// <summary>The local stand-in of the security endpoints: the current user, the roles and the test users.</summary>
     [ApiController]
     public class CPSecurityController(CPSharepointContext context, IConfiguration configuration, IUserInfo userInfo,
         IWebHostEnvironment environment) : ControllerBase
     {
+        /// <summary>Returns the current user with the roles from dbo.vw_CP_Atlas_ActiveUserRole.</summary>
         [HttpGet]
         [Route("v1/authorize")]
         public ActionResult<CPUser> Get()
@@ -26,6 +28,9 @@ namespace BBH.CP.Atlas.App.Controllers.V1
             return Ok(user);
         }
 
+        /// <summary>
+        /// Returns the test users for the "act as" switch. The list is empty outside Development or when ActAs is off.
+        /// </summary>
         [HttpGet]
         [Route("v1/standin/users")]
         public ActionResult GetTestUsers()

@@ -4,8 +4,9 @@ using BBH.CP.Atlas.Service.Platform.Security;
 
 namespace BBH.CP.Atlas.App.Platform;
 
-/// <summary>The platform gets the current user from the existing IUserInfo (Active Directory at the target).</summary>
+/// <summary>Gives the platform the current user from the existing IUserInfo (Active Directory at the target).</summary>
 public sealed class UserInfoCurrentUserSource(IUserInfo userInfo) : IAtlasCurrentUserSource
 {
+    /// <summary>Returns the user of the current request.</summary>
     public CPUser GetCurrentUser() => userInfo.GetCurrentUser();
 }

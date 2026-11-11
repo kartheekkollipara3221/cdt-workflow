@@ -9,6 +9,13 @@ The dated history entries below are unchanged, newest first: platform and target
 ## A. Atlas platform (atlas-platform/) - ACTIVE
 
 ### State
+- Comment pass 2026-11-10 (user request: Google-style comments in ASD-STE100, no agent history in the code):
+  comments only, in 101 platform files (src/, WebUi/src/, sql 020/030/040; NOT 050/090 = stop-and-ask, NOT tests).
+  Rules: AGENTS.md "Code comments (platform)". Removed spec/review/decision references are in
+  docs/atlas-platform/CODE_TRACE.md (256 rows, file + member). Guard: CodeCommentRulesTests (2 tests). Proof of no
+  code change: comments stripped from HEAD and working copy compare equal for every file. All 5 platform gates
+  passed. One ID stays on purpose: a SQL comment inside a C# raw string (AtlasUserContext.LoadRoles), that is code.
+  New package for the target (comments only; copy all files again, no new integration step).
 - Independent source assessment completed 2026-11-10: docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md (see section C).
   Review only. No platform implementation, SQL, target integration, or package change. No application tests were run.
 - Target dev integration with package bcb4b2b: steps 0-6 ALL DONE (user-reported, each "complete, no errors"). TTDV2
@@ -29,8 +36,8 @@ The dated history entries below are unchanged, newest first: platform and target
   revoked on purpose before 050), R02 High (re-cutover after rollback loses newer TTD data/history, then revokes TTD
   roles again), R04 Medium (All Report Total sums only the 5000 loaded rows, no warning), R03 Medium (multi-select
   delimiter #$# vs comma; TTDV2 unaffected). Decide before 050/090 run anywhere (Q07-Q10).
-- Known: Service/StandIn/CPAtlasService.cs header names a reference file that does not exist (fix at the next package
-  rebuild, Q06). Local servers stopped; restart only on request (atlas-platform/local/README.md).
+- Fixed 2026-11-10 (comment pass): the Service/StandIn/CPAtlasService.cs header now names the package path
+  reference/StandIn/CPAtlasService.cs (it named a file that did not exist, Q06). Local servers stopped; restart only on request (atlas-platform/local/README.md).
 
 ### Pending (full detail with options = docs/atlas-platform/PENDING_DECISIONS.html)
 1 TTDV2 at target: Q01 bug summary, Q02 step-0 numbers (RowsLeftOut, warnings), Q03 GRANT on schema TTDV2 (QC/prod),

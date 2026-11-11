@@ -1,6 +1,4 @@
-// COPY to the target: WebUi/src/app/platform/form/. The generic platform form (spec 01, 5.5; spec 12,
-// question 5), route form/:code/:id, beside the current sectionmaster component. It knows no app: the controls come
-// from the section JSON, the renderers from the registry, and the rules from the server.
+// COPY to the target: WebUi/src/app/platform/form/.
 import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, Type, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -20,7 +18,7 @@ import { AtlasFieldA11yDirective } from './atlas-field-a11y.directive';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
 import { atlasValidators, errorText } from './atlas-validators';
 
-/** What the template needs of one control, found one time for each section (review FABLE F17). */
+/** The template data of one control. The form finds it one time for each section, not at each change detection. */
 export interface AtlasFieldView {
   renderer: Type<unknown>;
   /** The renderer has an input that a label can point to (label for). */
@@ -29,11 +27,17 @@ export interface AtlasFieldView {
   ownMessages: boolean;
 }
 
+/**
+ * The generic platform form, on the route form/:code/:id, beside the current sectionmaster component.
+ *
+ * It knows no app. The controls come from the section JSON, the renderers from the registry,
+ * and the rules from the server.
+ */
 @Component({
   selector: 'atlas-form',
   imports: [ReactiveFormsModule, NgComponentOutlet, LoaderComponent, SectionComponent, DialogComponent, AtlasHistoryDialog, AtlasFieldA11yDirective],
   templateUrl: './atlas-form.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush, // review NG-11: the state is in signals
+  changeDetection: ChangeDetectionStrategy.OnPush, // The state is in signals.
 })
 export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   private readonly route = inject(ActivatedRoute);
@@ -53,11 +57,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   readonly required = signal<Record<string, boolean>>({});
   readonly historyOpen = signal(false);
   readonly confirmDelete = signal(false);
-  /** The mandatory-field message of the section master (validate(), CPAtlasConfirmation) - decision D2. */
+  /** True when the mandatory-field message shows, as CPAtlasConfirmation in validate() of the section master. */
   readonly invalidOpen = signal(false);
   readonly invalidMessage = 'Please make sure all the mandatory fields are filled.';
 
-  // Review NG-11: route state as signals, so OnPush and zoneless see each change.
+  // The route state is in signals, so OnPush and zoneless change detection see each change.
   readonly code = signal('');
   readonly id = signal(0);
   form: AtlasFormRecord = new FormRecord<FormControl | FormRecord<FormControl>>({});
@@ -80,8 +84,8 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   });
 
   ngOnInit(): void {
-    // Review 3 RV-14: a new route cancels the load before it (a late answer for record A must not build the form of
-    // B), and no answer is handled after the form is destroyed (NG0911).
+    // A new route cancels the load before it. Thus a late response for record A cannot build the form of record B.
+    // No response is handled after the form is destroyed (Angular error NG0911).
     this.route.paramMap
       .pipe(
         tap((params) => {
@@ -117,12 +121,12 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     this.wireEffects();
     this.wireComputed(section);
     if (!this.canSave()) {
-      this.form.disable({ emitEvent: false }); // review 3 RV-17
+      this.form.disable({ emitEvent: false }); // The server refuses the save, so the form is read-only.
     }
     this.loading.set(false);
   }
 
-  /** A control with no renderer cannot be edited, so it is not validated or sent (review NG-04). */
+  /** Disables each control that has no renderer. The user cannot edit it, so it is not validated or sent. */
   private disableUnsupported(): void {
     for (const control of this.controlsByName.values()) {
       if (!this.registry.has(control.Type)) {
@@ -131,7 +135,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
   }
 
-  /** Effects run when the form is built and each time the source value changes (spec 01, 5.1). */
+  /** Runs the effects when the form is built, and each time the value of a source control changes. */
   private wireEffects(): void {
     const sources = [...this.controlsByName.values()].filter((x) => x.Effects?.length);
     for (const control of sources) {
@@ -142,7 +146,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
   }
 
-  /** Computed fields: the client shows the value while the user types; the server saves its own value. */
+  /**
+   * Updates the Computed fields each time the form value changes.
+   *
+   * The client shows the value while the user types. The server calculates and saves its own value.
+   */
   private wireComputed(section: CPApplicationSection): void {
     if (section.Computed) {
       this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.updateComputed());
@@ -191,12 +199,19 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   }
 
   /**
-   * Review 3 RV-15: Set, Clear and SetFromOption change other controls, and their effects run in turn. A control whose
-   * effects are running does not run them again, so a cycle in the config (A sets B, B sets A) stops after one pass
-   * instead of a stack overflow. The start-up check also reports such a cycle.
+   * Names of the controls whose effects run now.
+   *
+   * Set, Clear and SetFromOption change other controls. Then the effects of those controls also run.
+   * This set stops a cycle in the config (A sets B, B sets A) after one pass.
+   * The start-up check also reports a cycle.
    */
   private readonly effectsRunning = new Set<string>();
 
+  /**
+   * Runs the effects of a control for a new value.
+   *
+   * Does nothing when the effects of this control already run.
+   */
   private runEffects(control: CPApplicationControl, value: unknown): void {
     if (this.effectsRunning.has(control.Name)) {
       return;
@@ -218,11 +233,12 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
 
   isSection = isSection;
 
+  /** Returns true when the control is visible. A control with no flag is visible. */
   isVisible(name: string): boolean {
     return this.visible()[name] !== false;
   }
 
-  /** The control and its section are visible (review NG-03). */
+  /** Returns true when the control and its section are visible. */
   isShown(name: string): boolean {
     return isShown(name, this.containers, (x) => this.isVisible(x));
   }
@@ -231,6 +247,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     return !!this.required()[name];
   }
 
+  /**
+   * Returns the error text of a control, or null.
+   *
+   * Shows an error only after the user touches the control, or when the server sent an error for it.
+   */
   error(control: CPApplicationControl): string | null {
     const item = this.form.get(control.Name);
     if (!item || item instanceof FormGroup || !(item.touched || item.errors?.['server'])) {
@@ -239,6 +260,10 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     return errorText(item.errors, control.Label, control.Validator);
   }
 
+  /**
+   * The buttons that show. Delete shows only for a saved record when the user can delete.
+   * Save shows only when the user can save.
+   */
   readonly visibleButtons = computed<CPButton[]>(() =>
     (this.section()?.Buttons ?? []).filter((x) => {
       if (!x.Visible) {
@@ -255,8 +280,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   );
 
   /**
-   * Review 3 RV-17: the server would refuse the save (CanEdit or CanCreate false), so the form is read-only and has no
-   * Save button, as the target section master. No UserPermissions (an older server): Save shows, as before.
+   * True when the user can save the record.
+   *
+   * When CanEdit (or CanCreate for a new record) is false, the server refuses the save.
+   * Then the form is read-only and has no Save button, as in the target section master.
+   * When the server sends no UserPermissions (an older server), the Save button shows.
    */
   readonly canSave = computed(() => {
     const permissions = this.section()?.UserPermissions;
@@ -267,6 +295,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
 
   // ---------- Actions ----------
 
+  /** Runs the action of a button: Save, Delete (after a confirmation) or else close. */
   onButton(button: CPButton): void {
     switch (actionOf(button)) {
       case 'save':
@@ -280,16 +309,22 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
   }
 
+  /** Goes back to the dashboard of the app. */
   close(): void {
     this.router.navigate(this.dashboardLink(this.code()));
   }
 
+  /**
+   * Validates the shown fields and saves the record.
+   *
+   * When a shown field is not valid, shows the mandatory-field message and does not save.
+   */
   save(): void {
     const section = this.section();
     if (!section || this.saving()) {
       return;
     }
-    // Review 3 RV-L21: touch only the shown fields, so a field that an effect shows later has no error before input.
+    // Touch only the shown fields. Thus a field that an effect shows later has no error before the user types.
     for (const control of valueControls(section)) {
       if (this.isShown(control.Name)) {
         this.form.get(control.Name)?.markAllAsTouched();
@@ -297,7 +332,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
     this.pageErrors.set([]);
     if (shownInvalid(section, this.form, (name) => this.isShown(name))) {
-      // As the section master: the modal; the fields also show their errors (all are touched) - decision D2.
+      // As in the section master, show the message dialog. The fields also show their errors, because all are touched.
       this.invalidOpen.set(true);
       return;
     }
@@ -328,6 +363,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
       });
   }
 
+  /** Deletes the record and goes back to the dashboard. Errors show at the top. */
   remove(): void {
     this.confirmDelete.set(false);
     this.api.remove(this.code(), this.id()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -343,12 +379,16 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     });
   }
 
-  /** An HTTP failure of a save or a delete: one error at the top. */
+  /** Shows an HTTP failure of a save or a delete as one error at the top. */
   private httpFail(error: unknown): void {
     this.pageErrors.set([{ Field: '', Code: 'Http', Message: problemText(error) }]);
   }
 
-  /** Field errors go to the field; the others are listed at the top (spec 01, 5.11). */
+  /**
+   * Shows the server errors of a save.
+   *
+   * An error of an enabled field shows at that field. The other errors show at the top.
+   */
   private showErrors(errors: CPPageError[]): void {
     const page: CPPageError[] = [];
     for (const error of errors) {
@@ -369,7 +409,7 @@ function actionOf(button: CPButton): string {
   return (type ?? '').toLowerCase();
 }
 
-/** A control by name in the form or in a grid row group. */
+/** Returns a control by name from the form or from a grid row group, or null. */
 function findControl(form: FormGroup, name: string): FormControl | null {
   const direct = form.get(name);
   if (direct instanceof FormControl) {

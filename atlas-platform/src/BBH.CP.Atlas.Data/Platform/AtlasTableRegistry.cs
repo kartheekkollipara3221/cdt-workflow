@@ -3,20 +3,25 @@ using System.Text;
 namespace BBH.CP.Atlas.Data.Platform;
 
 /// <summary>
-/// The tables that the platform maps as shared-type entities. Filled one time at start-up from the database
-/// metadata (the database is the source of truth, spec 05, 6.2). A new table needs a restart of the API.
+/// The tables that the platform maps as shared-type entities.
 /// </summary>
+/// <remarks>
+/// The platform fills it one time at start-up from the database metadata. The database is the source of truth.
+/// A new table needs a restart of the API.
+/// </remarks>
 public sealed class AtlasTableRegistry
 {
     private readonly Dictionary<string, AtlasTable> _tables = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
     private string? _modelKey;
 
-    /// <summary>True after the platform start-up loaded the tables (review HO-06).</summary>
+    /// <summary>True after the platform start-up loaded the tables.</summary>
     public bool IsLoaded { get; private set; }
 
+    /// <summary>Records that the platform start-up loaded the tables. See <see cref="IsLoaded"/>.</summary>
     public void MarkLoaded() => IsLoaded = true;
 
+    /// <summary>A copy of the registered tables.</summary>
     public IReadOnlyCollection<AtlasTable> Tables
     {
         get
@@ -36,6 +41,7 @@ public sealed class AtlasTableRegistry
         }
     }
 
+    /// <summary>Adds the table, or replaces a table with the same full name.</summary>
     public void Add(AtlasTable table)
     {
         ArgumentNullException.ThrowIfNull(table);
@@ -46,6 +52,7 @@ public sealed class AtlasTableRegistry
         }
     }
 
+    /// <summary>Finds a table by its full name (case-insensitive). Returns false if the table is not registered.</summary>
     public bool TryGet(string fullName, out AtlasTable table)
     {
         lock (_lock)
@@ -61,6 +68,8 @@ public sealed class AtlasTableRegistry
         return false;
     }
 
+    /// <summary>Returns the table with the full name (case-insensitive).</summary>
+    /// <exception cref="InvalidOperationException">The table is not registered.</exception>
     public AtlasTable Get(string fullName) =>
         TryGet(fullName, out AtlasTable table)
             ? table

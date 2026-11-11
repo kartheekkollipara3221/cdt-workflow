@@ -4,19 +4,24 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace BBH.CP.Atlas.Data.Platform;
 
 /// <summary>
-/// The platform context (spec 12, question 1). It holds only shared-type entities: one
-/// <c>Dictionary&lt;string, object?&gt;</c> entity for each registered table, with no C# class.
-/// It uses the same connection as <see cref="CPSharepointContext"/> and can join its transaction
-/// (<see cref="AtlasDataExtensions.BeginSharedTransaction"/>).
+/// The EF Core context for the tables of the platform apps.
 /// </summary>
+/// <remarks>
+/// It holds only shared-type entities: one <c>Dictionary&lt;string, object?&gt;</c> entity for each
+/// registered table, with no C# class. It uses the same connection as <see cref="CPSharepointContext"/>
+/// and can join its transaction (<see cref="AtlasDataExtensions.BeginSharedTransaction"/>).
+/// </remarks>
 public class AtlasPlatformContext : DbContext
 {
+    /// <summary>Makes the context for the tables in <paramref name="registry"/>.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="registry"/> is null.</exception>
     public AtlasPlatformContext(DbContextOptions<AtlasPlatformContext> options, AtlasTableRegistry registry)
         : base(options)
     {
         Registry = registry ?? throw new ArgumentNullException(nameof(registry));
     }
 
+    /// <summary>The registered tables that the model maps.</summary>
     public AtlasTableRegistry Registry { get; }
 
     /// <summary>The records of one registered table, for example <c>Records("TTDV2.General")</c>.</summary>
@@ -29,7 +34,7 @@ public class AtlasPlatformContext : DbContext
         optionsBuilder.ReplaceService<IModelCacheKeyFactory, AtlasModelCacheKeyFactory>();
     }
 
-    /// <summary>True if the table has an ID column and only column types that the platform supports.</summary>
+    /// <summary>Returns true if the table has an ID column and only column types that the platform supports.</summary>
     public static bool IsMappable(AtlasTable table)
     {
         ArgumentNullException.ThrowIfNull(table);
@@ -38,9 +43,9 @@ public class AtlasPlatformContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Review 3 RV-03: a table that cannot be mapped (no ID column, a column type that the platform does not support)
-        // is left out of the one shared model. The start-up check names it and disables only its app; the model of the
-        // other apps still builds. A request for that table then fails for that app only.
+        // A table that cannot be mapped (no ID column, or a column type that the platform does not support)
+        // is left out of the one shared model. The start-up check names it and disables only its app. The model of
+        // the other apps still builds. A request for that table fails for that app only.
         foreach (AtlasTable table in Registry.Tables.Where(IsMappable))
         {
             AtlasColumn key = table.Key!;
@@ -67,7 +72,7 @@ public class AtlasPlatformContext : DbContext
                     else if (column.IsComputed)
                         property.ValueGeneratedOnAddOrUpdate();
                     else if (column.UsesDatabaseDefault)
-                        property.ValueGeneratedOnAdd(); // review DA-05: a null on insert is left out, so SQL Server uses the default
+                        property.ValueGeneratedOnAdd(); // a null on insert is left out, so SQL Server uses the default
 
                     if (!column.IsNullable)
                         property.IsRequired();

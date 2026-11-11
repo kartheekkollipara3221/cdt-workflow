@@ -1,12 +1,4 @@
-// COPY to the target: WebUi/src/app/platform/form/renderers/. The "grid" control (review R4), as the grid of
-// cp-atlas-sectionmaster.html (2026-10-27): ag-grid-angular with class ag-theme-pbdev, [modules] ClientSideRowModelModule,
-// domLayout autoHeight, the same defaultColDef, AgLoadingOverlayComponent, and the cell components named by
-// "cellRenderer" in the JSON (NumericEditor, TextEditor, SelectEditor at the target), given with
-// provideAtlasGridComponents (atlas-grid-components.ts). BindMode "SingleRowFields" (spec 01, 10.2): one row; each column is a field of the record.
-// The form keeps a form group with one control for each column field (validation, Computed, server errors); the grid
-// row and that group are kept the same in both directions.
-// HeaderFromDate (platform): the header shows the date of a form control + AddDays, for example the 7 days before
-// WeekEnding, as the TTD form at the target. It changes when the control value changes.
+// COPY to the target: WebUi/src/app/platform/form/renderers/.
 import { formatDate } from '@angular/common';
 import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject, isDevMode } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -20,6 +12,22 @@ import { ATLAS_GRID_COMPONENTS } from '../atlas-grid-components';
 import { errorText } from '../atlas-validators';
 import { AtlasRendererBase } from './atlas-renderers';
 
+/**
+ * The "grid" control. It is the same as the grid of the target cp-atlas-sectionmaster.html.
+ *
+ * It uses ag-grid-angular with the class ag-theme-pbdev, [modules] ClientSideRowModelModule, domLayout autoHeight,
+ * the same defaultColDef and AgLoadingOverlayComponent. The JSON names the cell components with "cellRenderer"
+ * (NumericEditor, TextEditor, SelectEditor at the target). provideAtlasGridComponents (atlas-grid-components.ts)
+ * gives them.
+ *
+ * BindMode "SingleRowFields": the grid has one row, and each column is a field of the record.
+ * The form keeps a form group with one control for each column field, for validation, Computed values and
+ * server errors. The grid row and that group stay the same in both directions.
+ *
+ * HeaderFromDate (a platform setting): the header shows the date of a form control plus AddDays.
+ * An example is the 7 days before WeekEnding, as in the TTD form at the target.
+ * The header changes when the control value changes.
+ */
 @Component({
   selector: 'atlas-grid-renderer',
   imports: [AgGridAngular],
@@ -40,7 +48,7 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
-  // As cp-atlas-sectionmaster.ts (grid part).
+  // The same settings as the grid part of cp-atlas-sectionmaster.ts.
   protected readonly modules: Module[] = [ClientSideRowModelModule];
   protected readonly defaultColDef: ColDef = {
     flex: 1,
@@ -54,7 +62,7 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     filterParams: {},
     unSortIcon: true,
   };
-  /** The target writes rowSelection="single" (deprecated in ag-grid 33); this is the same setting. */
+  /** The row selection. The target writes rowSelection="single" (deprecated in ag-grid 33). This is the same setting. */
   protected readonly rowSelection: RowSelectionOptions = { mode: 'singleRow', checkboxes: false, enableClickSelection: true };
   protected readonly loadingOverlayComponent = AgLoadingOverlayComponent;
 
@@ -62,6 +70,7 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
   columns: ColDef[] = [];
   private api: GridApi | null = null;
 
+  /** The form group of the grid row, or null when the grid is not a SingleRowFields grid. */
   get rowGroup(): FormGroup | null {
     const item = this.group.get(this.control.Name);
     return item instanceof FormGroup ? item : null;
@@ -74,19 +83,24 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     }
     this.rowData = [{ ...rowGroup.getRawValue() }];
     this.columns = (this.control.Grid?.Columns ?? []).map((column) => this.columnDef(column, rowGroup));
-    // A Computed cell (for example WeeklyTotal) or a server answer changes the group: show it in the grid row.
+    // A Computed cell (for example WeeklyTotal) or a server response can change the group. Show it in the grid row.
     this.group.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.syncGrid();
       this.syncHeaders();
     });
   }
 
+  /** Keeps the grid API and copies the form values to the grid row. */
   onGridReady(event: GridReadyEvent): void {
     this.api = event.api;
     this.syncGrid();
   }
 
-  /** A cell component calls params.setValue: the value goes to the form control of the field. */
+  /**
+   * Copies a new cell value to the form control of the field and marks it as touched.
+   *
+   * A cell component calls params.setValue, and then the grid sends this event.
+   */
   onCellValueChanged(event: CellValueChangedEvent): void {
     const field = event.colDef.field;
     const cell = field ? this.rowGroup?.get(field) : null;
@@ -101,7 +115,7 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     this.cdr.markForCheck();
   }
 
-  /** The errors of the cells, under the grid (the cell components show no error). */
+  /** The errors of the cells. They show under the grid, because the cell components show no error. */
   get cellErrors(): string[] {
     const rowGroup = this.rowGroup;
     if (!rowGroup) {
@@ -140,7 +154,7 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     return date ?? column.headerName ?? undefined;
   }
 
-  /** A new date (for example another WeekEnding): new column definitions with the new headers. */
+  /** Makes new column definitions when a header date changes, for example for another WeekEnding. */
   private syncHeaders(): void {
     if (!this.columns.some((def, i) => def.headerName !== this.headerName(this.control.Grid!.Columns![i]))) {
       return;
@@ -164,7 +178,11 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
   }
 }
 
-/** The header text for a date value "yyyy-MM-dd" (a local day; not UTC, so the day is the same in each time zone). Null: no date. */
+/**
+ * Returns the header text for a date value "yyyy-MM-dd" plus AddDays, or null when there is no date.
+ *
+ * The date is a local day, not UTC. Thus the day is the same in each time zone.
+ */
 export function dateHeader(from: CPHeaderFromDate, value: unknown): string | null {
   const day = parseLocalDay(value, from.AddDays ?? 0);
   return day && formatDate(day, from.Format || 'EEEE dd-MMM-yyyy', 'en-US');

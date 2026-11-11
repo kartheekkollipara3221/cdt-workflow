@@ -5,25 +5,32 @@ import { CPApplicationControl, CPApplicationSection, CPPageOutput } from '../atl
 import { isNil, parseLocalDay } from '../atlas-dates';
 import { atlasValidators } from './atlas-validators';
 
+/** The grid BindMode that binds one grid row to form fields. */
 export const SINGLE_ROW_FIELDS = 'SingleRowFields';
 
+/** Returns true when the control is a "section" container. */
 export function isSection(control: CPApplicationControl): boolean {
   return (control.Type ?? '').toLowerCase() === 'section';
 }
 
+/** Returns true when the control is a grid with the BindMode SingleRowFields. */
 export function isSingleRowGrid(control: CPApplicationControl): boolean {
   return (control.Grid?.BindMode ?? '').toLowerCase() === SINGLE_ROW_FIELDS.toLowerCase();
 }
 
 /**
- * The value kind of a control (review R2, real pbdev-core): pbdev-date-picker holds a JS Date, pbdev-checkbox a
- * boolean, a multiple ng-select a string list. The server keeps text: yyyy-MM-dd, 'true'/'false', and a list
- * joined with '#$#' (as cp-atlas-sectionmaster.ts).
+ * The value kind of a control.
+ *
+ * pbdev-date-picker holds a JS Date. pbdev-checkbox holds a boolean. A multiple ng-select holds a string list.
+ * The server keeps text: yyyy-MM-dd, 'true' or 'false', and a list joined with '#$#'.
+ * The list format is the same as in cp-atlas-sectionmaster.ts.
  */
 export type AtlasValueKind = 'text' | 'date' | 'bool' | 'list';
 
+/** The separator of the items of a list value in the server text. */
 export const LIST_SEPARATOR = '#$#';
 
+/** Returns the value kind of a control from its Type and Multiple. */
 export function valueKind(control: CPApplicationControl): AtlasValueKind {
   const type = (control.Type ?? '').toLowerCase();
   if (type === 'datetimepicker' || type === 'date') {
@@ -42,7 +49,11 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-/** The form value of a server text (the JSON Value, a Set effect, a server answer). */
+/**
+ * Converts a server text to the form value of the control.
+ *
+ * The text can come from the JSON Value, a Set effect or a server response.
+ */
 export function toModelValue(control: CPApplicationControl, text: string | null | undefined): unknown {
   switch (valueKind(control)) {
     case 'date':
@@ -56,7 +67,11 @@ export function toModelValue(control: CPApplicationControl, text: string | null 
   }
 }
 
-/** The server text of a form value (null when empty). */
+/**
+ * Converts a form value to the server text.
+ *
+ * Returns null for an empty value. An empty checkbox gives 'false'.
+ */
 export function toOutputValue(control: CPApplicationControl, value: unknown): string | null {
   const kind = valueKind(control);
   if (isNil(value)) {
@@ -82,7 +97,11 @@ export function toOutputValue(control: CPApplicationControl, value: unknown): st
   return value === '' ? null : String(value);
 }
 
-/** The visible and required flags of the controls as the JSON gives them; the effects change them later. */
+/**
+ * Returns the visible and required flags of the controls from the JSON.
+ *
+ * The effects change these flags later.
+ */
 export function initialFlags(section: CPApplicationSection): { visible: Record<string, boolean>; required: Record<string, boolean> } {
   const visible: Record<string, boolean> = {};
   const required: Record<string, boolean> = {};
@@ -96,7 +115,7 @@ export function initialFlags(section: CPApplicationSection): { visible: Record<s
   return { visible, required };
 }
 
-/** The value controls of a section: the section-level controls and the children of "section" containers. */
+/** Returns the value controls of a section: the section-level controls and the children of "section" containers. */
 export function valueControls(section: CPApplicationSection): CPApplicationControl[] {
   const list: CPApplicationControl[] = [];
   for (const control of section.Controls ?? []) {
@@ -109,7 +128,7 @@ export function valueControls(section: CPApplicationSection): CPApplicationContr
   return list;
 }
 
-/** The section container of each child control (child name to section name). */
+/** Returns the "section" container of each child control, as a map from child name to section name. */
 export function containerOf(section: CPApplicationSection): Map<string, string> {
   const map = new Map<string, string>();
   for (const control of section.Controls ?? []) {
@@ -123,15 +142,17 @@ export function containerOf(section: CPApplicationSection): Map<string, string> 
 }
 
 /**
- * True if the control and its section are visible (review NG-03). The server validates and accepts only these
- * fields, so a hidden field or a field of a hidden section does not stop the save and is not sent.
+ * Returns true when the control and its section are visible.
+ *
+ * The server validates and accepts only these fields. Thus a hidden field, or a field of a hidden section,
+ * does not stop the save and is not sent.
  */
 export function isShown(name: string, containers: Map<string, string>, visible: (name: string) => boolean): boolean {
   const container = containers.get(name);
   return visible(name) && (container === undefined || visible(container));
 }
 
-/** True if a shown and enabled control (or grid cell) is not valid. */
+/** Returns true when a shown and enabled control (or grid cell) is not valid. */
 export function shownInvalid(section: CPApplicationSection, group: FormGroup, shown: (name: string) => boolean): boolean {
   return valueControls(section).some((control) => {
     const item = group.get(control.Name);
@@ -139,10 +160,14 @@ export function shownInvalid(section: CPApplicationSection, group: FormGroup, sh
   });
 }
 
-/** The form of a section: dynamic keys, so a FormRecord (review NG-11). A FormRecord is a FormGroup. */
+/** The form of a section. It has dynamic keys, so it is a FormRecord. A FormRecord is a FormGroup. */
 export type AtlasFormRecord = FormRecord<FormControl | FormRecord<FormControl>>;
 
-/** One form control for each value control; a nested group for each SingleRowFields grid. */
+/**
+ * Builds the form of a section.
+ *
+ * Makes one form control for each value control, and a nested group for each SingleRowFields grid.
+ */
 export function buildFormGroup(section: CPApplicationSection): AtlasFormRecord {
   const group: AtlasFormRecord = new FormRecord<FormControl | FormRecord<FormControl>>({});
   for (const control of valueControls(section)) {
@@ -164,7 +189,7 @@ export function buildFormGroup(section: CPApplicationSection): AtlasFormRecord {
       }
       group.addControl(control.Name, rowGroup);
     } else if (control.Grid) {
-      continue; // other grids are not in P1
+      continue; // Release P1 supports only SingleRowFields grids.
     } else {
       group.addControl(
         control.Name,
@@ -179,8 +204,10 @@ export function buildFormGroup(section: CPApplicationSection): AtlasFormRecord {
 }
 
 /**
- * The save outputs (spec 01, 5.9 step 4): only visible and enabled fields. A SingleRowFields grid is sent as one
- * output with a JSON list of one row (the enabled cells), as the current client does.
+ * Builds the save outputs of a section.
+ *
+ * Contains only the visible and enabled fields. A SingleRowFields grid gives one output.
+ * Its value is a JSON list of one row with the enabled cells, as the current client sends it.
  */
 export function buildOutputs(section: CPApplicationSection, group: FormGroup, visible: (name: string) => boolean): CPPageOutput[] {
   const outputs: CPPageOutput[] = [];
@@ -208,8 +235,10 @@ export function buildOutputs(section: CPApplicationSection, group: FormGroup, vi
 }
 
 /**
- * The client value of a Computed field (Sum, Count, Min, Max). An empty value is left out, as on the server
- * (AtlasComputedFields; shared cases in atlas-effect-cases.ts). Null if the expression is not known.
+ * Calculates the client value of a Computed field (Sum, Count, Min, Max).
+ *
+ * Empty values are not used, as on the server (AtlasComputedFields). The shared cases are in
+ * atlas-effect-cases.ts. Returns null when the expression is not known.
  */
 export function computeValue(expression: string, values: Record<string, unknown>): number | null {
   const match = /^\s*(Sum|Count|Min|Max)\s*\((.*)\)\s*$/i.exec(expression);

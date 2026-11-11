@@ -1,18 +1,24 @@
-// COPY to the target: WebUi/src/app/platform/dashboard/. AG Grid column definitions from the tab Columns list
-// (spec 03, 4.6). Cells are text; a link is made with DOM methods, never HTML text (H5).
+// COPY to the target: WebUi/src/app/platform/dashboard/.
+// AG Grid column definitions from the Columns list of a tab.
+// Cells are text. A link is made with DOM methods, never from HTML text, so a value cannot inject HTML.
 import { formatDate as formatDay } from '@angular/common';
 import { ColDef, ICellRendererParams, ValueFormatterParams } from 'ag-grid-community';
 import { isNil, parseLocalDay } from '../atlas-dates';
 import { CPAtlasTab, CPTabColumn } from '../atlas-models';
 import { AtlasActionMenu } from './atlas-action-menu';
 
+/** The actions that a dashboard row can start. */
 export interface AtlasRowActions {
   edit(row: Record<string, unknown>): void;
   history(row: Record<string, unknown>): void;
   remove(row: Record<string, unknown>): void;
 }
 
-/** "2026-10-18" or ISO date-time to "18-Oct-2026". Other text stays. */
+/**
+ * Formats a date cell as "18-Oct-2026".
+ *
+ * Accepts "2026-10-18" or an ISO date-time. Returns other text unchanged, and an empty string for no value.
+ */
 export function formatDate(value: unknown): string {
   if (isNil(value) || value === '') {
     return '';
@@ -23,9 +29,11 @@ export function formatDate(value: unknown): string {
 }
 
 /**
- * The local day of a cell, as formatDate shows it (review 3 RV-16): a date-time with a time part is a timestamp and
- * shows the day of the user; a yyyy-MM-dd date is that day. Before, the filter used the UTC day of a timestamp, so a
- * row shown as 17-Oct did not match a filter of 17-Oct.
+ * Returns the local day of a cell, the same day that formatDate shows.
+ *
+ * A date-time with a time part is a timestamp. It gives the day in the time zone of the user.
+ * A yyyy-MM-dd date gives that day. The date filter uses this day, so it matches the shown value.
+ * Returns null when the value is not a date.
  */
 export function cellDay(value: unknown): Date | null {
   return localDay(String(value ?? '').trim());
@@ -51,9 +59,14 @@ function dateComparator(filterDate: Date, cellValue: unknown): number {
 }
 
 /**
- * The columns of a tab. The Actions column is first, as the target GenerateColumns: headerName "Actions", width 100,
- * cellRendererParams.cpMenus = tab.Menus. actionMenu: the cell component; default AtlasActionMenu (the target menu).
- * At the target, cp-atlas-dashboard can give its own ActionMenuComponent (it calls params.context, the dashboard).
+ * Returns the AG Grid columns of a tab.
+ *
+ * When the tab has a visible menu, the Actions column is first, as in the target GenerateColumns.
+ * It has headerName "Actions", width 100 and cellRendererParams.cpMenus = tab.Menus.
+ *
+ * @param actions The actions that the cells start for a row.
+ * @param actionMenu The cell component of the Actions column. The default is AtlasActionMenu.
+ *     The target cp-atlas-dashboard can give its own ActionMenuComponent, which calls params.context.
  */
 export function columnDefs(tab: CPAtlasTab, actions: AtlasRowActions, actionMenu: unknown = AtlasActionMenu): ColDef[] {
   const defs: ColDef[] = (tab.Columns ?? []).map((column) => columnDef(column, actions));
@@ -97,7 +110,7 @@ function columnDef(column: CPTabColumn, actions: AtlasRowActions): ColDef {
       }
       const link = document.createElement('a');
       link.className = 'atlas-link';
-      link.href = '#'; // review NG-08: a link with href takes the focus and opens with Enter
+      link.href = '#'; // A link with href can take the focus and opens with the Enter key.
       link.textContent = isNil(params.value) || params.value === '' ? '(open)' : String(params.value);
       link.addEventListener('click', (event) => {
         event.preventDefault();
@@ -109,7 +122,11 @@ function columnDef(column: CPTabColumn, actions: AtlasRowActions): ColDef {
   return def;
 }
 
-/** The totals row for the columns with Sum (spec 03, 4.6), or null if there is no such column. */
+/**
+ * Returns the totals row for the columns with Sum, or null when no column has Sum.
+ *
+ * The first visible column without Sum shows the text "Total".
+ */
 export function sumsRow(tab: CPAtlasTab, rows: Record<string, unknown>[]): Record<string, unknown> | null {
   const columns = (tab.Columns ?? []).filter((x) => x.Sum);
   if (columns.length === 0) {

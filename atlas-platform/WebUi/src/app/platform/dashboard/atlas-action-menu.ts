@@ -1,7 +1,8 @@
-// COPY to the target: WebUi/src/app/platform/dashboard/. The Actions cell of a platform tab: the same menu as the target
-// Shared/Component/Control/Action-menu.ts (a vertical ellipsis button; a mat-menu with Edit, Delete, History and the
-// same Font Awesome icons). At the target the dashboard can give its own ActionMenuComponent to columnDefs instead
-// (INTEGRATION.md, cp-atlas-dashboard edit 4); this one calls the AtlasRowActions of the column, not params.context.
+// COPY to the target: WebUi/src/app/platform/dashboard/.
+// The Actions cell of a platform tab. It looks the same as the target Shared/Component/Control/Action-menu.ts:
+// a vertical ellipsis button and a mat-menu with Edit, Delete and History, with the same Font Awesome icons.
+// The target dashboard can give its own ActionMenuComponent to columnDefs instead.
+// This menu calls the AtlasRowActions of the column, not params.context.
 import { Component } from '@angular/core';
 import { MatMenuModule } from '@angular/material/menu';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
@@ -22,11 +23,13 @@ const ITEMS: AtlasActionItem[] = [
   { name: 'History', icon: 'fa fa-history', run: (actions, row) => actions.history(row) },
 ];
 
+/** The cell renderer parameters of the Actions column. */
 export interface AtlasActionMenuParams extends ICellRendererParams {
   cpMenus?: CPMenu[] | null;
   atlasActions: AtlasRowActions;
 }
 
+/** The Actions cell of a dashboard row. Pinned rows (the totals row) show no menu. */
 @Component({
   selector: 'atlas-action-menu',
   imports: [MatMenuModule],
@@ -60,16 +63,22 @@ export class AtlasActionMenu implements ICellRendererAngularComp {
     return false;
   }
 
-  /** As the target menu, from tab.Menus: an item shows when the tab has it and it is not Visible = false. */
+  /**
+   * Returns true when the menu item shows.
+   *
+   * An item shows when tab.Menus has it and its Visible is not false, as in the target menu.
+   */
   show(name: string): boolean {
     const menu = this.menu(name);
     return !!menu && menu.Visible !== false;
   }
 
+  /** Returns the label of a menu item from tab.Menus, or the item name when there is no label. */
   label(name: string): string {
     return this.menu(name)?.Label ?? name;
   }
 
+  /** Runs the row action of a menu item for the row of this cell. */
   run(name: string): void {
     ITEMS.find((x) => x.name === name)?.run(this.params.atlasActions, this.params.data as Record<string, unknown>);
   }

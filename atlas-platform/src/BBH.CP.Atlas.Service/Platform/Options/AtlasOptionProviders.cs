@@ -10,29 +10,42 @@ namespace BBH.CP.Atlas.Service.Platform.Options;
 public sealed record AtlasOptionRequest(string AppCode, CPApplicationControl Control, CPOptionsSource Source);
 
 /// <summary>
-/// A named source of options (spec 01, 10.2). The JSON names the provider in <c>OptionsSource.Provider</c>.
-/// The platform supplies PBAccounts, UsersInRoles, Years and WeekEndings. An app adds its own providers in its module class
-/// (<c>ConfigSectionService.AppOptionProviders</c>), so program.cs keeps one line for each app.
+/// A named source of options for a control.
 /// </summary>
+/// <remarks>
+/// The JSON names the provider in <c>OptionsSource.Provider</c>.
+/// The platform supplies PBAccounts, UsersInRoles, Years and WeekEndings.
+/// An app adds its own providers in its module class (<c>ConfigSectionService.AppOptionProviders</c>).
+/// Thus program.cs keeps one line for each app.
+/// </remarks>
 public interface IAtlasOptionProvider
 {
+    /// <summary>The name that <c>OptionsSource.Provider</c> uses.</summary>
     string Name { get; }
 
+    /// <summary>Returns the options for a control.</summary>
     IReadOnlyList<CPKeyValue> GetOptions(AtlasOptionRequest request);
 
-    /// <summary>The option for a saved value that is not in the list (KeepSavedValue). Default: label = value.</summary>
+    /// <summary>
+    /// Returns the option for a saved value that is not in the list (KeepSavedValue). By default, the label is the value.
+    /// </summary>
     CPKeyValue DescribeValue(AtlasOptionRequest request, string value) => new() { Label = value, Value = value };
 }
 
 /// <summary>
-/// PB accounts (spec 01, 10.1). Label and Value "number - name", as in TTD. Data has AccountNumber, AccountName
-/// and RelationshipManager for SetFromOption (spec 01, 5.2).
+/// Supplies the PB accounts as options.
 /// </summary>
+/// <remarks>
+/// Label and Value are "number - name", as in TTD.
+/// Data holds AccountNumber, AccountName and RelationshipManager for the SetFromOption effect.
+/// </remarks>
 public sealed class PBAccountsOptionProvider(IConfiguration configuration, IAtlasUserContext user, CPPBContext? pbContext = null)
     : IAtlasOptionProvider
 {
+    /// <inheritdoc/>
     public string Name => "PBAccounts";
 
+    /// <inheritdoc/>
     public IReadOnlyList<CPKeyValue> GetOptions(AtlasOptionRequest request) =>
         [.. new CPAtlasExternalService(configuration, pbContext, user.User).GetPBAccount().Select(account => new CPKeyValue
         {
@@ -48,29 +61,39 @@ public sealed class PBAccountsOptionProvider(IConfiguration configuration, IAtla
 }
 
 /// <summary>
-/// The users with one of the roles of the app (spec 06, 4.5). Value = LAN ID, Label = display name.
-/// Roles: <c>OptionsSource.Roles</c>.
+/// Supplies the users that have one of the given roles of the app.
 /// </summary>
+/// <remarks>
+/// Value is the LAN ID. Label is the display name. <c>OptionsSource.Roles</c> holds the roles.
+/// </remarks>
 public sealed class UsersInRolesOptionProvider(IAtlasUserDirectory directory) : IAtlasOptionProvider
 {
+    /// <inheritdoc/>
     public string Name => "UsersInRoles";
 
+    /// <inheritdoc/>
     public IReadOnlyList<CPKeyValue> GetOptions(AtlasOptionRequest request) =>
         [.. directory.UsersInRoles(request.AppCode, request.Source.Roles ?? [])
             .Select(x => new CPKeyValue { Label = x.DisplayName, Value = x.LanId })];
 
+    /// <summary>Returns the option for a saved LAN ID, with the display name of the user as the label.</summary>
     public CPKeyValue DescribeValue(AtlasOptionRequest request, string value) =>
         new() { Label = directory.DisplayName(value), Value = value };
 }
 
 /// <summary>
-/// Years around this year (review FABLE F03; TTD tax years). Parameters: <c>Before</c> (default 3) and <c>After</c>
-/// (default 1). The list starts with the latest year: this year + After down to this year - Before.
+/// Supplies the years around this year, for example tax years.
 /// </summary>
+/// <remarks>
+/// Parameters: <c>Before</c> (default 3) and <c>After</c> (default 1).
+/// The list starts with the latest year. It goes from this year + After down to this year - Before.
+/// </remarks>
 public sealed class YearsOptionProvider(TimeProvider time) : IAtlasOptionProvider
 {
+    /// <inheritdoc/>
     public string Name => "Years";
 
+    /// <inheritdoc/>
     public IReadOnlyList<CPKeyValue> GetOptions(AtlasOptionRequest request)
     {
         int before = AtlasProviderParameters.Int(request, "Before", 3);
@@ -83,13 +106,18 @@ public sealed class YearsOptionProvider(TimeProvider time) : IAtlasOptionProvide
 }
 
 /// <summary>
-/// Week-end days (review FABLE F03; TTD week endings): the last such day (today if today is that day) and the next
-/// ones, as yyyy-MM-dd. Parameters: <c>Count</c> (default 4) and <c>DayOfWeek</c> (default Sunday).
+/// Supplies the week-end days, for example the TTD week endings, as yyyy-MM-dd.
 /// </summary>
+/// <remarks>
+/// The list starts with the last such day. When today is that day, the list starts with today.
+/// The next days follow. Parameters: <c>Count</c> (default 4) and <c>DayOfWeek</c> (default Sunday).
+/// </remarks>
 public sealed class WeekEndingsOptionProvider(TimeProvider time) : IAtlasOptionProvider
 {
+    /// <inheritdoc/>
     public string Name => "WeekEndings";
 
+    /// <inheritdoc/>
     public IReadOnlyList<CPKeyValue> GetOptions(AtlasOptionRequest request)
     {
         int count = AtlasProviderParameters.Int(request, "Count", 4);

@@ -7,32 +7,40 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace BBH.CP.Atlas.Service.Platform.Registry;
 
 /// <summary>
-/// Reads the manifests, form JSON and dashboard JSON from one folder (AppSettings:ConfigFolder, default "Config",
-/// relative to the content root; spec 07, 4.7) one time, at the first use (the platform start-up), and keeps them
-/// (review FABLE F04). A change to a config file is seen after a restart of the app pool, as a table change.
-/// Each form and dashboard call returns a new object, so a request can change it (spec 01, 5.6). The manifests are
-/// shared (review HO-07): do not change a manifest object.
-/// One manifest file that cannot be read does not stop the others (review HO-02): only that app is missing,
-/// Atlas.ConfigInvalid is logged and ConfigErrors names the file for the start-up check.
+/// Reads and keeps the manifests, form JSON and dashboard JSON of the platform apps.
 /// </summary>
+/// <remarks>
+/// The store reads one folder (AppSettings:ConfigFolder, default "Config", relative to the content root).
+/// It reads the files one time, at the first use (the platform start-up), and keeps them.
+/// A change to a config file takes effect after a restart of the app pool, as a table change does.
+/// Each form and dashboard call returns a new object, so a request can change it.
+/// The manifests are shared objects. Do not change a manifest object.
+/// A manifest file that cannot be read does not stop the others. Only the app of that file is missing.
+/// The store then logs Atlas.ConfigInvalid, and ConfigErrors names the file for the start-up check.
+/// </remarks>
 public interface IAtlasConfigStore
 {
+    /// <summary>The full path of the config folder.</summary>
     string ConfigFolder { get; }
 
+    /// <summary>Returns all manifests that the store could read.</summary>
     IReadOnlyList<AtlasAppManifest> GetManifests();
 
+    /// <summary>Returns the manifest of an app code, or null when there is none.</summary>
     AtlasAppManifest? FindManifest(string appCode);
 
-    /// <summary>The form JSON of the app (a new copy). Throws 404 if the app has no form.</summary>
+    /// <summary>Returns a new copy of the form JSON of the app.</summary>
+    /// <exception cref="AtlasProblemException">404 when the app is not registered or has no form.</exception>
     CPAtlasApplicationConfig GetForm(string appCode);
 
-    /// <summary>The dashboard JSON of the app (a new copy), or null if the app has no dashboard.</summary>
+    /// <summary>Returns a new copy of the dashboard JSON of the app, or null when the app has no dashboard.</summary>
     CPAtlasDashboard? GetDashboard(string appCode);
 
-    /// <summary>Manifest files that could not be read (review HO-02).</summary>
+    /// <summary>The errors of the manifest files that the store could not use.</summary>
     IReadOnlyList<string> ConfigErrors => [];
 }
 
+/// <summary>Reads the config files from the config folder. See <see cref="IAtlasConfigStore"/>.</summary>
 public sealed class AtlasConfigStore : IAtlasConfigStore
 {
     private readonly IConfiguration _configuration;
@@ -64,7 +72,8 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         IReadOnlyList<AtlasAppManifest> Manifests, IReadOnlyDictionary<string, AtlasAppManifest> ByCode,
         IReadOnlyList<string> Errors, IReadOnlyDictionary<string, FileText> Files);
 
-    /// <summary>The config, read at the first call. A read that fails (the folder cannot be listed) is tried again at the next call.</summary>
+    /// <summary>Returns the config, read at the first call.</summary>
+    /// <remarks>When the read fails (the folder cannot be listed), the next call tries again.</remarks>
     private Catalog Read()
     {
         Catalog? current = Volatile.Read(ref _catalog);
@@ -111,8 +120,8 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         foreach (AtlasAppManifest manifest in manifests)
         {
             if (byCode.TryAdd(manifest.Code, manifest))
-                continue; // the first file wins, as FirstOrDefault did
-            // Review 3 RV-L09: a second file with the same Code was ignored with no message.
+                continue; // The first file wins.
+            // A second file with the same Code is not used. Report it, so the operator can see it.
             string message = $"{Path.GetFileName(manifest.SourceFile)} has the Code {manifest.Code}, which {Path.GetFileName(byCode[manifest.Code].SourceFile)} already has. The second file is not used.";
             errors.Add(message);
             AtlasLog.ConfigInvalid(_logger, Path.GetFileName(manifest.SourceFile) ?? "", message);
@@ -170,7 +179,7 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
     private string Resolve(string fileName)
     {
         string path = Path.GetFullPath(Path.Combine(ConfigFolder, fileName));
-        // Review HO-09: compare with the folder and a separator, so "..\ConfigOld\x.json" is outside "Config".
+        // Compare with the folder and a separator, so "..\ConfigOld\x.json" is outside "Config".
         string folder = Path.EndsInDirectorySeparator(ConfigFolder) ? ConfigFolder : ConfigFolder + Path.DirectorySeparatorChar;
         if (!path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException($"Config file '{fileName}' is outside the config folder.");
@@ -179,9 +188,10 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
         return path;
     }
 
-    // Environment values win (spec 07, 4.1; spec 11, 4.5). A value that is present but not valid fails closed
-    // (review HO-03): Enabled = false, AccessMode = Enforce; the other modes keep the manifest value. Each one is a
-    // setting error that the start-up check reports. Only the names of the enum values are accepted (not numbers).
+    // An environment value has priority over the manifest value. A value that is present but not valid fails closed:
+    // Enabled becomes false and AccessMode becomes Enforce. The other modes keep the manifest value.
+    // Each such value is a setting error that the start-up check reports.
+    // Only the names of the enum values are accepted, not numbers.
     private void ApplyEnvironmentOverrides(AtlasAppManifest manifest)
     {
         IConfigurationSection section = _configuration.GetSection($"AppSettings:Modules:{manifest.Code}");
@@ -209,7 +219,11 @@ public sealed class AtlasConfigStore : IAtlasConfigStore
             manifest.RuleDefault = ruleDefault;
     }
 
-    /// <summary>True when the key is present: value = the named enum value, or <paramref name="whenInvalid"/> with a setting error.</summary>
+    /// <summary>Returns true when the key is present.</summary>
+    /// <remarks>
+    /// The value is the named enum value. When the text is not valid, the value is <paramref name="whenInvalid"/>,
+    /// and the method adds a setting error.
+    /// </remarks>
     private static bool Override<T>(AtlasAppManifest manifest, IConfigurationSection section, string key, out T value, T whenInvalid)
         where T : struct, Enum
     {

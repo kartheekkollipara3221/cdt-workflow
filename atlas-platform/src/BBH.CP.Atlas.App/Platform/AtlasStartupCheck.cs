@@ -11,22 +11,36 @@ using Microsoft.Extensions.Hosting;
 
 namespace BBH.CP.Atlas.App.Platform;
 
+/// <summary>The severity of a start-up check item. An error disables the app; a warning does not.</summary>
 public enum AtlasCheckSeverity { Warning, Error }
 
+/// <summary>
+/// One result of the start-up check. App is the app code, or "*" for all apps.
+/// </summary>
 public sealed record AtlasCheckItem(AtlasCheckSeverity Severity, string App, string Message)
 {
+    /// <summary>Returns the item as a report line: "SEVERITY App: Message".</summary>
     public override string ToString() => $"{Severity.ToString().ToUpperInvariant()} {App}: {Message}";
 }
 
 /// <summary>
-/// The start-up check of all modules (spec 07, 4.8; spec 11, 4.3): manifests and registration lines, the app row,
-/// tables, form fields against the columns, option providers, the dashboard tabs, and the rule roles (warnings).
-/// The table registry must be loaded first.
+/// Checks the configuration of all platform apps at start-up and for --atlas-check.
 /// </summary>
+/// <remarks>
+/// The check covers the manifests and registration lines, the app row, the tables, the form fields against the
+/// columns, the option providers, the dashboard tabs and the rule roles (warnings).
+/// The table registry must be loaded first.
+/// </remarks>
 public static class AtlasStartupCheck
 {
     private static readonly string[] Flags = [AtlasAppRoles.ReadFlag, AtlasAppRoles.WriteFlag, AtlasAppRoles.AdminFlag];
 
+    /// <summary>
+    /// Runs all checks and returns the errors and warnings.
+    /// </summary>
+    /// <remarks>
+    /// An exception in the check of one app is an error of that app only. The other apps are still checked.
+    /// </remarks>
     public static IReadOnlyList<AtlasCheckItem> Run(IServiceProvider services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -59,8 +73,8 @@ public static class AtlasStartupCheck
             void Error(string message) => items.Add(new(AtlasCheckSeverity.Error, manifest.Code, message));
             void Warning(string message) => items.Add(new(AtlasCheckSeverity.Warning, manifest.Code, message));
 
-            // Review 3 RV-06: an exception in the check of one app (for example its module constructor) is an error of
-            // that app only; the other apps are still checked and stay available.
+            // An exception in the check of one app (for example, in its module constructor) is an error of that app only.
+            // The other apps are still checked and stay available.
             try
             {
                 CheckApp(check, appRows, manifest, Error, Warning);
@@ -75,7 +89,7 @@ public static class AtlasStartupCheck
         return items;
     }
 
-    /// <summary>What the checks of one app read: the services and the shared lookups.</summary>
+    /// <summary>The services and the shared lookups that the checks of one app read.</summary>
     private sealed record CheckContext(
         IServiceProvider Services, IAtlasConfigStore ConfigStore, AtlasTableRegistry Tables, CPSharepointContext Context,
         IHostEnvironment? Environment, Dictionary<string, AtlasModuleRegistration> Registrations);
@@ -94,7 +108,6 @@ public static class AtlasStartupCheck
 
         CheckAppRow(appRows, manifest, error);
 
-        // Tables.
         AtlasTable? table = Table(manifest.Table, "Table", required: true, error, check.Tables);
         Table(manifest.AuditTable, "AuditTable", required: manifest.AuditMode == AtlasAuditMode.Server, error, check.Tables);
 
@@ -125,15 +138,15 @@ public static class AtlasStartupCheck
             CheckGridCodes(manifest, form, warning);
         }
 
-        // Review 3 RV-L04: the record times and the audit times have their own settings.
+        // The record times and the audit times have their own settings.
         if (manifest.SystemTime == AtlasAuditTime.Local && manifest.AuditTime == AtlasAuditTime.Utc)
             warning("SystemTime is Local but AuditTime is Utc: the History shows times that differ from ModifiedDate by the UTC offset. Set \"AuditTime\": \"Local\" too, unless that is intended.");
 
-        // Review SV-07: typos in property names (warnings) and in names, tokens, patterns and actions (errors).
+        // Typing errors in property names are warnings. Typing errors in names, tokens, patterns and actions are errors.
         CheckContract(check.ConfigStore, manifest, form, error, warning);
     }
 
-    /// <summary>The setting errors and warnings of the manifest. False: the app is disabled and is not checked further.</summary>
+    /// <summary>Checks the settings of the manifest. Returns false when the app is disabled and is not checked further.</summary>
     private static bool CheckSettings(CheckContext check, AtlasAppManifest manifest, Action<string> error, Action<string> warning)
     {
         foreach (string settingError in manifest.SettingErrors)
@@ -145,7 +158,8 @@ public static class AtlasStartupCheck
             return false;
         }
 
-        // Review DA-11: a current app taken over in place has local times in its rows; mixing UTC is a silent defect.
+        // A current app that the platform takes over in place has local times in its rows.
+        // New UTC times in the same rows give wrong data, and nothing reports it.
         if (AtlasAppCode.IsLegacy(manifest.Code) && manifest.SystemTime == null)
             warning("is a current app taken over by the platform but the manifest has no SystemTime: new saves write UTC while the old rows have local time. Set \"SystemTime\": \"Local\" (or \"Utc\" after a data change).");
 
@@ -154,7 +168,7 @@ public static class AtlasStartupCheck
         return true;
     }
 
-    /// <summary>The AddAtlasModule line of the app. False: there is none, and the app is not checked further.</summary>
+    /// <summary>Checks the AddAtlasModule line of the app. Returns false when there is no line; the app is then not checked further.</summary>
     private static bool CheckRegistration(CheckContext check, AtlasAppManifest manifest, Action<string> error, Action<string> warning)
     {
         if (!check.Registrations.TryGetValue(manifest.Code, out AtlasModuleRegistration? registration))
@@ -168,7 +182,7 @@ public static class AtlasStartupCheck
         return true;
     }
 
-    /// <summary>The app row (spec 07, 4.5).</summary>
+    /// <summary>Checks that the app has an active row in dbo.CP_Atlas_Application with the parent of the manifest.</summary>
     private static void CheckAppRow(Dictionary<string, (int Id, int? ParentId)> appRows, AtlasAppManifest manifest, Action<string> error)
     {
         if (!appRows.TryGetValue(manifest.Code, out var row))
@@ -204,7 +218,10 @@ public static class AtlasStartupCheck
         CheckProviders(services, manifest, fields, error);
     }
 
-    /// <summary>Review SV-02: with no Permissions block every operation is allowed for each role of the app.</summary>
+    /// <summary>
+    /// Reports a missing Permissions block, and a missing Create, Edit or Delete key.
+    /// </summary>
+    /// <remarks>Without the block, each role of the app can do every operation.</remarks>
     private static void CheckPermissions(CPAtlasApplicationConfig form, Action<string> error)
     {
         if (form.Permissions == null)
@@ -213,7 +230,7 @@ public static class AtlasStartupCheck
             return;
         }
 
-        // Review 3 RV-05: a missing key allows that operation for each role of the app (also @Read).
+        // A missing key allows that operation for each role of the app (also @Read).
         if (form.Permissions.Create == null)
             error("the Permissions block has no Create key; a missing key allows each role of the app to create records.");
         if (form.Permissions.Edit == null)
@@ -226,7 +243,7 @@ public static class AtlasStartupCheck
     {
         if (form.SoftDelete != null && !table.HasColumn(form.SoftDelete.Field))
             error($"SoftDelete names '{form.SoftDelete.Field}', which is not a column of {table.FullName}.");
-        // Review DA-04: the reads, the dashboard filter and the system columns use IsDeleted (bit) only.
+        // The reads, the dashboard filter and the system columns use only IsDeleted (bit).
         else if (form.SoftDelete != null && !string.Equals(form.SoftDelete.Field, AtlasTable.SoftDeleteColumnName, StringComparison.OrdinalIgnoreCase))
             error($"SoftDelete names '{form.SoftDelete.Field}'; the platform reads only {AtlasTable.SoftDeleteColumnName} (a bit column), so a deleted record would stay visible.");
         else if (form.SoftDelete != null && !table.HasSoftDelete)
@@ -239,7 +256,7 @@ public static class AtlasStartupCheck
         {
             if (!table.HasColumn(target))
                 error($"Computed field '{target}' is not a column of {table.FullName}.");
-            // Review SV-08: the same function table as the save.
+            // The check uses the same function table as the save.
             if (!AtlasComputedFields.TryParse(expression, out _, out IReadOnlyList<string> sources))
             {
                 error($"Computed field '{target}' has the expression '{expression}' (use {string.Join(", ", AtlasComputedFields.Functions)}).");
@@ -250,14 +267,14 @@ public static class AtlasStartupCheck
                 if (!table.HasColumn(source))
                     error($"Computed field '{target}' uses '{source}', which is not a column of {table.FullName}.");
                 else if (!IsNumeric(table.Find(source)!.ClrType))
-                    // Review 3 RV-L02: the save converts each source to a number; text or a date gave a 500 on each save.
+                    // The save converts each source to a number. A text or date source gives a 500 on each save.
                     error($"Computed field '{target}' uses '{source}', which is not a number column ({table.Find(source)!.SqlType}).");
             if (table.HasColumn(target) && !IsNumeric(table.Find(target)!.ClrType))
                 error($"Computed field '{target}' is not a number column ({table.Find(target)!.SqlType}).");
         }
     }
 
-    /// <summary>Option providers: the platform providers + the providers of the module class.</summary>
+    /// <summary>Checks that each option provider of the form is a platform provider or a provider of the module class.</summary>
     private static void CheckProviders(IServiceProvider services, AtlasAppManifest manifest, AtlasFormFields fields, Action<string> error)
     {
         HashSet<string> providers;
@@ -280,7 +297,9 @@ public static class AtlasStartupCheck
         && (t == typeof(byte) || t == typeof(short) || t == typeof(int) || t == typeof(long)
             || t == typeof(decimal) || t == typeof(double) || t == typeof(float));
 
-    /// <summary>Review DA-03: History of an app with a shared AuditTable must read only its own RefType values.</summary>
+    /// <summary>
+    /// Warns about each app that shares an AuditTable but does not limit its History to its own RefType values.
+    /// </summary>
     private static void CheckSharedAuditTables(IReadOnlyList<AtlasAppManifest> manifests, List<AtlasCheckItem> items)
     {
         foreach (IGrouping<string, AtlasAppManifest> group in manifests
@@ -295,9 +314,12 @@ public static class AtlasStartupCheck
     }
 
     /// <summary>
-    /// Review DA-05: a NOT NULL value-type column (for example bit NOT NULL DEFAULT 1) cannot use its database default,
-    /// because false or 0 from the user would look like "not set". If nothing sets it, each create fails.
+    /// Warns about each NOT NULL value-type column with a database default that no field, Defaults entry or computed value sets.
     /// </summary>
+    /// <remarks>
+    /// The platform does not use the database default of such a column (for example bit NOT NULL DEFAULT 1).
+    /// A false or 0 from the user would look like "not set". If nothing sets the column, each create fails.
+    /// </remarks>
     private static void CheckDefaults(CPAtlasApplicationConfig form, AtlasTable table, Action<string> warning)
     {
         AtlasFormFields fields = AtlasFormFields.From(form.Section!);
@@ -333,7 +355,7 @@ public static class AtlasStartupCheck
             if (table == !string.IsNullOrWhiteSpace(tab.Procedure))
                 error($"dashboard tab '{tab.ID}' must have Procedure or Source: Table, not both and not none.");
             else if (!table)
-                // Review 3: the platform dashboard runs no tab procedure yet (spec 03, 4.7), so the tab would show no rows.
+                // The platform dashboard does not run tab procedures, so the tab would show no rows.
                 error($"dashboard tab '{tab.ID}' has a Procedure; the platform dashboard runs only Source: Table tabs (spec 03, 4.7). Use Source: Table.");
             if (!table)
                 continue;
@@ -357,7 +379,7 @@ public static class AtlasStartupCheck
         }
     }
 
-    /// <summary>Spec 04, 4.7: an unknown role in a rule or in Permissions is a warning.</summary>
+    /// <summary>Warns about each role in a rule or in Permissions that is not a role of the app.</summary>
     private static void CheckRoles(CPSharepointContext context, AtlasAppManifest manifest, CPAtlasApplicationConfig form, Action<string> warning)
     {
         HashSet<string> known = new(Flags, StringComparer.OrdinalIgnoreCase);
@@ -399,7 +421,7 @@ public static class AtlasStartupCheck
             return null;
         }
 
-        // Review DA-01: these stop the model build of all platform tables on the first request, so report them here.
+        // These errors stop the model build of all platform tables on the first request, so report them here.
         if (table.Key is not { } key)
             error($"{setting} '{table.FullName}' has no {AtlasTable.KeyColumnName} column.");
         else if (!key.IsIdentity || key.ClrType != typeof(int))
@@ -423,14 +445,17 @@ public static class AtlasStartupCheck
             AtlasConfigLint.CheckForm(manifest, form, error, warning);
     }
 
-    /// <summary>The control types of the platform client (WebUi platform/form/atlas-renderer-registry.ts).</summary>
+    /// <summary>The control types that the platform client renders (see atlas-renderer-registry.ts).</summary>
     private static readonly HashSet<string> ClientTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "section", "text", "currency", "percent", "select", "ngselect", "textarea", "datetimepicker", "date",
         "checkbox", "check", "option", "user", "grid"
     };
 
-    /// <summary>Review 3 RV-L12: the app code in a grid cellRendererParams is typed in the JSON; a copied form keeps the old one.</summary>
+    /// <summary>
+    /// Warns about each grid column whose cellRendererParams.code is not the app code.
+    /// </summary>
+    /// <remarks>The JSON holds this code as text, so a copied form keeps the code of the old app.</remarks>
     private static void CheckGridCodes(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Action<string> warning)
     {
         IEnumerable<CPApplicationControl> controls = (form.Section!.Controls ?? [])
@@ -441,7 +466,10 @@ public static class AtlasStartupCheck
                 warning($"the grid '{control.Name}' column '{column.field}' has cellRendererParams.code '{column.cellRendererParams!.code}', not '{manifest.Code}'.");
     }
 
-    /// <summary>Review NG-04: a type with no client renderer shows only a note and cannot be edited.</summary>
+    /// <summary>
+    /// Warns about each control type that the platform client does not render.
+    /// </summary>
+    /// <remarks>Such a control shows only a note, and the user cannot edit it.</remarks>
     private static void CheckControlTypes(CPAtlasApplicationConfig form, Action<string> warning)
     {
         IEnumerable<CPApplicationControl> controls = (form.Section!.Controls ?? [])
@@ -450,11 +478,11 @@ public static class AtlasStartupCheck
             warning($"the control '{control.Name}' has the type '{control.Type}', which the platform client does not render (unless the app adds a renderer with provideAtlasRenderers).");
     }
 
-    /// <summary>Builds the EF Core model of all registered tables once, so a model error is found at start-up.</summary>
+    /// <summary>Builds the EF Core model of all registered tables one time, so a model error shows at start-up.</summary>
     private static void CheckModel(IServiceProvider services, List<AtlasCheckItem> items)
     {
-        // Review 3 RV-03: build the model also when an app has errors. A table that cannot be mapped is left out of the
-        // model (its app has a table error above), so a model error here is a new error for all apps.
+        // Build the model also when an app has errors. The model leaves out a table that it cannot map.
+        // The app of that table already has a table error. Thus a model error here is a new error for all apps.
         try
         {
             _ = services.GetRequiredService<AtlasPlatformContext>().Model;

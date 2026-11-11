@@ -1,5 +1,5 @@
-// STAND-IN: do not copy to the target. Local copy of the internal library @pbdev/pbdev-core 6.0.x (spec 12, 11.4).
-// Since 2026-10-27 it follows the REAL library source (target-implementation-read-only/PB-DEV-COMPONENTS, review R1):
+// STAND-IN: do not copy to the target. Local copy of the internal library @pbdev/pbdev-core 6.0.x.
+// It follows the REAL library source (target-implementation-read-only/PB-DEV-COMPONENTS). It has
 // the same selectors, @Input/@Output names and types, and the same value behaviour:
 //  - the form controls do not convert values: the host FormControl is bound to the inner element
 //    (CustomControlValueAccessorDirective), so the inner element sets the value type;
@@ -9,7 +9,7 @@
 //    (pbdev-input-messages, pbdev-control-errors; default texts for "required" and "email", else "Error");
 //  - inputId is a field (a generated id), not an @Input;
 //  - pbdev-dialog does not change its own "visible"; it emits visibleChange(false).
-// Plain HTML instead of PrimeNG and Maskito. The look is checked at the target (INTEGRATION.md).
+// It uses plain HTML instead of PrimeNG and Maskito. Check the look at the target.
 import { KeyValuePipe, NgClass, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import {
   Component,
@@ -46,7 +46,7 @@ function newId(): string {
   return `pbdev-${nextId}`;
 }
 
-/** As the real CustomControlValueAccessorDirective: it binds the host FormControl to the inner element. */
+/** Binds the host FormControl to the inner element, as the real CustomControlValueAccessorDirective does. */
 @Directive()
 export abstract class CustomControlValueAccessorDirective<T> implements ControlValueAccessor, OnInit {
   protected injector = inject(Injector);
@@ -106,6 +106,7 @@ export interface SelectOption<T = unknown> {
 /** Real: the default masks of pbdev-input (Maskito). The stand-in accepts the key and does not format. */
 export type DefaultMaskKey = 'amount' | 'percent' | 'positiveInt' | 'phone';
 
+/** List of the error texts of a control. A key with no text shows "Error". */
 @Component({
   selector: 'pbdev-control-errors',
   imports: [KeyValuePipe],
@@ -127,6 +128,7 @@ export class ControlErrorsComponent {
   messages: Record<string, string> = this.defaultMessages;
 }
 
+/** Helper text or error texts of a control. The errors show when the control is invalid and touched. */
 @Component({
   selector: 'pbdev-input-messages',
   imports: [ControlErrorsComponent],
@@ -151,6 +153,7 @@ export class InputMessagesComponent {
   }
 }
 
+/** Label of a control, with a star when the control is required. */
 @Component({
   selector: 'pbdev-input-label',
   template: `<label class="input-label" [attr.for]="inputId">{{ inputLabel }}@if (isRequired) {<span>*</span>}</label>`,
@@ -187,7 +190,7 @@ export class InputComponent<T> extends CustomControlValueAccessorDirective<T> {
   @Input() inputName: string = '';
   @Input() placeholder: string = '';
   @Input() variant: 'light' | 'dark' | 'inline' = 'light';
-  /** Real: a Maskito mask. The stand-in does not format (the platform uses no mask, decision D1). */
+  /** A Maskito mask in the real library. The stand-in does not format, because the platform uses no mask. */
   @Input() mask: DefaultMaskKey | object | null = null;
 
   @HostBinding('class') get inputVariant() {
@@ -271,8 +274,10 @@ export class TextareaComponent extends CustomControlValueAccessorDirective<strin
 }
 
 /**
- * Real: src/components/date-picker (PrimeNG p-date-picker). The value is a JS Date (local midnight), or null.
- * A value that is not a Date is not shown (PrimeNG does not show a text value either), so a wrong binding shows here.
+ * Date picker. Real: src/components/date-picker (PrimeNG p-date-picker).
+ *
+ * The value is a JS Date (local midnight), or null. The picker does not show a value that is not a Date.
+ * PrimeNG also does not show a text value. Thus a wrong binding is visible here.
  */
 @Component({
   selector: 'pbdev-date-picker',
@@ -428,12 +433,17 @@ export class LoaderComponent {
   }
 }
 
+/** Size of a pbdev-dialog. */
 export interface DialogStyle {
   height?: string;
   width?: string;
 }
 
-/** Real: src/components/dialog (PrimeNG p-dialog, modal). It emits visibleChange; the parent sets visible. */
+/**
+ * Modal dialog. Real: src/components/dialog (PrimeNG p-dialog, modal).
+ *
+ * It does not change its own `visible`. It emits visibleChange, and the parent sets `visible`.
+ */
 @Component({
   selector: 'pbdev-dialog',
   template: `@if (visible) {
@@ -499,8 +509,10 @@ export interface MenuItem {
 }
 
 /**
- * Real: src/components/navbar. A fixed top bar: flag spacer, title, items (row-reverse). The real spacer width
- * follows the side-nav state (animation); the target shell has its own sidebar, so the stand-in spacer is fixed.
+ * Fixed top bar: flag spacer, title, items (row-reverse). Real: src/components/navbar.
+ *
+ * The real spacer width follows the side-nav state (animation). The target shell has its own sidebar.
+ * Thus the stand-in spacer has a fixed width.
  */
 @Component({
   selector: 'pbdev-navbar',

@@ -1,16 +1,21 @@
-// COPY to the target: WebUi/src/app/platform/form/. Review SV-04: one list of validator cases that the client
-// (platform.spec.ts) and the server (ValidatorParityTests, reads this file) both check, so the two rule sets stay the
-// same. The array is strict JSON: double quotes, no trailing commas, no comments inside it. The label is "Field".
+// COPY to the target: WebUi/src/app/platform/form/.
+// Shared validator test cases. The client tests (platform.spec.ts) and the server tests (ValidatorParityTests)
+// both check them. Thus the client and the server rules give the same results.
+// ValidatorParityTests reads this file. The array must be strict JSON: double quotes, no trailing commas, no comments.
+// The label of the field is "Field".
 import { CPValidator } from '../atlas-models';
 
+/** A validator, a value and the expected error code and message. */
 export interface AtlasValidatorCase {
   validator: CPValidator;
   value: string;
   /** The server error code, or null for a valid value. */
   code: string | null;
+  /** The error text, or null for a valid value. */
   message: string | null;
 }
 
+/** The validator cases. */
 export const ATLAS_VALIDATOR_CASES: AtlasValidatorCase[] = [
   { "validator": { "Required": true }, "value": "   ", "code": "Required", "message": "Field is required." },
   { "validator": { "Required": true, "Message": "Enter it." }, "value": "", "code": "Required", "message": "Enter it." },

@@ -6,39 +6,49 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace BBH.CP.Atlas.Service.Platform.Security;
 
-/// <summary>The current Windows user. At the target: the existing IUserInfo (Active Directory). Locally: a stand-in.</summary>
+/// <summary>
+/// Supplies the current Windows user. At the target, this is the existing IUserInfo (Active Directory).
+/// Locally, it is a stand-in.
+/// </summary>
 public interface IAtlasCurrentUserSource
 {
+    /// <summary>Returns the current user.</summary>
     CPUser GetCurrentUser();
 }
 
-/// <summary>One user context for each request (spec 06, 4.1). The LAN ID is the key of the user in all checks.</summary>
+/// <summary>The user context of one request. The LAN ID is the key of the user in all checks.</summary>
 public interface IAtlasUserContext
 {
+    /// <summary>The LAN ID of the current user.</summary>
     string LanId { get; }
 
+    /// <summary>The display name of the current user, or the LAN ID when the name is empty.</summary>
     string DisplayName { get; }
 
+    /// <summary>The current user.</summary>
     CPUser User { get; }
 
-    /// <summary>The active roles of the user for the app and its parent (one query for each request).</summary>
+    /// <summary>Returns the active roles of the user for the app and its parent (one query for each request).</summary>
     AtlasAppRoles RolesFor(string appCode);
 }
 
-/// <summary>Users by LAN ID (spec 06, 4.5): display names (cached) and the users in roles of an app.</summary>
+/// <summary>Finds users by LAN ID: the display names (cached) and the users in roles of an app.</summary>
 public interface IAtlasUserDirectory
 {
-    /// <summary>The display name from CP_Atlas_User, or the LAN ID if the user is not found.</summary>
+    /// <summary>Returns the display name from CP_Atlas_User, or the LAN ID when the user is not found.</summary>
     string DisplayName(string? lanId);
 
-    /// <summary>The display names of many LAN IDs (review DA-09). The default asks one at a time.</summary>
+    /// <summary>Returns the display names of many LAN IDs. The default implementation asks for one at a time.</summary>
     IReadOnlyDictionary<string, string> DisplayNames(IEnumerable<string> lanIds) =>
         lanIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x, DisplayName, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Returns the active users that have one of the roles in the app, ordered by display name.</summary>
     IReadOnlyList<(string LanId, string DisplayName)> UsersInRoles(string appCode, IEnumerable<string> roles);
 }
 
+/// <summary>The user context of one request. It reads the roles from dbo.vw_CP_Atlas_ActiveUserRole.</summary>
+/// <remarks>A role row with no app code or no role name gives no role, not an error.</remarks>
 public sealed class AtlasUserContext(
     IAtlasCurrentUserSource userSource,
     CPSharepointContext context,
@@ -78,14 +88,17 @@ public sealed class AtlasUserContext(
             new SqlParameter("@LanId", System.Data.SqlDbType.NVarChar, 50) { Value = LanId });
 }
 
+/// <summary>Finds users in CP_Atlas_User and dbo.vw_CP_Atlas_ActiveUserRole, with a memory cache for the names.</summary>
 public sealed class AtlasUserDirectory(CPSharepointContext context, IMemoryCache cache) : IAtlasUserDirectory
 {
     private static readonly TimeSpan CacheTime = TimeSpan.FromMinutes(30);
 
-    /// <summary>Review 3 RV-L07: a LAN ID with no name is kept a short time only, so a user added later shows the name soon.</summary>
+    /// <summary>
+    /// The cache time of a LAN ID with no name. It is short, so a user that is added later soon shows the name.
+    /// </summary>
     private static readonly TimeSpan MissTime = TimeSpan.FromMinutes(2);
 
-    /// <summary>Review 3 RV-L07: each entry has a size, so a host cache with a SizeLimit does not refuse it.</summary>
+    /// <summary>Returns the cache options. Each entry has a size, so a host cache with a SizeLimit accepts it.</summary>
     private static MemoryCacheEntryOptions Entry(bool found) =>
         new() { AbsoluteExpirationRelativeToNow = found ? CacheTime : MissTime, Size = 1 };
 
@@ -106,7 +119,8 @@ public sealed class AtlasUserDirectory(CPSharepointContext context, IMemoryCache
         return cache.Set(key, found ? name! : lanId, Entry(found));
     }
 
-    /// <summary>The names that are not in the cache come from one query for each 500 LAN IDs (review DA-09).</summary>
+    /// <summary>Returns the display names of many LAN IDs.</summary>
+    /// <remarks>The names that are not in the cache come from one query for each 500 LAN IDs.</remarks>
     public IReadOnlyDictionary<string, string> DisplayNames(IEnumerable<string> lanIds)
     {
         ArgumentNullException.ThrowIfNull(lanIds);

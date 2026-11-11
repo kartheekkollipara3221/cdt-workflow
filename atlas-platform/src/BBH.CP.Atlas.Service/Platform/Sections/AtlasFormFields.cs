@@ -4,46 +4,59 @@ using BBH.CP.Atlas.Service.Platform.Rules;
 namespace BBH.CP.Atlas.Service.Platform.Sections;
 
 /// <summary>
-/// One field of the form: a control with a Field, or a column of a grid with <c>BindMode: SingleRowFields</c>
-/// (spec 01, 10.2). <see cref="Name"/> is the name in <c>Outputs</c>; <see cref="Field"/> is the table column.
+/// One field of the form: a control with a Field, or a column of a grid with <c>BindMode: SingleRowFields</c>.
 /// </summary>
+/// <remarks>
+/// <see cref="Name"/> is the name in <c>Outputs</c>. <see cref="Field"/> is the table column.
+/// </remarks>
 public sealed class AtlasFormField
 {
+    /// <summary>The output name of the field.</summary>
     public required string Name { get; init; }
 
+    /// <summary>The table column of the field.</summary>
     public required string Field { get; init; }
 
+    /// <summary>The label of the field, for messages.</summary>
     public string? Label { get; init; }
 
-    /// <summary>The control. For a grid field: the grid control.</summary>
+    /// <summary>The control. For a grid field, this is the grid control.</summary>
     public required CPApplicationControl Control { get; init; }
 
+    /// <summary>The grid column of a grid field, or null.</summary>
     public CPGridColumn? GridColumn { get; init; }
 
+    /// <summary>True when the field is a column of a SingleRowFields grid.</summary>
     public bool IsGridField => GridColumn != null;
 
-    /// <summary>Effective state after the rules and the server effects.</summary>
+    /// <summary>The effective visibility after the rules and the server effects.</summary>
     public bool Visible { get; set; }
 
+    /// <summary>The effective disabled state after the rules and the server effects.</summary>
     public bool Disabled { get; set; }
 
+    /// <summary>The effective required state after the server effects.</summary>
     public bool Required { get; set; }
 
     /// <summary>
-    /// True when the JSON shows the field and a rule hides it (review SV-03). A value-driven effect cannot show it
-    /// again: an effect can only narrow what the rules allow.
+    /// True when the JSON shows the field and a rule hides it.
     /// </summary>
+    /// <remarks>
+    /// A value-driven effect cannot show the field again. An effect can only narrow what the rules allow.
+    /// </remarks>
     public bool HiddenByRule { get; set; }
 
-    /// <summary>True when the JSON enables the field and a rule disables it: an effect cannot enable it (review SV-04).</summary>
+    /// <summary>True when the JSON enables the field and a rule disables it. An effect cannot enable it.</summary>
     public bool DisabledByRule { get; set; }
 
+    /// <summary>The validator of the control.</summary>
     public CPValidator? Validator => Control.Validator;
 }
 
 /// <summary>The fields of a section, found one time for each request.</summary>
 public sealed class AtlasFormFields
 {
+    /// <summary>The grid BindMode that makes each column a field of the record.</summary>
     public const string SingleRowFields = "SingleRowFields";
 
     private readonly List<AtlasFormField> _fields;
@@ -57,11 +70,13 @@ public sealed class AtlasFormFields
             _controls.TryAdd(control.Name, control);
     }
 
+    /// <summary>All fields of the section.</summary>
     public IReadOnlyList<AtlasFormField> All => _fields;
 
     /// <summary>The grid controls with SingleRowFields.</summary>
     public IReadOnlyList<CPApplicationControl> Grids { get; }
 
+    /// <summary>Returns the fields of a section, with the state from the JSON.</summary>
     public static AtlasFormFields From(CPApplicationSection section)
     {
         ArgumentNullException.ThrowIfNull(section);
@@ -125,7 +140,9 @@ public sealed class AtlasFormFields
         }
     }
 
-    /// <summary>The fields of a section after the rules, with HiddenByRule and DisabledByRule from <paramref name="outcome"/>.</summary>
+    /// <summary>
+    /// Returns the fields of a section after the rules, with HiddenByRule and DisabledByRule from <paramref name="outcome"/>.
+    /// </summary>
     public static AtlasFormFields From(CPApplicationSection section, AtlasRuleOutcome outcome)
     {
         AtlasFormFields fields = From(section);
@@ -133,7 +150,7 @@ public sealed class AtlasFormFields
         return fields;
     }
 
-    /// <summary>Sets HiddenByRule and DisabledByRule from what the rules changed (review SV-03, SV-04, FABLE F01).</summary>
+    /// <summary>Sets HiddenByRule and DisabledByRule from what the rules changed.</summary>
     public void ApplyOutcome(AtlasRuleOutcome outcome)
     {
         ArgumentNullException.ThrowIfNull(outcome);
@@ -144,6 +161,7 @@ public sealed class AtlasFormFields
         }
     }
 
+    /// <summary>Returns true when the control is a grid with BindMode SingleRowFields.</summary>
     public static bool IsSingleRowGrid(CPApplicationControl control) =>
         control.Grid != null && string.Equals(control.Grid.BindMode, SingleRowFields, StringComparison.OrdinalIgnoreCase);
 
@@ -152,9 +170,10 @@ public sealed class AtlasFormFields
         _fields.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
         ?? _fields.FirstOrDefault(x => string.Equals(x.Field, name, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Any control by name (section, child or grid).</summary>
+    /// <summary>Returns a control by name (section, child or grid control), or null.</summary>
     public CPApplicationControl? Control(string name) => _controls.GetValueOrDefault(name);
 
+    /// <summary>Returns the fields of a control. A grid control can have many fields.</summary>
     public IEnumerable<AtlasFormField> FieldsOf(string controlName) =>
         _fields.Where(x => string.Equals(x.Control.Name, controlName, StringComparison.OrdinalIgnoreCase));
 }

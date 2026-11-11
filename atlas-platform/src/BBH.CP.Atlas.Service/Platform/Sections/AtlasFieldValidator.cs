@@ -5,15 +5,20 @@ using BBH.CP.Atlas.Data.DTO;
 namespace BBH.CP.Atlas.Service.Platform.Sections;
 
 /// <summary>
-/// The server checks of one field (spec 01, 10.3). The client (WebUi platform/form/atlas-validators.ts) uses the
-/// same rules and texts; the cases in atlas-validator-cases.ts are checked on both sides (review SV-04):
-/// a value of only spaces is empty; Pattern is anchored as Angular Validators.pattern does; Integer, then a number
-/// (no exponent), then Min and Max; Validator.Message, when set, is the text of each failure.
+/// Checks the value of one field on the server.
 /// </summary>
+/// <remarks>
+/// The client (see atlas-validators.ts) uses the same rules and texts.
+/// Tests check the cases in atlas-validator-cases.ts on the two sides.
+/// A value of only spaces is empty. Pattern is anchored as Angular Validators.pattern does it.
+/// The checks run in this order: Integer, number (no exponent), Min and Max.
+/// When Validator.Message is set, it is the text of each failure.
+/// </remarks>
 public static partial class AtlasFieldValidator
 {
     private static readonly TimeSpan PatternTimeout = TimeSpan.FromSeconds(1);
 
+    /// <summary>Returns the first error of the value, or null when the value is valid.</summary>
     public static CPPageError? Validate(AtlasFormField field, string? value)
     {
         ArgumentNullException.ThrowIfNull(field);
@@ -50,14 +55,17 @@ public static partial class AtlasFieldValidator
         return null;
     }
 
-    /// <summary>The anchoring of Angular Validators.pattern(string): ^ and $ are added when they are not there.</summary>
+    /// <summary>
+    /// Returns the pattern anchored as Angular Validators.pattern(string) does it. It adds ^ and $ when they are missing.
+    /// </summary>
     public static string AnchoredPattern(string pattern)
     {
         ArgumentNullException.ThrowIfNull(pattern);
         return (pattern.StartsWith('^') ? "" : "^") + pattern + (pattern.EndsWith('$') ? "" : "$");
     }
 
-    /// <summary>A pattern that takes too long is a failed check (fail closed), not a server error.</summary>
+    /// <summary>Returns true when the value matches the pattern.</summary>
+    /// <remarks>A pattern that takes too long is a failed check (fail closed), not a server error.</remarks>
     private static bool PatternMatches(string pattern, string value)
     {
         try

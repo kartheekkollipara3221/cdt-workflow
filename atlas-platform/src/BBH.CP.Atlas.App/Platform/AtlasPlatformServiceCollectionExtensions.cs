@@ -8,25 +8,33 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace BBH.CP.Atlas.App.Platform;
 
 /// <summary>
-/// Composition root lines for the platform (spec 07, 4.2). At the target, program.cs gets:
+/// Registers the platform services and the platform apps in the composition root.
+/// </summary>
+/// <remarks>
+/// At the target, program.cs gets these lines:
 /// <code>
-/// builder.Services.AddAtlasPlatform(configuration);   // the root that program.cs builds (INTEGRATION.md, section 4; review 3 RV-L15)
+/// builder.Services.AddAtlasPlatform(configuration);   // the configuration root that program.cs builds
 /// builder.Services.AddAtlasModule&lt;ConfigSectionService&gt;("TTDV2");
 /// </code>
-/// </summary>
+/// </remarks>
 public static class AtlasPlatformServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers the platform services, the start-up service and the error filter.
+    /// </summary>
+    /// <param name="services">The service collection of the host.</param>
+    /// <param name="configuration">The configuration that holds the platform settings. The target decides its source.</param>
     public static IServiceCollection AddAtlasPlatform(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.TryAddSingleton(TimeProvider.System); // the host's TimeProvider wins (review HO-08)
+        services.TryAddSingleton(TimeProvider.System); // a TimeProvider that the host registers has priority
         services.AddMemoryCache();
         services.AddHttpContextAccessor();
 
-        // Registry and configuration (module 7, module 11). The platform settings come from the configuration given
-        // here (review HO-01), so the target decides the source; the container IConfiguration is not used for them.
+        // Registry and configuration. The platform settings come from the configuration parameter, so the target
+        // decides the source. The platform does not read its settings from the container IConfiguration.
         AtlasPlatformConfiguration platformConfiguration = new(configuration);
         services.AddSingleton(platformConfiguration);
         services.AddSingleton<IAtlasConfigStore>(provider =>
@@ -34,24 +42,28 @@ public static class AtlasPlatformServiceCollectionExtensions
                 provider.GetService<ILogger<AtlasConfigStore>>()));
         services.AddScoped<IAtlasModuleResolver, AtlasModuleResolver>();
 
-        // Data (module 5).
         services.AddAtlasPlatformData();
 
-        // Current user from the existing IUserInfo (module 6, 4.1).
+        // The current user comes from the existing IUserInfo.
         services.AddScoped<IAtlasCurrentUserSource, UserInfoCurrentUserSource>();
 
         services.Configure<MvcOptions>(options => options.Filters.Add<AtlasProblemExceptionFilter>());
 
         AtlasPlatformServices.Add(services);
 
-        // Review HO-06: the start-up runs as a hosted service; StartAtlasPlatformAsync in program.cs stays valid.
+        // The start-up runs as a hosted service. A call to StartAtlasPlatformAsync in program.cs is also valid.
         services.TryAddSingleton<AtlasPlatformStartupGate>();
         services.TryAddSingleton<AtlasDisabledApps>();
         services.AddHostedService<AtlasPlatformStartupService>();
         return services;
     }
 
-    /// <summary>One line for each app (spec 07, 4.2, question 1). The class must match the manifest Service.</summary>
+    /// <summary>
+    /// Registers one platform app. Use one line for each app.
+    /// </summary>
+    /// <typeparam name="TService">The module class of the app. It must match the Service of the app manifest.</typeparam>
+    /// <exception cref="ArgumentException">The app code is not valid.</exception>
+    /// <exception cref="InvalidOperationException">The app code is already registered.</exception>
     public static IServiceCollection AddAtlasModule<TService>(this IServiceCollection services, string appCode)
         where TService : class, IAtlasModule
     {

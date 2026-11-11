@@ -12,12 +12,16 @@ using Microsoft.Extensions.Logging;
 namespace BBH.CP.Atlas.Service.Platform.Sections;
 
 /// <summary>
-/// The platform services that a module class uses, in one constructor parameter. A module class has one
-/// constructor <c>(AtlasModuleServices services)</c>; a new platform service does not change the module classes.
-/// Rule for modules (review SV-13): read through <see cref="Context"/> and <see cref="PlatformContext"/> if needed, but
-/// do not write the app table or the audit table through them. A write there skips the allow list, the rules, the
-/// version check and the audit. Change the record in OnBeforeSave (context.Record), which the platform saves.
+/// The platform services that a module class uses, in one constructor parameter.
 /// </summary>
+/// <remarks>
+/// A module class has one constructor <c>(AtlasModuleServices services)</c>.
+/// Thus a new platform service does not change the module classes.
+/// A module can read through <see cref="Context"/> and <see cref="PlatformContext"/>.
+/// A module must not write the app table or the audit table through them.
+/// Such a write skips the allow list, the rules, the version check and the audit.
+/// Change the record in OnBeforeSave (context.Record). The platform then saves it.
+/// </remarks>
 public sealed class AtlasModuleServices(
     IAtlasConfigStore configStore,
     CPSharepointContext context,

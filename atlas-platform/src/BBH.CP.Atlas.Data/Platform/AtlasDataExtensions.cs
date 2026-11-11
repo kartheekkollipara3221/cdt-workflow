@@ -4,6 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace BBH.CP.Atlas.Data.Platform;
 
+/// <summary>
+/// Registers the platform data services and gives helpers for the records of registered tables.
+/// </summary>
 public static class AtlasDataExtensions
 {
     /// <summary>
@@ -40,9 +43,12 @@ public static class AtlasDataExtensions
     }
 
     /// <summary>
-    /// A new record with a key for each column: identity key = 0 (EF Core makes the value), a NOT NULL value column =
-    /// the type default (for example IsDeleted = 0; review DA-08: EF Core cannot read null for a bool property), others null.
+    /// Returns a new record with a key for each column of the table.
     /// </summary>
+    /// <remarks>
+    /// The identity key is 0, and EF Core makes the value. A NOT NULL value column gets the type default
+    /// (for example IsDeleted = 0), because EF Core cannot read null for a bool property. Other columns are null.
+    /// </remarks>
     public static Dictionary<string, object?> NewRecord(this AtlasTable table)
     {
         ArgumentNullException.ThrowIfNull(table);
@@ -59,7 +65,7 @@ public static class AtlasDataExtensions
     }
 
     /// <summary>
-    /// Loads one record by its key in the database (no full table read, spec 05, 6.5). A soft-deleted record is not
+    /// Loads one record by its key in the database, with no full table read. A soft-deleted record is not
     /// found. Returns null if there is no such record.
     /// </summary>
     public static Dictionary<string, object?>? FindActive(this AtlasPlatformContext context, string tableFullName, int id)
@@ -69,9 +75,14 @@ public static class AtlasDataExtensions
     }
 
     /// <summary>
-    /// The same as <see cref="FindActive(AtlasPlatformContext, string, int)"/>; <paramref name="tracking"/> = false for a
-    /// read-only path (load, history), so the record is not kept in the change tracker (review DA-10).
+    /// Loads one active record by its key, with or without change tracking.
     /// </summary>
+    /// <remarks>
+    /// The same as <see cref="FindActive(AtlasPlatformContext, string, int)"/>.
+    /// </remarks>
+    /// <param name="tracking">
+    /// False for a read-only path (load, history), so the change tracker does not keep the record.
+    /// </param>
     public static Dictionary<string, object?>? FindActive(this AtlasPlatformContext context, string tableFullName, int id, bool tracking)
     {
         ArgumentNullException.ThrowIfNull(context);

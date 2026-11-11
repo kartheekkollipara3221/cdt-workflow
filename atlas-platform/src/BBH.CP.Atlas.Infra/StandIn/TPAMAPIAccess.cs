@@ -5,8 +5,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace BBH.CP.Atlas.Infra
 {
+    /// <summary>Gives the database connection strings.</summary>
     public class TPAMAPIAccess
     {
+        /// <summary>Returns the connection string with the key from the settings.</summary>
+        /// <exception cref="InvalidOperationException">The settings have no connection string with the key.</exception>
         public static string GetConnectionString(IConfiguration configuration, string connectionKey)
         {
             string? connectionString = configuration["ConnectionStrings:" + connectionKey];

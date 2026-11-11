@@ -46,6 +46,7 @@ export function shellMenuItems(apps: CPApplicationRow[]): ShellMenuItem[] {
     .map((app) => ({ label: app.Name, isOpen: false, icon: 'fas fa-home', url: 'dashboard/' + app.Code }));
 }
 
+/** Root component of the local stand-in shell: navbar, sidebar, page area and footer. */
 @Component({
   selector: 'app-root',
   imports: [
@@ -92,6 +93,7 @@ export class App implements OnInit {
     { label: 'Log out', styleClass: 'p-menuitem-bold', command: () => this.showDialog() },
   ]);
 
+  /** Loads the current user, the test users and the sidebar apps. Shows the API banner when a call fails. */
   ngOnInit(): void {
     this.http.get<CurrentUser>('authorize').subscribe({
       next: (user) => this.user.set(user),
@@ -110,25 +112,33 @@ export class App implements OnInit {
     });
   }
 
+  /** Opens or closes the submenu of a sidebar item that has children. */
   toggleMenuItem(item: ShellMenuItem): void {
     if (!this.isSidebarCollapsed && item.children) {
       item.isOpen = !item.isOpen;
     }
   }
 
+  /** Shows the logout dialog. */
   showDialog(): void {
     this.dialogVisible = true;
   }
 
+  /** Hides the logout dialog. */
   hideDialog(): void {
     this.dialogVisible = false;
   }
 
-  /** The target goes to environment.redirectLogoutURL; locally the dialog only closes. */
+  /** Closes the logout dialog. The target goes to environment.redirectLogoutURL instead. */
   logout(): void {
     this.dialogVisible = false;
   }
 
+  /**
+   * Acts as the given test user and reloads the app.
+   *
+   * @param lanId The LAN ID of the test user. An empty value goes back to the Windows login.
+   */
   changeUser(lanId: string): void {
     try {
       if (lanId) {

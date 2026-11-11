@@ -11,10 +11,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace BBH.CP.Atlas.Service.Platform.Dashboard;
 
 /// <summary>
-/// The dashboard of a platform app (spec 03, 4.1-4.7). Order: the View access check; the tab rules before any query
-/// (a hidden tab gets no rows); the rows of each visible <c>Source: Table</c> tab; menus and the add button from
-/// <c>Permissions</c> when the JSON has no rules.
+/// Loads the dashboard of a platform app for the current user.
 /// </summary>
+/// <remarks>
+/// The service does these steps in this order:
+/// 1. It checks the View access.
+/// 2. It applies the tab rules before any query, so a hidden tab gets no rows.
+/// 3. It reads the rows of each visible <c>Source: Table</c> tab.
+/// 4. It sets the menus and the add button from <c>Permissions</c> when the JSON has no rules.
+/// </remarks>
 public sealed class AtlasDashboardService(
     IAtlasConfigStore configStore,
     CPSharepointContext context,
@@ -25,6 +30,10 @@ public sealed class AtlasDashboardService(
     AtlasRuleEngine rules,
     ILogger<AtlasDashboardService>? logger = null)
 {
+    /// <summary>Returns the dashboard of an app, with the tabs, rows, menus and buttons for the current user.</summary>
+    /// <exception cref="AtlasProblemException">
+    /// 404 when the app is not registered, is disabled or has no dashboard. 403 when the user cannot view the app.
+    /// </exception>
     public CPAtlasDashboard Load(string appCode)
     {
         AtlasAppManifest manifest = configStore.FindManifest(appCode) is { Enabled: true } found
@@ -43,7 +52,7 @@ public sealed class AtlasDashboardService(
             if (tabRule.Matched)
                 tab.Visible = tab.Visible && tabRule.Visible;
 
-            // Review SV-05: the rows of another app need that app enabled and its View check.
+            // The rows of another app need that app to be enabled and the user to pass its View check.
             (AtlasAppManifest tabManifest, CPAtlasApplicationConfig? tabForm) = (manifest, form);
             if (tab.Visible && TabApp(manifest, tab) is { } foreign)
             {
@@ -53,7 +62,7 @@ public sealed class AtlasDashboardService(
 
             if (!tab.Visible)
             {
-                tab.KeyValues = []; // spec 03, 4.2: no rows for a hidden tab
+                tab.KeyValues = []; // A hidden tab gets no rows.
                 continue;
             }
 
@@ -83,7 +92,7 @@ public sealed class AtlasDashboardService(
         return dashboard;
     }
 
-    /// <summary>The app of the rows of a tab when it is not the dashboard app, or null for the dashboard app.</summary>
+    /// <summary>Returns the app of the rows of a tab, or null when it is the dashboard app.</summary>
     private (AtlasAppManifest Manifest, CPAtlasApplicationConfig? Form)? TabApp(AtlasAppManifest manifest, CPAtlasTab tab)
     {
         if (string.IsNullOrWhiteSpace(tab.Code) || string.Equals(tab.Code, manifest.Code, StringComparison.OrdinalIgnoreCase))
@@ -94,7 +103,11 @@ public sealed class AtlasDashboardService(
         return (tabManifest, tabManifest.Enabled && !string.IsNullOrWhiteSpace(tabManifest.Form) ? configStore.GetForm(tabManifest.Code) : null);
     }
 
-    /// <summary>A disabled app (the rollback switch) shows nothing; a denied View hides the tab (Enforce) or is only logged (LogOnly).</summary>
+    /// <summary>Returns true when the user can see the rows of another app in a tab.</summary>
+    /// <remarks>
+    /// A disabled app (the rollback switch) shows nothing.
+    /// A refused View hides the tab in Enforce mode. In LogOnly mode, the access check only logs the refusal.
+    /// </remarks>
     private bool CanView(AtlasAppManifest tabManifest, CPAtlasApplicationConfig? tabForm)
     {
         if (!tabManifest.Enabled)
@@ -141,7 +154,7 @@ public sealed class AtlasDashboardService(
         // Type "user": the display name from the user cache (after the read: one open reader for each connection).
         if (userColumns.Count > 0)
         {
-            // Review DA-09: one query for the names of all rows, not one for each LAN ID.
+            // One query gets the names for all rows. This prevents one query for each LAN ID.
             IReadOnlyDictionary<string, string> names = directory.DisplayNames(
                 rows.SelectMany(row => userColumns.Select(name => row.GetValueOrDefault(name) as string)).OfType<string>());
             foreach (Dictionary<string, object> row in rows)
@@ -156,7 +169,9 @@ public sealed class AtlasDashboardService(
         return rows;
     }
 
-    /// <summary>Menus from the JSON rules, or (no Menus in the JSON) from Permissions (spec 03, 4.4).</summary>
+    /// <summary>
+    /// Returns the menus of a tab from the JSON rules. When the JSON has no Menus, the menus come from Permissions.
+    /// </summary>
     private List<CPMenu>? Menus(AtlasAppManifest manifest, CPAtlasApplicationConfig? form, CPAtlasTab tab, AtlasRuleContext ruleContext)
     {
         if (tab.Menus is { Count: > 0 } menus)

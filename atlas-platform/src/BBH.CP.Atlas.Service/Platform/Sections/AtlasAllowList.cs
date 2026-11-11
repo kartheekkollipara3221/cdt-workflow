@@ -7,12 +7,23 @@ namespace BBH.CP.Atlas.Service.Platform.Sections;
 public enum AtlasIgnoreReason { ServerSet, Unchanged }
 
 /// <summary>
-/// The allow list of a save (spec 01, 5.9 step 4; review SV-08). Server-set fields (system columns, Computed targets,
-/// effect targets) are ignored. A hidden or disabled field may only send its stored value (typed compare, review
-/// DA-06); a change gives NotAllowed. The option check (review SV-01) is given by the caller.
+/// Checks which submitted values a save can use.
 /// </summary>
+/// <remarks>
+/// The check ignores the server-set fields: system columns, Computed targets and effect targets.
+/// A hidden or disabled field can only send its stored value. The compare uses the column type.
+/// A changed value of such a field gives the error NotAllowed.
+/// The caller supplies the option check.
+/// </remarks>
 public static class AtlasAllowList
 {
+    /// <summary>Returns the submitted values that the save can use, by field.</summary>
+    /// <param name="previous">The stored values of the record, by column field.</param>
+    /// <param name="isServerSet">Returns true for a field that the server sets.</param>
+    /// <param name="optionError">Returns an error when the value is not an allowed option, or null.</param>
+    /// <param name="errors">The list that gets the errors of the check.</param>
+    /// <param name="ignored">Gets each ignored field and the reason.</param>
+    /// <exception cref="ArgumentException">A submitted name is not a field of the form.</exception>
     public static Dictionary<AtlasFormField, string?> Check(
         IReadOnlyDictionary<string, string?> submitted,
         AtlasFormFields fields,

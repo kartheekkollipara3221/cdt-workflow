@@ -8,8 +8,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BBH.CP.Atlas.Data
 {
+    /// <summary>Runs stored procedures on the CP Atlas database (a copy of the target method).</summary>
     public static class DatabaseExtension
     {
+        /// <summary>
+        /// Runs the stored procedure with the parameters and returns a reader.
+        /// The connection closes when the caller disposes the reader.
+        /// </summary>
         public static DbDataReader ExecuteDataReader(this CPSharepointContext context, string procedure, SqlParameter[]? parameters = null)
         {
             SqlConnection connection = (SqlConnection)context.Database.GetDbConnection();
@@ -28,8 +33,10 @@ namespace BBH.CP.Atlas.Data
         }
     }
 
+    /// <summary>Converts data tables (a copy of the target method).</summary>
     public static class CommonExtension
     {
+        /// <summary>Returns one dictionary for each row: column name to value.</summary>
         public static List<Dictionary<string, object>> ToDictionaryList(this DataTable table)
         {
             List<Dictionary<string, object>> result = [];

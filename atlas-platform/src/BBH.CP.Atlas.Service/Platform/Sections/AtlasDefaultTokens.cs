@@ -5,23 +5,30 @@ using BBH.CP.Atlas.Data.DTO;
 namespace BBH.CP.Atlas.Service.Platform.Sections;
 
 /// <summary>
-/// The default tokens of a form (spec 01, 10.2): {User.LanID}, {User.DisplayName}, {Today} and {Options[n]}. Other text
-/// is the value itself. One list for the load, the save and the start-up check (review SV-08).
+/// Resolves the default tokens of a form: {User.LanID}, {User.DisplayName}, {Today} and {Options[n]}.
 /// </summary>
+/// <remarks>
+/// Other text is the value itself. The load, the save and the start-up check use the same list.
+/// </remarks>
 public static partial class AtlasDefaultTokens
 {
+    /// <summary>The LAN ID of the current user.</summary>
     public const string UserLanId = "{User.LanID}";
+    /// <summary>The display name of the current user.</summary>
     public const string UserDisplayName = "{User.DisplayName}";
+    /// <summary>The local date of today, as yyyy-MM-dd.</summary>
     public const string Today = "{Today}";
 
-    /// <summary>The fixed tokens, for messages ({Options[n]} is also known).</summary>
+    /// <summary>The fixed tokens, for messages. {Options[n]} is also a known token.</summary>
     public static IReadOnlyList<string> Fixed { get; } = [UserLanId, UserDisplayName, Today];
 
-    /// <summary>True for a known token. Text that does not start with '{' is a literal value, so it is also valid.</summary>
+    /// <summary>
+    /// Returns true for a known token. Text that does not start with '{' is a literal value, so it is also valid.
+    /// </summary>
     public static bool IsValid(string? token) =>
         token == null || !token.StartsWith('{') || Fixed.Contains(token, StringComparer.OrdinalIgnoreCase) || OptionsToken().IsMatch(token);
 
-    /// <summary>The value of a token; null for {Options[n]} when there is no option n.</summary>
+    /// <summary>Returns the value of a token. Returns null for {Options[n]} when there is no option n.</summary>
     public static string? Resolve(string token, string lanId, string displayName, DateTimeOffset localNow, IReadOnlyList<CPKeyValue>? options)
     {
         ArgumentNullException.ThrowIfNull(token);

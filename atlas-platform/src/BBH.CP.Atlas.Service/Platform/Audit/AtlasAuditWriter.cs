@@ -8,10 +8,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BBH.CP.Atlas.Service.Platform.Audit;
 
+/// <summary>The names of the audit events.</summary>
 public static class AtlasAuditEvents
 {
+    /// <summary>A new record.</summary>
     public const string Create = "Create";
+    /// <summary>A change to a record.</summary>
     public const string Update = "Update";
+    /// <summary>A removed record.</summary>
     public const string Delete = "Delete";
 }
 
@@ -19,14 +23,19 @@ public static class AtlasAuditEvents
 public sealed record AtlasAuditChange(string Name, string? Label, string? Old, string? Value);
 
 /// <summary>
-/// The server audit (spec 09, 4.1-4.5). The entry is written in the transaction of the save. LogMessage is a JSON
-/// list: the first item is <c>{"Name":"_Event","Value":"Create|Update|Delete"}</c>, then one item for each field.
+/// Writes and reads the server audit entries of a record.
 /// </summary>
+/// <remarks>
+/// The writer adds the entry in the transaction of the save. LogMessage is a JSON list.
+/// The first item is <c>{"Name":"_Event","Value":"Create|Update|Delete"}</c>. Then there is one item for each field.
+/// </remarks>
 public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserContext user, TimeProvider time)
 {
+    /// <summary>The name of the LogMessage item that holds the audit event.</summary>
     public const string EventName = "_Event";
 
-    /// <summary>Adds the entry to the platform context (the caller saves). An Update with no change adds nothing.</summary>
+    /// <summary>Adds the entry to the platform context. The caller saves the context.</summary>
+    /// <returns>False when the event is an Update with no change. Then the method adds nothing.</returns>
     public bool Add(AtlasAppManifest manifest, int refId, string auditEvent, IReadOnlyList<AtlasAuditChange> changes)
     {
         ArgumentNullException.ThrowIfNull(manifest);
@@ -57,7 +66,7 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
         return true;
     }
 
-    /// <summary>The entries of one record, oldest first (as the target History Log).</summary>
+    /// <summary>Returns the entries of one record, oldest first (the same order as the target History Log).</summary>
     public List<CPAuditLog> Read(AtlasAppManifest manifest, int refId)
     {
         ArgumentNullException.ThrowIfNull(manifest);
@@ -67,7 +76,7 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
             .Where(x => EF.Property<int?>(x, "RefID") == refId);
         if (manifest.AuditReadRefTypes() is { } refTypes && table.HasColumn("RefType"))
         {
-            // Review DA-03: in a shared audit table, record 42 of another app is not this record.
+            // In a shared audit table, record 42 of another app is not this record.
             List<string> values = [.. refTypes];
             query = query.Where(x => values.Contains(EF.Property<string>(x, "RefType")));
         }
@@ -111,7 +120,7 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
             AppCode = manifest.Code,
             RefID = refId,
             CreatedBy = row.GetValueOrDefault("CreatedBy") as string ?? "",
-            // As the target GetAuditLog: the History Log shows this text.
+            // The same format as the target GetAuditLog. The History Log shows this text.
             CreatedDate = created?.ToString("MM-dd-yyyy HH:mm:ss", CultureInfo.InvariantCulture) ?? "",
             CreatedDateUtc = created == null || manifest.AuditTime != AtlasAuditTime.Utc
                 ? null
@@ -123,10 +132,13 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
     }
 
     /// <summary>
-    /// The LogMessage as the target sends it: JSON text that the target History Log reads with JSON.parse and shows as
-    /// "Name - Value". The _Event item is left out (it is in CPAuditLog.Event). Old and Label stay in each item.
-    /// A message that is not a JSON list is given as it is.
+    /// Returns the LogMessage as JSON text, in the format that the target sends.
     /// </summary>
+    /// <remarks>
+    /// The target History Log reads the text with JSON.parse and shows "Name - Value".
+    /// The _Event item is not in the text, because CPAuditLog.Event holds it. Old and Label stay in each item.
+    /// A message that is not a JSON list is returned with no change.
+    /// </remarks>
     public static object? ToText(object? logMessage)
     {
         if (logMessage is not JsonElement { ValueKind: JsonValueKind.Array } items)
