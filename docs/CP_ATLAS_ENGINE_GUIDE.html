@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Atlas engine guide</title>
+<style>
+:root{color-scheme:light;--bg:#edf1f5;--paper:#fff;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--amber:#8a5a00;--amberbg:#fff7e6;--codebg:#f4f6f8;--th:#eff4f7;--box:#fbfdfe;--shadow:#17334a12}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006}
+*{box-sizing:border-box}
+html{overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+main{max-width:1150px;margin:32px auto;background:var(--paper);padding:44px;border-radius:12px;box-shadow:0 8px 28px var(--shadow)}
+a{color:var(--blue)}
+h1,h2,h3{line-height:1.22;color:var(--navy)}h1{font-size:2rem;margin:10px 0}h2{font-size:1.35rem;margin:0 0 12px}h3{font-size:1.05rem;margin:20px 0 6px}
+section{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:var(--codebg);padding:1px 5px;border-radius:4px}
+pre{background:var(--codebg);padding:12px 14px;border-radius:8px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;max-width:100%}
+pre code{background:none;padding:0;overflow-wrap:normal}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.08rem}
+.note{padding:12px 16px;border-left:4px solid var(--blue);background:var(--bluebg);margin:16px 0}
+.good{padding:12px 16px;border-left:4px solid var(--green);background:var(--greenbg);margin:16px 0}
+.warn{padding:12px 16px;border-left:4px solid #c58a1a;background:var(--amberbg);margin:16px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:10px 0}
+th,td{padding:8px 10px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:var(--th);font-weight:650}
+td:first-child{white-space:nowrap}
+ol li,ul li{margin:4px 0}
+nav.toc{columns:2;column-gap:32px;font-size:.92rem}
+nav.toc a{color:var(--blue);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:10px;background:var(--bluebg);color:var(--blue);margin-left:4px;white-space:nowrap}
+.tag.fact{background:var(--greenbg);color:var(--green)}.tag.open{background:var(--amberbg);color:var(--amber)}
+figure{margin:18px 0}
+figure .svg-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:8px}
+figure svg{display:block;width:100%;height:auto;min-width:560px}
+figcaption{font-size:.86rem;color:var(--muted);margin-top:6px}
+.d-box{fill:var(--box);stroke:var(--blue);stroke-width:1.5}
+.d-eng{fill:var(--bluebg);stroke:var(--blue);stroke-width:1.5}
+.d-db{fill:var(--greenbg);stroke:var(--green);stroke-width:1.5}
+.d-ext{fill:var(--amberbg);stroke:var(--amber);stroke-width:1.5}
+.d-t{fill:var(--ink);font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif}
+.d-s{fill:var(--muted);font:11.5px system-ui,-apple-system,"Segoe UI",sans-serif}
+.d-m{fill:var(--ink);font:11.5px ui-monospace,Consolas,monospace}
+.d-l{stroke:var(--muted);stroke-width:1.5;fill:none}
+.d-ld{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:5 4}
+.d-life{stroke:var(--line);stroke-width:1.5;stroke-dasharray:4 4}
+.d-a{fill:var(--muted)}
+footer{border-top:1px solid var(--line);margin-top:34px;padding-top:18px;font-size:.9rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:22px 16px;border-radius:0}nav.toc{columns:1}td:first-child{white-space:normal}h1{font-size:1.6rem}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas &middot; workflow engine &middot; hand-over &middot; 2026-11-10</div>
+<h1>CP Atlas workflow engine: code guide</h1>
+<p class="lead">This guide explains the CP Atlas workflow engine code as it is now. Use it to find code, to understand how one action runs, and to change the engine without breaking current callers.</p>
+<p class="small">Code version: commit <code>fc5f9c7</code> on branch <code>console-code-first-0518</code>. Date: 2026-11-10. Language: ASD-STE100 Simplified Technical English (about 80%). Code names, paths and technical terms stay as they are in the code.</p>
+
+<nav class="toc" aria-label="Contents">
+<ol>
+<li><a href="#about">About this guide</a></li>
+<li><a href="#product">CP Atlas in one page</a></li>
+<li><a href="#layout">Solution and project layout</a></li>
+<li><a href="#data">Data model</a></li>
+<li><a href="#metadata">Metadata and seed</a></li>
+<li><a href="#action">The action path end to end</a></li>
+<li><a href="#sla">SLA</a></li>
+<li><a href="#notify">Notifications and the outbox</a></li>
+<li><a href="#public">Public surfaces</a></li>
+<li><a href="#workflows">Workflows in the metadata</a></li>
+<li><a href="#config">Configuration</a></li>
+<li><a href="#target">How the target integrates today</a></li>
+<li><a href="#build">Build, test, run</a></li>
+<li><a href="#change">How to change the engine safely</a></li>
+<li><a href="#limits">Known limits and open items</a></li>
+<li><a href="#glossary">Glossary</a></li>
+<li><a href="#files">File index</a></li>
+</ol>
+</nav>
+
+<!-- ============================================================ 1 -->
+<section id="about">
+<h2>1. About this guide</h2>
+<h3>1.1 Purpose and reader</h3>
+<p>This is the final hand-over document for the workflow engine component of CP Atlas. The reader is a .NET and SQL Server developer of the target team. The reader did not write this code.</p>
+<p>After you read this guide, you can:</p>
+<ul>
+<li>find the file and the member for a workflow behaviour;</li>
+<li>follow one action from the request to the database and to the e-mail;</li>
+<li>add or change workflow metadata with SQL scripts;</li>
+<li>run the quality gates before you release a change;</li>
+<li>see which items are open and which decisions are not made.</li>
+</ul>
+<h3>1.2 Source of truth</h3>
+<p>The code at commit <code>fc5f9c7</code> is the source of truth for this guide. Two documents govern the code: <a href="../PROJECT.md"><code>PROJECT.md</code></a> (sections 1 to 28 govern the engine) and <a href="../AGENTS.MD"><code>AGENTS.md</code></a>. The project state is at the top of <a href="../CODEX_HANDOFF.md"><code>CODEX_HANDOFF.md</code></a>, section B. If an older document and the code do not agree, the code is correct.</p>
+<h3>1.3 How to read</h3>
+<ul>
+<li>Sections 2 and 3 give the big picture. Read them first.</li>
+<li>Sections 4 to 8 explain the data and the run-time behaviour.</li>
+<li>Sections 9 to 12 are reference tables for integration work.</li>
+<li>Sections 13 to 15 tell you how to build, change and release the engine.</li>
+<li>Section 16 defines each term. Section 17 lists the most important files.</li>
+</ul>
+<p>Paths are links relative to this file. Member names are in <code>code</code> style, for example <code>WorkflowExecutionService.Execute</code>. In section 15, each item has a tag: <span class="tag fact">Code fact</span> means that you can see it in the code; <span class="tag open">Open decision</span> means that the owner must decide.</p>
+<h3>1.4 The platform guide</h3>
+<p>The Atlas platform (<code>atlas-platform/</code>) has its own guide: <a href="atlas-platform/CP_ATLAS_PLATFORM_GUIDE.html">CP_ATLAS_PLATFORM_GUIDE.html</a>. It covers the generic app layer (form, dashboard, rules, security, audit) and the pilot app TTDV2. This guide covers only the engine (<code>src/</code>, <code>workflow-api/</code>, <code>sql/upgrades/</code>, <code>sql/sqms/</code>, <code>samples/</code>).</p>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="product">
+<h2>2. CP Atlas in one page</h2>
+<p>CP Atlas is one product with two components in this repository (<a href="../PROJECT.md"><code>PROJECT.md</code></a> section 0):</p>
+<div class="table-wrap"><table>
+<tr><th>Component</th><th>Folders</th><th>Status at <code>fc5f9c7</code></th></tr>
+<tr><td>Workflow engine</td><td><code>src/</code>, <code>workflow-api/</code></td><td>Built. Fixes are published on the branch but are not deployed to the target workers. Work is paused until the platform work is stable.</td></tr>
+<tr><td>Atlas platform</td><td><code>atlas-platform/</code></td><td>Active. Pilot app TTDV2 is integrated in the target development region.</td></tr>
+<tr><td>Engine adapter (platform module 10)</td><td>design only: <a href="atlas-platform/10-engine-adapter.md"><code>10-engine-adapter.md</code></a></td><td>Not built. It connects a platform app with a workflow to this engine. It needs no engine change.</td></tr>
+</table></div>
+<p>The target API (the CP Atlas back end of the target team) calls the engine <b>in-process</b>. It does not call the engine over HTTP. The CDT, SQMSO and SQMSB apps use the engine. TTD and AIN do not use it.</p>
+
+<figure>
+<div class="svg-wrap">
+<svg viewBox="0 0 920 430" role="img" aria-labelledby="f1t">
+<title id="f1t">Overview: callers, engine services, SQL Server, scheduled console runs and SMTP</title>
+<defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-a"/></marker></defs>
+<rect x="20" y="20" width="270" height="78" rx="8" class="d-ext"/>
+<text x="34" y="44" class="d-t">CP Atlas target API (in-process)</text>
+<text x="34" y="64" class="d-s">CPCDTService, CPSQMSOService,</text>
+<text x="34" y="80" class="d-s">CPSQMSBService (target code)</text>
+<rect x="20" y="118" width="270" height="78" rx="8" class="d-box"/>
+<text x="34" y="142" class="d-t">workflow-api (reference host)</text>
+<text x="34" y="162" class="d-s">POST v1/WorkflowStart, v1/WorkflowAction</text>
+<text x="34" y="178" class="d-s">GET v1/WorkflowContext</text>
+<rect x="20" y="226" width="270" height="78" rx="8" class="d-box"/>
+<text x="34" y="250" class="d-t">WorkflowEngine.Console</text>
+<text x="34" y="270" class="d-s">run-sla, process-notification-outbox,</text>
+<text x="34" y="286" class="d-s">run-sqms-scheduled, init-db, verify-seed</text>
+<rect x="20" y="340" width="270" height="56" rx="8" class="d-ext"/>
+<text x="34" y="364" class="d-t">Scheduled job (outside the engine)</text>
+<text x="34" y="382" class="d-s">starts the console at an interval</text>
+<rect x="340" y="20" width="290" height="300" rx="10" class="d-eng"/>
+<text x="356" y="44" class="d-t">Engine services (DI, scoped)</text>
+<text x="356" y="70" class="d-m">IStartWorkflowService</text>
+<text x="356" y="92" class="d-m">IWorkflowExecutionService</text>
+<text x="356" y="114" class="d-m">IWorkflowContextReader</text>
+<text x="356" y="136" class="d-m">IWorkflowSlaSynchronizationService</text>
+<text x="356" y="158" class="d-m">IRunSlaService</text>
+<text x="356" y="180" class="d-m">IProcessNotificationOutboxService</text>
+<text x="356" y="202" class="d-m">IQueueWorkflowNotificationService</text>
+<text x="356" y="224" class="d-m">ISqmsWorkflowService (Sqms)</text>
+<text x="356" y="246" class="d-m">INotificationSender</text>
+<text x="356" y="276" class="d-s">Dispatcher for in-request e-mail:</text>
+<text x="356" y="292" class="d-s">workflow-api copy; target keeps its own copy</text>
+<path d="M680,70 a90,16 0 0,0 180,0 a90,16 0 0,0 -180,0 v150 a90,16 0 0,0 180,0 v-150" class="d-db"/>
+<text x="700" y="112" class="d-t">SQL Server, schema dbo</text>
+<text x="700" y="134" class="d-s">metadata tables</text>
+<text x="700" y="152" class="d-s">runtime tables</text>
+<text x="700" y="170" class="d-s">NotificationOutbox</text>
+<text x="700" y="188" class="d-s">EF Core 10, SQL scripts</text>
+<rect x="680" y="300" width="200" height="60" rx="8" class="d-ext"/>
+<text x="694" y="324" class="d-t">SMTP relay</text>
+<text x="694" y="344" class="d-s">MailKit, no credentials</text>
+<line x1="290" y1="59" x2="338" y2="80" class="d-l" marker-end="url(#ah1)"/>
+<line x1="290" y1="157" x2="338" y2="150" class="d-l" marker-end="url(#ah1)"/>
+<line x1="290" y1="265" x2="338" y2="200" class="d-l" marker-end="url(#ah1)"/>
+<line x1="155" y1="340" x2="155" y2="306" class="d-l" marker-end="url(#ah1)"/>
+<line x1="630" y1="140" x2="678" y2="140" class="d-l" marker-end="url(#ah1)"/>
+<line x1="630" y1="290" x2="678" y2="320" class="d-l" marker-end="url(#ah1)"/>
+<text x="340" y="360" class="d-s">No timer inside the engine. A caller or a scheduled job</text>
+<text x="340" y="378" class="d-s">starts each SLA scan and each outbox run.</text>
+<text x="340" y="396" class="d-s">State changes only when a caller sends an action key.</text>
+</svg>
+</div>
+<figcaption>Figure 1. Overview. Orange boxes are outside the engine. The target API and the reference host use the same engine services through dependency injection.</figcaption>
+</figure>
+
+<h3>2.1 What the engine does</h3>
+<ul>
+<li>It loads workflow definitions (metadata) from SQL Server. A workflow is rows, not code.</li>
+<li>It starts one workflow instance for each business object. The instance ID is <code>WF-</code> + the business object ID (<code>StartWorkflowService.Start</code>).</li>
+<li>It finds the next state from a transition row: definition version + current state + action key + role.</li>
+<li>It closes and creates tasks, calculates SLA schedules, queues e-mail in the outbox and writes an audit row. All of this happens in one SQL transaction.</li>
+<li>It returns the workflow context (current state, task, SLA, available actions) for a form.</li>
+<li>It sends queued e-mail through an <code>INotificationSender</code> (Console, NoOp or SMTP with MailKit).</li>
+</ul>
+<h3>2.2 What the engine does not do</h3>
+<ul>
+<li>It has no timer and no hosted background service. A scheduled job must run the console commands. Timers never move a workflow state (owner decision O5).</li>
+<li>It has no condition expressions. The caller selects the action key from the business decision. Each conditional path is its own action and transition (owner decision O6).</li>
+<li>The request cannot set the next state. No request field names a <code>toState</code>.</li>
+<li><code>workflow.options</code> in the console envelope cannot override metadata. A conflict gives only a warning (<code>WorkflowExecutionService.BuildOptionWarnings</code>).</li>
+<li>It does not authenticate users. The caller gives the user ID and roles. Authentication belongs to the target (decision D01).</li>
+<li>It has no user-to-role table. The caller sends the roles of the actor.</li>
+<li>It has no parallel branches. One instance has one current state and at most one <code>Pending</code> task (filtered unique index on <code>WorkflowTask</code>).</li>
+</ul>
+<div class="note">Portfolio Trade is sample metadata. Its keys are in seed classes and SQL scripts, not in the engine logic. Some literals are known exceptions: the first state <code>Draft</code>, the action key <code>SaveDraft</code>, and the console-only <code>MakerPrimary</code> check (decision D08, settled). See section 15.</div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="layout">
+<h2>3. Solution and project layout</h2>
+<p>All projects target <code>net10.0</code>. <a href="../Directory.Build.props"><code>Directory.Build.props</code></a> sets <code>Nullable</code>, <code>ImplicitUsings</code> and <code>TreatWarningsAsErrors</code> for every project.</p>
+<div class="table-wrap"><table>
+<tr><th>Project</th><th>Responsibility</th><th>Key folders and files</th></tr>
+<tr><td><a href="../src/WorkflowEngine.Domain/WorkflowEngine.Domain.csproj"><code>WorkflowEngine.Domain</code></a></td><td>Shared constants with no dependency. Today it has only <code>WorkflowKeys.DefaultConnectionName</code>.</td><td><code>Workflow/WorkflowKeys.cs</code></td></tr>
+<tr><td><a href="../src/WorkflowEngine.Application/WorkflowEngine.Application.csproj"><code>WorkflowEngine.Application</code></a></td><td>Contracts (DTOs), service interfaces, envelope normalization and hashing, validation, result building, template rendering, console command handlers.</td><td><code>Contracts/</code>, <code>WorkflowExecution/</code>, <code>WorkflowStart/</code>, <code>Sla/</code>, <code>Notifications/</code>, <code>Normalization/</code>, <code>Results/</code>, <code>Validation/</code>, <code>Commands/</code>, <code>Demo/</code></td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/WorkflowEngine.Infrastructure.csproj"><code>WorkflowEngine.Infrastructure</code></a></td><td>EF Core <code>WorkflowDbContext</code>, entities, migrations, seed and seed verification, the services that implement the interfaces, SLA calculation, outbox processing, notification senders, DI registration.</td><td><code>Persistence/</code>, <code>Migrations/</code>, <code>WorkflowExecution/</code>, <code>WorkflowStart/</code>, <code>WorkflowContext/</code>, <code>Sla/</code>, <code>Notifications/</code>, <code>DependencyInjection/</code></td></tr>
+<tr><td><a href="../src/WorkflowEngine.Sqms/WorkflowEngine.Sqms.csproj"><code>WorkflowEngine.Sqms</code></a></td><td>Thin SQMS layer: start and act on SQMS opportunity and bid workflows, the timer rules of SQMS (as a caller with role <code>System</code>), and the SSQMS projection.</td><td><code>SqmsWorkflowService.cs</code>, <code>Scheduling/</code>, <code>Persistence/</code>, <code>SqmsKeys.cs</code>, <code>DependencyInjection/</code></td></tr>
+<tr><td><a href="../src/WorkflowEngine.Console/WorkflowEngine.Console.csproj"><code>WorkflowEngine.Console</code></a></td><td>Composition root for the console. Runs the commands of section 9.4. The scheduled jobs use it.</td><td><code>Program.cs</code>, <code>appsettings.json</code></td></tr>
+<tr><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/WorkflowEngine.WorkflowApi.csproj"><code>WorkflowEngine.WorkflowApi</code></a></td><td>Reference ASP.NET host. It shows how a caller uses the engine: trusted actor headers, three endpoints, in-request e-mail dispatch.</td><td><code>Controllers/</code>, <code>Services/</code>, <code>Models/</code>, <code>Infrastructure/GlobalExceptionHandler.cs</code></td></tr>
+<tr><td><a href="../tests/WorkflowEngine.Tests/WorkflowEngine.Tests.csproj"><code>WorkflowEngine.Tests</code></a></td><td>xUnit tests for the core, the console, SQL constraints, SLA, outbox, SMTP and SQMS.</td><td>in <a href="../src/WorkflowEngine.sln"><code>src/WorkflowEngine.sln</code></a></td></tr>
+<tr><td><a href="../workflow-api/tests/WorkflowEngine.WorkflowApi.Tests/WorkflowEngine.WorkflowApi.Tests.csproj"><code>WorkflowEngine.WorkflowApi.Tests</code></a></td><td>xUnit tests for the API controllers, request contracts, samples and services.</td><td>in <a href="../workflow-api/WorkflowEngine.WorkflowApi.slnx"><code>WorkflowEngine.WorkflowApi.slnx</code></a></td></tr>
+<tr><td><a href="../tools/WorkflowEngine.Sqms.LiveAcceptance/WorkflowEngine.Sqms.LiveAcceptance.csproj"><code>WorkflowEngine.Sqms.LiveAcceptance</code></a></td><td>Tool for SQMS live acceptance runs. The scripts in <code>scripts/run-sqms-*.ps1</code> start it.</td><td><code>tools/</code></td></tr>
+</table></div>
+
+<figure>
+<div class="svg-wrap">
+<svg viewBox="0 0 920 360" role="img" aria-labelledby="f2t">
+<title id="f2t">Project references of the engine solution</title>
+<defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-a"/></marker></defs>
+<rect x="30" y="24" width="250" height="52" rx="8" class="d-box"/><text x="44" y="47" class="d-t">WorkflowEngine.Console</text><text x="44" y="65" class="d-s">Exe; scheduled jobs</text>
+<rect x="335" y="24" width="250" height="52" rx="8" class="d-box"/><text x="349" y="47" class="d-t">WorkflowEngine.WorkflowApi</text><text x="349" y="65" class="d-s">reference host; + Swashbuckle</text>
+<rect x="640" y="24" width="250" height="52" rx="8" class="d-ext"/><text x="654" y="47" class="d-t">Target API (CP Atlas)</text><text x="654" y="65" class="d-s">target code, not in this repo</text>
+<rect x="30" y="130" width="250" height="52" rx="8" class="d-box"/><text x="44" y="153" class="d-t">WorkflowEngine.Sqms</text><text x="44" y="171" class="d-s">SQMS layer</text>
+<rect x="335" y="130" width="250" height="52" rx="8" class="d-eng"/><text x="349" y="153" class="d-t">WorkflowEngine.Infrastructure</text><text x="349" y="171" class="d-s">EF Core SqlServer, MailKit, Pkcs</text>
+<rect x="335" y="222" width="250" height="52" rx="8" class="d-eng"/><text x="349" y="245" class="d-t">WorkflowEngine.Application</text><text x="349" y="263" class="d-s">contracts, interfaces</text>
+<rect x="335" y="300" width="250" height="44" rx="8" class="d-eng"/><text x="349" y="327" class="d-t">WorkflowEngine.Domain</text>
+<line x1="155" y1="76" x2="155" y2="128" class="d-l" marker-end="url(#ah2)"/>
+<line x1="230" y1="76" x2="400" y2="128" class="d-l" marker-end="url(#ah2)"/>
+<line x1="460" y1="76" x2="460" y2="128" class="d-l" marker-end="url(#ah2)"/>
+<line x1="740" y1="76" x2="560" y2="128" class="d-ld" marker-end="url(#ah2)"/>
+<line x1="280" y1="156" x2="333" y2="156" class="d-l" marker-end="url(#ah2)"/>
+<line x1="460" y1="182" x2="460" y2="220" class="d-l" marker-end="url(#ah2)"/>
+<line x1="460" y1="274" x2="460" y2="298" class="d-l" marker-end="url(#ah2)"/>
+<line x1="200" y1="182" x2="380" y2="220" class="d-l" marker-end="url(#ah2)"/>
+<text x="610" y="160" class="d-s">dashed: the target uses a merged</text>
+<text x="610" y="176" class="d-s">copy of the runtime files (section 12)</text>
+<text x="610" y="246" class="d-s">Infrastructure also refers to Domain.</text>
+<text x="610" y="262" class="d-s">The API also refers to Application</text>
+<text x="610" y="278" class="d-s">and Domain directly.</text>
+</svg>
+</div>
+<figcaption>Figure 2. Project references from the <code>.csproj</code> files. An arrow means "refers to". Infrastructure is the only project with MailKit.</figcaption>
+</figure>
+<p>Third-party packages in the runtime projects: <code>MailKit</code> 4.16.0 (pre-approved), <code>Microsoft.EntityFrameworkCore.SqlServer</code> 10.0.7, <code>System.Security.Cryptography.Pkcs</code> 10.0.13 (explicit reference that closes a known vulnerability, L9). The reference host also has <code>Swashbuckle.AspNetCore</code> 10.2.3. This package is open item L3 against the package policy.</p>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="data">
+<h2>4. Data model</h2>
+<p>All tables are in schema <code>dbo</code> (<code>WorkflowDbContext.DefaultSchema</code>). The EF model is in <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs"><code>WorkflowDbContext.OnModelCreating</code></a>. The entity classes are in <code>src/WorkflowEngine.Infrastructure/Persistence/Entities/</code>. The deeper explanation is in <a href="how-workflow-tables-support-the-engine.html">how-workflow-tables-support-the-engine.html</a>.</p>
+<p>Each metadata row belongs to one definition version (<code>WorkflowDefinitionVersionId</code>). Each metadata row has <code>IsActive</code>. The seed service sets an old row inactive. It does not delete it. (Exception: the SQMS script <code>002</code> deletes and inserts again the recipient rules of SQMS version 1.)</p>
+
+<h3>4.1 Definition metadata</h3>
+<div class="table-wrap"><table>
+<tr><th>Table</th><th>Key columns</th><th>Meaning and constraints</th></tr>
+<tr><td><code>WorkflowDefinition</code></td><td><code>WorkflowKey</code>, <code>DisplayName</code>, <code>BusinessObjectType</code>, <code>IsActive</code></td><td>One row for each workflow. Unique <code>WorkflowKey</code>.</td></tr>
+<tr><td><code>WorkflowDefinitionVersion</code></td><td><code>WorkflowDefinitionId</code>, <code>VersionNumber</code>, <code>IsActive</code>, <code>CreatedAtUtc</code></td><td>Unique (definition, version number). Start uses the one active version. A running instance stays on its own version. The database does not enforce "one active version"; the seed and the scripts keep the rule.</td></tr>
+<tr><td><code>WorkflowStateDefinition</code></td><td><code>StateKey</code>, <code>DisplayName</code>, <code>IsTerminal</code></td><td>Unique (version, state key). A move to a state with <code>IsTerminal = 1</code> sets the instance <code>Completed</code>.</td></tr>
+<tr><td><code>WorkflowActionDefinition</code></td><td><code>ActionKey</code>, <code>SectionKey</code>, <code>ButtonKey</code>, <code>ButtonLabel</code>, <code>Intent</code>, <code>RequiresReason</code>, <code>SortOrder</code></td><td>Unique (version, action key). The UI labels come from here.</td></tr>
+<tr><td><code>WorkflowRoleDefinition</code></td><td><code>RoleKey</code>, <code>DisplayName</code></td><td>Unique (version, role key).</td></tr>
+<tr><td><code>WorkflowTaskDefinition</code></td><td><code>TaskKey</code>, <code>OwnerRoleKey</code>, <code>SlaPolicyKey</code></td><td>Unique (version, task key). <code>SlaPolicyKey</code> null = the task has no SLA.</td></tr>
+<tr><td><code>WorkflowTaskAssignmentRoleDefinition</code></td><td><code>TaskKey</code>, <code>RoleKey</code> (binary collation)</td><td>Dynamic assignment. If a task has rows here, the request must send <code>assignedRoleKey</code> with one of these roles.</td></tr>
+<tr><td><code>WorkflowParticipantDefinition</code></td><td><code>ParticipantKey</code>, <code>Cardinality</code>, <code>CaptureStage</code>, <code>IsRequired</code>, <code>IsImmutable</code></td><td>CHECK <code>Cardinality IN ('Single','Many')</code>, <code>CaptureStage IN ('Start')</code>. Example: <code>originalMaker</code>.</td></tr>
+<tr><td><code>WorkflowTransitionDefinition</code></td><td><code>FromStateKey</code>, <code>ActionKey</code>, <code>AllowedRoleKey</code>, <code>ToStateKey</code>, <code>TaskToCloseKey</code>, <code>TaskToCreateKey</code>, <code>NotificationRouteKey</code>, <code>AuditLabel</code></td><td>The state machine. Unique (version, from state, action, allowed role). The engine reads the next state only from this table.</td></tr>
+</table></div>
+
+<h3>4.2 SLA and notification metadata</h3>
+<div class="table-wrap"><table>
+<tr><th>Table</th><th>Key columns</th><th>Meaning and constraints</th></tr>
+<tr><td><code>SlaPolicy</code></td><td><code>SlaPolicyKey</code>, <code>CalculationMode</code>, <code>DurationMinutes</code>, <code>SendDueDateReminder</code>, <code>ReminderLocalTime</code>, <code>TimeZoneId</code>, <code>OverdueStartOffsetDays</code>, <code>RecurrenceIntervalMinutes</code>, <code>RecurrenceIntervalDays</code>, <code>DueNotificationRouteKey</code>, <code>OverdueNotificationRouteKey</code>, <code>DueReminderLocalTime</code>, <code>SkipMissedDueReminder</code>, <code>OverdueStartsNextLocalDay</code></td><td>CHECK <code>CalculationMode IN ('DurationFromTaskCreation','ApplicationTargetDate')</code>. Minute and day recurrence cannot both have a value. Offsets and intervals are positive. See section 7.</td></tr>
+<tr><td><code>NotificationRoute</code></td><td><code>RouteKey</code>, <code>NotificationType</code>, <code>SubjectTemplate</code>, <code>BodyTemplate</code>, <code>HtmlBodyTemplate</code>, <code>OverdueSubjectPrefix</code></td><td>Unique (version, route key). The templates are columns of this table. There is no separate template table.</td></tr>
+<tr><td><code>NotificationRecipientRule</code></td><td><code>NotificationRouteId</code>, <code>RecipientKind</code>, <code>SourceType</code>, <code>SourceKey</code>, <code>StaticAddress</code>, <code>AssignedRoleKey</code>, <code>SortOrder</code>, <code>IsRequired</code></td><td>Unique (route, sort order). CHECK <code>RecipientKind IN ('To','Cc')</code>, <code>SourceType IN ('StaticAddress','WorkflowParticipant','RequestInput')</code>, and the source fields must match the source type.</td></tr>
+</table></div>
+
+<h3>4.3 Runtime tables</h3>
+<div class="table-wrap"><table>
+<tr><th>Table</th><th>Key columns</th><th>Meaning and constraints</th></tr>
+<tr><td><code>WorkflowInstance</code></td><td><code>WorkflowInstanceId</code> (alternate key), <code>WorkflowKey</code>, <code>WorkflowDefinitionVersionId</code>, <code>BusinessObjectType</code>, <code>BusinessObjectId</code>, <code>CurrentStateKey</code>, <code>Status</code>, <code>Version</code></td><td>Unique (workflow key, business object type, business object ID): one lifetime for each business object. CHECK <code>Status IN ('Active','Completed')</code>. <code>Version</code> is the optimistic concurrency counter.</td></tr>
+<tr><td><code>WorkflowParticipant</code></td><td><code>WorkflowInstanceId</code>, <code>ParticipantKey</code>, <code>UserId</code>, <code>EmailAddress</code>, <code>SortOrder</code></td><td>Captured one time at Start. Unique (instance, key, sort order).</td></tr>
+<tr><td><code>WorkflowTask</code></td><td><code>TaskKey</code>, <code>AssignedRoleKey</code>, <code>Status</code>, <code>DueAtUtc</code>, <code>ClosedByActionKey</code>, <code>NotificationRouteKey</code>, <code>NotificationContextJson</code>, <code>NotificationRecipientsJson</code></td><td>CHECK <code>Status IN ('Pending','Completed')</code>. Filtered unique index on <code>WorkflowInstanceId</code> where <code>Status = 'Pending'</code>: at most one open task. The recipient snapshot of the task e-mail is kept here.</td></tr>
+<tr><td><code>WorkflowTaskSlaSchedule</code></td><td><code>WorkflowTaskId</code>, <code>ScheduleVersion</code>, <code>TargetDate</code>, <code>DueReminderAtUtc</code>, <code>OverdueAtUtc</code>, <code>NextReminderAtUtc</code>, a copy of the policy columns, <code>DueRecipientsJson</code>, <code>OverdueRecipientsJson</code>, <code>Status</code>, <code>RowVersion</code></td><td>CHECK <code>Status IN ('Active','Superseded','Completed')</code>. Unique (task, schedule version). Filtered unique index: one <code>Active</code> schedule for each task. <code>RowVersion</code> is a SQL <code>rowversion</code>.</td></tr>
+<tr><td><code>WorkflowAudit</code></td><td><code>ActionKey</code>, <code>FromStateKey</code>, <code>ToStateKey</code>, <code>PerformedByUserId</code>, <code>PerformedByRoleKey</code>, <code>Reason</code>, <code>CorrelationId</code></td><td>One row for each successful action. Failed actions are not audited (v1 rule).</td></tr>
+<tr><td><code>IdempotencyRecord</code></td><td><code>IdempotencyKey</code> (unique), <code>RequestHash</code>, <code>ResultHash</code>, <code>ResultJson</code></td><td>Stores the result of a successful action. The same key with the same hash replays the stored result.</td></tr>
+<tr><td><code>MockSectionData</code></td><td><code>SectionKey</code>, <code>PayloadJson</code>, <code>SavedByUserId</code></td><td>Console proof of concept only. The API and the target set <code>PersistSectionData = false</code>.</td></tr>
+</table></div>
+
+<h3>4.4 Outbox</h3>
+<div class="table-wrap"><table>
+<tr><th>Table</th><th>Key columns</th><th>Meaning and constraints</th></tr>
+<tr><td><code>NotificationOutbox</code></td><td><code>WorkflowInstanceId</code> (nullable), <code>NotificationOccurrenceKey</code>, <code>WorkflowTaskId</code>, <code>WorkflowTaskSlaScheduleId</code>, <code>SlaOccurrenceAtUtc</code>, <code>SlaOccurrenceDate</code>, <code>SlaReminderKind</code>, <code>NotificationRecipientsJson</code>, <code>Subject</code>, <code>Body</code>, <code>HtmlBody</code>, <code>Status</code>, <code>ProcessingToken</code>, <code>ProcessingStartedAtUtc</code>, <code>RetryCount</code>, <code>NextAttemptAtUtc</code>, <code>LastError</code>, <code>SentAtUtc</code>, <code>CancelledAtUtc</code>, <code>CancellationReason</code></td><td>One row = one complete message. CHECK <code>Status IN ('Pending','Processing','Sent','Cancelled')</code>. CHECK: an instance ID or an occurrence key must have a value. Filtered unique (schedule, occurrence time, reminder kind): one SLA reminder for each occurrence. Filtered unique <code>UX_NotificationOutbox_NotificationOccurrenceKey</code>. Index <code>IX_NotificationOutbox_RetryEligibility</code> on (Status, NextAttemptAtUtc, CreatedAtUtc, Id).</td></tr>
+</table></div>
+<div class="note">There is no <code>Failed</code> status. A failed send goes back to <code>Pending</code> with <code>RetryCount + 1</code> and <code>LastError</code>. See section 8.</div>
+
+<h3>4.5 How schema changes are delivered</h3>
+<p>There are two delivery paths. Use only one path for each database.</p>
+<ol>
+<li><b>EF Core migrations</b> in <code>src/WorkflowEngine.Infrastructure/Migrations/</code>. The console command <code>init-db</code> calls <code>Database.Migrate()</code> and then the seed (<a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/WorkflowDatabaseInitializer.cs"><code>WorkflowDatabaseInitializer.Initialize</code></a>). The history table is <code>dbo.__EFMigrationsHistory</code>. Use this path for local and test databases.</li>
+<li><b>SQL upgrade scripts</b> in <a href="../sql/upgrades/20261014_outbox_retry_scheduling.sql"><code>sql/upgrades/</code></a> and <a href="../sql/sqms/001_sqms_notification_outbox_ddl.sql"><code>sql/sqms/</code></a>. Each script is additive, runs in one transaction, checks what exists first, and can run again. It does not edit the EF history. The target databases use this path (owner rule: deliver database changes as SQL scripts).</li>
+</ol>
+<div class="table-wrap"><table>
+<tr><th>Migration</th><th>What it adds</th></tr>
+<tr><td><code>20260507145558_InitialWorkflowSchema</code></td><td>All base tables.</td></tr>
+<tr><td><code>20260510120000_HardenRuntimeConstraints</code></td><td>Outbox claim columns (<code>ProcessingToken</code>, <code>ProcessingStartedAtUtc</code>, <code>RetryCount</code>, <code>LastError</code>), status CHECK constraints, runtime foreign keys.</td></tr>
+<tr><td><code>20260512100000_WorkflowInstanceAlternateKey</code></td><td>Alternate key on <code>WorkflowInstanceId</code>; the foreign keys use it.</td></tr>
+<tr><td><code>20260518172000_AddRuntimeForeignKeyIndexes</code></td><td>Indexes on <code>WorkflowInstanceId</code> of <code>IdempotencyRecord</code> and <code>NotificationOutbox</code>.</td></tr>
+<tr><td><code>20260601175951_AddWorkflowTaskAssignmentRoles</code></td><td>Table <code>WorkflowTaskAssignmentRoleDefinition</code>.</td></tr>
+<tr><td><code>20260604120000_AddNotificationTemplates</code></td><td>Route <code>BodyTemplate</code> and <code>OverdueSubjectPrefix</code>, outbox <code>Body</code>, task <code>NotificationRouteKey</code> and <code>NotificationContextJson</code>.</td></tr>
+<tr><td><code>20260620130000_AddHtmlNotificationBodies</code></td><td>Route <code>HtmlBodyTemplate</code>, outbox <code>HtmlBody</code>.</td></tr>
+<tr><td><code>20260803120000_AddNotificationRecipientSnapshots</code></td><td><code>NotificationRecipientsJson</code> on task and outbox; removes the singular recipient columns. <b>It deletes all rows of <code>NotificationOutbox</code> and <code>WorkflowTask</code>.</b></td></tr>
+<tr><td><code>20260807032848_AddApplicationAnchoredRecurringSla</code></td><td>SLA policy mode and recurrence columns, outbox cancellation columns, table <code>WorkflowTaskSlaSchedule</code>.</td></tr>
+<tr><td><code>20260809150000_OptimizeWorkflowApiEnvelope</code></td><td>Tables <code>NotificationRecipientRule</code>, <code>WorkflowParticipant</code>, <code>WorkflowParticipantDefinition</code>; <code>WorkflowDefinition.BusinessObjectType</code>; drops <code>NotificationRoute.RecipientRoleKey</code> and <code>RecipientUserId</code>.</td></tr>
+<tr><td><code>20260809220405_AddDurationSlaMinuteRecurrence</code></td><td><code>RecurrenceIntervalMinutes</code> on policy and schedule, outbox <code>SlaOccurrenceAtUtc</code>, recurrence CHECK constraints.</td></tr>
+<tr><td><code>20260810173812_AddNotificationRecipientAssignedRoleFilter</code></td><td><code>NotificationRecipientRule.AssignedRoleKey</code>.</td></tr>
+<tr><td><code>20260820200000_AddNotificationOccurrenceKey</code></td><td>Outbox rows with no instance (SQMS) and the occurrence key.</td></tr>
+<tr><td><code>20261014222530_AddOutboxRetryScheduling</code></td><td><code>NextAttemptAtUtc</code> and the retry index. SQL twin: <code>20261014_outbox_retry_scheduling.sql</code>.</td></tr>
+<tr><td><code>20261018214009_AddCdtV2SlaReminderControls</code></td><td>Six columns for CDT v2 SLA control. SQL twin: <code>20261019_01_cdt_v2_schema_ddl.sql</code>.</td></tr>
+</table></div>
+<div class="warn">The early migrations are not all additive. Two of them drop columns, and one deletes runtime rows. Read each migration before you apply it to a database that has data. For the target, deliver changes as SQL upgrade scripts. Each script says that a database uses the script or the EF migration, not both.</div>
+<p class="small">The descriptions come from the <code>Up</code> methods. Read the migration file for the exact DDL. The model snapshot is <a href="../src/WorkflowEngine.Infrastructure/Migrations/WorkflowDbContextModelSnapshot.cs"><code>WorkflowDbContextModelSnapshot.cs</code></a>.</p>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="metadata">
+<h2>5. Metadata and seed</h2>
+<h3>5.1 How a workflow is described</h3>
+<p>A workflow is a set of rows for one definition version. To describe a workflow, write rows for these items:</p>
+<ol>
+<li>The definition (workflow key, business object type) and a version.</li>
+<li>The states. Mark the end states with <code>IsTerminal</code>. The first state must have the key <code>Draft</code>, because Start sets <code>CurrentStateKey = "Draft"</code> (<code>StartWorkflowService.InsertFreshInstance</code>).</li>
+<li>The roles and the actions.</li>
+<li>The tasks (owner role, optional SLA policy key) and, if necessary, the dynamic assignment roles.</li>
+<li>The participants that Start captures (for example <code>originalMaker</code>).</li>
+<li>The transitions: from state + action + allowed role gives to state, task to close, task to create, route.</li>
+<li>The SLA policies, the notification routes and the recipient rules.</li>
+</ol>
+<p>A workflow with no tasks is valid. The SQMS workflows have no tasks and no SLA policies.</p>
+
+<h3>5.2 Portfolio Trade seed (C#)</h3>
+<p>The Portfolio Trade metadata is in C# seed classes. They are seed data, not engine logic.</p>
+<ul>
+<li><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs"><code>PortfolioTradeSeedData</code></a>: version 1 (states, roles, actions, SLA policies, tasks, routes, templates, recipient rules, assignment roles, transitions).</li>
+<li><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedDataV2.cs"><code>PortfolioTradeSeedDataV2</code></a>: version 2 for CDT. Same keys, states, actions and transitions. New SLA timing, three new routes and new recipient groups.</li>
+<li><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/WorkflowSeedService.cs"><code>WorkflowSeedService</code></a>: <code>SeedPortfolioTrade</code>, <code>SeedPortfolioTradeVersion2(activate)</code>, <code>ActivatePortfolioTradeVersion(versionNumber)</code>. It inserts or updates rows, and sets old recipient rules inactive.</li>
+</ul>
+<p>The console command <code>init-db</code> applies migrations and seeds version 1. The option <code>--portfolio-trade-version 2</code> also seeds version 2 and makes it the only active version (<code>WorkflowDatabaseInitializer.Initialize(int)</code>).</p>
+
+<h3>5.3 Seed verification</h3>
+<p>The command <code>verify-seed</code> runs <a href="../src/WorkflowEngine.Infrastructure/Persistence/Verification/SeedVerificationService.cs"><code>SeedVerificationService.Verify</code></a>. It compares the database rows of PortfolioTrade version 1 (and version 2 if it exists) with the seed classes: key sets for states, roles, actions, tasks, routes, rules and transitions. It also checks that exactly one version is active. It checks only PortfolioTrade. SQMS has its own SQL verification script: <a href="../sql/sqms/003_verify_sqms_deployment.sql"><code>003_verify_sqms_deployment.sql</code></a>.</p>
+
+<h3>5.4 Metadata at the target (SQL scripts)</h3>
+<div class="table-wrap"><table>
+<tr><th>Script</th><th>Purpose</th></tr>
+<tr><td><a href="../sql/sqms/002_sqms_workflow_metadata_dml.sql"><code>sql/sqms/002_sqms_workflow_metadata_dml.sql</code></a></td><td>SQMS opportunity and bid metadata, version 1. It updates and inserts rows. It replaces the recipient rules of version 1.</td></tr>
+<tr><td><a href="../sql/upgrades/20261019_02_portfolio_trade_v2_create_inactive_dml.sql"><code>20261019_02_..._create_inactive_dml.sql</code></a></td><td>Creates PortfolioTrade version 2 inactive. Copies the unchanged rows from version 1 in the same database.</td></tr>
+<tr><td><a href="../sql/upgrades/20261019_03_recipient_group_membership_dml_template.sql"><code>20261019_03_recipient_group_membership_dml_template.sql</code></a></td><td>Adds or deactivates one person in one recipient group. Edit four parameters, then run.</td></tr>
+<tr><td><a href="../sql/upgrades/20261019_04_portfolio_trade_v2_verify.sql"><code>20261019_04_portfolio_trade_v2_verify.sql</code></a></td><td>Read-only checks before activation.</td></tr>
+<tr><td><a href="../sql/upgrades/20261019_05_portfolio_trade_v2_activate_dml.sql"><code>20261019_05_portfolio_trade_v2_activate_dml.sql</code></a></td><td>Activates version 2 for new trades (runs the checks first).</td></tr>
+<tr><td><a href="../sql/upgrades/20261019_06_portfolio_trade_v1_reactivate_dml.sql"><code>20261019_06_portfolio_trade_v1_reactivate_dml.sql</code></a></td><td>Rollback for new trades: version 1 active again. Trades on version 2 stay on version 2.</td></tr>
+</table></div>
+<p>The release steps for CDT v2 are in <a href="CDT_V2_RELEASE.md">CDT_V2_RELEASE.md</a>. The SQMS database steps are in <a href="sqms/DBA-DEPLOYMENT.md">sqms/DBA-DEPLOYMENT.md</a>.</p>
+
+<h3>5.5 Keys are stable identifiers</h3>
+<div class="warn">Workflow, state, action, task, role, SLA policy, notification route and template keys are integration identifiers. Callers, SQL scripts, stored instances, audit rows and outbox rows use them. Do not rename them, remove them or change their meaning in place. To change behaviour, add a new definition version (as CDT v2 does) and activate it with a script.</div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="action">
+<h2>6. The action path end to end</h2>
+<p>This section follows one action, for example <code>CheckerSendToTradingDesk</code>. The detailed walk-through with data is in <a href="how-one-workflow-action-works.html">how-one-workflow-action-works.html</a>. The field reference is in <a href="workflow-action-reference.html">workflow-action-reference.html</a>.</p>
+
+<h3>6.1 The request objects</h3>
+<ul>
+<li><b>HTTP request</b> (reference host): <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowActionRequest.cs"><code>WorkflowActionRequest</code></a> with <code>workflowInstanceId</code>, <code>actionKey</code>, <code>assignedRoleKey</code>, <code>slaTargetDate</code>, <code>notification</code> (<code>recipientInputs</code>, <code>templateData</code>). Unknown JSON members are refused (<code>JsonUnmappedMemberHandling.Disallow</code>).</li>
+<li><b>Envelope</b>: <a href="../src/WorkflowEngine.Application/Contracts/WorkflowActionEnvelope.cs"><code>WorkflowActionEnvelope</code></a> (blocks <code>request</code>, <code>businessObject</code>, <code>actor</code>, <code>uiAction</code>, <code>dataSave</code>, <code>workflow</code>, <code>testExpectations</code>). The console reads it from a JSON file. The API and the target build it in code from the HTTP request.</li>
+<li><b>Execution request</b>: <a href="../src/WorkflowEngine.Application/WorkflowExecution/IWorkflowExecutionService.cs"><code>WorkflowExecutionRequest</code></a>(normalized envelope, request hash, <code>AdminOverride</code>) with the flags <code>DeriveIdentityFromPersistence</code>, <code>ValidateActionEcho</code>, <code>PersistSectionData</code>, <code>NotificationInput</code>.</li>
+</ul>
+<div class="table-wrap"><table>
+<tr><th>Caller</th><th><code>DeriveIdentityFromPersistence</code></th><th><code>ValidateActionEcho</code></th><th><code>PersistSectionData</code></th><th>Idempotency key</th></tr>
+<tr><td>Console <code>execute-json</code></td><td>false</td><td>true</td><td>true</td><td>from the JSON file</td></tr>
+<tr><td>API <code>WorkflowActionService</code></td><td>true</td><td>false</td><td>false</td><td>a new GUID for each request</td></tr>
+<tr><td>Target services (CDT, SQMSO, SQMSB)</td><td>true</td><td>false</td><td>false</td><td>a new GUID for each request</td></tr>
+<tr><td><code>SqmsWorkflowService</code></td><td>true</td><td>false</td><td>false</td><td>fixed key from entity, version and action</td></tr>
+<tr><td><code>StartWorkflowService</code> (first action)</td><td>true</td><td>false</td><td>false</td><td>the request key, or a new GUID</td></tr>
+</table></div>
+
+<figure>
+<div class="svg-wrap">
+<svg viewBox="0 0 960 560" role="img" aria-labelledby="f3t">
+<title id="f3t">Sequence of one workflow action through the API host</title>
+<defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-a"/></marker></defs>
+<rect x="10" y="10" width="120" height="40" rx="6" class="d-ext"/><text x="22" y="35" class="d-t">Caller</text>
+<rect x="150" y="10" width="160" height="40" rx="6" class="d-box"/><text x="160" y="35" class="d-t">WorkflowActionService</text>
+<rect x="330" y="10" width="170" height="40" rx="6" class="d-eng"/><text x="340" y="35" class="d-t">WorkflowExecutionService</text>
+<rect x="520" y="10" width="150" height="40" rx="6" class="d-eng"/><text x="530" y="35" class="d-t">SLA sync service</text>
+<rect x="690" y="10" width="110" height="40" rx="6" class="d-db"/><text x="702" y="35" class="d-t">SQL Server</text>
+<rect x="820" y="10" width="130" height="40" rx="6" class="d-box"/><text x="832" y="35" class="d-t">Dispatcher + SMTP</text>
+<line x1="70" y1="50" x2="70" y2="550" class="d-life"/>
+<line x1="230" y1="50" x2="230" y2="550" class="d-life"/>
+<line x1="415" y1="50" x2="415" y2="550" class="d-life"/>
+<line x1="595" y1="50" x2="595" y2="550" class="d-life"/>
+<line x1="745" y1="50" x2="745" y2="550" class="d-life"/>
+<line x1="885" y1="50" x2="885" y2="550" class="d-life"/>
+<line x1="70" y1="78" x2="228" y2="78" class="d-l" marker-end="url(#ah3)"/><text x="78" y="72" class="d-s">1 POST v1/WorkflowAction + headers</text>
+<line x1="230" y1="110" x2="413" y2="110" class="d-l" marker-end="url(#ah3)"/><text x="238" y="104" class="d-s">2 normalize, hash, Execute</text>
+<line x1="415" y1="140" x2="743" y2="140" class="d-l" marker-end="url(#ah3)"/><text x="423" y="134" class="d-s">3 read: replay? instance, action, transitions, task</text>
+<text x="423" y="166" class="d-s">4 checks: identity, version, role, concurrency,</text>
+<text x="423" y="182" class="d-s">assignedRoleKey, SLA input, recipients</text>
+<line x1="415" y1="214" x2="743" y2="214" class="d-l" marker-end="url(#ah3)"/><text x="423" y="208" class="d-s">5 BEGIN TRAN; read again; check again</text>
+<line x1="415" y1="244" x2="743" y2="244" class="d-l" marker-end="url(#ah3)"/><text x="423" y="238" class="d-s">6 UPDATE instance WHERE Version = @v</text>
+<line x1="415" y1="274" x2="593" y2="274" class="d-l" marker-end="url(#ah3)"/><text x="423" y="268" class="d-s">7 close task: Complete</text>
+<line x1="415" y1="304" x2="593" y2="304" class="d-l" marker-end="url(#ah3)"/><text x="423" y="298" class="d-s">8 create task: Synchronize</text>
+<line x1="595" y1="320" x2="743" y2="320" class="d-l" marker-end="url(#ah3)"/><text x="603" y="336" class="d-s">schedule rows</text>
+<line x1="415" y1="364" x2="743" y2="364" class="d-l" marker-end="url(#ah3)"/><text x="423" y="358" class="d-s">9 render templates, outbox Pending, audit</text>
+<line x1="415" y1="394" x2="743" y2="394" class="d-l" marker-end="url(#ah3)"/><text x="423" y="388" class="d-s">10 idempotency record; COMMIT</text>
+<line x1="413" y1="424" x2="232" y2="424" class="d-ld" marker-end="url(#ah3)"/><text x="240" y="418" class="d-s">11 result + context</text>
+<line x1="230" y1="454" x2="883" y2="454" class="d-l" marker-end="url(#ah3)"/><text x="400" y="448" class="d-s">12 DispatchCreatedNotifications(instance, correlation ID)</text>
+<line x1="885" y1="484" x2="747" y2="484" class="d-l" marker-end="url(#ah3)"/><text x="760" y="500" class="d-s">13 claim, send, Sent</text>
+<line x1="228" y1="534" x2="72" y2="534" class="d-ld" marker-end="url(#ah3)"/><text x="78" y="528" class="d-s">14 HTTP 200 or 500</text>
+</svg>
+</div>
+<figcaption>Figure 3. One action through the reference host. The target services do steps 2, 12 and 14 in their own code. Steps 3 to 10 are the same for all callers.</figcaption>
+</figure>
+
+<h3>6.2 The steps in <code>WorkflowExecutionService.Execute</code></h3>
+<p>File: <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs"><code>WorkflowExecutionService.cs</code></a>. Each check returns a result with a result code. Until step 5, nothing is written.</p>
+<ol>
+<li><b>Replay.</b> <code>TryBuildIdempotencyReplay</code>: if a record has the same key and the same request hash, return the stored result (<code>Replay = true</code>). A different hash gives <code>IdempotencyConflict</code>.</li>
+<li><b>Instance.</b> Read the instance. Missing gives <code>WorkflowInstanceNotFound</code>. If <code>DeriveIdentityFromPersistence</code> is true, copy the workflow key and the business object from the instance (<code>ApplyPersistedIdentity</code>). Then <code>ValidateEnvelopeIdentity</code>.</li>
+<li><b>Version and status.</b> A different <code>workflowDefinitionVersion</code> in the request gives <code>WorkflowDefinitionVersionMismatch</code>. A <code>Completed</code> instance gives <code>InvalidTransition</code>.</li>
+<li><b>Action and transition.</b> The action must be active in the version. The console also checks the section and button echo (<code>ValidateActionEcho</code>). Transitions are read for (version, current state, action). None gives <code>InvalidTransition</code>.</li>
+<li><b>Concurrency, first check.</b> <code>CheckConcurrency</code> compares the optional <code>expectedCurrentState</code>, <code>expectedCurrentTaskId</code>, <code>expectedCurrentTaskKey</code> and <code>expectedInstanceVersion</code>. A difference gives <code>ConcurrencyConflict</code> with the current context.</li>
+<li><b>Role.</b> The transitions whose <code>AllowedRoleKey</code> is in the actor roles match. No match gives <code>Forbidden</code>. Two matching roles give <code>AmbiguousRoleMatch</code>. The console flag <code>--admin-override</code> skips this check and audits the role <code>AdminDemoOverride</code>.</li>
+<li><b>Destination and inputs.</b> The destination state must be active. <code>ValidateAssignedRoleKey</code> checks dynamic assignment. <code>ValidateSlaInput</code> requires <code>slaInput.targetDate</code> for an <code>ApplicationTargetDate</code> task. <code>ValidateSlaReminderAudience</code> resolves the reminder recipients. The recipient rules of the route are resolved (<code>NotificationRecipientResolver.Resolve</code>). Each failure gives <code>ValidationFailed</code>.</li>
+<li><b>Side effects</b> (<code>ExecuteSideEffects</code>, one transaction):
+ <ol type="a">
+ <li>Read the instance and the pending task again. Run <code>CheckConcurrency</code> and <code>CheckTransitionStillCurrent</code> again.</li>
+ <li>Console only: insert <code>MockSectionData</code>.</li>
+ <li>If the action is not <code>SaveDraft</code>: <code>UPDATE WorkflowInstance ... WHERE Id = @id AND Version = @v</code> sets the new state, <code>Version + 1</code>, and <code>Completed</code> for a terminal state. Zero rows gives <code>ConcurrencyConflict</code> and a rollback.</li>
+ <li>Close the task in <code>TaskToCloseKey</code> and call <code>IWorkflowSlaSynchronizationService.Complete</code>.</li>
+ <li>Create the task in <code>TaskToCreateKey</code> with the recipient snapshot. If the task has an SLA policy, call <code>Synchronize</code>.</li>
+ <li>If the transition has no task change and a task is pending, call <code>Synchronize</code> (a new target date can supersede the schedule).</li>
+ <li>If the transition has a route: render the subject, the body and the HTML body. A missing template value gives <code>ValidationFailed</code> and a rollback. Insert one outbox row with status <code>Pending</code>.</li>
+ <li>If the action is <code>SaveDraft</code>: no state change and no version change. If a task is pending, call <code>Synchronize</code>.</li>
+ <li>Insert the audit row. Build the success result and the new context. Insert the idempotency record. Commit.</li>
+ </ol></li>
+</ol>
+<p>The transaction uses the default isolation level (READ COMMITTED). <code>PROJECT.md</code> section 15 does not permit <code>SERIALIZABLE</code> or <code>SNAPSHOT</code> in v1. If a caller already has a transaction on the same <code>WorkflowDbContext</code>, the service uses that transaction and does not commit it.</p>
+
+<h3>6.3 Result codes and HTTP status</h3>
+<p>Result codes are strings in <a href="../src/WorkflowEngine.Application/Results/WorkflowActionResultBuilder.cs"><code>WorkflowActionResultBuilder</code></a>. They are part of the public contract.</p>
+<div class="table-wrap"><table>
+<tr><th>Result code</th><th>Success</th><th>HTTP (reference host)</th><th>When</th></tr>
+<tr><td><code>Success</code></td><td>true</td><td>200</td><td>Action or start completed.</td></tr>
+<tr><td><code>SlaSynchronized</code></td><td>true</td><td>200</td><td>SLA-only request (no action key, a <code>slaTargetDate</code>).</td></tr>
+<tr><td><code>AlreadyExists</code></td><td>false</td><td>500 with body</td><td>Start for a business object that has an instance.</td></tr>
+<tr><td><code>ValidationFailed</code></td><td>false</td><td>500 with body</td><td>Input, assignment, SLA input, recipients or template values are not valid.</td></tr>
+<tr><td><code>WorkflowInstanceNotFound</code></td><td>false</td><td>500 with body</td><td>Unknown instance ID.</td></tr>
+<tr><td><code>WorkflowDefinitionVersionMismatch</code></td><td>false</td><td>500 with body</td><td>The request names another version.</td></tr>
+<tr><td><code>InvalidTransition</code></td><td>false</td><td>500 with body</td><td>Completed instance, unknown action, no transition, inactive destination.</td></tr>
+<tr><td><code>Forbidden</code>, <code>AmbiguousRoleMatch</code></td><td>false</td><td>500 with body</td><td>Role check.</td></tr>
+<tr><td><code>ConcurrencyConflict</code></td><td>false</td><td>500 with body</td><td>The instance or the task changed.</td></tr>
+<tr><td><code>IdempotencyConflict</code></td><td>false</td><td>500 with body</td><td>Same key, different request.</td></tr>
+<tr><td><code>NotificationDeliveryFailed</code></td><td>false</td><td>500 with body</td><td>API only. The action committed, then the in-request e-mail failed.</td></tr>
+</table></div>
+<p>The controllers return 500 with the result body when <code>Success</code> is false (<a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowActionController.cs"><code>WorkflowActionController.ExecuteWorkflowAction</code></a>). This is known item D03. A change of these status codes needs a new versioned endpoint. <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Infrastructure/GlobalExceptionHandler.cs"><code>GlobalExceptionHandler</code></a> maps exceptions: request errors to 400, a missing user header to 401, no roles to 403, <code>KeyNotFoundException</code> to 404, all other exceptions to 500 with a generic body.</p>
+
+<h3>6.4 SaveDraft behaviour</h3>
+<p><code>SaveDraft</code> is a transition row from a state to the same state (for example <code>Draft</code> to <code>Draft</code>). The engine compares the action key with the literal <code>"SaveDraft"</code>. For SaveDraft, the engine does not run the version-guarded <code>UPDATE</code>. The instance <code>Version</code> does not change. The audit row has the same from and to state. This is the cause of the SaveDraft race in section 15.</p>
+
+<h3>6.5 SLA-only request</h3>
+<p>The API accepts a request with no <code>actionKey</code> and a <code>slaTargetDate</code>. <code>WorkflowActionService</code> then calls only <code>IWorkflowSlaSynchronizationService.Synchronize</code> for the pending task. It writes no audit row and does not change the version. It maps <code>WorkflowSlaValidationException</code> to HTTP 400. The result code is <code>SlaSynchronized</code>.</p>
+
+<h3>6.6 Start</h3>
+<p><a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs"><code>StartWorkflowService.Start</code></a> reads the one active version for the workflow key. It inserts the instance with state <code>Draft</code>, <code>Status = Active</code> and <code>Version = 1</code>. It captures the participants (<a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/WorkflowParticipantCaptureService.cs"><code>WorkflowParticipantCaptureService</code></a>). With <code>InitialActionKey</code>, it runs the first action in the same transaction. A second Start for the same business object gives <code>AlreadyExists</code>. <code>Reset</code> deletes all runtime rows of the instance; only the console uses it.</p>
+</section>
+
+<!-- ============================================================ 7 -->
+<section id="sla">
+<h2>7. SLA</h2>
+<p>An SLA policy belongs to a task definition. When the engine creates the task, it makes an SLA schedule. A scheduled job runs the SLA monitor. The monitor queues reminder e-mail in the outbox. The SLA never moves a workflow state.</p>
+<h3>7.1 Policy modes</h3>
+<div class="table-wrap"><table>
+<tr><th>Mode</th><th>Deadline (<code>OverdueAtUtc</code>)</th><th>Recurrence</th></tr>
+<tr><td><code>DurationFromTaskCreation</code></td><td>Task creation + <code>DurationMinutes</code>. With <code>OverdueStartsNextLocalDay</code>: the next local day at <code>ReminderLocalTime</code> in <code>TimeZoneId</code>.</td><td><code>RecurrenceIntervalMinutes</code> (minute recurrence), or <code>RecurrenceIntervalDays</code> with a local reminder time, or none (one reminder).</td></tr>
+<tr><td><code>ApplicationTargetDate</code></td><td>Calculated from the target date that the caller sends (<code>slaTargetDate</code>), <code>OverdueStartOffsetDays</code>, <code>ReminderLocalTime</code> and <code>TimeZoneId</code>.</td><td><code>RecurrenceIntervalDays</code> at the local reminder time. Optional "due today" reminder (<code>SendDueDateReminder</code>, <code>DueReminderLocalTime</code>, <code>SkipMissedDueReminder</code>).</td></tr>
+</table></div>
+<p>The calculation is in <a href="../src/WorkflowEngine.Infrastructure/Sla/SlaScheduleCalculator.cs"><code>SlaScheduleCalculator</code></a> (<code>CalculateDuration</code>, <code>CalculateApplicationDate</code>, <code>CalculateNextLocalDay</code>, <code>CalculateNextRecurringOccurrence</code>, <code>CalculateCalendarOccurrence</code>). The design notes are in <code>docs/superpowers/specs/</code> (for example <a href="superpowers/specs/2026-08-06-application-anchored-recurring-sla-design.md">application-anchored recurring SLA</a> and <a href="superpowers/specs/2026-08-09-duration-sla-minute-recurrence-design.md">duration SLA minute recurrence</a>).</p>
+
+<h3>7.2 Schedule life cycle</h3>
+<p>File: <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs"><code>WorkflowSlaSynchronizationService</code></a>.</p>
+<div class="table-wrap"><table>
+<tr><th>Move</th><th>Trigger</th><th>Member</th></tr>
+<tr><td>none to <code>Active</code> (version 1, or highest + 1)</td><td>A task with an SLA policy is created, or no active schedule exists.</td><td><code>Synchronize</code></td></tr>
+<tr><td><code>Active</code> to <code>Active</code> (no change)</td><td>Duration mode, or the same target date.</td><td><code>Synchronize</code> returns <code>Changed = false</code></td></tr>
+<tr><td><code>Active</code> to <code>Superseded</code> + new <code>Active</code></td><td>A different target date. Undelivered outbox rows of the old schedule become <code>Cancelled</code> (<code>SlaScheduleSuperseded</code>).</td><td><code>Synchronize</code></td></tr>
+<tr><td><code>Active</code> to <code>Completed</code></td><td>A transition closes the task. Undelivered outbox rows become <code>Cancelled</code> (<code>WorkflowTaskCompleted</code>).</td><td><code>Complete</code></td></tr>
+</table></div>
+<p>The reminder recipients are fixed when the first schedule of a task is made (<code>DueRecipientsJson</code>, <code>OverdueRecipientsJson</code>, from <a href="../src/WorkflowEngine.Infrastructure/Sla/SlaReminderAudienceResolver.cs"><code>SlaReminderAudienceResolver</code></a>). A superseding schedule keeps them. <code>WorkflowTask.DueAtUtc</code> gets <code>OverdueAtUtc</code> of the active schedule. A missing target date or an audience error throws <code>WorkflowSlaValidationException</code> (<a href="../src/WorkflowEngine.Application/Sla/IWorkflowSlaSynchronizationService.cs"><code>IWorkflowSlaSynchronizationService.cs</code></a>).</p>
+
+<h3>7.3 The SLA monitor</h3>
+<p>File: <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs"><code>RunSlaService.RunAsync(RunSlaRequest(Now))</code></a>. The console command <code>run-sla [--now &lt;iso8601-utc&gt;]</code> calls it. Nothing in the engine calls it on a timer.</p>
+<ol>
+<li>Select candidates: schedule <code>Active</code>, <code>NextReminderAtUtc &lt;= now</code>, task <code>Pending</code>, instance <code>Active</code>. The first page also counts all candidates and fixes an upper schedule ID. Schedules made during the run wait for the next run.</li>
+<li>Read pages of <code>Sla:BatchSize</code> rows (default 100) with a cursor on (<code>NextReminderAtUtc</code>, <code>Id</code>). Each page uses a new <code>WorkflowDbContext</code>.</li>
+<li>For each schedule, open a transaction and check the candidate again.</li>
+<li>Find the occurrence and its kind. Duration mode is always <code>Overdue</code>. Application-date mode is <code>Overdue</code> on or after target date + offset, else <code>DueToday</code>. Missed slots are not filled in (no backfill).</li>
+<li>If an outbox row for (schedule, occurrence time, kind) exists, move the cursor only.</li>
+<li>Else insert an outbox row. The subject is <code>OverdueSubjectPrefix</code> of the reminder route + the subject of the primary e-mail of the task. The body comes from the primary e-mail. The correlation ID is <code>sla-{scheduleId}-{ticks}-{kind}</code>. Move the cursor to the next occurrence. Commit.</li>
+<li>A data problem (missing route, missing primary e-mail, recipient snapshot not valid, subject longer than 300 characters) rolls back that schedule and adds a warning. The cursor does not move. The next run tries again.</li>
+</ol>
+<p>Batching and context lifetimes: <a href="SLA_BATCH_PROCESSING.md">SLA_BATCH_PROCESSING.md</a>. The primary e-mail is the outbox row with <code>WorkflowTaskId</code> = the task and no <code>SlaReminderKind</code>. So a transition that creates a task with an SLA policy must have a notification route.</p>
+</section>
+
+<!-- ============================================================ 8 -->
+<section id="notify">
+<h2>8. Notifications and the outbox</h2>
+<h3>8.1 Routes, rules and recipient snapshots</h3>
+<p>A transition names a route (<code>NotificationRouteKey</code>). The route has the templates and the recipient rules. <a href="../src/WorkflowEngine.Infrastructure/Notifications/NotificationRecipientResolver.cs"><code>NotificationRecipientResolver.Resolve</code></a> makes the final To and Cc lists:</p>
+<ul>
+<li>It reads the active rules of the route in <code>SortOrder</code>. A rule with an <code>AssignedRoleKey</code> applies only when the action assigns that role. A null <code>AssignedRoleKey</code> applies to all assignments.</li>
+<li>Source types: <code>StaticAddress</code> (address in the row), <code>WorkflowParticipant</code> (captured at Start, for example <code>originalMaker</code>), <code>RequestInput</code> (from <code>notification.recipientInputs</code>, for example <code>selectedCcUsers</code>).</li>
+<li>A required rule with no value is an error. The result must have at least one To address.</li>
+<li>It removes duplicates without case. It keeps the first value as it was sent. To wins over Cc.</li>
+<li>It does not check address syntax, the directory or the mailbox. Addresses are opaque strings.</li>
+</ul>
+<p>The engine stores the result as JSON (the recipient snapshot) on the task and on the outbox row. A later change of a rule does not change a pending task or a queued row. The design is in <a href="superpowers/specs/2026-08-03-multiple-notification-recipients-design.md">multiple-notification-recipients-design.md</a>.</p>
+
+<h3>8.2 Templates</h3>
+<p><a href="../src/WorkflowEngine.Application/Notifications/NotificationTemplateRenderer.cs"><code>NotificationTemplateRenderer</code></a> replaces tokens <code>{{key}}</code> (letters, digits, underscore). Values come from <code>notification.templateData</code> plus the engine values <code>workflowInstanceId</code>, <code>actionKey</code>, <code>oldState</code>, <code>newState</code>, <code>taskKey</code> (<code>WorkflowExecutionService.BuildNotificationContext</code>). <code>RenderHtml</code> encodes each value for HTML. A missing or empty value is a validation error, and the action does not commit.</p>
+
+<h3>8.3 Outbox life cycle</h3>
+<figure>
+<div class="svg-wrap">
+<svg viewBox="0 0 900 330" role="img" aria-labelledby="f4t">
+<title id="f4t">Notification outbox status transitions</title>
+<defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-a"/></marker></defs>
+<rect x="40" y="130" width="150" height="50" rx="24" class="d-box"/><text x="88" y="160" class="d-t">Pending</text>
+<rect x="370" y="130" width="160" height="50" rx="24" class="d-box"/><text x="410" y="160" class="d-t">Processing</text>
+<rect x="710" y="40" width="150" height="50" rx="24" class="d-db"/><text x="765" y="70" class="d-t">Sent</text>
+<rect x="710" y="230" width="150" height="50" rx="24" class="d-ext"/><text x="745" y="260" class="d-t">Cancelled</text>
+<line x1="10" y1="155" x2="38" y2="155" class="d-l" marker-end="url(#ah4)"/>
+<text x="10" y="120" class="d-s">insert: action, SLA scan, queue</text>
+<line x1="190" y1="145" x2="368" y2="145" class="d-l" marker-end="url(#ah4)"/><text x="200" y="137" class="d-s">claim (token, start time)</text>
+<path d="M370,170 C300,215 250,215 190,172" class="d-l" marker-end="url(#ah4)"/><text x="196" y="226" class="d-s">send failed: RetryCount+1, LastError, NextAttemptAtUtc</text>
+<line x1="530" y1="140" x2="708" y2="72" class="d-l" marker-end="url(#ah4)"/><text x="560" y="92" class="d-s">send OK, token still ours</text>
+<line x1="530" y1="170" x2="708" y2="248" class="d-l" marker-end="url(#ah4)"/><text x="560" y="226" class="d-s">worker: schedule not Active</text>
+<path d="M115,180 C150,300 560,300 708,262" class="d-ld" marker-end="url(#ah4)"/><text x="260" y="300" class="d-s">SLA schedule superseded or completed (Pending or Processing)</text>
+<path d="M440,130 C420,80 480,80 460,128" class="d-ld" marker-end="url(#ah4)"/><text x="400" y="70" class="d-s">stale lease (15 min): worker claims again</text>
+</svg>
+</div>
+<figcaption>Figure 4. Outbox status. <code>Sent</code> and <code>Cancelled</code> are end states. There is no <code>Failed</code> state and no maximum number of attempts.</figcaption>
+</figure>
+<p>Three places insert rows: <code>WorkflowExecutionService</code> (task and state e-mail), <code>RunSlaService</code> (SLA reminders) and <a href="../src/WorkflowEngine.Infrastructure/Notifications/QueueWorkflowNotificationService.cs"><code>QueueWorkflowNotificationService.QueueAsync</code></a> (e-mail with no instance, keyed by <code>NotificationOccurrenceKey</code>; SQMS uses it). A second queue call with the same occurrence key returns the first row (<code>Replay = true</code>).</p>
+
+<h3>8.4 Two delivery paths</h3>
+<div class="table-wrap"><table>
+<tr><th>Topic</th><th>Worker: <code>ProcessNotificationOutboxService</code></th><th>In-request: <code>WorkflowActionNotificationDispatcher</code></th></tr>
+<tr><td>File</td><td><a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs"><code>Infrastructure/Notifications/ProcessNotificationOutboxService.cs</code></a></td><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs"><code>WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs</code></a></td></tr>
+<tr><td>Who calls it</td><td>Console <code>process-notification-outbox</code> (scheduled job)</td><td>The API (and the target) right after a successful action</td></tr>
+<tr><td>Rows</td><td>All eligible rows: <code>Pending</code> and due, or <code>Processing</code> with a lease older than 15 minutes. Optional <code>Notifications:Outbox:BatchSize</code>.</td><td>Only the <code>Pending</code> rows of this instance and correlation ID</td></tr>
+<tr><td>SLA schedule check</td><td>Yes. A row of a schedule that is not <code>Active</code> becomes <code>Cancelled</code> (<code>SlaScheduleInactive</code>).</td><td>No</td></tr>
+<tr><td>After a failure</td><td>Releases the row and continues with the next row</td><td>Releases the row and stops; the result is <code>NotificationDeliveryFailed</code></td></tr>
+<tr><td>Style</td><td><code>async</code></td><td>synchronous (<code>.GetAwaiter().GetResult()</code>)</td></tr>
+</table></div>
+<p>Both paths claim a row with one conditional <code>UPDATE</code> and a new <code>ProcessingToken</code>. They mark it <code>Sent</code> only when the token is still theirs. Delivery is "at least once". A row that the API could not send stays <code>Pending</code>, and the worker sends it later.</p>
+
+<h3>8.5 Retry</h3>
+<p><a href="../src/WorkflowEngine.Infrastructure/Notifications/OutboxProcessingOptions.cs"><code>OutboxProcessingOptions.GetNextAttemptAtUtc</code></a> calculates the next attempt: <code>min(RetryMaxDelaySeconds, RetryInitialDelaySeconds &times; 2^RetryCount)</code>. With <code>RetryInitialDelaySeconds = 0</code> (default), a failed row is eligible again at once. With a batch size, the worker writes the failure time so that a failed row goes behind mail that already waits (fix H01). Rollout notes: <a href="OUTBOX_RETRY_ROLLOUT.md">OUTBOX_RETRY_ROLLOUT.md</a> and <a href="H01_OUTBOX_BATCH_BLOCKING_EXPLAINED.html">H01_OUTBOX_BATCH_BLOCKING_EXPLAINED.html</a>.</p>
+
+<h3>8.6 Senders and SMTP</h3>
+<p><code>Notifications:Sender</code> selects the <code>INotificationSender</code> in <code>AddWorkflowInfrastructure</code>: <code>Console</code> (default, <a href="../src/WorkflowEngine.Infrastructure/Notifications/ConsoleNotificationSender.cs"><code>ConsoleNotificationSender</code></a>), <code>NoOp</code> (<a href="../src/WorkflowEngine.Infrastructure/Notifications/NoOpNotificationSender.cs"><code>NoOpNotificationSender</code></a>) or <code>Smtp</code> (<a href="../src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs"><code>SmtpNotificationSender</code></a>). An unknown value stops the start-up.</p>
+<p><code>SmtpNotificationSender</code> uses MailKit. It connects with <code>SecureSocketOptions.Auto</code>. It does not authenticate (IP-restricted relay; credentials are stop-and-ask). It sends a plain text part and, if the HTML body is not empty, an HTML part. With <code>Smtp:RecipientOverride</code>, all mail goes to that one address, and the plain and HTML bodies start with a header that shows the original To and Cc.</p>
+</section>
+
+<!-- ============================================================ 9 -->
+<section id="public">
+<h2>9. Public surfaces</h2>
+<p>These surfaces are used by the target or by operators. Keep them backward compatible (section 14).</p>
+<h3>9.1 DI registration</h3>
+<div class="table-wrap"><table>
+<tr><th>Method</th><th>File</th><th>What it registers</th></tr>
+<tr><td><code>AddWorkflowInfrastructure(IServiceCollection, IConfiguration)</code></td><td><a href="../src/WorkflowEngine.Infrastructure/DependencyInjection/InfrastructureServiceCollectionExtensions.cs"><code>InfrastructureServiceCollectionExtensions.cs</code></a></td><td><code>WorkflowDbContext</code> (SQL Server, <code>DefaultConnection</code>), <code>OutboxProcessingOptions</code> and <code>SlaProcessingOptions</code> from configuration, all engine services and their interfaces, <code>NotificationTemplateRenderer</code>, <code>SlaScheduleCalculator</code>, the <code>INotificationSender</code>. It throws if the connection string is missing or the sender value is unknown.</td></tr>
+<tr><td><code>AddSqmsWorkflowIntegration(IServiceCollection, IConfiguration)</code></td><td><a href="../src/WorkflowEngine.Sqms/DependencyInjection/SqmsServiceCollectionExtensions.cs"><code>SqmsServiceCollectionExtensions.cs</code></a></td><td><code>SqmsOptions</code> (validated at start), <code>ISqmsDataStore</code>, <code>ISqmsWorkflowService</code>, <code>ISqmsScheduledTransitionService</code>, <code>ISqmsScheduledService</code>, <code>SqmsLinkBuilder</code>.</td></tr>
+</table></div>
+<div class="warn">The caller must also register these items, because <code>AddWorkflowInfrastructure</code> does not: <code>TimeProvider</code> (for example <code>TimeProvider.System</code>), <code>WorkflowActionEnvelopeNormalizer</code>, <code>CanonicalRequestHasher</code>, <code>WorkflowActionResultBuilder</code>, <code>CanonicalWorkflowResultSerializer</code>. See <a href="../src/WorkflowEngine.Console/Program.cs"><code>Console/Program.cs</code></a> and <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Program.cs"><code>Program.ConfigureServices</code></a>.</div>
+
+<h3>9.2 Services and interfaces</h3>
+<div class="table-wrap"><table>
+<tr><th>Interface</th><th>Member</th><th>Implementation</th></tr>
+<tr><td><code>IStartWorkflowService</code></td><td><code>Start(StartWorkflowRequest)</code></td><td><code>StartWorkflowService</code></td></tr>
+<tr><td><code>IWorkflowExecutionService</code></td><td><code>Execute(WorkflowExecutionRequest)</code></td><td><code>WorkflowExecutionService</code></td></tr>
+<tr><td><code>IWorkflowContextReader</code></td><td><code>Read(WorkflowContextReadRequest)</code></td><td><a href="../src/WorkflowEngine.Infrastructure/WorkflowContext/WorkflowContextReader.cs"><code>WorkflowContextReader</code></a></td></tr>
+<tr><td><code>IWorkflowSlaSynchronizationService</code></td><td><code>Synchronize</code>, <code>Complete</code></td><td><code>WorkflowSlaSynchronizationService</code></td></tr>
+<tr><td><code>IRunSlaService</code></td><td><code>RunAsync(RunSlaRequest, CancellationToken)</code></td><td><code>RunSlaService</code></td></tr>
+<tr><td><code>IProcessNotificationOutboxService</code></td><td><code>ProcessAsync(CancellationToken)</code></td><td><code>ProcessNotificationOutboxService</code></td></tr>
+<tr><td><code>IQueueWorkflowNotificationService</code></td><td><code>QueueAsync(QueueWorkflowNotificationRequest, CancellationToken)</code></td><td><code>QueueWorkflowNotificationService</code></td></tr>
+<tr><td><code>INotificationSender</code></td><td><code>SenderName</code>, <code>SendAsync(NotificationDelivery, CancellationToken)</code></td><td>Console, NoOp, Smtp</td></tr>
+<tr><td><code>IWorkflowInspectionReader</code></td><td><code>Read(workflowInstanceId)</code></td><td><a href="../src/WorkflowEngine.Infrastructure/WorkflowInspection/WorkflowInspectionReader.cs"><code>WorkflowInspectionReader</code></a> (console <code>show*</code>)</td></tr>
+<tr><td><code>IWorkflowDatabaseInitializer</code>, <code>IPortfolioTradeVersionInitializer</code></td><td><code>Initialize()</code>, <code>Initialize(int)</code></td><td><code>WorkflowDatabaseInitializer</code></td></tr>
+<tr><td><code>ISeedVerificationService</code></td><td><code>Verify()</code></td><td><code>SeedVerificationService</code></td></tr>
+<tr><td><code>ISqmsWorkflowService</code></td><td><code>StartOpportunityAsync</code>, <code>StartBidAsync</code>, <code>Get*ContextAsync</code>, <code>Execute*ActionAsync</code></td><td><a href="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs"><code>SqmsWorkflowService</code></a></td></tr>
+<tr><td><code>ISqmsScheduledService</code></td><td><code>RunAsync(CancellationToken)</code></td><td><a href="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs"><code>SqmsScheduledService</code></a></td></tr>
+<tr><td><code>IWorkflowActionNotificationDispatcher</code> (API project)</td><td><code>DispatchCreatedNotifications(workflowInstanceId, correlationId)</code></td><td><code>WorkflowActionNotificationDispatcher</code></td></tr>
+</table></div>
+<p>The context shape (<a href="../src/WorkflowEngine.Application/Contracts/WorkflowContextResponse.cs"><code>WorkflowContextResponse</code></a>): <code>workflow</code>, <code>businessObject</code>, <code>actorAccess</code> (<code>canAct</code>, <code>readOnlyReason</code>), <code>currentTask</code>, <code>sla</code> (<code>NoSla</code>, <code>OnTrack</code>, <code>Overdue</code>), <code>availableActions</code>, <code>serverTimeUtc</code>. An action is available when a transition exists for the current state, the action and a role of the actor. There is no conditional availability.</p>
+
+<h3>9.3 HTTP endpoints (reference host) and trusted actor headers</h3>
+<div class="table-wrap"><table>
+<tr><th>Endpoint</th><th>Body or query</th><th>Service</th></tr>
+<tr><td><code>POST v1/WorkflowStart</code></td><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Models/WorkflowStartRequest.cs"><code>WorkflowStartRequest</code></a>: <code>workflowKey</code>, <code>businessObjectId</code>, <code>actionKey</code>, <code>slaTargetDate</code>, <code>notification</code></td><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowStartService.cs"><code>WorkflowStartService</code></a></td></tr>
+<tr><td><code>POST v1/WorkflowAction</code></td><td><code>WorkflowActionRequest</code> (section 6.1)</td><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs"><code>WorkflowActionService</code></a></td></tr>
+<tr><td><code>GET v1/WorkflowContext?workflowInstanceId=...</code></td><td>query</td><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowContextQueryService.cs"><code>WorkflowContextQueryService</code></a></td></tr>
+</table></div>
+<div class="table-wrap"><table>
+<tr><th>Header (default name)</th><th>Rule</th></tr>
+<tr><td><code>X-Workflow-UserId</code></td><td>Required. Missing gives 401.</td></tr>
+<tr><td><code>X-Workflow-Roles</code></td><td>Required. Roles split on comma or semicolon. No role gives 403.</td></tr>
+<tr><td><code>X-Workflow-DisplayName</code></td><td>Optional. Default = the user ID.</td></tr>
+</table></div>
+<p>The header names come from <code>WorkflowApi:ActorHeaders</code> (<a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActorHeaderOptions.cs"><code>WorkflowActorHeaderOptions</code></a>). <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/TrustedHeaderWorkflowActorResolver.cs"><code>TrustedHeaderWorkflowActorResolver</code></a> trusts the headers. An upstream component must authenticate the user. Envelope details: <a href="../workflow-api/docs/WORKFLOW_API_ENVELOPES.md">WORKFLOW_API_ENVELOPES.md</a> and <a href="../workflow-api/WORKFLOW_API_BOUNDARIES.md">WORKFLOW_API_BOUNDARIES.md</a>.</p>
+
+<h3>9.4 Console commands</h3>
+<p>Run as <code>dotnet run --project src/WorkflowEngine.Console -- &lt;command&gt; ...</code>. The parser is <a href="../src/WorkflowEngine.Application/Commands/CommandArgumentParser.cs"><code>CommandArgumentParser</code></a>; the dispatch is <a href="../src/WorkflowEngine.Application/Commands/CommandRegistry.cs"><code>CommandRegistry.Dispatch</code></a>. Exit code 0 = success.</p>
+<div class="table-wrap"><table>
+<tr><th>Command</th><th>Arguments</th><th>What it does</th></tr>
+<tr><td><code>init-db</code></td><td><code>[--portfolio-trade-version 1|2]</code></td><td>Applies migrations and the Portfolio Trade seed.</td></tr>
+<tr><td><code>verify-seed</code></td><td>none</td><td>Runs the seed verification.</td></tr>
+<tr><td><code>start-workflow</code></td><td><code>&lt;workflowKey&gt; &lt;businessObjectId&gt; --user &lt;userId&gt; [--reset] [--format json]</code></td><td>Starts an instance. <code>--reset</code> deletes the old runtime rows first.</td></tr>
+<tr><td><code>execute-json</code></td><td><code>&lt;path&gt; [--business-object &lt;id&gt;] [--workflow-instance &lt;id&gt;] [--admin-override] [--format json]</code></td><td>Runs one envelope file.</td></tr>
+<tr><td><code>show-context</code></td><td><code>&lt;workflowInstanceId&gt; --user &lt;userId&gt; --roles &lt;r1,r2&gt; [--format json]</code></td><td>Prints the workflow context.</td></tr>
+<tr><td><code>show</code>, <code>show-tasks</code>, <code>show-history</code>, <code>show-notifications</code></td><td><code>&lt;workflowInstanceId&gt;</code></td><td>Read-only inspection.</td></tr>
+<tr><td><code>run-sla</code></td><td><code>[--now &lt;iso8601-utc&gt;]</code></td><td>Runs the SLA monitor once.</td></tr>
+<tr><td><code>process-notification-outbox</code></td><td>none</td><td>Runs the outbox worker once.</td></tr>
+<tr><td><code>run-sqms-scheduled</code></td><td>none</td><td>Runs the SQMS timer rules once (needs <code>Sqms:Enabled</code>).</td></tr>
+<tr><td><code>demo</code></td><td>none</td><td>Runs the happy path with business object <code>PT-DEMO</code>.</td></tr>
+</table></div>
+
+<h3>9.5 Sample JSON fixtures</h3>
+<div class="table-wrap"><table>
+<tr><th>Folder</th><th>Content</th></tr>
+<tr><td><a href="../samples/workflow-actions/01-save-draft.json"><code>samples/workflow-actions/</code></a></td><td>Ten console envelopes, <code>01-save-draft.json</code> to <code>10-trading-rework-trade-executed.json</code>. Section 21 of <code>PROJECT.md</code> runs them.</td></tr>
+<tr><td><a href="../workflow-api/samples/01-workflow-start-submit.json"><code>workflow-api/samples/</code></a></td><td>Three API bodies (start and submit, action with target date, return to maker).</td></tr>
+<tr><td><a href="../workflow-api/samples/scenarios/README.md"><code>workflow-api/samples/scenarios/</code></a></td><td>18 scenarios, each with <code>request.json</code>, <code>request.http</code> and <code>README.md</code>.</td></tr>
+<tr><td><a href="sqms/target-api-scenarios/README.md"><code>docs/sqms/target-api-scenarios/</code></a></td><td>43 SQMS scenarios with in-process C# and SQL checks.</td></tr>
+</table></div>
+<p>Tests <code>WorkflowSamplesTests</code>, <code>SampleExpectationTests</code> and <code>WorkflowScenarioSampleTests</code> run these files. Do not remove or change them in a way that breaks existing callers.</p>
+</section>
+
+<!-- ============================================================ 10 -->
+<section id="workflows">
+<h2>10. Workflows in the metadata</h2>
+<h3>10.1 PortfolioTrade (CDT), maker and checker</h3>
+<p>Workflow key <code>PortfolioTrade</code>. The CDT app uses it. Version 1 and version 2 have the same states, actions and transitions. Version 2 changes SLA timing and recipients. The happy path with data is in <a href="portfolio-trade-happy-path.html">portfolio-trade-happy-path.html</a>.</p>
+<figure>
+<div class="svg-wrap">
+<svg viewBox="0 0 980 440" role="img" aria-labelledby="f5t">
+<title id="f5t">PortfolioTrade state diagram from the transition rows</title>
+<defs><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-a"/></marker></defs>
+<rect x="20" y="40" width="150" height="46" rx="22" class="d-box"/><text x="72" y="68" class="d-t">Draft</text>
+<rect x="320" y="40" width="170" height="46" rx="22" class="d-box"/><text x="350" y="68" class="d-t">CheckerReview</text>
+<rect x="640" y="40" width="190" height="46" rx="22" class="d-box"/><text x="665" y="68" class="d-t">TradingDeskReview</text>
+<rect x="320" y="230" width="170" height="46" rx="22" class="d-box"/><text x="340" y="258" class="d-t">ReturnedToMaker</text>
+<rect x="620" y="230" width="230" height="46" rx="22" class="d-box"/><text x="640" y="258" class="d-t">BdrmClientServiceReview</text>
+<rect x="640" y="370" width="190" height="46" rx="22" class="d-box"/><text x="660" y="398" class="d-t">TradingDeskRework</text>
+<rect x="880" y="230" width="90" height="46" rx="22" class="d-db"/><text x="890" y="258" class="d-t">Completed</text>
+<line x1="170" y1="63" x2="318" y2="63" class="d-l" marker-end="url(#ah5)"/><text x="178" y="56" class="d-s">SubmitForChecker</text>
+<line x1="490" y1="63" x2="638" y2="63" class="d-l" marker-end="url(#ah5)"/><text x="494" y="56" class="d-s">CheckerSendToTradingDesk</text>
+<line x1="385" y1="86" x2="385" y2="228" class="d-l" marker-end="url(#ah5)"/><text x="250" y="150" class="d-s">CheckerReturnToMaker</text>
+<line x1="425" y1="230" x2="425" y2="88" class="d-l" marker-end="url(#ah5)"/><text x="432" y="170" class="d-s">ResubmitForChecker</text>
+<line x1="680" y1="86" x2="490" y2="236" class="d-l" marker-end="url(#ah5)"/><text x="560" y="128" class="d-s">TradingReturnToMaker</text>
+<line x1="760" y1="86" x2="760" y2="228" class="d-l" marker-end="url(#ah5)"/><text x="768" y="160" class="d-s">TradingTradeExecuted</text>
+<line x1="850" y1="253" x2="878" y2="253" class="d-l" marker-end="url(#ah5)"/><text x="840" y="220" class="d-s">BdrmTradeFulfilled</text>
+<line x1="700" y1="276" x2="700" y2="368" class="d-l" marker-end="url(#ah5)"/><text x="470" y="330" class="d-s">BdrmTradeNotExecutedProperly</text>
+<line x1="790" y1="370" x2="790" y2="278" class="d-l" marker-end="url(#ah5)"/><text x="798" y="330" class="d-s">TradingTradeExecuted</text>
+<path d="M60,40 C40,4 130,4 110,38" class="d-ld" marker-end="url(#ah5)"/><text x="20" y="104" class="d-s">SaveDraft (no move)</text>
+<path d="M340,276 C320,320 400,320 380,278" class="d-ld" marker-end="url(#ah5)"/><text x="300" y="334" class="d-s">SaveDraft (no move)</text>
+</svg>
+</div>
+<figcaption>Figure 5. PortfolioTrade states and actions from <code>PortfolioTradeSeedData.Transitions</code>. Dashed loops are SaveDraft. <code>Completed</code> is the only terminal state.</figcaption>
+</figure>
+<div class="table-wrap"><table>
+<tr><th>From state</th><th>Action</th><th>Role</th><th>To state</th><th>Task closed / created</th><th>Route</th></tr>
+<tr><td>Draft</td><td><code>SaveDraft</code></td><td>Maker</td><td>Draft</td><td>- / -</td><td>-</td></tr>
+<tr><td>Draft</td><td><code>SubmitForChecker</code></td><td>Maker</td><td>CheckerReview</td><td>- / CheckerReviewTask</td><td><code>RouteCheckerAssignedOnSubmit</code></td></tr>
+<tr><td>ReturnedToMaker</td><td><code>SaveDraft</code></td><td>Maker</td><td>ReturnedToMaker</td><td>- / -</td><td>-</td></tr>
+<tr><td>ReturnedToMaker</td><td><code>ResubmitForChecker</code></td><td>Maker</td><td>CheckerReview</td><td>MakerReworkTask / CheckerReviewTask</td><td><code>RouteCheckerAssignedOnResubmit</code></td></tr>
+<tr><td>CheckerReview</td><td><code>CheckerReturnToMaker</code></td><td>Checker</td><td>ReturnedToMaker</td><td>CheckerReviewTask / MakerReworkTask</td><td><code>RouteReturnedToMakerFromChecker</code></td></tr>
+<tr><td>CheckerReview</td><td><code>CheckerSendToTradingDesk</code></td><td>Checker</td><td>TradingDeskReview</td><td>CheckerReviewTask / TradingDeskReviewTask (dynamic role)</td><td><code>RouteTradingDeskAssigned</code></td></tr>
+<tr><td>TradingDeskReview</td><td><code>TradingReturnToMaker</code></td><td>TradingDesk</td><td>ReturnedToMaker</td><td>TradingDeskReviewTask / MakerReworkTask</td><td><code>RouteReturnedToMakerFromTradingDesk</code></td></tr>
+<tr><td>TradingDeskReview</td><td><code>TradingTradeExecuted</code></td><td>TradingDesk</td><td>BdrmClientServiceReview</td><td>TradingDeskReviewTask / BdrmClientServiceReviewTask</td><td><code>RouteBdrmAssigned</code></td></tr>
+<tr><td>TradingDeskRework</td><td><code>TradingTradeExecuted</code></td><td>TradingDesk</td><td>BdrmClientServiceReview</td><td>TradingDeskReworkTask / BdrmClientServiceReviewTask</td><td><code>RouteBdrmAssigned</code></td></tr>
+<tr><td>BdrmClientServiceReview</td><td><code>BdrmTradeFulfilled</code></td><td>BDRMClientService</td><td>Completed</td><td>BdrmClientServiceReviewTask / -</td><td><code>RouteWorkflowCompleted</code></td></tr>
+<tr><td>BdrmClientServiceReview</td><td><code>BdrmTradeNotExecutedProperly</code></td><td>BDRMClientService</td><td>TradingDeskRework</td><td>BdrmClientServiceReviewTask / TradingDeskReworkTask</td><td><code>RouteTradingDeskReworkAssigned</code></td></tr>
+</table></div>
+<p><code>TradingDeskReviewTask</code> uses dynamic assignment: the request must send <code>assignedRoleKey</code> = <code>TradingDeskTaxable</code>, <code>TradingDeskTaxExempt</code> or <code>TradingDeskEquity</code>. The recipient rules of <code>RouteTradingDeskAssigned</code> filter on that role.</p>
+<div class="table-wrap"><table>
+<tr><th>SLA policy</th><th>Version 1</th><th>Version 2 (CDT)</th></tr>
+<tr><td><code>CheckerReviewSla</code></td><td>Duration 2 minutes, repeat every 2 minutes (demo values)</td><td>Duration 60 minutes, repeat every 60 minutes</td></tr>
+<tr><td><code>TradingDeskReviewSla</code></td><td>Target date, 09:00 America/New_York, offset 1 day, daily, due-today and overdue routes</td><td>Target date, overdue 08:00, due-today 14:00, skip missed due reminder, own routes <code>RouteTradingDeskDueToday</code> and <code>RouteTradingDeskOverdue</code></td></tr>
+<tr><td><code>TradingDeskReworkSla</code></td><td>Duration 2 minutes, one reminder</td><td>Same as version 1</td></tr>
+<tr><td><code>BdrmClientServiceReviewSla</code></td><td>Duration 2 minutes, then daily at 09:00 New York</td><td>First overdue on the next local day at 09:00, then daily; route <code>RouteBdrmConfirmationOverdue</code></td></tr>
+</table></div>
+<p>Version 2 recipient groups use <code>SortOrder</code> blocks: 1 <code>originalMaker</code>, 10-49 ICG RAs, 50-89 Risk Team, 100-199 Taxable, 200-299 Tax Exempt, 300-399 Equity, 1000 <code>selectedCcUsers</code>. The seed addresses are placeholders (<code>@example.test</code>). The target replaces them with script <code>20261019_03</code>. CDT v2 documents: <a href="CDT_V2_RELEASE.md">CDT_V2_RELEASE.md</a>, <a href="CDT_V2_IMPLEMENTATION_PLAN.html">CDT_V2_IMPLEMENTATION_PLAN.html</a>, <a href="CDT_V2_TARGET_JSON_CONTRACT.html">CDT_V2_TARGET_JSON_CONTRACT.html</a>.</p>
+
+<h3>10.2 SQMS opportunity and bid</h3>
+<p>Workflow keys <code>SqmsOpportunity</code> and <code>SqmsBid</code>. The metadata is in <a href="../sql/sqms/002_sqms_workflow_metadata_dml.sql"><code>002_sqms_workflow_metadata_dml.sql</code></a>. The same keys are C# constants in <a href="../src/WorkflowEngine.Sqms/SqmsKeys.cs"><code>SqmsKeys</code></a>. These workflows have no tasks and no SLA policies. Instance IDs: <code>WF-SQMS-OPP-{id}</code> and <code>WF-SQMS-BID-{id}</code>.</p>
+<div class="table-wrap"><table>
+<tr><th>Workflow</th><th>Path (action, role)</th></tr>
+<tr><td><code>SqmsOpportunity</code></td><td>Draft &rarr; SUBMITTED (<code>SubmitOpportunity</code>, MFO) &rarr; PENDING (<code>MarkOpportunityPending</code>, IPG) &rarr; OPEN TO BIDDING (<code>OpenOpportunityForBidding</code>, IPG) &rarr; CLOSED TO BIDDING (<code>CloseOpportunityBidding</code>, System) &rarr; PENDING SELLER APPROVAL (<code>RequestSellerApproval</code>, IPG, route <code>SqmsOpportunityPendingSellerApproval</code>) &rarr; AWAITING ALLOCATION or PARTIALLY ALLOCATED or NOT FULFILLED (IPG) &rarr; COMPLETED (<code>CompleteOpportunity</code>, IPG). <code>ReturnOpportunityToDraft</code> (IPG) from SUBMITTED and PENDING. Terminal: NOT FULFILLED, COMPLETED.</td></tr>
+<tr><td><code>SqmsBid</code></td><td>Draft &rarr; SUBMITTED (<code>SubmitBid</code>, MFO) &rarr; NOT ALLOCATED (<code>MarkBidNotAllocated</code>, System) or IPG REVIEW (<code>MoveBidToIpgReview</code>, System) &rarr; UNDER REVIEW BY SELLER (<code>SendBidToSellerReview</code>, IPG) &rarr; ACCEPTED, PARTIALLY ACCEPTED or NOT ACCEPTED (Seller, each with a route). <code>ReturnBidToDraft</code> (IPG) from SUBMITTED. Terminal: NOT ALLOCATED, ACCEPTED, PARTIALLY ACCEPTED, NOT ACCEPTED.</td></tr>
+</table></div>
+<p>The actions with role <code>System</code> come from <code>SqmsScheduledService</code> (timer rules in C#, started by <code>run-sqms-scheduled</code>). It also queues the "opportunity open" and "reminder" e-mail with occurrence keys <code>SQMS:&lt;kind&gt;:&lt;year&gt;:Q&lt;n&gt;:&lt;date&gt;</code>. Integration notes: <a href="sqms/TARGET-API-INTEGRATION.md">sqms/TARGET-API-INTEGRATION.md</a>.</p>
+</section>
+
+<!-- ============================================================ 11 -->
+<section id="config">
+<h2>11. Configuration</h2>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th>Default</th><th>Read by</th><th>Meaning</th></tr>
+<tr><td><code>ConnectionStrings:DefaultConnection</code></td><td>none (required)</td><td><code>AddWorkflowInfrastructure</code></td><td>SQL Server database of the engine tables.</td></tr>
+<tr><td><code>Notifications:Sender</code></td><td><code>Console</code></td><td><code>AddWorkflowInfrastructure</code></td><td><code>Console</code>, <code>NoOp</code> or <code>Smtp</code>.</td></tr>
+<tr><td><code>Smtp:Host</code>, <code>Smtp:From</code></td><td>none</td><td><code>SmtpNotificationSender</code></td><td>Required when the sender is <code>Smtp</code>.</td></tr>
+<tr><td><code>Smtp:Port</code></td><td>25</td><td><code>SmtpNotificationSender</code></td><td>Relay port.</td></tr>
+<tr><td><code>Smtp:RecipientOverride</code></td><td>empty</td><td><code>SmtpNotificationSender</code></td><td>Send all mail to one address (test regions).</td></tr>
+<tr><td><code>Notifications:Outbox:BatchSize</code></td><td>no limit</td><td><code>OutboxProcessingOptions.FromConfiguration</code></td><td>Rows for each worker run. Positive integer.</td></tr>
+<tr><td><code>Notifications:Outbox:RetryInitialDelaySeconds</code></td><td>0</td><td>same</td><td>First retry delay. 0 = retry at once.</td></tr>
+<tr><td><code>Notifications:Outbox:RetryMaxDelaySeconds</code></td><td>3600</td><td>same</td><td>Highest retry delay.</td></tr>
+<tr><td><code>Sla:BatchSize</code></td><td>100</td><td><code>SlaProcessingOptions.FromConfiguration</code></td><td>Schedules for each SLA page.</td></tr>
+<tr><td><code>Sqms:Enabled</code></td><td>false</td><td><code>AddSqmsWorkflowIntegration</code></td><td>Turns the SQMS layer on.</td></tr>
+<tr><td><code>Sqms:Links:*</code></td><td>none</td><td>same</td><td><code>OpenBiddingDashboardUrl</code>, <code>SellerApprovalBidsDashboardUrl</code>, <code>BidFormUrl</code> for e-mail links.</td></tr>
+<tr><td><code>Sqms:Scheduling:TimeZoneId</code>, <code>BiddingDays</code>, <code>SellerResponseDays</code></td><td><code>Eastern Standard Time</code>, 15, 5</td><td>same</td><td>Timer rules of SQMS. Validated at start when enabled.</td></tr>
+<tr><td><code>WorkflowApi:ActorHeaders:*</code></td><td>see 9.3</td><td>reference host</td><td>Actor header names.</td></tr>
+<tr><td><code>Cors:Origins</code></td><td><code>http://localhost:4200</code></td><td>reference host</td><td>Allowed origins.</td></tr>
+</table></div>
+<ul>
+<li>Options classes: <a href="../src/WorkflowEngine.Infrastructure/Notifications/OutboxProcessingOptions.cs"><code>OutboxProcessingOptions</code></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/SlaProcessingOptions.cs"><code>SlaProcessingOptions</code></a>, <a href="../src/WorkflowEngine.Sqms/Configuration/SqmsOptions.cs"><code>SqmsOptions</code></a>, <code>WorkflowActorHeaderOptions</code>. <a href="../src/WorkflowEngine.Application/Configuration/WorkflowEngineOptions.cs"><code>WorkflowEngineOptions</code></a> has only the section name; no setting reads it.</li>
+<li>Fixed values in code: the outbox processing lease is 15 minutes (<code>ProcessNotificationOutboxService.ProcessingLease</code>).</li>
+<li>Console sources, later wins: <code>appsettings.json</code>, <code>appsettings.Development.json</code>, environment variables (for example <code>ConnectionStrings__DefaultConnection</code>), command line.</li>
+<li>Reference host: in <code>Development</code> it shows Swagger. In other environments it uses the exception handler, HSTS and HTTPS redirection (<code>Program.ConfigurePipeline</code>).</li>
+<li>The committed <code>appsettings.json</code> files point to the local SQL Server with integrated security and no password. Do not commit passwords or tokens. Each region sets its own connection string.</li>
+</ul>
+</section>
+
+<!-- ============================================================ 12 -->
+<section id="target">
+<h2>12. How the target integrates today</h2>
+<p>This section describes the read-only copy of the target code that the repository owner keeps outside git. It is not in the repository. The target team owns that code. The items below are observations and integration requirements, not changes in this repository.</p>
+<h3>12.1 What the target code calls</h3>
+<ul>
+<li><b>Start-up (target <code>program.cs</code>).</b> It registers <code>TimeProvider.System</code>, <code>WorkflowActionEnvelopeNormalizer</code>, <code>CanonicalRequestHasher</code>, <code>WorkflowActionResultBuilder</code>, <code>CanonicalWorkflowResultSerializer</code>, then calls <code>AddWorkflowInfrastructure(configuration)</code> and <code>AddSqmsWorkflowIntegration(configuration)</code>. This is the same set as <code>Program.ConfigureServices</code> of the reference host, without the API-only services.</li>
+<li><b>App services.</b> <code>CPCDTService</code> (file <code>CPCDTServices</code>), <code>CPSQMSBService</code> and <code>CPSQMSOService</code> have optional properties for <code>IStartWorkflowService</code>, <code>IWorkflowExecutionService</code>, <code>IWorkflowActionNotificationDispatcher</code>, <code>IWorkflowSlaSynchronizationService</code> and <code>IWorkflowContextReader</code>.</li>
+<li><b>Action.</b> They build the envelope like <code>WorkflowActionService</code> (a new GUID as the correlation ID and the idempotency key). They call <code>Execute</code> with <code>DeriveIdentityFromPersistence = true</code>, <code>PersistSectionData = false</code>, <code>ValidateActionEcho = false</code>, then call <code>DispatchCreatedNotifications</code>.</li>
+<li><b>Start.</b> <code>CPCDTService</code> and <code>CPSQMSBService</code> call <code>IStartWorkflowService.Start</code>.</li>
+<li><b>Context.</b> The SQMS services read <code>IWorkflowContextReader</code> with the instance IDs <code>WF-SQMS-OPP-</code> + ID and <code>WF-SQMS-BID-</code> + ID. CDT reads its page state from its own table (<code>CDT_General.WorkflowState</code>, recorded in <code>CODEX_HANDOFF.md</code>).</li>
+<li><b>Dispatcher location.</b> In this repository the dispatcher is in the API project. The target keeps a merged copy in its engine folder (namespace <code>WorkflowEngine.Infrastructure.WorkflowNotification</code>, interface namespace <code>WorkflowEngine.Application.WorkflowNotification</code>, as the user confirmed in the hand-off history). A change of the dispatcher here must be merged by hand at the target.</li>
+<li><b>Workers.</b> No hosted worker exists in the engine or in Atlas. <code>run-sla</code> and <code>process-notification-outbox</code> need scheduled jobs at the target.</li>
+</ul>
+<p>Earlier analysis of the target: <a href="TARGET_ATLAS_APPLICATION_FLOW.html">TARGET_ATLAS_APPLICATION_FLOW.html</a>, <a href="TARGET_ATLAS_ISSUES_BY_SEVERITY.html">TARGET_ATLAS_ISSUES_BY_SEVERITY.html</a>, <a href="target-api-workflow-integration-evidence.html">target-api-workflow-integration-evidence.html</a>, <a href="target-api-notification-changes-handoff.html">target-api-notification-changes-handoff.html</a>.</p>
+
+<h3>12.2 Known target-side issue: SLA error swallowed</h3>
+<p>In <code>CPCDTServices</code>, <code>CPSQMSBService</code> and <code>CPSQMSOService</code>, the SLA-only path catches <code>WorkflowSlaValidationException</code> with an empty block (the <code>throw</code> is in comments). After the catch, the code reads the result:</p>
+<pre><code>catch (WorkflowSlaValidationException exception)
+{
+    //throw new WorkflowApiRequestException(
+    ...
+}
+...
+synchronization!.Changed,</code></pre>
+<p>If <code>Synchronize</code> throws (for example, no target date for an <code>ApplicationTargetDate</code> task), <code>synchronization</code> stays null. The next line throws <code>NullReferenceException</code>. The user sees a general error, not the validation message. Integration requirement: map the exception to a validation error, as <code>WorkflowActionService</code> does (HTTP 400, "Invalid workflow SLA input."). This is part of <code>Q42</code> ("SLA error propagation").</p>
+
+<h3>12.3 Published versus deployed</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Commit</th><th>State (CODEX_HANDOFF.md section B)</th></tr>
+<tr><td>C06</td><td><code>ad47084</code> (notes <code>c0983b4</code>)</td><td>Published on <code>origin/console-code-first-0518</code>. Not deployed to the target workers.</td></tr>
+<tr><td>PKCS 10.0.13</td><td><code>df270b2</code></td><td>Published. Not deployed to the target workers.</td></tr>
+<tr><td>C13 outbox batch and retry backoff</td><td><code>7350a4a</code></td><td>Published. Not deployed to the target workers.</td></tr>
+<tr><td>C14 SLA batching</td><td><code>f47c99c</code></td><td>Published. Not deployed to the target workers.</td></tr>
+<tr><td>H01 bounded outbox retry order</td><td><code>d881c15</code></td><td>Published. Not deployed to the target workers.</td></tr>
+<tr><td>CDT v2 (PortfolioTrade version 2)</td><td><code>55728f6</code></td><td>Published. At the target TEST database (user report, 2026-10-19): scripts 20261014, 20261019_01, _02, _03 and _04 ran; runtime files, DI options and PKCS merged. Version 2 stays <b>inactive</b>. Activation (<code>20261019_05</code>) waits for the adapter checks (Q42).</td></tr>
+</table></div>
+<p class="small">The target state is user-reported. This guide did not verify it independently.</p>
+</section>
+
+<!-- ============================================================ 13 -->
+<section id="build">
+<h2>13. Build, test, run</h2>
+<h3>13.1 Quality gates (PROJECT.md section 21)</h3>
+<p>Run the relevant commands from the repository root before you mark an engine change done:</p>
+<pre><code>dotnet restore
+dotnet build -warnaserror
+dotnet test
+dotnet run --project src/WorkflowEngine.Console -- init-db
+dotnet run --project src/WorkflowEngine.Console -- verify-seed
+
+# Checker Return to Maker branch
+dotnet run --project src/WorkflowEngine.Console -- start-workflow PortfolioTrade PT-1001 --user maker1 --reset
+dotnet run --project src/WorkflowEngine.Console -- execute-json ./samples/workflow-actions/02-submit-for-checker.json
+dotnet run --project src/WorkflowEngine.Console -- show-context WF-PT-1001 --user checker1 --roles Checker --format json
+dotnet run --project src/WorkflowEngine.Console -- execute-json ./samples/workflow-actions/03-checker-return-to-maker.json
+
+# Trading Desk Return to Maker branch
+dotnet run --project src/WorkflowEngine.Console -- start-workflow PortfolioTrade PT-1003 --user maker1 --reset
+dotnet run --project src/WorkflowEngine.Console -- execute-json ./samples/workflow-actions/02-submit-for-checker.json --business-object PT-1003 --workflow-instance WF-PT-1003
+dotnet run --project src/WorkflowEngine.Console -- execute-json ./samples/workflow-actions/05-checker-send-to-trading-desk.json --business-object PT-1003 --workflow-instance WF-PT-1003
+dotnet run --project src/WorkflowEngine.Console -- execute-json ./samples/workflow-actions/06-trading-return-to-maker.json --business-object PT-1003 --workflow-instance WF-PT-1003
+
+# Aggregate demo
+dotnet run --project src/WorkflowEngine.Console -- demo
+
+# Typed-recipient contract and sample gates
+dotnet test workflow-api/WorkflowEngine.WorkflowApi.slnx --filter "FullyQualifiedName~WorkflowActionServiceTests|FullyQualifiedName~WorkflowStartServiceTests"
+dotnet test src/WorkflowEngine.sln --filter "FullyQualifiedName~WorkflowSamplesTests|FullyQualifiedName~SampleExpectationTests|FullyQualifiedName~ShowInspectionCommandTests"</code></pre>
+<p>Build both solutions: <code>src/WorkflowEngine.sln</code> and <code>workflow-api/WorkflowEngine.WorkflowApi.slnx</code>. The <code>init-db</code> and sample commands change the database in <code>DefaultConnection</code>. Use a local database, not a shared one.</p>
+
+<h3>13.2 Test projects</h3>
+<div class="table-wrap"><table>
+<tr><th>Project</th><th>Covers</th></tr>
+<tr><td><code>tests/WorkflowEngine.Tests</code></td><td>Transitions and terminal states, envelope validation and hashing, context and results, idempotency, SQL constraints and migrations, seed (v1, v2, SQL scripts), SLA calculation, SLA monitor and recurrence, outbox order, claim, lease and retry, recipient resolution, templates, senders (SMTP with a local fake server), console commands, samples, SQMS service, data store and scheduler.</td></tr>
+<tr><td><code>workflow-api/tests/WorkflowEngine.WorkflowApi.Tests</code></td><td>Controllers, request contracts (unknown members), scenario samples, actor header resolver, action, start and context services, dispatcher, project structure.</td></tr>
+</table></div>
+<ul>
+<li>SQL-backed tests need SQL Server. Set <code>WORKFLOW_ENGINE_TEST_CONNECTION_STRING</code> (or <code>ConnectionStrings__DefaultConnection</code>). The tests make and drop their own databases (<a href="../tests/WorkflowEngine.Tests/TestSqlConnectionFactory.cs"><code>TestSqlConnectionFactory</code></a>). Do not point them at a shared database.</li>
+<li>SMTP integration tests are skipped by default. Start a local fake SMTP server (smtp4dev on port 3025, API on <code>http://localhost:5000</code>), set <code>RUN_SMTP_TESTS=1</code>, and run <code>dotnet test src/WorkflowEngine.sln --filter Category=Smtp</code> (<a href="../tests/WorkflowEngine.Tests/SmtpFactAttribute.cs"><code>SmtpFactAttribute</code></a>).</li>
+<li>Do not use EF Core InMemory for persistence tests (<code>PROJECT.md</code> section 4.1).</li>
+</ul>
+
+<h3>13.3 Run the reference host</h3>
+<pre><code>dotnet run --project workflow-api/src/WorkflowEngine.WorkflowApi</code></pre>
+<p>Send the files in <code>workflow-api/samples/scenarios/*/request.http</code>. Each scenario <code>README.md</code> tells the expected result.</p>
+
+<h3>13.4 Completion summary</h3>
+<p>After each meaningful change, write this summary (<code>PROJECT.md</code> section 23, <code>AGENTS.md</code>). If you did not run a step, state why.</p>
+<pre><code>Changed:
+Why:
+Tests run:
+Seed verification run:
+Sample JSON executed:
+Files updated:
+Open issues:</code></pre>
+</section>
+
+<!-- ============================================================ 14 -->
+<section id="change">
+<h2>14. How to change the engine safely</h2>
+<h3>14.1 Backward compatibility (AGENTS.md)</h3>
+<ul>
+<li>Existing endpoints, actor headers, request and response JSON, status codes and field meanings must continue to work. New request fields must be optional.</li>
+<li>Console commands, arguments, envelope fixtures and samples must stay executable.</li>
+<li>Database changes must upgrade an existing database in place and keep its data. Add nullable columns and new tables. Do not rename, drop or change the meaning of a persisted column without an approved migration plan.</li>
+<li>Keys (workflow, state, action, task, role, SLA policy, route, template) are stable identifiers.</li>
+<li>Recipient snapshots, SLA behaviour and e-mail subject and body meanings must stay valid.</li>
+<li>Keep the DI registration methods and the public .NET surfaces. Add overloads or optional parameters. Example: <code>WorkflowExecutionService</code> keeps an older constructor next to the new one, and <code>ProcessNotificationOutboxService</code> has a constructor with and without <code>OutboxProcessingOptions</code>.</li>
+<li>Before you finish, run the regression gates of section 13 and the tests for the new behaviour.</li>
+</ul>
+<h3>14.2 Stop and ask first (PROJECT.md section 22)</h3>
+<p>Get approval from the owner before you do one of these:</p>
+<ul>
+<li>change the shape of <code>WorkflowActionEnvelope</code>, <code>WorkflowContextResponse</code> or <code>WorkflowActionResult</code>;</li>
+<li>change the Portfolio Trade transition matrix, or remove a Return to Maker path;</li>
+<li>add an external package (only MailKit is pre-approved);</li>
+<li>change the SQL schema in a non-trivial way;</li>
+<li>add CQRS, MediatR, event sourcing, BPMN, sagas or message brokers;</li>
+<li>remove seed verification, sample files, console commands or <code>show-context</code>;</li>
+<li>change to parallel workflow, or make the engine depend on Portfolio Trade fields;</li>
+<li>let the request set the next state, or let <code>workflow.options</code> override metadata;</li>
+<li>add <code>AdminDemoOverride</code> as an allowed role in a transition row;</li>
+<li>add conditional action fields without a conditional metadata model;</li>
+<li>add a user table, a user-to-role table or a name lookup;</li>
+<li>audit failed actions in v1;</li>
+<li>call <code>DateTime.UtcNow</code> outside the composition root;</li>
+<li>use <code>SERIALIZABLE</code> or <code>SNAPSHOT</code> isolation;</li>
+<li>use <code>PT-DEMO</code> outside the <code>demo</code> command;</li>
+<li>add a synthetic <code>WorkflowStarted</code> audit row or a nullable <code>FromStateKey</code>;</li>
+<li>allow more than one instance for the same business object;</li>
+<li>add SMTP credentials;</li>
+<li>add recipient validation or rewriting, or change the recipient resolution rules.</li>
+</ul>
+<h3>14.3 Rules of the code</h3>
+<ul>
+<li>Use <code>TimeProvider</code> for the clock. The only <code>TimeProvider.System</code> registrations are in the composition roots (console and API <code>Program.cs</code>). A search finds no <code>DateTime.UtcNow</code> in <code>src/</code> or <code>workflow-api/src/</code>.</li>
+<li>Warnings are errors (<code>Directory.Build.props</code>).</li>
+<li>Keep the engine generic. Put workflow behaviour in metadata rows.</li>
+<li>Deliver a database change for the target as an idempotent SQL script in <code>sql/upgrades/</code>. If you also add an EF migration, say in the script that a database uses one or the other.</li>
+<li>To change workflow behaviour, add a new definition version. Running instances stay on their version. Do not install an engine build that is older than the build that a running version needs.</li>
+<li>A change in a runtime file that the target merged (for example the dispatcher or <code>InfrastructureServiceCollectionExtensions.cs</code>) needs a manual merge at the target. List these files in the release notes.</li>
+</ul>
+</section>
+
+<!-- ============================================================ 15 -->
+<section id="limits">
+<h2>15. Known limits and open items</h2>
+<p>Detail: <a href="IMPLICIT_STATE_MACHINES.md">IMPLICIT_STATE_MACHINES.md</a> (inventory E01 to E13), <a href="IMPLICIT_STATE_MACHINES_ASSESSMENT.html">IMPLICIT_STATE_MACHINES_ASSESSMENT.html</a>, <a href="IMPLICIT_STATE_MACHINES_DECISIONS.html">IMPLICIT_STATE_MACHINES_DECISIONS.html</a>, <a href="OPEN-ISSUES.md">OPEN-ISSUES.md</a> and the ordered backlog <a href="../.planning/paused/engine-defect-fixes/.continue-here.md">engine-defect-fixes/.continue-here.md</a> (WP1 to WP8).</p>
+<h3>15.1 Run-time behaviour</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Description</th><th>Tag</th></tr>
+<tr><td>SaveDraft race (High)</td><td><code>SaveDraft</code> does not run the version-guarded <code>UPDATE</code>. A SaveDraft can commit its audit and idempotency record after a concurrent transition moved the instance. Recommended first engine fix (Q41).</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>SLA edit versus task completion (F09)</td><td><code>Synchronize</code> reads the pending task with no lock. It can make an <code>Active</code> schedule for a task that another transaction completes.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>Cancel during send</td><td>A transition can set an SLA outbox row <code>Cancelled</code> while the worker sends it. The mail goes out, the row says <code>Cancelled</code>, and the run has a warning. The assessment also describes a stale tracked cancel that can overwrite <code>Sent</code>. Both are inferences; not reproduced.</td><td><span class="tag open">Open decision</span></td></tr>
+<tr><td>Two delivery paths</td><td>The worker and the API dispatcher implement claim, send, mark and release two times, with the differences in section 8.4.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>No status constants</td><td>Persisted status values (<code>Pending</code>, <code>Active</code>, <code>Sent</code> and others), reminder kinds and cancellation reasons are string literals in many files. Only recipient kinds, source types and the capture stage have constants.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>E-mail after commit (D02, F06)</td><td>The API commits the action, then sends the mail. If the send fails, the result becomes <code>NotificationDeliveryFailed</code> with HTTP 500, but the state moved. The stored idempotency result says <code>Success</code>.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>Business failures are HTTP 500 (D03)</td><td>Understood. A change needs a new versioned endpoint.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>No retry limit (D04)</td><td>No maximum attempts and no dead-letter state. A row that always fails stays <code>Pending</code>.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>H01</td><td>Fixed in <code>d881c15</code>: a failed bounded row goes behind mail that waits. Residual: the dispatcher writes <code>null</code> as the next attempt for a zero delay. Not deployed.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>SLA-only request with no pending task</td><td><code>ResolvePendingTask</code> uses <code>Single()</code>. With no pending task it throws <code>InvalidOperationException</code>. The API catches only <code>WorkflowSlaValidationException</code>, so the caller gets HTTP 500. Inference; verify with a test.</td><td><span class="tag open">Open decision</span></td></tr>
+<tr><td>Terminal move and tasks</td><td>A move to a terminal state does not check that no task stays <code>Pending</code>. Current metadata does not cause this.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>Synchronous engine (D06)</td><td><code>Execute</code>, <code>Start</code> and the dispatcher are synchronous with no cancellation.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>Observability (D10)</td><td>No structured logging, health check or metrics in the engine. Option conflicts go to <code>Console.Error</code>.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+</table></div>
+<h3>15.2 Contract and metadata</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Description</th><th>Tag</th></tr>
+<tr><td>Safe retry (L1)</td><td>The API makes a new idempotency key for each request. An HTTP caller cannot retry safely after a timeout.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>Hash (F07)</td><td>The assignment role is not in the request hash.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>Action reason (F08)</td><td><code>RequiresReason</code> is metadata, but the API request has no reason field.</td><td><span class="tag open">Open decision</span></td></tr>
+<tr><td>Unique-violation check (L4)</td><td>The idempotency check uses SQL error numbers 2601/2627 and the table name in the message text.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>Swashbuckle (L3)</td><td>The reference host has a third-party package outside the package policy.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>Seed in place (D09)</td><td>The seed changes version 1 in place and has no publication procedure. The database does not enforce one active version.</td><td><span class="tag fact">Code fact</span> <span class="tag open">Open decision</span></td></tr>
+<tr><td>SQMS version literal</td><td><code>SqmsScheduledService</code> sends version number <code>1</code> as a literal for the open and reminder mails.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>Literals <code>Draft</code>, <code>SaveDraft</code>, <code>MakerPrimary</code> (D08)</td><td>Settled. Do not re-open.</td><td><span class="tag fact">Code fact</span></td></tr>
+<tr><td>Target SLA catch</td><td>Section 12.2. Target code; integration requirement.</td><td><span class="tag open">Open decision</span></td></tr>
+<tr><td>Archive and retention (C14)</td><td>No retention rule for completed workflows, idempotency records or outbox rows. Deferred.</td><td><span class="tag open">Open decision</span></td></tr>
+</table></div>
+<h3>15.3 Pending owner questions</h3>
+<p>The options and recommendations are in <a href="atlas-platform/PENDING_DECISIONS.html">PENDING_DECISIONS.html</a>, category 8.</p>
+<div class="table-wrap"><table>
+<tr><th>Question</th><th>Subject</th></tr>
+<tr><td>Q40</td><td>When to start the engine defect work.</td></tr>
+<tr><td>Q41</td><td>First engine fix (recommended: SaveDraft race).</td></tr>
+<tr><td>Q42</td><td>CDT v2 at the target: adapter checks (date and desk forwarding, SLA error propagation), controlled activation with <code>20261019_05</code>, full v1/SQMS/v2 acceptance with SMTP.</td></tr>
+<tr><td>Q43</td><td>Deploy the published fixes (C06, C13, C14, H01, PKCS).</td></tr>
+<tr><td>Q44</td><td>Deployment evidence for the consolidated review C01 to C25.</td></tr>
+<tr><td>Q45</td><td>Archive and retention.</td></tr>
+<tr><td>Q51</td><td>When to build the engine adapter (platform module 10).</td></tr>
+</table></div>
+<div class="note">Settled decisions. Do not raise them again: authentication is target-owned (D01); callers keep business object IDs unique across workflow keys (D07); <code>Draft</code>/<code>SaveDraft</code> literals (D08); no parallel approvals; timers never move state; no condition expressions in the engine; BDRM "No" maps to <code>BdrmTradeFulfilled</code> by design (F01).</div>
+</section>
+
+<!-- ============================================================ 16 -->
+<section id="glossary">
+<h2>16. Glossary</h2>
+<div class="table-wrap"><table>
+<tr><th>Term</th><th>Meaning in this guide</th></tr>
+<tr><td>Action</td><td>A named step that a user or a system does, for example <code>SubmitForChecker</code>. Its key is the action key.</td></tr>
+<tr><td>Actor</td><td>The user that sends the request: user ID, display name and roles. The caller gives these values.</td></tr>
+<tr><td>Admin override</td><td>Console flag <code>--admin-override</code>. It skips the role check and audits the role <code>AdminDemoOverride</code>.</td></tr>
+<tr><td>Assignment role</td><td>The role of a created task when the task has dynamic assignment (<code>assignedRoleKey</code>).</td></tr>
+<tr><td>Audit row</td><td>One <code>WorkflowAudit</code> row for each successful action.</td></tr>
+<tr><td>Business object</td><td>The record of the app that the workflow is for, for example a trade. Type + ID.</td></tr>
+<tr><td>Caller</td><td>Code that calls the engine: the target API, the reference host, the console or the SQMS layer.</td></tr>
+<tr><td>Definition version</td><td>One <code>WorkflowDefinitionVersion</code> and all its metadata rows.</td></tr>
+<tr><td>Deployed</td><td>Installed and running at the target.</td></tr>
+<tr><td>Dispatcher</td><td><code>WorkflowActionNotificationDispatcher</code>: it sends the e-mail of one action during the request.</td></tr>
+<tr><td>Envelope</td><td><code>WorkflowActionEnvelope</code>: the internal object that describes one action request.</td></tr>
+<tr><td>Idempotency key</td><td>A key that identifies one action request. The same key and the same request hash replay the stored result.</td></tr>
+<tr><td>Instance</td><td>One <code>WorkflowInstance</code>: the workflow of one business object. ID = <code>WF-</code> + business object ID.</td></tr>
+<tr><td>Lease</td><td>The 15 minutes for which a <code>Processing</code> outbox row belongs to one run.</td></tr>
+<tr><td>Metadata</td><td>The definition rows (states, actions, transitions, tasks, policies, routes, rules).</td></tr>
+<tr><td>Occurrence</td><td>One reminder time of an SLA schedule, or one SQMS e-mail with an occurrence key.</td></tr>
+<tr><td>Outbox row</td><td>One <code>NotificationOutbox</code> row: one complete e-mail with its recipient snapshot and retry state.</td></tr>
+<tr><td>Participant</td><td>A person that Start captures for the instance, for example <code>originalMaker</code>.</td></tr>
+<tr><td>Primary e-mail</td><td>The outbox row of the action that created a task. SLA reminders copy its subject and body.</td></tr>
+<tr><td>Published</td><td>Committed and pushed to <code>origin/console-code-first-0518</code>.</td></tr>
+<tr><td>Recipient rule</td><td>One <code>NotificationRecipientRule</code> row: a To or Cc source for a route.</td></tr>
+<tr><td>Recipient snapshot</td><td>The resolved To and Cc lists, stored as JSON on the task, the schedule or the outbox row.</td></tr>
+<tr><td>Reference host</td><td>The <code>workflow-api</code> project. It shows a correct use of the engine over HTTP.</td></tr>
+<tr><td>Request hash</td><td>A hash of the normalized request (<code>CanonicalRequestHasher</code>).</td></tr>
+<tr><td>Result code</td><td>The string in <code>WorkflowActionResult.ResultCode</code>, for example <code>ConcurrencyConflict</code>.</td></tr>
+<tr><td>Route</td><td>One <code>NotificationRoute</code>: templates and recipient rules for one kind of e-mail.</td></tr>
+<tr><td>Schedule</td><td>One <code>WorkflowTaskSlaSchedule</code> row for a task: deadline, next reminder and status.</td></tr>
+<tr><td>Seed</td><td>The C# code that writes the Portfolio Trade metadata (<code>init-db</code>).</td></tr>
+<tr><td>SLA policy</td><td>One <code>SlaPolicy</code> row: how to calculate the deadline and the reminders of a task.</td></tr>
+<tr><td>SLA-only request</td><td>An API request with no action key and a target date. It changes only the SLA schedule.</td></tr>
+<tr><td>Stable identifier</td><td>A key or a name that callers or stored data use. It must not change.</td></tr>
+<tr><td>State</td><td>The current position of an instance in its workflow (<code>CurrentStateKey</code>).</td></tr>
+<tr><td>Target</td><td>The CP Atlas system and code of the target team.</td></tr>
+<tr><td>Task</td><td>One <code>WorkflowTask</code>: the open work of a role. At most one task is <code>Pending</code> for each instance.</td></tr>
+<tr><td>Terminal state</td><td>A state with <code>IsTerminal = 1</code>. A move to it completes the instance.</td></tr>
+<tr><td>Transition</td><td>One <code>WorkflowTransitionDefinition</code> row: from state + action + role gives the next state and the side effects.</td></tr>
+<tr><td>Worker</td><td>A scheduled run of the console (<code>run-sla</code>, <code>process-notification-outbox</code>, <code>run-sqms-scheduled</code>).</td></tr>
+</table></div>
+</section>
+
+<!-- ============================================================ 17 -->
+<section id="files">
+<h2>17. File index</h2>
+<div class="table-wrap"><table>
+<tr><th>File</th><th>Content</th></tr>
+<tr><td><a href="../PROJECT.md"><code>PROJECT.md</code></a></td><td>Engine requirements (sections 1 to 28), gates (21), stop-and-ask (22).</td></tr>
+<tr><td><a href="../AGENTS.MD"><code>AGENTS.md</code></a></td><td>Repository rules, backward compatibility, completion summary.</td></tr>
+<tr><td><a href="../CODEX_HANDOFF.md"><code>CODEX_HANDOFF.md</code></a></td><td>Project state; section B = engine.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs"><code>WorkflowExecutionService.cs</code></a></td><td>The action path and the transaction.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs"><code>StartWorkflowService.cs</code></a></td><td>Start, first action, reset.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/WorkflowContext/WorkflowContextReader.cs"><code>WorkflowContextReader.cs</code></a></td><td>Workflow context and available actions.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs"><code>WorkflowDbContext.cs</code></a></td><td>Tables, keys, indexes, CHECK constraints.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/DependencyInjection/InfrastructureServiceCollectionExtensions.cs"><code>InfrastructureServiceCollectionExtensions.cs</code></a></td><td><code>AddWorkflowInfrastructure</code>, sender selection.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs"><code>WorkflowSlaSynchronizationService.cs</code></a></td><td>Schedule create, supersede, complete.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs"><code>RunSlaService.cs</code></a></td><td>SLA monitor.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Sla/SlaScheduleCalculator.cs"><code>SlaScheduleCalculator.cs</code></a></td><td>Deadline and reminder calculation.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs"><code>ProcessNotificationOutboxService.cs</code></a></td><td>Outbox worker.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Notifications/NotificationRecipientResolver.cs"><code>NotificationRecipientResolver.cs</code></a></td><td>To/Cc resolution.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Notifications/QueueWorkflowNotificationService.cs"><code>QueueWorkflowNotificationService.cs</code></a></td><td>E-mail with no instance (occurrence key).</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Notifications/SmtpNotificationSender.cs"><code>SmtpNotificationSender.cs</code></a></td><td>MailKit sender.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedData.cs"><code>PortfolioTradeSeedData.cs</code></a></td><td>Portfolio Trade version 1 metadata.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/PortfolioTradeSeedDataV2.cs"><code>PortfolioTradeSeedDataV2.cs</code></a></td><td>Portfolio Trade version 2 (CDT).</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Infrastructure/Persistence/Verification/SeedVerificationService.cs"><code>SeedVerificationService.cs</code></a></td><td><code>verify-seed</code>.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Application/Contracts/WorkflowActionEnvelope.cs"><code>WorkflowActionEnvelope.cs</code></a></td><td>Envelope contract.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Application/Contracts/WorkflowActionResult.cs"><code>WorkflowActionResult.cs</code></a></td><td>Result contract.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Application/Results/WorkflowActionResultBuilder.cs"><code>WorkflowActionResultBuilder.cs</code></a></td><td>Result codes.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Application/Normalization/CanonicalRequestHasher.cs"><code>CanonicalRequestHasher.cs</code></a></td><td>Request hash.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Application/Notifications/NotificationTemplateRenderer.cs"><code>NotificationTemplateRenderer.cs</code></a></td><td><code>{{token}}</code> templates.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Application/Commands/CommandRegistry.cs"><code>CommandRegistry.cs</code></a></td><td>Console command list and dispatch.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Console/Program.cs"><code>WorkflowEngine.Console/Program.cs</code></a></td><td>Console composition root.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs"><code>SqmsWorkflowService.cs</code></a></td><td>SQMS start, context, actions, projection.</td></tr>
+<tr><td><a href="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs"><code>SqmsScheduledService.cs</code></a></td><td>SQMS timer rules.</td></tr>
+<tr><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Program.cs"><code>WorkflowApi/Program.cs</code></a></td><td>Reference host composition root.</td></tr>
+<tr><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs"><code>WorkflowActionService.cs</code></a></td><td>Reference action flow, SLA-only path.</td></tr>
+<tr><td><a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs"><code>WorkflowActionNotificationDispatcher.cs</code></a></td><td>In-request e-mail.</td></tr>
+<tr><td><a href="../sql/upgrades/20261019_01_cdt_v2_schema_ddl.sql"><code>sql/upgrades/20261019_01_cdt_v2_schema_ddl.sql</code></a></td><td>CDT v2 schema script (and the other <code>20261019_*</code> scripts).</td></tr>
+<tr><td><a href="../sql/sqms/002_sqms_workflow_metadata_dml.sql"><code>sql/sqms/002_sqms_workflow_metadata_dml.sql</code></a></td><td>SQMS metadata.</td></tr>
+<tr><td><a href="README.md"><code>docs/README.md</code></a></td><td>Index of the documents.</td></tr>
+</table></div>
+</section>
+
+<footer>
+<p><b>Document record.</b> Title: CP Atlas workflow engine: code guide. File: <code>docs/CP_ATLAS_ENGINE_GUIDE.html</code>. Date: 2026-11-10. Code version: <code>fc5f9c7</code> (branch <code>console-code-first-0518</code>). Scope: the workflow engine component (<code>src/</code>, <code>workflow-api/</code>, <code>sql/upgrades/</code>, <code>sql/sqms/</code>, <code>samples/</code>). Companion: <a href="atlas-platform/CP_ATLAS_PLATFORM_GUIDE.html">CP_ATLAS_PLATFORM_GUIDE.html</a> (platform).</p>
+<p>Method: written from a read of the source code at the version above, <code>PROJECT.md</code>, <code>AGENTS.md</code>, <code>CODEX_HANDOFF.md</code> section B and the linked documents. No build, test, seed verification or sample run was done for this document. The target state in section 12 is user-reported. Language: ASD-STE100 (about 80%).</p>
+</footer>
+</main>
+</body>
+</html>

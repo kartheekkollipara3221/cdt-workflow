@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Atlas platform guide</title>
+<style>
+:root{color-scheme:light;--bg:#edf1f5;--paper:#fff;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--amber:#8a5a00;--amberbg:#fff7e6;--codebg:#f4f6f8;--th:#eff4f7;--box:#fbfdfe;--shadow:#17334a12;--red:#a3302a;--redbg:#fdf0ef}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006;--red:#f19a92;--redbg:#3a1d1b}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--codebg:#1f2e3a;--th:#1c2b37;--box:#1a2833;--shadow:#0006;--red:#f19a92;--redbg:#3a1d1b}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1150px;margin:32px auto;background:var(--paper);padding:44px;border-radius:12px;box-shadow:0 8px 28px var(--shadow)}
+h1,h2,h3,h4{line-height:1.22;color:var(--navy)}h1{font-size:2rem;margin:10px 0}h2{font-size:1.35rem;margin:0 0 12px}h3{font-size:1.08rem;margin:24px 0 6px}h4{font-size:.98rem;margin:16px 0 4px}
+section{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+a{color:var(--blue)}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:var(--codebg);padding:1px 5px;border-radius:4px}
+pre{background:var(--codebg);padding:12px 14px;border-radius:8px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;max-width:100%}
+pre code{background:none;padding:0;overflow-wrap:normal}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.08rem}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:14px 0}
+.meta div{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--box);font-size:.9rem}
+.meta b{display:block;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em}
+.note{padding:12px 16px;border-left:4px solid var(--blue);background:var(--bluebg);margin:16px 0}
+.good{padding:12px 16px;border-left:4px solid var(--green);background:var(--greenbg);margin:16px 0}
+.warn{padding:12px 16px;border-left:4px solid #c58a1a;background:var(--amberbg);margin:16px 0}
+.stop{padding:12px 16px;border-left:4px solid var(--red);background:var(--redbg);margin:16px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto;max-width:100%;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:0}
+th,td{padding:8px 10px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:var(--th);font-weight:650}
+td:first-child{white-space:nowrap}
+td.wrap,th.wrap{white-space:normal}
+ol li,ul li{margin:4px 0}
+nav.toc{columns:2;column-gap:32px;font-size:.92rem}
+nav.toc ol{margin:0;padding-left:22px}
+nav.toc a{color:var(--blue);text-decoration:none}nav.toc a:hover{text-decoration:underline}
+nav.toc ol ol{font-size:.86rem;padding-left:18px}
+figure{margin:18px 0}
+.figwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--box);padding:8px}
+.figwrap svg{display:block;width:100%;height:auto;min-width:640px}
+figcaption{font-size:.86rem;color:var(--muted);margin-top:6px}
+svg text{fill:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px}
+svg .t-small{font-size:10.5px;fill:var(--muted)}
+svg .t-bold{font-weight:700;fill:var(--navy)}
+svg .b-plat{fill:var(--bluebg);stroke:var(--blue);stroke-width:1.2}
+svg .b-target{fill:var(--amberbg);stroke:var(--amber);stroke-width:1.2}
+svg .b-data{fill:var(--greenbg);stroke:var(--green);stroke-width:1.2}
+svg .b-note{fill:var(--paper);stroke:var(--line);stroke-width:1}
+svg .life{stroke:var(--line);stroke-width:1.2;stroke-dasharray:4 4}
+svg .msg{stroke:var(--ink);stroke-width:1.2;fill:none}
+svg .ret{stroke:var(--muted);stroke-width:1.1;fill:none;stroke-dasharray:5 3}
+svg .ah{fill:var(--ink)}
+svg .ahm{fill:var(--muted)}
+svg .zone{fill:none;stroke:var(--line);stroke-width:1;stroke-dasharray:6 4}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:10px;background:var(--bluebg);color:var(--blue);margin-left:4px;white-space:nowrap}
+.tag.copy{background:var(--greenbg);color:var(--green)}.tag.ref{background:var(--amberbg);color:var(--amber)}.tag.local{background:var(--th);color:var(--muted)}.tag.edit{background:var(--amberbg);color:var(--amber)}
+.check td:first-child{text-align:center}
+.check input{width:18px;height:18px}
+dl.gloss dt{font-weight:700;color:var(--navy);margin-top:10px}
+dl.gloss dd{margin:2px 0 0 0}
+footer{margin-top:36px;border-top:1px solid var(--line);padding-top:16px;font-size:.86rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:22px 16px;border-radius:0}nav.toc{columns:1}td:first-child{white-space:normal}h1{font-size:1.55rem}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">CP Atlas · platform guide · hand-over · 2026-11-10</div>
+<h1>CP Atlas platform: code, integration and TTDV2 flow</h1>
+<p class="lead">This guide is the last hand-over document for the CP Atlas platform. It tells how the platform code works, which changes you make in the target code, and how a TTDV2 record goes through the system from the menu to the History Log. After you read it, you can own the platform code.</p>
+<div class="meta">
+<div><b>Code version</b><code>fc5f9c7</code> (branch <code>console-code-first-0518</code>)</div>
+<div><b>Bundle commit</b><code>772b394</code> (92 files: 84 copy, 8 reference)</div>
+<div><b>Date</b>2026-11-10</div>
+<div><b>Pilot app</b>TTDV2 (release P1)</div>
+</div>
+<p class="small">Written in ASD-STE100 Simplified Technical English (about 80%). Code names, paths, keys and SQL stay as they are. Each path is a link relative to <code>docs/atlas-platform/</code>. The code is the source of truth: if this guide and the code disagree, the code is correct.</p>
+</header>
+
+<nav class="toc" aria-label="Contents">
+<ol>
+<li><a href="#s1">About this guide</a></li>
+<li><a href="#s2">What the platform is</a></li>
+<li><a href="#s3">Code layout and ownership</a></li>
+<li><a href="#s4">Start-up, check and logs</a></li>
+<li><a href="#s5">The TTDV2 flow, end to end</a>
+<ol>
+<li><a href="#s5-1">Roles and test users</a></li>
+<li><a href="#s5-2">Menu</a></li>
+<li><a href="#s5-3">Dashboard</a></li>
+<li><a href="#s5-4">Open a record or a new record</a></li>
+<li><a href="#s5-5">Load the section</a></li>
+<li><a href="#s5-6">User edits</a></li>
+<li><a href="#s5-7">Save</a></li>
+<li><a href="#s5-8">History</a></li>
+<li><a href="#s5-9">Delete</a></li>
+<li><a href="#s5-10">Summary of the flow</a></li>
+</ol></li>
+<li><a href="#s6">Config files and a new app</a></li>
+<li><a href="#s7">Database</a></li>
+<li><a href="#s8">Security and access</a></li>
+<li><a href="#s9">Changes to the target code</a>
+<ol>
+<li><a href="#s9-1">The fall-through rule</a></li>
+<li><a href="#s9-2">Edits for each target file</a></li>
+<li><a href="#s9-3">Copy the bundle</a></li>
+<li><a href="#s9-4">Checklist</a></li>
+<li><a href="#s9-5">Checks after the integration</a></li>
+</ol></li>
+<li><a href="#s10">Operations</a></li>
+<li><a href="#s11">Tests and quality gates</a></li>
+<li><a href="#s12">How to change the platform safely</a></li>
+<li><a href="#s13">Known limits and open items</a></li>
+<li><a href="#s14">Glossary</a></li>
+<li><a href="#s15">File index</a></li>
+</ol>
+</nav>
+
+<!-- ============================== 1 ============================== -->
+<section id="s1">
+<h2>1. About this guide</h2>
+<h3>Purpose and readers</h3>
+<p>The readers are the .NET and Angular developers of the target team. You did not write this code. After the hand-over, you own it. This guide gives you three things:</p>
+<ul>
+<li>How the platform code is organized and how it operates (sections 2 to 8).</li>
+<li>The changes that you make in the target code, and how you copy the platform files (section 9).</li>
+<li>How to operate, test and change the platform safely (sections 10 to 13).</li>
+</ul>
+<h3>Versions</h3>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Value</th><th class="wrap">Note</th></tr>
+<tr><td>Code (this guide)</td><td><code>fc5f9c7</code></td><td class="wrap">HEAD of <code>console-code-first-0518</code>. It adds only the rebuilt bundle file on top of <code>772b394</code>. The platform code is the same at both commits.</td></tr>
+<tr><td>Bundle</td><td><code>772b394</code></td><td class="wrap"><a href="../../atlas-platform/local/package/atlas-target-package.ps1">atlas-target-package.ps1</a>. Comment pass only: no code change and no new integration step since bundle <code>bcb4b2b</code>.</td></tr>
+<tr><td>At target dev</td><td><code>bcb4b2b</code></td><td class="wrap">Integration steps 0 to 6 are done (user report). TTDV2 dashboard, form, save, history and delete operate. Dev settings: <code>Enabled</code> true, <code>AccessMode</code> <code>Enforce</code>. Source: <a href="../../CODEX_HANDOFF.md">CODEX_HANDOFF.md</a>, section A.</td></tr>
+</table></div>
+<h3>Other documents</h3>
+<div class="table-wrap"><table>
+<tr><th>Document</th><th class="wrap">Use it for</th></tr>
+<tr><td><a href="../CP_ATLAS_ENGINE_GUIDE.html">CP_ATLAS_ENGINE_GUIDE.html</a></td><td class="wrap">The workflow engine (<code>src/</code>, <code>workflow-api/</code>). The engine is the second component of CP Atlas. TTDV2 does not use it in release P1.</td></tr>
+<tr><td><a href="ATLAS_CODE_MAP.html">ATLAS_CODE_MAP.html</a></td><td class="wrap">A short map of each platform file (19 sections). This guide agrees with it.</td></tr>
+<tr><td><a href="ATLAS_TEAM_NOTES.html">ATLAS_TEAM_NOTES.html</a></td><td class="wrap">The reasons for some designs, things that must stay the same, behaviour that testers can think is a bug.</td></tr>
+<tr><td><a href="../../atlas-platform/INTEGRATION.md">INTEGRATION.md</a></td><td class="wrap">The integration source: section 1 (files to copy), section 2 (edits in target files), sections 3 to 5 (SQL, settings, checks), section 6 (findings B1 to B77).</td></tr>
+<tr><td><a href="../../atlas-platform/PBDEV.md">PBDEV.md</a></td><td class="wrap">The <code>@pbdev/pbdev-core</code> names and inputs that the platform uses.</td></tr>
+<tr><td><a href="README.md">README.md</a></td><td class="wrap">The index of the design specs (modules 01 to 24).</td></tr>
+<tr><td><a href="14-platform-design-and-flow.html">14-platform-design-and-flow.html</a>, <a href="24-end-to-end-design.html">24-end-to-end-design.html</a></td><td class="wrap">The design and the end-to-end flow at design level.</td></tr>
+<tr><td><a href="12-ttd-pilot-build.html">12-ttd-pilot-build.html</a></td><td class="wrap">The TTDV2 pilot build spec (scripts, tests, acceptance, rollback).</td></tr>
+<tr><td><a href="PENDING_DECISIONS.html">PENDING_DECISIONS.html</a></td><td class="wrap">The open questions (Q01 to Q51), with options.</td></tr>
+<tr><td><a href="CODE_TRACE.md">CODE_TRACE.md</a></td><td class="wrap">Links from a file and member to the spec, review or decision that is the reason for it.</td></tr>
+<tr><td><a href="../../AGENTS.MD">AGENTS.MD</a></td><td class="wrap">The repo rules. Section "Atlas platform" has the platform rules, gates and stop-and-ask list.</td></tr>
+</table></div>
+</section>
+
+<!-- ============================== 2 ============================== -->
+<section id="s2">
+<h2>2. What the platform is</h2>
+<p>CP Atlas is one product with two components in this repo: the workflow engine and the Atlas platform. This guide is about the platform (<code>atlas-platform/</code>).</p>
+<h3>The goal</h3>
+<p>Each current Atlas app has its own C# service, its own entity classes and its own screen code. The platform replaces this with one generic server service and one generic form. A new app is data:</p>
+<ul>
+<li>One SQL script (schema, tables, app row, roles).</li>
+<li>Three JSON files: the manifest <code>&lt;CODE&gt;.app.json</code>, the form <code>&lt;CODE&gt;.json</code>, the dashboard <code>&lt;CODE&gt;.Dashboard.json</code>.</li>
+<li>One registration line in <code>program.cs</code>: <code>AddAtlasModule&lt;ConfigSectionService&gt;("&lt;CODE&gt;")</code>.</li>
+</ul>
+<p>A new app needs no new C# and no new TypeScript. TTDV2 is the pilot app. It is metadata, not a special case in the code.</p>
+<h3>What stays target code</h3>
+<p>The target team owns the target code: <code>program.cs</code>, <code>CPAtlasService</code>, the controllers, <code>cp-atlas-dashboard.ts</code>, the app component, the routes and the current services. The platform does not add controllers or endpoints. It uses the current <code>v1/...</code> routes. The integration adds a small number of lines to the target files (section 9).</p>
+<h3>The current apps do not change</h3>
+<p>The current apps are TTD, CDT, SQMSO, SQMSB and AIN. Each platform line in a shared target file runs first. For a current app it does nothing, and the current <code>if</code> chain runs as before. This is the <a href="#s9-1">fall-through rule</a>.</p>
+<figure id="fig-overview"><div class="figwrap"><svg viewBox="0 0 860 560" role="img" aria-labelledby="fig-overview-t" xmlns="http://www.w3.org/2000/svg"><title id="fig-overview-t">Overview: the platform path and the current-app path</title><defs><marker id="overviewa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="overviewr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahm"/></marker></defs><rect x="30" y="14" width="380" height="54" rx="7" class="b-plat"/><text x="220.0" y="38.0" text-anchor="middle" class="t-bold">Platform UI (WebUi/src/app/platform)</text><text x="220.0" y="52.0" text-anchor="middle" class="t-small">form/:code/:id · columnDefs · sumsRow · history dialog</text><rect x="450" y="14" width="380" height="54" rx="7" class="b-target"/><text x="640.0" y="38.0" text-anchor="middle" class="t-bold">Current UI (target WebUi)</text><text x="640.0" y="52.0" text-anchor="middle" class="t-small">cp-atlas-dashboard.ts · sectionmaster · stepmaster</text><line x1="220" y1="68" x2="220" y2="104" class="msg" marker-end="url(#overviewa)"/><text x="232" y="90" text-anchor="start" class="t-small">v1/...</text><line x1="640" y1="68" x2="640" y2="104" class="msg" marker-end="url(#overviewa)"/><text x="652" y="90" text-anchor="start" class="t-small">v1/...</text><rect x="30" y="106" width="800" height="50" rx="7" class="b-target"/><text x="430.0" y="128.0" text-anchor="middle" class="t-bold">Target controllers: CPAtlasController</text><text x="430.0" y="142.0" text-anchor="middle" class="t-small">v1/Application · Dashboard · SectionPage · ManagePage · RemovePage · GetAuditLog · AuditLog</text><line x1="430" y1="156" x2="430" y2="186" class="msg" marker-end="url(#overviewa)"/><rect x="30" y="188" width="800" height="50" rx="7" class="b-target"/><text x="430.0" y="210.0" text-anchor="middle" class="t-bold">CPAtlasService: the PLATFORM line runs first</text><text x="430.0" y="224.0" text-anchor="middle" class="t-small">IsPlatformApp(code)? yes: platform module · no: the current if chain (AtlasAppCode.ToLegacy)</text><line x1="220" y1="238" x2="220" y2="278" class="msg" marker-end="url(#overviewa)"/><text x="232" y="262" text-anchor="start" class="t-small">platform app (TTDV2)</text><line x1="640" y1="238" x2="640" y2="278" class="msg" marker-end="url(#overviewa)"/><text x="652" y="262" text-anchor="start" class="t-small">current app: falls through</text><rect x="30" y="280" width="380" height="50" rx="7" class="b-plat"/><text x="220.0" y="302.0" text-anchor="middle" class="t-bold">IAtlasModuleResolver → ConfigSectionService</text><text x="220.0" y="316.0" text-anchor="middle" class="t-small">LoadPage · SavePage · RemovePage · LoadDashboard · GetAuditLog</text><rect x="450" y="280" width="380" height="50" rx="7" class="b-target"/><text x="640.0" y="302.0" text-anchor="middle" class="t-bold">Current services (no change)</text><text x="640.0" y="316.0" text-anchor="middle" class="t-small">CPApplicationService subclasses, entity classes</text><line x1="220" y1="330" x2="220" y2="356" class="msg" marker-end="url(#overviewa)"/><rect x="30" y="358" width="380" height="50" rx="7" class="b-plat"/><text x="220.0" y="380.0" text-anchor="middle" class="t-bold">Platform services</text><text x="220.0" y="394.0" text-anchor="middle" class="t-small">rules · access · allow list · validators · effects · audit · dashboard</text><line x1="120" y1="408" x2="120" y2="434" class="msg" marker-end="url(#overviewa)"/><line x1="320" y1="408" x2="320" y2="434" class="msg" marker-end="url(#overviewa)"/><rect x="30" y="436" width="185" height="50" rx="7" class="b-data"/><text x="122.5" y="458.0" text-anchor="middle" class="t-bold">AtlasConfigStore</text><text x="122.5" y="472.0" text-anchor="middle" class="t-small">Config/*.json (read one time)</text><rect x="225" y="436" width="185" height="50" rx="7" class="b-plat"/><text x="317.5" y="458.0" text-anchor="middle" class="t-bold">AtlasPlatformContext</text><text x="317.5" y="472.0" text-anchor="middle" class="t-small">AtlasTableRegistry</text><line x1="640" y1="330" x2="640" y2="496" class="msg" marker-end="url(#overviewa)"/><line x1="318" y1="486" x2="318" y2="496" class="msg" marker-end="url(#overviewa)"/><rect x="30" y="498" width="800" height="50" rx="7" class="b-data"/><text x="430.0" y="520.0" text-anchor="middle" class="t-bold">SQL Server (cp_sharepoint)</text><text x="430.0" y="534.0" text-anchor="middle" class="t-small">TTDV2.General · TTDV2.AuditLog · vw_CP_Atlas_ActiveUserRole · CP_Atlas_ScriptLog   |   current tables (CPSharepointContext)</text></svg></div><figcaption>Figure 1. Blue = platform code (copied from this repo). Amber = target code (the target team edits it). Green = data and config. Both paths use the same target controllers and CPAtlasService. The PLATFORM line decides the path.</figcaption></figure>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th class="wrap">Platform app (TTDV2)</th><th class="wrap">Current app (TTD, CDT, SQMSO, SQMSB, AIN)</th></tr>
+<tr><td>App code</td><td class="wrap">Text code from the manifest. Not in the enum <code>CPApplicationCode</code>.</td><td class="wrap">Enum <code>CPApplicationCode</code>.</td></tr>
+<tr><td>Form</td><td class="wrap">Route <code>form/:code/:id</code>, <code>AtlasFormComponent</code>.</td><td class="wrap"><code>sectionmaster/:code/:id</code> or <code>stepmaster/:code/:id</code>.</td></tr>
+<tr><td>Dashboard</td><td class="wrap">The current <code>cp-atlas-dashboard.ts</code>, with columns from <code>columnDefs</code>.</td><td class="wrap">The current <code>cp-atlas-dashboard.ts</code>, <code>GenerateColumns</code>.</td></tr>
+<tr><td>Server service</td><td class="wrap"><code>ConfigSectionService</code>, found by <code>IAtlasModuleResolver</code>.</td><td class="wrap">The current service class, found by the <code>if</code> chain.</td></tr>
+<tr><td>Data access</td><td class="wrap"><code>AtlasPlatformContext</code> (EF Core, column metadata from SQL Server).</td><td class="wrap"><code>CPSharepointContext</code> entity classes.</td></tr>
+<tr><td>Audit</td><td class="wrap">Server side, in the save transaction (<code>AuditMode: Server</code>).</td><td class="wrap">Client call <code>v1/AuditLog</code>.</td></tr>
+</table></div>
+</section>
+
+<!-- ============================== 3 ============================== -->
+<section id="s3">
+<h2>3. Code layout and ownership</h2>
+<p>The platform code uses the same 4 projects as the target. Each project that has platform code has a <code>Platform/</code> folder. A <code>StandIn/</code> folder holds a small local copy of target code, so the platform builds and runs here. Do not copy <code>StandIn/</code> to the target.</p>
+<h3>3.1 .NET projects</h3>
+<div class="table-wrap"><table>
+<tr><th>Project</th><th class="wrap">Platform code</th><th class="wrap">Job</th><th class="wrap">Key types</th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/README.md">BBH.CP.Atlas.Data</a></td><td class="wrap"><code>Platform/</code></td><td class="wrap">Table metadata, the generic EF Core context, value conversion, optional DTO properties.</td><td class="wrap"><code>AtlasColumnMetadataReader</code>, <code>AtlasTableRegistry</code>, <code>AtlasTable</code>, <code>AtlasColumn</code>, <code>AtlasPlatformContext</code>, <code>AtlasValueConverter</code>, <code>AtlasDataExtensions</code> (<code>AddAtlasPlatformData</code>, <code>FindActive</code>, <code>NewRecord</code>, <code>BeginSharedTransaction</code>)</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/README.md">BBH.CP.Atlas.Service</a></td><td class="wrap"><code>Platform/</code> and <code>Application/ConfigSectionService.cs</code></td><td class="wrap">Registry, rules, security, audit, dashboard, form fields, options, the generic app service.</td><td class="wrap"><code>ConfigSectionService</code>, <code>AtlasConfigStore</code>, <code>AtlasModuleResolver</code>, <code>AtlasAppCode</code>, <code>AtlasRuleEngine</code>, <code>AtlasAccessService</code>, <code>AtlasAuditWriter</code>, <code>AtlasDashboardService</code>, <code>AtlasTabQueryBuilder</code>, <code>AtlasLog</code></td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/README.md">BBH.CP.Atlas.App</a></td><td class="wrap"><code>Platform/</code> and <code>Config/TTDV2*.json</code></td><td class="wrap">Registration, start-up, start-up check, config lint, error filter, current user source.</td><td class="wrap"><code>AtlasPlatformServiceCollectionExtensions</code> (<code>AddAtlasPlatform</code>, <code>AddAtlasModule</code>), <code>AtlasPlatformStartup</code>, <code>AtlasStartupCheck</code>, <code>AtlasConfigLint</code>, <code>AtlasProblemExceptionFilter</code>, <code>UserInfoCurrentUserSource</code></td></tr>
+<tr><td>BBH.CP.Atlas.Infra</td><td class="wrap">None</td><td class="wrap">Stand-in only (<code>TPAMAPIAccess</code>). Do not copy.</td><td class="wrap">—</td></tr>
+</table></div>
+<h3>3.2 Service project folders</h3>
+<div class="table-wrap"><table>
+<tr><th>Folder</th><th class="wrap">What it does</th></tr>
+<tr><td><code>Registry/</code></td><td class="wrap">Manifest model and enums (<code>AtlasAppManifest</code>, <code>AtlasAccessMode</code>, <code>AtlasAuditMode</code>, <code>AtlasRuleMode</code>, <code>AtlasRuleDefault</code>, <code>AtlasAuditTime</code>), code helpers (<code>AtlasAppCode.FromRequest</code>, <code>ToLegacy</code>, <code>IsLegacy</code>), the config store, the module resolver, the menu step (<code>AtlasApplicationMenu.Enrich</code>), disabled apps, settings.</td></tr>
+<tr><td><code>Sections/</code></td><td class="wrap">Form fields and their state (<code>AtlasFormFields</code>), allow list (<code>AtlasAllowList</code>), server validators (<code>AtlasFieldValidator</code>), computed fields (<code>AtlasComputedFields</code>), default tokens (<code>AtlasDefaultTokens</code>), server effects (<code>AtlasServerEffects</code>), the service bundle of a module (<code>AtlasModuleServices</code>).</td></tr>
+<tr><td><code>Rules/</code></td><td class="wrap"><code>AtlasRuleEngine</code>: role, owner and state rules for controls, buttons, tabs and menus.</td></tr>
+<tr><td><code>Security/</code></td><td class="wrap"><code>AtlasUserContext</code> (current user and roles), <code>AtlasAppRoles</code> (flags <code>@Read</code>, <code>@Write</code>, <code>@Admin</code>), <code>AtlasAccessService</code> (View, Create, Edit, Delete, History), <code>AtlasSql</code>.</td></tr>
+<tr><td><code>Audit/</code></td><td class="wrap"><code>AtlasAuditWriter</code> (write and read the audit rows), <code>AtlasAuditMask</code> (shows <code>***</code>).</td></tr>
+<tr><td><code>Dashboard/</code></td><td class="wrap"><code>AtlasDashboardService.Load</code> and <code>AtlasTabQueryBuilder.Build</code> (parameterized SQL for <code>Source: Table</code> tabs).</td></tr>
+<tr><td><code>Options/</code></td><td class="wrap"><code>IAtlasOptionProvider</code> and the providers <code>PBAccounts</code>, <code>UsersInRoles</code>, <code>Years</code>, <code>WeekEndings</code>.</td></tr>
+<tr><td>Files in <code>Platform/</code></td><td class="wrap"><code>AtlasLog</code> (all log events), <code>AtlasProblemException</code> (an error with an HTTP status), <code>AtlasJson</code> (JSON read with a clear message), <code>AtlasPlatformServices</code> (service registration).</td></tr>
+</table></div>
+<h3>3.3 Angular (<code>WebUi/src/app/platform/</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Folder or file</th><th class="wrap">What it does</th></tr>
+<tr><td><code>atlas-api.service.ts</code></td><td class="wrap"><code>AtlasApiService</code>: <code>applications</code>, <code>dashboard</code>, <code>section</code>, <code>save</code>, <code>remove</code>, <code>auditLog</code>. The URLs have no <code>v1/</code> prefix, because the target interceptors add the base URL <code>/v1/</code>.</td></tr>
+<tr><td><code>atlas-navigation.ts</code></td><td class="wrap"><code>AtlasDashboardNavigation.open</code>, <code>formRoute</code>, <code>formTypeOf</code>, and the token <code>ATLAS_DASHBOARD_LINK</code> (default <code>['/dashboard', code]</code>).</td></tr>
+<tr><td><code>atlas-platform.routes.ts</code></td><td class="wrap"><code>atlasPlatformRoutes</code>: the route <code>form/:code/:id</code> (lazy <code>AtlasFormComponent</code>).</td></tr>
+<tr><td><code>form/</code></td><td class="wrap">The generic form (<code>atlas-form.component.*</code>), the form model (<code>buildFormGroup</code>, <code>buildOutputs</code>, <code>computeValue</code>), validators, effects, the renderer registry, the grid components token (<code>provideAtlasGridComponents</code>), accessibility directive.</td></tr>
+<tr><td><code>form/renderers/</code></td><td class="wrap">One small component for each control type (<code>AtlasTextRenderer</code>, <code>AtlasSelectRenderer</code>, ...) and <code>AtlasGridRenderer</code> (ag-grid).</td></tr>
+<tr><td><code>dashboard/</code></td><td class="wrap"><code>columnDefs</code> and <code>sumsRow</code> (used by the target dashboard). <code>atlas-dashboard.component.*</code> and <code>atlas-action-menu.ts</code> are a reference and the local dashboard; at the target they are on no route.</td></tr>
+<tr><td><code>atlas-history-dialog.ts</code></td><td class="wrap"><code>AtlasHistoryDialog</code>: the History Log dialog of the platform form.</td></tr>
+<tr><td>Other files</td><td class="wrap"><code>atlas-models.ts</code> (server DTOs, PascalCase), <code>atlas-errors.ts</code> (<code>problemText</code>), <code>atlas-notice.service.ts</code> (ngx-toastr), <code>atlas-pbdev.ts</code> (the only import of <code>@pbdev/pbdev-core</code>), <code>atlas-dates.ts</code>, <code>atlas-platform.scss</code>, <code>atlas-tailwind-classes.ts</code>, the specs.</td></tr>
+</table></div>
+<h3>3.4 Local-only parts</h3>
+<p>These parts make the local build, tests and review possible. They are not in the copy list: <code>StandIn/</code> folders, <code>WebUi/src/app/stand-in/</code>, <code>WebUi/src/app/app.*</code>, <code>WebUi/src/environments/</code>, <code>BBH.CP.Atlas.Infra</code>, <code>*.csproj</code>, <code>appsettings*.json</code>, <code>tests/</code> and <code>local/</code> (see <a href="../../atlas-platform/local/README.md">local/README.md</a>).</p>
+<h3>3.5 Ownership</h3>
+<p>Until the hand-over, the platform files are owned in this repo. A fix follows this path: change the file here, run the gates (section 11), rebuild the bundle, and copy the changed files to the target. Do not fix a platform file only at the target: the next copy overwrites the change.</p>
+<div class="good"><b>After the hand-over</b>, the target team owns the platform files. The same rules apply to the team: keep one source for the platform files, run the gates before each change, keep the platform generic, and keep all changes backward compatible (section 12).</div>
+</section>
+
+<!-- ============================== 4 ============================== -->
+<section id="s4">
+<h2>4. Start-up, check and logs</h2>
+<h3>4.1 Registration</h3>
+<p>Two extension methods in <a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasPlatformServiceCollectionExtensions.cs">AtlasPlatformServiceCollectionExtensions.cs</a> register the platform:</p>
+<pre><code>builder.Services.AddAtlasPlatform(configuration);                 // all platform services
+builder.Services.AddAtlasModule&lt;ConfigSectionService&gt;("TTDV2");   // one line for each app
+var app = builder.Build();
+await app.Services.StartAtlasPlatformAsync();                      // optional: a hosted service does the same</code></pre>
+<ul>
+<li><code>AddAtlasPlatform(configuration)</code> registers the config store, the resolver, the data services (<code>AddAtlasPlatformData</code>), the current user source, the error filter <code>AtlasProblemExceptionFilter</code>, the services of <code>AtlasPlatformServices.Add</code> and the hosted service <code>AtlasPlatformStartupService</code>. It reads the platform settings only from the <code>configuration</code> parameter. A <code>TimeProvider</code> that the host registers has priority (<code>TryAddSingleton</code>).</li>
+<li><code>AddAtlasModule&lt;TService&gt;(appCode)</code> registers one app. The code must match <code>^[A-Z][A-Z0-9]{1,19}$</code>. A second line for the same code throws "The app code 'X' is registered twice".</li>
+<li><code>StartAtlasPlatformAsync</code> loads the table metadata and runs the start-up check. A second call does nothing (<code>AtlasTableRegistry.IsLoaded</code>, one start-up at a time with <code>AtlasPlatformStartupGate</code>).</li>
+</ul>
+<h3>4.2 What the start-up does</h3>
+<figure id="fig-startup"><div class="figwrap"><svg viewBox="0 0 860 458" role="img" aria-labelledby="fig-startup-t" xmlns="http://www.w3.org/2000/svg"><title id="fig-startup-t">Start-up sequence of the platform</title><defs><marker id="startupa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="startupr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahm"/></marker></defs><line x1="80.0" y1="60" x2="80.0" y2="450" class="life"/><line x1="220.0" y1="60" x2="220.0" y2="450" class="life"/><line x1="360.0" y1="60" x2="360.0" y2="450" class="life"/><line x1="500.0" y1="60" x2="500.0" y2="450" class="life"/><line x1="640.0" y1="60" x2="640.0" y2="450" class="life"/><line x1="780.0" y1="60" x2="780.0" y2="450" class="life"/><rect x="15.0" y="10" width="130.0" height="44" rx="7" class="b-target"/><text x="80.0" y="29.0" text-anchor="middle" class="t-bold">program.cs</text><text x="80.0" y="43.0" text-anchor="middle" class="t-small">host</text><rect x="155.0" y="10" width="130.0" height="44" rx="7" class="b-plat"/><text x="220.0" y="29.0" text-anchor="middle" class="t-bold">AddAtlasPlatform</text><text x="220.0" y="43.0" text-anchor="middle" class="t-small">DI registration</text><rect x="295.0" y="10" width="130.0" height="44" rx="7" class="b-plat"/><text x="360.0" y="29.0" text-anchor="middle" class="t-bold">AtlasPlatformStartup</text><text x="360.0" y="43.0" text-anchor="middle" class="t-small">StartAtlasPlatformAsync</text><rect x="435.0" y="10" width="130.0" height="44" rx="7" class="b-data"/><text x="500.0" y="29.0" text-anchor="middle" class="t-bold">AtlasConfigStore</text><text x="500.0" y="43.0" text-anchor="middle" class="t-small">Config folder</text><rect x="575.0" y="10" width="130.0" height="44" rx="7" class="b-plat"/><text x="640.0" y="29.0" text-anchor="middle" class="t-bold">Metadata reader</text><text x="640.0" y="43.0" text-anchor="middle" class="t-small">AtlasTableRegistry</text><rect x="715.0" y="10" width="130.0" height="44" rx="7" class="b-plat"/><text x="780.0" y="29.0" text-anchor="middle" class="t-bold">AtlasStartupCheck</text><text x="780.0" y="43.0" text-anchor="middle" class="t-small">AtlasConfigLint</text><line x1="80.0" y1="82" x2="217.0" y2="82" class="msg" marker-end="url(#startupa)"/><text x="150.0" y="77" text-anchor="middle">AddAtlasPlatform(configuration)</text><line x1="80.0" y1="112" x2="217.0" y2="112" class="msg" marker-end="url(#startupa)"/><text x="150.0" y="107" text-anchor="middle">AddAtlasModule&lt;ConfigSectionService&gt;(&quot;TTDV2&quot;)</text><line x1="80.0" y1="142" x2="357.0" y2="142" class="msg" marker-end="url(#startupa)"/><text x="220.0" y="137" text-anchor="middle">Build(), then hosted service or StartAtlasPlatformAsync()</text><line x1="360.0" y1="172" x2="497.0" y2="172" class="msg" marker-end="url(#startupa)"/><text x="430.0" y="167" text-anchor="middle">GetManifests()</text><rect x="18.5" y="189" width="473.5" height="20" rx="4" class="b-note"/><text x="26.5" y="203" class="t-small" text-anchor="start">reads *.app.json, forms, dashboards one time; applies AppSettings:Modules:*</text><line x1="500.0" y1="232" x2="363.0" y2="232" class="ret" marker-end="url(#startupr)"/><text x="430.0" y="227" text-anchor="middle">manifests</text><line x1="360.0" y1="262" x2="637.0" y2="262" class="msg" marker-end="url(#startupa)"/><text x="500.0" y="257" text-anchor="middle">LoadAsync(TTDV2.General, TTDV2.AuditLog)</text><line x1="640.0" y1="292" x2="363.0" y2="292" class="ret" marker-end="url(#startupr)"/><text x="500.0" y="287" text-anchor="middle">columns in the registry</text><line x1="360.0" y1="322" x2="777.0" y2="322" class="msg" marker-end="url(#startupa)"/><text x="570.0" y="317" text-anchor="middle">AtlasStartupCheck.Run(provider)</text><line x1="780.0" y1="352" x2="363.0" y2="352" class="ret" marker-end="url(#startupr)"/><text x="570.0" y="347" text-anchor="middle">errors and warnings (log 41020)</text><rect x="368.0" y="369" width="479.59999999999997" height="20" rx="4" class="b-note"/><text x="376.0" y="383" class="t-small" text-anchor="start">errors: AtlasDisabledApps (DisableModule) or throw (Stop); then MarkLoaded()</text><rect x="88.0" y="399" width="235.6" height="20" rx="4" class="b-note"/><text x="96.0" y="413" class="t-small" text-anchor="start">app.Run(): the server takes requests</text></svg></div><figcaption>Figure 2. Start-up. A second call of StartAtlasPlatformAsync does nothing. The same load and check run in --atlas-check, with a report and no web server.</figcaption></figure>
+<ol>
+<li><code>AtlasConfigStore</code> reads each <code>*.app.json</code> in the config folder, then the form and dashboard files that the manifests name. It applies the settings <code>AppSettings:Modules:&lt;CODE&gt;:*</code> to each manifest.</li>
+<li>The start-up collects <code>Table</code>, <code>AuditTable</code> and <code>AttachmentTable</code> of each registered manifest (also disabled ones).</li>
+<li><code>AtlasColumnMetadataReader.LoadAsync</code> reads the columns from <code>sys.tables</code>, <code>sys.schemas</code> and <code>sys.columns</code>. <code>AtlasTableRegistry</code> keeps them in memory.</li>
+<li><code>AtlasStartupCheck.Run</code> compares the manifests and JSON files with the tables, the registration lines and the option providers. <code>AtlasConfigLint</code> adds the JSON checks.</li>
+<li>Each item is logged (<code>Atlas.StartupCheck</code>, 41020). An error disables the app (<code>AtlasDisabledApps</code>, log <code>Atlas.AppDisabled</code> 41023 at Critical), or stops the host when <code>OnStartupError</code> is <code>Stop</code>.</li>
+</ol>
+<h3>4.3 Start-up error mode</h3>
+<div class="table-wrap"><table>
+<tr><th>AppSettings:Atlas:OnStartupError</th><th class="wrap">Result of a start-up error</th></tr>
+<tr><td><code>DisableModule</code> (default, also when no value)</td><td class="wrap">The host starts. The current apps operate. Each platform app with an error is not available: 404, not in the menu. An error for all apps (<code>*</code>, for example SQL is not available) disables all platform apps.</td></tr>
+<tr><td><code>Stop</code></td><td class="wrap">The start-up throws <code>InvalidOperationException</code> and the host does not start. Use it only when you set it on purpose.</td></tr>
+<tr><td>A value that is not valid</td><td class="wrap"><code>DisableModule</code>, and an error for all platform apps (<code>--atlas-check</code> returns 1).</td></tr>
+</table></div>
+<h3>4.4 When is an app available</h3>
+<p><code>IAtlasModuleResolver.IsPlatformApp(code)</code> is true only when all of these conditions are true:</p>
+<ul>
+<li>The code has an <code>AddAtlasModule</code> line.</li>
+<li>The manifest has <code>Enabled: true</code> (after the settings).</li>
+<li>The <code>Table</code> (and the <code>AuditTable</code> when <code>AuditMode</code> is <code>Server</code>) loaded at start-up.</li>
+<li>The start-up check did not disable the app.</li>
+</ul>
+<p>Each PLATFORM line in <code>CPAtlasService</code> uses this test. When it is false for a code, the current <code>if</code> chain runs.</p>
+<h3>4.5 Config is read one time</h3>
+<div class="warn">The config store reads the manifests, forms and dashboards one time, at the first use (the platform start-up). The table metadata is also read one time. After a change to a config file or to an app table, restart the app pool. This is the design, not a defect. <code>AppSettings:ConfigRefreshSeconds</code> is not read.</div>
+<p>Each call of <code>GetForm</code> or <code>GetDashboard</code> gives a new copy of the object, so a request can change its copy. A manifest file that cannot be read removes only its own app (log <code>Atlas.ConfigInvalid</code>, 41021).</p>
+<h3>4.6 The --atlas-check command</h3>
+<p><code>RunAtlasCheckAsync</code> runs the same load and check with no web server, and prints a report:</p>
+<pre><code>dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn -- --atlas-check
+BBH.CP.Atlas.App.exe --atlas-check --environment QC                  (at the target)
+
+Atlas check (Development): 0 error(s), 0 warning(s).
+  Settings from: ...</code></pre>
+<p>The exit code is 0 when there are no errors and 1 when there are errors. The line <code>Settings from:</code> names the configuration sources. Run the check before each release and after each config change.</p>
+<h3>4.7 What the check finds</h3>
+<ul>
+<li><b>Errors:</b> the manifest code and registration line (both directions), the app row and <code>Parent</code>, the tables and their key (<code>ID</code> must be <code>int IDENTITY</code>), unsupported column types, form fields, <code>OwnerFields</code>, <code>SoftDelete</code> (must be <code>IsDeleted</code>, type <code>bit</code>), <code>Computed</code>, <code>Defaults</code>, option providers, dashboard tabs (names, operators, values, <code>MaxRows</code> greater than 0), a form with no <code>Permissions</code> block, setting values that are not valid.</li>
+<li><b>Errors from <code>AtlasConfigLint.CheckForm</code>:</b> duplicate control names, effect and rule targets that are not a control, unknown default tokens, a <code>Pattern</code> that does not compile, an unknown button <code>Action.Type</code>, a <code>SchemaVersion</code> higher than 1.</li>
+<li><b>Warnings:</b> a disabled manifest, an unknown role in rules or <code>Permissions</code>, JSON properties that are not DTO properties (<code>AtlasConfigLint.CheckUnknownProperties</code>, with the JSON path), a control type that the client does not render, <code>AccessMode</code> <code>LogOnly</code> outside Development, a shared <code>AuditTable</code> with no <code>AuditRefTypes</code>.</li>
+</ul>
+<p class="small">The current apps have no manifests, so the check does not check them. The TTDV2 files give 0 errors and 0 warnings.</p>
+<h3>4.8 Log events</h3>
+<p>All platform log events are in <a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/AtlasLog.cs">AtlasLog.cs</a> (<code>[LoggerMessage]</code>). The event IDs and names are stable identifiers.</p>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th>Name</th><th>Level</th><th class="wrap">Meaning</th></tr>
+<tr><td>41001</td><td><code>Atlas.AccessDenied</code></td><td>Warning</td><td class="wrap">The access check refused an operation. In <code>LogOnly</code> the operation continues (not for Delete or a new-record save).</td></tr>
+<tr><td>41010</td><td><code>Atlas.FieldIgnored</code></td><td>Information</td><td class="wrap">A sent value was not used, because the server sets the field.</td></tr>
+<tr><td>41011</td><td><code>Atlas.SaveFailed</code></td><td>Error</td><td class="wrap">The database refused the save (<code>DbUpdateException</code>).</td></tr>
+<tr><td>41012</td><td><code>Atlas.AfterSaveFailed</code></td><td>Error</td><td class="wrap">The <code>OnAfterSave</code> hook threw. The record is saved.</td></tr>
+<tr><td>41013</td><td><code>Atlas.FieldRefused</code></td><td>Warning</td><td class="wrap">A field was refused (<code>NotAllowed</code>, <code>NotInOptions</code>, <code>InvalidGrid</code>).</td></tr>
+<tr><td>41014</td><td><code>Atlas.ClientAuditIgnored</code></td><td>Debug</td><td class="wrap">A client <code>v1/AuditLog</code> call for a platform app. The server already wrote the audit.</td></tr>
+<tr><td>41015</td><td><code>Atlas.TabRowLimit</code></td><td>Warning</td><td class="wrap">A dashboard tab is full (<code>MaxRows</code>).</td></tr>
+<tr><td>41020</td><td><code>Atlas.StartupCheck</code></td><td>Information / Warning / Error</td><td class="wrap">The start-up result and each check item.</td></tr>
+<tr><td>41021</td><td><code>Atlas.ConfigInvalid</code></td><td>Error</td><td class="wrap">A config file cannot be read, or two manifests have the same code.</td></tr>
+<tr><td>41022</td><td><code>Atlas.AppNotAvailable</code></td><td>Warning</td><td class="wrap">A request for an app whose table did not load, or that the check disabled.</td></tr>
+<tr><td>41023</td><td><code>Atlas.AppDisabled</code></td><td>Critical</td><td class="wrap">The start-up disabled an app.</td></tr>
+<tr><td>41024</td><td><code>Atlas.ConfigError</code></td><td>Error</td><td class="wrap">A configuration problem in a request (HTTP 500 "Configuration error"), or the menu step failed.</td></tr>
+</table></div>
+</section>
+
+<!-- ============================== 5 ============================== -->
+<section id="s5">
+<h2>5. The TTDV2 flow, end to end</h2>
+<p>This section follows one TTDV2 timesheet record through each step. The examples come from <a href="../../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.app.json">TTDV2.app.json</a>, <a href="../../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.json">TTDV2.json</a> and <a href="../../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.Dashboard.json">TTDV2.Dashboard.json</a>. The main table is <code>TTDV2.General</code>. The audit table is <code>TTDV2.AuditLog</code>.</p>
+<div class="note"><b>The main rule.</b> The client is for the user. The server is the authority. Rules, validators, effects and computed values run on the client for fast feedback, and the server does each check again at save. The shared case files (<code>atlas-validator-cases.ts</code>, <code>atlas-effect-cases.ts</code>) are tested on both sides.</div>
+
+<h3 id="s5-1">5.1 Roles and test users</h3>
+<p><a href="../../atlas-platform/sql/release-p1/040-ttdv2-app.sql">040-ttdv2-app.sql</a> makes three TTDV2 roles in <code>dbo.CP_Atlas_Entitlement</code>. The role flags give the tokens <code>@Read</code>, <code>@Write</code> and <code>@Admin</code> (<code>AtlasAppRoles</code>). Admin includes write and read; write includes read.</p>
+<div class="table-wrap"><table>
+<tr><th>Role</th><th>IsRead</th><th>IsWrite</th><th>IsAdmin</th><th class="wrap">Tokens of the user</th><th class="wrap">Result in TTDV2</th></tr>
+<tr><td><code>Read</code></td><td>1</td><td>0</td><td>0</td><td class="wrap"><code>Read</code>, <code>@Read</code></td><td class="wrap">View and History. The form is read-only.</td></tr>
+<tr><td><code>Prepare</code></td><td>1</td><td>1</td><td>0</td><td class="wrap"><code>Prepare</code>, <code>@Read</code>, <code>@Write</code></td><td class="wrap">Create. Edit of own records (<code>CreatedBy</code> or <code>TaxPreparerLanId</code>). Other records are read-only.</td></tr>
+<tr><td><code>Owner</code></td><td>1</td><td>1</td><td>1</td><td class="wrap"><code>Owner</code>, <code>@Read</code>, <code>@Write</code>, <code>@Admin</code></td><td class="wrap">Create, edit all records, delete.</td></tr>
+</table></div>
+<p class="small">Locally, <code>appsettings.Development.json</code> lists stand-in test users (<code>ttd.read</code>, <code>ttd.prep</code>, <code>ttd.prep2</code>, <code>ttd.owner</code>, <code>ttd.none</code>). They are local only.</p>
+
+<h3 id="s5-2">5.2 Menu: <code>GET v1/Application</code></h3>
+<ol>
+<li>The target app component calls <code>v1/Application</code>. The platform form calls the same endpoint through <code>AtlasApiService.applications</code>.</li>
+<li><code>CPAtlasController.GetApplication</code> calls <code>CPAtlasService.GetApplication</code>. It runs the current procedure <code>dbo.Get_Application</code> for the LAN ID.</li>
+<li>PLATFORM line, after the procedure call: <code>AtlasApplicationMenu.Enrich(result, resolver, configStore, logger)</code>.</li>
+<li><code>Enrich</code> adds <code>FormType</code> (TTDV2: <code>FORM</code>) and <code>HasDashboard</code> (true when the manifest has a <code>Dashboard</code>) to each available platform row. It keeps the current app rows and the rows with no code with no change. It removes rows of codes that are not a current app and not an available platform app.</li>
+<li>When <code>Enrich</code> throws, it returns the procedure rows with no change and logs <code>Atlas.ConfigError</code>. Thus the menu of the current apps cannot fail because of the platform.</li>
+<li>The target menu shows an app only when <code>HasDashboard</code> is not <code>false</code> (integration edit).</li>
+</ol>
+<pre><code>{ "result": [ { "ID": 12, "Name": "Tax Time Database", "Code": "TTDV2", "Role": "Prepare",
+                "FormType": "FORM", "HasDashboard": true }, ... ] }      (example values)</code></pre>
+
+<h3 id="s5-3">5.3 Dashboard: <code>GET v1/Dashboard?code=TTDV2</code></h3>
+<figure id="fig-dash"><div class="figwrap"><svg viewBox="0 0 860 488" role="img" aria-labelledby="fig-dash-t" xmlns="http://www.w3.org/2000/svg"><title id="fig-dash-t">Dashboard load for TTDV2</title><defs><marker id="dasha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="dashr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahm"/></marker></defs><line x1="80.0" y1="60" x2="80.0" y2="480" class="life"/><line x1="255.0" y1="60" x2="255.0" y2="480" class="life"/><line x1="430.0" y1="60" x2="430.0" y2="480" class="life"/><line x1="605.0" y1="60" x2="605.0" y2="480" class="life"/><line x1="780.0" y1="60" x2="780.0" y2="480" class="life"/><rect x="5.0" y="10" width="150" height="44" rx="7" class="b-target"/><text x="80.0" y="29.0" text-anchor="middle" class="t-bold">cp-atlas-dashboard.ts</text><text x="80.0" y="43.0" text-anchor="middle" class="t-small">target dashboard</text><rect x="180.0" y="10" width="150" height="44" rx="7" class="b-target"/><text x="255.0" y="29.0" text-anchor="middle" class="t-bold">CPAtlasController</text><text x="255.0" y="43.0" text-anchor="middle" class="t-small">v1/Dashboard</text><rect x="355.0" y="10" width="150" height="44" rx="7" class="b-target"/><text x="430.0" y="29.0" text-anchor="middle" class="t-bold">CPAtlasService</text><text x="430.0" y="43.0" text-anchor="middle" class="t-small">LoadDashboard</text><rect x="530.0" y="10" width="150" height="44" rx="7" class="b-plat"/><text x="605.0" y="29.0" text-anchor="middle" class="t-bold">AtlasDashboardService</text><text x="605.0" y="43.0" text-anchor="middle" class="t-small">via ConfigSectionService</text><rect x="705.0" y="10" width="150" height="44" rx="7" class="b-data"/><text x="780.0" y="29.0" text-anchor="middle" class="t-bold">SQL Server</text><text x="780.0" y="43.0" text-anchor="middle" class="t-small">TTDV2.General</text><line x1="80.0" y1="82" x2="252.0" y2="82" class="msg" marker-end="url(#dasha)"/><text x="167.5" y="77" text-anchor="middle">GET v1/Dashboard?code=TTDV2</text><line x1="255.0" y1="112" x2="427.0" y2="112" class="msg" marker-end="url(#dasha)"/><text x="342.5" y="107" text-anchor="middle">LoadDashboard(&quot;TTDV2&quot;)</text><rect x="438.0" y="129" width="388.09999999999997" height="20" rx="4" class="b-note"/><text x="446.0" y="143" class="t-small" text-anchor="start">PLATFORM: resolver.Get&lt;IApplicationService&gt;(app, &quot;dashboard&quot;)</text><line x1="430.0" y1="172" x2="602.0" y2="172" class="msg" marker-end="url(#dasha)"/><text x="517.5" y="167" text-anchor="middle">LoadDashboard() → Load(&quot;TTDV2&quot;)</text><line x1="605.0" y1="202" x2="777.0" y2="202" class="msg" marker-end="url(#dasha)"/><text x="692.5" y="197" text-anchor="middle">roles (vw_CP_Atlas_ActiveUserRole): View check</text><rect x="318.7" y="219" width="278.3" height="20" rx="4" class="b-note"/><text x="326.7" y="233" class="t-small" text-anchor="start">tab rules first: a hidden tab gets no query</text><line x1="605.0" y1="262" x2="777.0" y2="262" class="msg" marker-end="url(#dasha)"/><text x="692.5" y="257" text-anchor="middle">one query per tab (parameters, TOP, IsDeleted = 0)</text><line x1="780.0" y1="292" x2="608.0" y2="292" class="ret" marker-end="url(#dashr)"/><text x="692.5" y="287" text-anchor="middle">rows</text><line x1="605.0" y1="322" x2="777.0" y2="322" class="msg" marker-end="url(#dasha)"/><text x="692.5" y="317" text-anchor="middle">display names (CP_Atlas_User)</text><line x1="605.0" y1="352" x2="433.0" y2="352" class="ret" marker-end="url(#dashr)"/><text x="517.5" y="347" text-anchor="middle">CPAtlasDashboard: Tabs, KeyValues, Menus, Buttons</text><line x1="430.0" y1="382" x2="258.0" y2="382" class="ret" marker-end="url(#dashr)"/><text x="342.5" y="377" text-anchor="middle">dashboard</text><line x1="255.0" y1="412" x2="83.0" y2="412" class="ret" marker-end="url(#dashr)"/><text x="167.5" y="407" text-anchor="middle">{ result: dashboard }</text><rect x="88.0" y="429" width="321.0" height="20" rx="4" class="b-note"/><text x="96.0" y="443" class="t-small" text-anchor="start">GenerateColumns → columnDefs; sumsRow → totals row</text></svg></div><figcaption>Figure 3. Dashboard load. The target dashboard draws the grid; the platform gives the tabs, rows, menus and buttons.</figcaption></figure>
+<ol>
+<li>The target <code>cp-atlas-dashboard.ts</code> calls <code>loadDashboard(code)</code>.</li>
+<li><code>CPAtlasController.LoadDashboard(string code)</code> calls <code>CPAtlasService.LoadDashboard(string code)</code>.</li>
+<li>PLATFORM line: <code>resolver.Get&lt;IApplicationService&gt;(app, "dashboard").LoadDashboard()</code>. For TTDV2 this is <code>ConfigSectionService.LoadDashboard</code>, which calls <code>AtlasDashboardService.Load("TTDV2")</code>.</li>
+<li><code>Load</code> checks View access for the app (404 when the app is not available; 403 in <code>Enforce</code>).</li>
+<li>For each tab, it applies the tab rules before any query. A hidden tab gets no rows and no query runs.</li>
+<li>For a tab whose <code>Code</code> is another app, that app must be enabled and its View check must pass.</li>
+<li><code>AtlasTabQueryBuilder.Build</code> makes one SQL query for each visible <code>Source: Table</code> tab. Table and column names come only from the table registry, and each name is quoted (<code>Quote</code>). Each value is a SQL parameter. The query always has the soft-delete condition (<code>[IsDeleted] = 0</code> for a NOT NULL column). <code>[ID] DESC</code> is always the last <code>ORDER BY</code> item. <code>MaxRows</code> gives <code>TOP (@max)</code>.</li>
+<li>A <code>user</code> column gets display names in one query for each 500 LAN IDs (<code>IAtlasUserDirectory.DisplayNames</code>).</li>
+<li>With no <code>Menus</code> in the JSON, the tab menus Edit, History and Delete come from <code>Permissions</code>. The <code>Add</code> button shows only with Create access.</li>
+</ol>
+<div class="table-wrap"><table>
+<tr><th>Tab <code>ID</code></th><th>Label</th><th class="wrap">Filter</th><th class="wrap">OrderBy</th><th class="wrap">Notes</th></tr>
+<tr><td><code>CurrentTaxTimesheet</code></td><td class="wrap">Current Tax Timesheet</td><td class="wrap"><code>Any</code>: <code>CreatedBy</code>, <code>TaxPreparerLanId</code> or <code>ModifiedBy</code> <code>Eq</code> <code>{LanId}</code></td><td class="wrap"><code>ModifiedDate DESC</code>, <code>CreatedDate DESC</code></td><td class="wrap">The rows of the current user. Filtered indexes on the three columns (<code>040</code>).</td></tr>
+<tr><td><code>TaxTimeAllReport</code></td><td class="wrap">Tax-Time All Report</td><td class="wrap">None</td><td class="wrap"><code>CreatedBy</code>, <code>WeekEnding DESC</code></td><td class="wrap"><code>MaxRows: 5000</code>. Day columns and <code>WeeklyTotal</code> have <code>Sum: true</code>.</td></tr>
+<tr><td><code>TaxTimeReport</code></td><td class="wrap">Tax Time Report</td><td class="wrap"><code>TaxPreparerLanId</code> <code>Eq</code> <code>{LanId}</code></td><td class="wrap"><code>WeekEnding DESC</code>, <code>CreatedDate DESC</code></td><td class="wrap">Sums as in the All Report.</td></tr>
+</table></div>
+<h4>Response (short; the values are examples)</h4>
+<pre><code>{ "result": {
+    "AppCode": "TTDV2", "Name": "Tax Time Database", "Code": 0,
+    "Tabs": [ { "ID": "CurrentTaxTimesheet", "Code": "TTDV2", "Label": "Current Tax Timesheet", "Visible": true,
+                "Columns": [ { "Name": "ID", "Hidden": true },
+                             { "Name": "AccountNumber", "Label": "Account Number", "Link": "Edit" }, ... ],
+                "KeyValues": [ { "ID": 10005, "AccountNumber": "...", "WeekEnding": "2026-11-08", ... } ],
+                "Menus": [ { "Name": "Edit", "Visible": true }, ... ] }, ... ],
+    "Buttons": [ { "Name": "Add", "Label": "Add New", "Visible": true, "Target": { "AppCode": "TTDV2", "Id": 0 } } ] } }</code></pre>
+<p class="small"><code>Code</code> is the enum of the current DTO and is not nullable, so it is 0 for TTDV2. A client must use <code>AppCode</code> when it is there. Rows are keyed by the column <code>Name</code>. Dates are text (<code>yyyy-MM-dd</code>, or ISO UTC with <code>Z</code> for <code>datetime</code>).</p>
+<h4>Client side</h4>
+<ul>
+<li><code>GenerateColumns(tab)</code>: for a tab with <code>Columns</code>, the first line returns <code>columnDefs(tab, { edit, history, remove }, ActionMenuComponent)</code>. The current tabs have no <code>Columns</code> and keep the current code.</li>
+<li><code>columnDefs</code>: <code>number</code> gives a numeric column; <code>date</code> shows <code>dd-MMM-yyyy</code> (<code>formatDate</code>) with a date filter on the day that the user sees (<code>cellDay</code>); <code>Link: "Edit"</code> gives a link that opens the record; <code>Hidden: true</code> keeps the value in the row data only. The Actions column uses the target <code>ActionMenuComponent</code>, so TTDV2 rows get the same menu and History Log modal as the current apps.</li>
+<li><code>sumsRow(tab, rows)</code>: the totals of the <code>Sum</code> columns. The first visible column with no <code>Sum</code> shows "Total". The target sets it as <code>pinnedBottomRowData</code> (integration edit in <code>cp-atlas-dashboard.ts</code>). Note: the local reference dashboard (<code>atlas-dashboard.component.html</code>) pins the totals row at the top (<code>pinnedTopRowData</code>). Both work. If you want the same place in both, decide one place and change one of them.</li>
+</ul>
+
+<h3 id="s5-4">5.4 Open a record or a new record</h3>
+<ul>
+<li><b>Add New</b>: <code>onClick(controlName)</code> calls <code>atlasNavigation.open(null, 0, button.Target)</code>. The button <code>Target</code> is <code>{ "AppCode": "TTDV2", "Id": 0 }</code>. The route is <code>/form/TTDV2/0</code>.</li>
+<li><b>Edit</b> (row link or menu): <code>editRow(data)</code> calls <code>atlasNavigation.open(this.applicationCode, data.ID)</code>. The route is <code>/form/TTDV2/10005</code>.</li>
+<li><code>open</code> reads the <code>v1/Application</code> rows one time and keeps them. <code>formRoute(FormType, code, id)</code> maps <code>FORM</code> to <code>/form</code>, <code>SECTION</code> to <code>/sectionmaster</code> and <code>STEPPER</code> to <code>/stepmaster</code>. With no <code>FormType</code> (all current apps), <code>open</code> returns <code>false</code> and the current <code>if</code> chain runs.</li>
+</ul>
+
+<h3 id="s5-5">5.5 Load the section: <code>GET v1/SectionPage?AppCode=TTDV2&amp;ID=n</code></h3>
+<figure id="fig-load"><div class="figwrap"><svg viewBox="0 0 860 488" role="img" aria-labelledby="fig-load-t" xmlns="http://www.w3.org/2000/svg"><title id="fig-load-t">Form load for a TTDV2 record</title><defs><marker id="loada" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="loadr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahm"/></marker></defs><line x1="80.0" y1="60" x2="80.0" y2="480" class="life"/><line x1="220.0" y1="60" x2="220.0" y2="480" class="life"/><line x1="360.0" y1="60" x2="360.0" y2="480" class="life"/><line x1="500.0" y1="60" x2="500.0" y2="480" class="life"/><line x1="640.0" y1="60" x2="640.0" y2="480" class="life"/><line x1="780.0" y1="60" x2="780.0" y2="480" class="life"/><rect x="15.0" y="10" width="130.0" height="44" rx="7" class="b-plat"/><text x="80.0" y="29.0" text-anchor="middle" class="t-bold">AtlasFormComponent</text><text x="80.0" y="43.0" text-anchor="middle" class="t-small">form/TTDV2/10005</text><rect x="155.0" y="10" width="130.0" height="44" rx="7" class="b-target"/><text x="220.0" y="29.0" text-anchor="middle" class="t-bold">CPAtlasController</text><text x="220.0" y="43.0" text-anchor="middle" class="t-small">v1/SectionPage</text><rect x="295.0" y="10" width="130.0" height="44" rx="7" class="b-target"/><text x="360.0" y="29.0" text-anchor="middle" class="t-bold">CPAtlasService</text><text x="360.0" y="43.0" text-anchor="middle" class="t-small">LoadSectionPage</text><rect x="435.0" y="10" width="130.0" height="44" rx="7" class="b-plat"/><text x="500.0" y="29.0" text-anchor="middle" class="t-bold">ConfigSectionService</text><text x="500.0" y="43.0" text-anchor="middle" class="t-small">LoadPage</text><rect x="575.0" y="10" width="130.0" height="44" rx="7" class="b-plat"/><text x="640.0" y="29.0" text-anchor="middle" class="t-bold">Platform services</text><text x="640.0" y="43.0" text-anchor="middle" class="t-small">store, access, rules</text><rect x="715.0" y="10" width="130.0" height="44" rx="7" class="b-data"/><text x="780.0" y="29.0" text-anchor="middle" class="t-bold">SQL Server</text><text x="780.0" y="43.0" text-anchor="middle" class="t-small">TTDV2.General</text><line x1="80.0" y1="82" x2="217.0" y2="82" class="msg" marker-end="url(#loada)"/><text x="150.0" y="77" text-anchor="middle">GET v1/SectionPage?AppCode=TTDV2&amp;ID=10005</text><line x1="220.0" y1="112" x2="357.0" y2="112" class="msg" marker-end="url(#loada)"/><text x="290.0" y="107" text-anchor="middle">LoadSectionPage(page)</text><line x1="360.0" y1="142" x2="497.0" y2="142" class="msg" marker-end="url(#loada)"/><text x="430.0" y="137" text-anchor="middle">PLATFORM: LoadPage(page)</text><line x1="500.0" y1="172" x2="637.0" y2="172" class="msg" marker-end="url(#loada)"/><text x="570.0" y="167" text-anchor="middle">ConfigStore.GetForm(&quot;TTDV2&quot;)</text><line x1="500.0" y1="202" x2="777.0" y2="202" class="msg" marker-end="url(#loada)"/><text x="640.0" y="197" text-anchor="middle">FindActive(TTDV2.General, 10005)</text><line x1="500.0" y1="232" x2="637.0" y2="232" class="msg" marker-end="url(#loada)"/><text x="570.0" y="227" text-anchor="middle">Access.Demand(View)</text><rect x="508.0" y="249" width="284.4" height="20" rx="4" class="b-note"/><text x="516.0" y="263" class="t-small" text-anchor="start">BindValues · LoadOptions · Defaults · OnLoad</text><line x1="500.0" y1="292" x2="637.0" y2="292" class="msg" marker-end="url(#loada)"/><text x="570.0" y="287" text-anchor="middle">Rules.ApplyToSection (MostPermissive, ReadOnly)</text><rect x="508.0" y="309" width="314.9" height="20" rx="4" class="b-note"/><text x="516.0" y="323" class="t-small" text-anchor="start">ClearRuleHiddenValues · Version · UserPermissions</text><line x1="500.0" y1="352" x2="363.0" y2="352" class="ret" marker-end="url(#loadr)"/><text x="430.0" y="347" text-anchor="middle">CPApplicationSection</text><line x1="360.0" y1="382" x2="223.0" y2="382" class="ret" marker-end="url(#loadr)"/><text x="290.0" y="377" text-anchor="middle">section</text><line x1="220.0" y1="412" x2="83.0" y2="412" class="ret" marker-end="url(#loadr)"/><text x="150.0" y="407" text-anchor="middle">{ result: section }</text><rect x="88.0" y="429" width="302.7" height="20" rx="4" class="b-note"/><text x="96.0" y="443" class="t-small" text-anchor="start">buildFormGroup · renderers · effects · computed</text></svg></div><figcaption>Figure 4. Form load. ID 0 skips the record read and demands Create.</figcaption></figure>
+<p>Client: <code>AtlasFormComponent.ngOnInit</code> reads <code>code</code> and <code>id</code> from the route. It calls <code>AtlasApiService.section(code, id)</code> with <code>switchMap</code>, so a new route cancels the load before it. <code>id = 0</code> is a new record.</p>
+<p>Server: <code>CPAtlasController.LoadSectionPage([FromQuery] CPAtlasPage page)</code> calls <code>CPAtlasService.LoadSectionPage</code>. The PLATFORM line calls <code>resolver.Get&lt;ISectionService&gt;(app, "section form").LoadPage(page)</code>. <code>ConfigSectionService.LoadPage</code> does these steps:</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Step</th><th class="wrap">What it does</th></tr>
+<tr><td>1</td><td>Form</td><td class="wrap"><code>ConfigStore.GetForm("TTDV2")</code> gives a new copy of <code>TTDV2.json</code>. <code>MainTable</code> gives <code>TTDV2.General</code> from the registry.</td></tr>
+<tr><td>2</td><td>Record and access</td><td class="wrap">ID &gt; 0: <code>FindActive(table, id, tracking: false)</code> (404 when there is no active row), then <code>Demand(View)</code>. ID = 0: <code>Demand(Create)</code>.</td></tr>
+<tr><td>3</td><td><code>BindValues</code></td><td class="wrap">Puts the stored values into the controls. A <code>grid</code> control with <code>BindMode: SingleRowFields</code> gets one row with the day columns.</td></tr>
+<tr><td>4</td><td><code>LoadOptions</code></td><td class="wrap">Gets the options of each <code>OptionsSource</code> (<code>PBAccounts</code>, <code>Years</code>, <code>UsersInRoles</code>, <code>WeekEndings</code>). With <code>KeepSavedValue</code>, a saved value that is no longer in the list stays as the first option. It sets the <code>Defaults</code> for an empty value. A <code>user</code> control gets the display name as its option.</td></tr>
+<tr><td>5</td><td><code>OnLoad</code></td><td class="wrap">The hook for an app subclass. TTDV2 has no subclass.</td></tr>
+<tr><td>6</td><td>Rules</td><td class="wrap"><code>AtlasRuleEngine.ApplyToSection</code> with <code>RuleMode</code> and <code>RuleDefault</code> of the manifest. Then <code>ClearRuleHiddenValues</code> removes the value and the options of each field that a rule hides. Hidden data does not go to the browser.</td></tr>
+<tr><td>7</td><td>Header and extras</td><td class="wrap"><code>HeaderName</code> from <code>HeaderNameWithId</code> (<code>"{Name} - {ID}"</code>) for a saved record. Adds <code>AppCode</code>, <code>Version</code> (the row version as Base64), <code>UserPermissions</code> and <code>Computed</code>.</td></tr>
+</table></div>
+<h4>Response (short; the values are examples)</h4>
+<pre><code>{ "result": {
+    "Name": "Tax Time Database", "HeaderName": "Tax Time Database Time Sheet - 10005", "AppCode": "TTDV2",
+    "Version": "AAAAAAAAB9E=",
+    "UserPermissions": { "CanCreate": true, "CanEdit": true, "CanDelete": false, "CanViewHistory": true },
+    "Computed": { "WeeklyTotal": "Sum(MondayMinute, TuesdayMinute, ...)" },
+    "Controls": [ { "Name": "TaxTimeDatabase1", "Type": "section", "ChildControls": [
+                    { "Name": "Account", "Type": "ngselect", "Value": "...", "Options": [ { "Label": "...", "Value": "...",
+                      "Data": { "AccountNumber": "...", "AccountName": "..." } } ] }, ... ] }, ... ],
+    "Buttons": [ { "Name": "Submit", "Label": "Save", "Visible": true, "Action": { "Type": "Save" } }, ... ] } }</code></pre>
+<h4>Client build</h4>
+<ul>
+<li><code>buildFormGroup(section)</code> makes the form group. <code>initialFlags</code> gives the visible and required flags.</li>
+<li>The renderer registry (<code>AtlasRendererRegistry</code>) gives the component for each control <code>Type</code>. TTDV2 uses <code>ngselect</code>, <code>text</code>, <code>select</code>, <code>textarea</code>, <code>user</code> and <code>grid</code>. A type with no renderer shows "Unsupported control type" and its control is disabled (not validated, not sent).</li>
+<li><code>wireEffects</code> runs the effects one time and again at each value change. <code>wireComputed</code> shows <code>WeeklyTotal</code> while the user types.</li>
+<li>When <code>canSave()</code> is false (<code>CanEdit</code> for a record, <code>CanCreate</code> for a new record), the form is read-only and has no Save button. Delete shows only for a saved record with <code>CanDelete</code>. History shows only with <code>CanViewHistory</code>.</li>
+</ul>
+
+<h3 id="s5-6">5.6 User edits</h3>
+<div class="table-wrap"><table>
+<tr><th>Mechanism</th><th class="wrap">TTDV2 example</th><th class="wrap">Client file</th><th class="wrap">Server file</th></tr>
+<tr><td>Effects</td><td class="wrap"><code>Account</code> has a value: <code>SetFromOption</code> sets <code>AccountNumber</code> and <code>AccountName</code> from the option <code>Data</code>. No value: <code>Clear</code> both.</td><td class="wrap"><code>form/atlas-effects.ts</code> (<code>applyEffects</code>)</td><td class="wrap"><code>Sections/AtlasServerEffects.cs</code></td></tr>
+<tr><td>Validators</td><td class="wrap"><code>Required</code> on the account, year, category, preparer and week fields. <code>MaxLength: 100</code> on <code>WorkDescription</code>. Grid: <code>Integer</code>, <code>Min: 0</code>, <code>Max: 1440</code>, with a <code>Message</code>.</td><td class="wrap"><code>form/atlas-validators.ts</code></td><td class="wrap"><code>Sections/AtlasFieldValidator.cs</code></td></tr>
+<tr><td>Computed</td><td class="wrap"><code>WeeklyTotal = Sum(MondayMinute, ..., SundayMinute)</code></td><td class="wrap"><code>computeValue</code> in <code>form/atlas-form-model.ts</code></td><td class="wrap"><code>Sections/AtlasComputedFields.cs</code></td></tr>
+<tr><td>Grid header</td><td class="wrap"><code>HeaderFromDate</code>: each day header comes from <code>WeekEnding</code> plus <code>AddDays</code> (-6 to 0), format <code>EEEE dd-MMM-yyyy</code>.</td><td class="wrap"><code>dateHeader</code> in <code>form/renderers/atlas-grid-renderer.ts</code></td><td class="wrap">—</td></tr>
+<tr><td>Cell editors</td><td class="wrap"><code>cellRenderer: "NumericEditor"</code></td><td class="wrap"><code>provideAtlasGridComponents</code> in the target <code>app.config.ts</code></td><td class="wrap">—</td></tr>
+</table></div>
+<p>A field error shows after the user touches the field. The rules do not run again on the client: the client uses the states that the server sent.</p>
+
+<h3 id="s5-7">5.7 Save: <code>POST v1/ManagePage</code></h3>
+<figure id="fig-save"><div class="figwrap"><svg viewBox="0 0 860 488" role="img" aria-labelledby="fig-save-t" xmlns="http://www.w3.org/2000/svg"><title id="fig-save-t">Save of a TTDV2 record</title><defs><marker id="savea" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="saver" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahm"/></marker></defs><line x1="80.0" y1="60" x2="80.0" y2="480" class="life"/><line x1="255.0" y1="60" x2="255.0" y2="480" class="life"/><line x1="430.0" y1="60" x2="430.0" y2="480" class="life"/><line x1="605.0" y1="60" x2="605.0" y2="480" class="life"/><line x1="780.0" y1="60" x2="780.0" y2="480" class="life"/><rect x="5.0" y="10" width="150" height="44" rx="7" class="b-plat"/><text x="80.0" y="29.0" text-anchor="middle" class="t-bold">AtlasFormComponent</text><text x="80.0" y="43.0" text-anchor="middle" class="t-small">save()</text><rect x="180.0" y="10" width="150" height="44" rx="7" class="b-target"/><text x="255.0" y="29.0" text-anchor="middle" class="t-bold">CPAtlasController</text><text x="255.0" y="43.0" text-anchor="middle" class="t-small">CPAtlasService.ManagePage</text><rect x="355.0" y="10" width="150" height="44" rx="7" class="b-plat"/><text x="430.0" y="29.0" text-anchor="middle" class="t-bold">ConfigSectionService</text><text x="430.0" y="43.0" text-anchor="middle" class="t-small">SavePage</text><rect x="530.0" y="10" width="150" height="44" rx="7" class="b-plat"/><text x="605.0" y="29.0" text-anchor="middle" class="t-bold">Platform services</text><text x="605.0" y="43.0" text-anchor="middle" class="t-small">allow list, validator</text><rect x="705.0" y="10" width="150" height="44" rx="7" class="b-data"/><text x="780.0" y="29.0" text-anchor="middle" class="t-bold">SQL Server</text><text x="780.0" y="43.0" text-anchor="middle" class="t-small">General + AuditLog</text><rect x="88.0" y="69" width="229.5" height="20" rx="4" class="b-note"/><text x="96.0" y="83" class="t-small" text-anchor="start">validate shown fields; buildOutputs</text><line x1="80.0" y1="112" x2="252.0" y2="112" class="msg" marker-end="url(#savea)"/><text x="167.5" y="107" text-anchor="middle">POST v1/ManagePage (form field &quot;input&quot;)</text><line x1="255.0" y1="142" x2="427.0" y2="142" class="msg" marker-end="url(#savea)"/><text x="342.5" y="137" text-anchor="middle">PLATFORM: SavePage(page, files)</text><line x1="430.0" y1="172" x2="777.0" y2="172" class="msg" marker-end="url(#savea)"/><text x="605.0" y="167" text-anchor="middle">LoadStored: FindActive + Demand(Edit)</text><line x1="430.0" y1="202" x2="602.0" y2="202" class="msg" marker-end="url(#savea)"/><text x="517.5" y="197" text-anchor="middle">ApplyRules · ReadAndFilter (AtlasAllowList)</text><line x1="430.0" y1="232" x2="602.0" y2="232" class="msg" marker-end="url(#savea)"/><text x="517.5" y="227" text-anchor="middle">ValidateFields (AtlasFieldValidator)</text><rect x="438.0" y="249" width="406.4" height="20" rx="4" class="b-note"/><text x="446.0" y="263" class="t-small" text-anchor="start">CheckVersion · MapRecord · ComputeAndSystemFields · OnBeforeSave</text><line x1="430.0" y1="292" x2="777.0" y2="292" class="msg" marker-end="url(#savea)"/><text x="605.0" y="287" text-anchor="middle">Persist: one transaction, record + audit row</text><line x1="780.0" y1="322" x2="433.0" y2="322" class="ret" marker-end="url(#saver)"/><text x="605.0" y="317" text-anchor="middle">commit, or Conflict / SaveFailed</text><rect x="438.0" y="339" width="278.3" height="20" rx="4" class="b-note"/><text x="446.0" y="353" class="t-small" text-anchor="start">Complete: OnAfterSave; ID, Version, Outputs</text><line x1="430.0" y1="382" x2="258.0" y2="382" class="ret" marker-end="url(#saver)"/><text x="342.5" y="377" text-anchor="middle">CPAtlasPage</text><line x1="255.0" y1="412" x2="83.0" y2="412" class="ret" marker-end="url(#saver)"/><text x="167.5" y="407" text-anchor="middle">page (Errors: at the fields or at the top)</text><rect x="88.0" y="429" width="247.79999999999998" height="20" rx="4" class="b-note"/><text x="96.0" y="443" class="t-small" text-anchor="start">success: toastr, back to the dashboard</text></svg></div><figcaption>Figure 5. Save. An error in a step before Persist stops the save: HTTP 200, ID 0, Errors. Nothing is saved.</figcaption></figure>
+<h4>Client (<code>AtlasFormComponent.save</code>)</h4>
+<ol>
+<li>Mark the shown fields as touched. A control is shown when it and its section are visible.</li>
+<li>If a shown, enabled field is not valid (<code>shownInvalid</code>), open the mandatory-field dialog ("Please make sure all the mandatory fields are filled.") and stop.</li>
+<li>Send <code>AtlasApiService.save(page)</code>: multipart form data with one field <code>input</code> that holds the JSON page. <code>Outputs</code> has only the shown fields (<code>buildOutputs</code>). The grid output is one JSON row.</li>
+</ol>
+<p class="small">The values in the examples below are examples.</p>
+<pre><code>input = { "AppCode": "TTDV2", "ID": 10005, "Version": "AAAAAAAAB9E=",
+          "Outputs": [ { "Name": "Account", "Value": "..." }, { "Name": "TaxYear", "Value": "2026" },
+                       { "Name": "WeeklyHour", "Value": "[{\"MondayMinute\":\"60\", ...}]" }, ... ] }</code></pre>
+<h4>Server (<code>ConfigSectionService.SavePage</code>)</h4>
+<p><code>CPAtlasController.ManagePage([FromForm] files, [FromForm] input)</code> calls <code>CPAtlasService.ManagePage</code>. It reads <code>input</code> with <code>AtlasJson.Deserialize&lt;CPAtlasPage&gt;</code> in the stand-in (the target keeps <code>JsonConvert</code>). The PLATFORM line calls <code>resolver.Get&lt;IApplicationService&gt;(app, "save").SavePage(page, files)</code>. The save runs these methods in this order:</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Method</th><th class="wrap">What it does</th></tr>
+<tr><td>1</td><td><code>LoadStored</code></td><td class="wrap">ID &gt; 0: reads the active record (404 when there is none) and demands Edit. ID = 0: demands Create. A refused Create gives 403 in all access modes.</td></tr>
+<tr><td>2</td><td><code>ApplyRules</code></td><td class="wrap">Runs the rules again on the server for this user and record.</td></tr>
+<tr><td>3</td><td><code>ReadAndFilter</code></td><td class="wrap">Reads the outputs (an unknown name gives <code>NotAllowed</code>, grid JSON that does not parse gives <code>InvalidGrid</code>). Applies the server effects. <code>AtlasAllowList.Check</code>: a hidden or disabled field with a changed value gives <code>NotAllowed</code>; a changed value that is not an option gives <code>NotInOptions</code>; a system column, a <code>Computed</code> field or an effect target is set by the server (the sent value is ignored, <code>Atlas.FieldIgnored</code>). Each refusal logs <code>Atlas.FieldRefused</code>.</td></tr>
+<tr><td>4</td><td><code>ValidateFields</code></td><td class="wrap">Runs the validators on the visible, enabled fields. An empty grid day value with <code>Integer</code> saves 0. Each field gets one error at most.</td></tr>
+<tr><td>5</td><td><code>CheckVersion</code></td><td class="wrap">With a rowversion column: no <code>Version</code> gives <code>VersionRequired</code> (when <code>RequireVersion</code> is true, the default); a different version gives <code>Conflict</code>.</td></tr>
+<tr><td>6</td><td><code>MapRecord</code></td><td class="wrap">Converts each text value to the column type (<code>AtlasValueConverter.FromWire</code>). Sets the effect values and, for a new record, the <code>Defaults</code>.</td></tr>
+<tr><td>7</td><td><code>ComputeAndSystemFields</code></td><td class="wrap">Calculates <code>WeeklyTotal</code>. Sets <code>CreatedBy</code>, <code>CreatedDate</code>, <code>IsDeleted = false</code> for a new record, and <code>ModifiedBy</code>, <code>ModifiedDate</code> always. Times come from <code>TimeProvider</code> (UTC unless <code>SystemTime</code> is <code>Local</code>).</td></tr>
+<tr><td>8</td><td><code>RunBeforeSave</code></td><td class="wrap">The <code>OnBeforeSave</code> hook. Its errors stop the save.</td></tr>
+<tr><td>9</td><td><code>Persist</code></td><td class="wrap"><code>SaveWithAudit</code>: one transaction (<code>BeginSharedTransaction</code>) for the record and the audit row. No audit row when nothing changed. A concurrency failure gives <code>Conflict</code>. A database failure gives <code>SaveFailed</code> and logs <code>Atlas.SaveFailed</code>.</td></tr>
+<tr><td>10</td><td><code>Complete</code></td><td class="wrap">Runs <code>OnAfterSave</code> (an exception is logged as <code>Atlas.AfterSaveFailed</code>; the save still succeeds). Returns <code>ID</code>, <code>Version</code> and <code>Outputs</code> (no rule-hidden fields).</td></tr>
+</table></div>
+<p>When a step from 1 to 8 finds errors, the save stops. The response is HTTP 200 with <code>ID = 0</code>, no outputs and an <code>Errors</code> list. Nothing is saved.</p>
+<pre><code>Success: { "AppCode": "TTDV2", "ID": 10005, "Version": "AAAAAAAAB+o=", "Outputs": [ ... ] }
+Errors:  { "AppCode": "TTDV2", "ID": 0, "Outputs": [],
+           "Errors": [ { "Field": "MondayMinute", "Code": "...", "Message": "Enter whole minutes from 0 to 1440." } ] }</code></pre>
+<p class="small"><code>ManagePage</code> and <code>RemovePage</code> return the page directly. The GET endpoints and <code>AuditLog</code> wrap the result in <code>{ "result": ... }</code>.</p>
+<h4>Client after the response</h4>
+<ul>
+<li>Errors: an error of an enabled field shows at that field. Other errors show at the top of the form.</li>
+<li>Success: the toastr message "Record saved successfully" shows, and the form goes back to the dashboard (<code>ATLAS_DASHBOARD_LINK</code>).</li>
+<li>HTTP failure: one error at the top with <code>problemText(error)</code>.</li>
+</ul>
+
+<h3 id="s5-8">5.8 History: <code>GET v1/GetAuditLog?appCode=TTDV2&amp;refID=n</code></h3>
+<ul>
+<li>From the dashboard, the History menu opens the target History Log modal (<code>historyRow</code>). From the form, the History button opens <code>AtlasHistoryDialog</code> (<code>atlas-history-dialog.ts</code>). Both call <code>v1/GetAuditLog</code>.</li>
+<li><code>CPAtlasService.GetAuditLog</code>, PLATFORM line: <code>resolver.Get&lt;IApplicationService&gt;(app, "audit log").GetAuditLog(app, refID)</code>.</li>
+<li><code>ConfigSectionService.GetAuditLog</code> reads the record with no tracking, demands History, and reads the entries with <code>AtlasAuditWriter.Read</code> (oldest first). Without <code>AuditRefTypes</code> and <code>Parent</code> there is no <code>RefType</code> filter, so the copied <code>TTD</code> entries also show.</li>
+<li>For a field that a rule hides from the reader, <code>AtlasAuditMask.Mask</code> shows <code>***</code> for the old and new value. A control with <code>Audit: false</code> is stored as <code>***</code>.</li>
+<li><code>AtlasAuditWriter.ToText</code> gives the <code>LogMessage</code> as JSON text in the target format. The target History Log does <code>JSON.parse</code> and shows "Name - Value".</li>
+</ul>
+<pre><code>Stored LogMessage: [ {"Name":"_Event","Value":"Update"}, {"Name":"TaxYear","Label":"Tax Year","Old":"2025","Value":"2026"} ]
+Response row:      { "AppCode": "TTDV2", "RefID": 10005, "CreatedBy": "...", "CreatedDate": "...",
+                     "Event": "Update", "LogMessage": "[{\"Name\":\"TaxYear\",...}]" }</code></pre>
+<p class="small"><code>POST v1/AuditLog</code> (the old client audit call) does nothing for TTDV2. <code>ConfigSectionService.AuditLog</code> only logs <code>Atlas.ClientAuditIgnored</code>, because <code>AuditMode</code> is <code>Server</code>.</p>
+
+<h3 id="s5-9">5.9 Delete: <code>POST v1/RemovePage?code=TTDV2&amp;id=n</code></h3>
+<figure id="fig-del"><div class="figwrap"><svg viewBox="0 0 860 518" role="img" aria-labelledby="fig-del-t" xmlns="http://www.w3.org/2000/svg"><title id="fig-del-t">History and delete of a TTDV2 record</title><defs><marker id="dela" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="delr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahm"/></marker></defs><line x1="80.0" y1="60" x2="80.0" y2="510" class="life"/><line x1="255.0" y1="60" x2="255.0" y2="510" class="life"/><line x1="430.0" y1="60" x2="430.0" y2="510" class="life"/><line x1="605.0" y1="60" x2="605.0" y2="510" class="life"/><line x1="780.0" y1="60" x2="780.0" y2="510" class="life"/><rect x="5.0" y="10" width="150" height="44" rx="7" class="b-plat"/><text x="80.0" y="29.0" text-anchor="middle" class="t-bold">Form or dashboard</text><text x="80.0" y="43.0" text-anchor="middle" class="t-small">client</text><rect x="180.0" y="10" width="150" height="44" rx="7" class="b-target"/><text x="255.0" y="29.0" text-anchor="middle" class="t-bold">CPAtlasController</text><text x="255.0" y="43.0" text-anchor="middle" class="t-small">CPAtlasService</text><rect x="355.0" y="10" width="150" height="44" rx="7" class="b-plat"/><text x="430.0" y="29.0" text-anchor="middle" class="t-bold">ConfigSectionService</text><text x="430.0" y="43.0" text-anchor="middle" class="t-small">GetAuditLog, RemovePage</text><rect x="530.0" y="10" width="150" height="44" rx="7" class="b-plat"/><text x="605.0" y="29.0" text-anchor="middle" class="t-bold">AtlasAccessService</text><text x="605.0" y="43.0" text-anchor="middle" class="t-small">AtlasAuditWriter</text><rect x="705.0" y="10" width="150" height="44" rx="7" class="b-data"/><text x="780.0" y="29.0" text-anchor="middle" class="t-bold">SQL Server</text><text x="780.0" y="43.0" text-anchor="middle" class="t-small">General + AuditLog</text><line x1="80.0" y1="82" x2="252.0" y2="82" class="msg" marker-end="url(#dela)"/><text x="167.5" y="77" text-anchor="middle">GET v1/GetAuditLog?appCode=TTDV2&amp;refID=10005</text><line x1="255.0" y1="112" x2="427.0" y2="112" class="msg" marker-end="url(#dela)"/><text x="342.5" y="107" text-anchor="middle">PLATFORM: GetAuditLog(app, refID)</text><line x1="430.0" y1="142" x2="602.0" y2="142" class="msg" marker-end="url(#dela)"/><text x="517.5" y="137" text-anchor="middle">Demand(History)</text><line x1="605.0" y1="172" x2="777.0" y2="172" class="msg" marker-end="url(#dela)"/><text x="692.5" y="167" text-anchor="middle">read TTDV2.AuditLog (oldest first)</text><line x1="780.0" y1="202" x2="433.0" y2="202" class="ret" marker-end="url(#delr)"/><text x="605.0" y="197" text-anchor="middle">entries</text><rect x="438.0" y="219" width="192.89999999999998" height="20" rx="4" class="b-note"/><text x="446.0" y="233" class="t-small" text-anchor="start">AtlasAuditMask (***) · ToText</text><line x1="430.0" y1="262" x2="258.0" y2="262" class="ret" marker-end="url(#delr)"/><text x="342.5" y="257" text-anchor="middle">List&lt;CPAuditLog&gt;</text><line x1="255.0" y1="292" x2="83.0" y2="292" class="ret" marker-end="url(#delr)"/><text x="167.5" y="287" text-anchor="middle">{ result: entries }</text><line x1="80.0" y1="322" x2="252.0" y2="322" class="msg" marker-end="url(#dela)"/><text x="167.5" y="317" text-anchor="middle">POST v1/RemovePage?code=TTDV2&amp;id=10005</text><line x1="255.0" y1="352" x2="427.0" y2="352" class="msg" marker-end="url(#dela)"/><text x="342.5" y="347" text-anchor="middle">PLATFORM: RemovePage(id)</text><line x1="430.0" y1="382" x2="602.0" y2="382" class="msg" marker-end="url(#dela)"/><text x="517.5" y="377" text-anchor="middle">Demand(Delete): 403 in all modes when refused</text><line x1="430.0" y1="412" x2="777.0" y2="412" class="msg" marker-end="url(#dela)"/><text x="605.0" y="407" text-anchor="middle">one transaction: IsDeleted = 1, Modified* + Delete audit row</text><line x1="780.0" y1="442" x2="433.0" y2="442" class="ret" marker-end="url(#delr)"/><text x="605.0" y="437" text-anchor="middle">commit</text><line x1="255.0" y1="472" x2="83.0" y2="472" class="ret" marker-end="url(#delr)"/><text x="167.5" y="467" text-anchor="middle">Outputs: IsDeleted = Yes</text></svg></div><figcaption>Figure 6. History (top part) and delete (bottom part).</figcaption></figure>
+<ol>
+<li>Form: the Delete button opens a confirmation ("Delete record n? The record is marked as deleted and leaves the dashboard."). Yes calls <code>AtlasApiService.remove(code, id)</code>. Dashboard: the Delete menu calls the target <code>deleteRow</code>.</li>
+<li><code>CPAtlasController.RemovePage(string code, int id)</code> calls <code>CPAtlasService.RemovePage(string code, int id)</code>. PLATFORM line: <code>resolver.Get&lt;IApplicationService&gt;(app, "delete").RemovePage(id)</code>.</li>
+<li><code>ConfigSectionService.RemovePage</code> reads the active record (404 when there is none) and demands Delete. A refused Delete gives 403 also in <code>LogOnly</code>.</li>
+<li>It sets the <code>SoftDelete.Field</code> (<code>IsDeleted</code>) to true and sets <code>ModifiedBy</code> and <code>ModifiedDate</code>.</li>
+<li><code>SaveWithAudit</code> writes the record and a <code>Delete</code> audit row in one transaction.</li>
+<li>The response is <code>{ "AppCode": "TTDV2", "ID": 10005, "Outputs": [ { "Name": "IsDeleted", "Value": "Yes" } ] }</code>. The form shows "Record deleted successfully" and goes back to the dashboard.</li>
+</ol>
+<p>The row stays in <code>TTDV2.General</code>. All reads use <code>FindActive</code> and the dashboard filter, so a deleted record is not in any tab.</p>
+
+<h3 id="s5-10">5.10 Summary of the flow</h3>
+<div class="table-wrap"><table>
+<tr><th>Step</th><th class="wrap">Angular</th><th class="wrap">Endpoint</th><th class="wrap">Target method and PLATFORM line</th><th class="wrap">Platform service</th><th class="wrap">Tables and views</th></tr>
+<tr><td>Menu</td><td class="wrap">target app component; <code>AtlasApiService.applications</code></td><td class="wrap"><code>GET v1/Application</code></td><td class="wrap"><code>GetApplication</code>: <code>AtlasApplicationMenu.Enrich</code> after the procedure</td><td class="wrap"><code>AtlasApplicationMenu</code>, <code>AtlasModuleResolver</code></td><td class="wrap"><code>dbo.Get_Application</code> (current)</td></tr>
+<tr><td>Dashboard</td><td class="wrap"><code>cp-atlas-dashboard.ts</code> + <code>columnDefs</code>, <code>sumsRow</code></td><td class="wrap"><code>GET v1/Dashboard?code=</code></td><td class="wrap"><code>LoadDashboard(string code)</code></td><td class="wrap"><code>AtlasDashboardService</code>, <code>AtlasTabQueryBuilder</code>, <code>AtlasAccessService</code></td><td class="wrap"><code>TTDV2.General</code>, <code>dbo.vw_CP_Atlas_ActiveUserRole</code>, <code>dbo.CP_Atlas_User</code></td></tr>
+<tr><td>Navigate</td><td class="wrap"><code>AtlasDashboardNavigation.open</code></td><td class="wrap">(rows of <code>v1/Application</code>)</td><td class="wrap">—</td><td class="wrap">—</td><td class="wrap">—</td></tr>
+<tr><td>Load</td><td class="wrap"><code>AtlasFormComponent</code></td><td class="wrap"><code>GET v1/SectionPage?AppCode=&amp;ID=</code></td><td class="wrap"><code>LoadSectionPage(page)</code></td><td class="wrap"><code>ConfigSectionService.LoadPage</code>, <code>AtlasRuleEngine</code>, option providers</td><td class="wrap"><code>TTDV2.General</code>, role view, PB accounts (current external service)</td></tr>
+<tr><td>Save</td><td class="wrap"><code>AtlasFormComponent.save</code></td><td class="wrap"><code>POST v1/ManagePage</code> (form field <code>input</code>)</td><td class="wrap"><code>ManagePage(files, input)</code></td><td class="wrap"><code>ConfigSectionService.SavePage</code>, <code>AtlasAllowList</code>, <code>AtlasFieldValidator</code>, <code>AtlasAuditWriter</code></td><td class="wrap"><code>TTDV2.General</code>, <code>TTDV2.AuditLog</code></td></tr>
+<tr><td>History</td><td class="wrap"><code>AtlasHistoryDialog</code> or target History Log</td><td class="wrap"><code>GET v1/GetAuditLog?appCode=&amp;refID=</code></td><td class="wrap"><code>GetAuditLog(appCode, refID)</code></td><td class="wrap"><code>ConfigSectionService.GetAuditLog</code>, <code>AtlasAuditMask</code></td><td class="wrap"><code>TTDV2.AuditLog</code></td></tr>
+<tr><td>Delete</td><td class="wrap"><code>AtlasFormComponent.remove</code> or target <code>deleteRow</code></td><td class="wrap"><code>POST v1/RemovePage?code=&amp;id=</code></td><td class="wrap"><code>RemovePage(string code, int id)</code></td><td class="wrap"><code>ConfigSectionService.RemovePage</code></td><td class="wrap"><code>TTDV2.General</code>, <code>TTDV2.AuditLog</code></td></tr>
+<tr><td>Client audit</td><td class="wrap">(old callers)</td><td class="wrap"><code>POST v1/AuditLog</code></td><td class="wrap"><code>AuditLog(input)</code></td><td class="wrap"><code>ConfigSectionService.AuditLog</code> (log only)</td><td class="wrap">—</td></tr>
+</table></div>
+</section>
+
+<!-- ============================== 6 ============================== -->
+<section id="s6">
+<h2>6. Config files and a new app</h2>
+<p>The config files are in <code>BBH.CP.Atlas.App/Config/</code> (<code>AppSettings:ConfigFolder</code>, default <code>Config</code>, relative to the content root). The <code>.csproj</code> copies them to the output (<code>CopyToOutputDirectory="PreserveNewest"</code>). The JSON files can have <code>//</code> comments. JSON keys are stable identifiers.</p>
+<h3>6.1 Manifest: <code>TTDV2.app.json</code> (<code>AtlasAppManifest</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th>TTDV2</th><th class="wrap">Meaning</th></tr>
+<tr><td><code>Code</code></td><td><code>TTDV2</code></td><td class="wrap">The app code. Must agree with the <code>AddAtlasModule</code> line and the <code>dbo.CP_Atlas_Application</code> row.</td></tr>
+<tr><td><code>Name</code></td><td>Tax Time Database</td><td class="wrap">Display name (fallback for the form header).</td></tr>
+<tr><td><code>FormType</code></td><td><code>FORM</code></td><td class="wrap">Selects the client route (<code>formRoute</code>). Default <code>FORM</code>.</td></tr>
+<tr><td><code>Parent</code></td><td><code>null</code></td><td class="wrap">Code of the parent app for a child app (role scope).</td></tr>
+<tr><td><code>Form</code>, <code>Dashboard</code></td><td><code>TTDV2.json</code>, <code>TTDV2.Dashboard.json</code></td><td class="wrap">File names in the config folder. A path outside the folder is an error.</td></tr>
+<tr><td><code>Table</code></td><td><code>TTDV2.General</code></td><td class="wrap">The main table (<code>Schema.Name</code>).</td></tr>
+<tr><td><code>AuditTable</code></td><td><code>TTDV2.AuditLog</code></td><td class="wrap">The audit table.</td></tr>
+<tr><td><code>AttachmentTable</code></td><td><code>null</code></td><td class="wrap">No attachments in P1.</td></tr>
+<tr><td><code>Service</code></td><td><code>null</code></td><td class="wrap">Name of an app subclass of <code>ConfigSectionService</code>. Null for the generic service.</td></tr>
+<tr><td><code>AccessMode</code></td><td><code>LogOnly</code></td><td class="wrap"><code>LogOnly</code> or <code>Enforce</code> (section 8). The setting can override it.</td></tr>
+<tr><td><code>AuditMode</code></td><td><code>Server</code></td><td class="wrap"><code>Server</code> (the platform writes the audit) or <code>Client</code>.</td></tr>
+<tr><td><code>AuditTime</code></td><td><code>Utc</code></td><td class="wrap">Time base of the audit dates.</td></tr>
+<tr><td><code>RuleMode</code></td><td><code>MostPermissive</code></td><td class="wrap">How matched rules combine: <code>FirstMatch</code> or <code>MostPermissive</code>.</td></tr>
+<tr><td><code>RuleDefault</code></td><td><code>ReadOnly</code></td><td class="wrap">The result when no rule matches: <code>Keep</code>, <code>ReadOnly</code> or <code>Hidden</code>.</td></tr>
+<tr><td><code>Enabled</code></td><td><code>true</code></td><td class="wrap">On or off. The setting <code>AppSettings:Modules:TTDV2:Enabled</code> overrides it (rollback switch).</td></tr>
+<tr><td class="wrap">Optional, not in TTDV2</td><td>—</td><td class="wrap"><code>AuditRefTypes</code> (the <code>RefType</code> values that History reads), <code>SystemTime</code> (<code>Utc</code> or <code>Local</code> for <code>CreatedDate</code>/<code>ModifiedDate</code>), <code>RequireVersion</code> (default <code>true</code>), <code>SchemaVersion</code> (1).</td></tr>
+</table></div>
+<h3>6.2 Form: <code>TTDV2.json</code> (<code>CPAtlasApplicationConfig</code>)</h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th class="wrap">TTDV2 value</th><th class="wrap">Meaning</th></tr>
+<tr><td><code>Name</code>, <code>Type</code></td><td class="wrap">"Tax Time Database", <code>SECTION</code></td><td class="wrap">Form name and type (current DTO keys).</td></tr>
+<tr><td><code>OwnerFields</code></td><td class="wrap"><code>["CreatedBy", "TaxPreparerLanId"]</code></td><td class="wrap">Columns that hold the owner LAN ID. A new record is always owned.</td></tr>
+<tr><td><code>Rules</code></td><td class="wrap">3 rules: <code>@Read</code> disabled; <code>Prepare</code> + <code>IsOwner</code> enabled; <code>@Admin</code> enabled</td><td class="wrap">App-level rules: the default for each top-level control with no own rules (section 8.4).</td></tr>
+<tr><td><code>Permissions</code></td><td class="wrap"><code>View: [@Read]</code>, <code>Create: [Prepare, Owner]</code>, <code>Edit: { Own: [Prepare], All: [Owner] }</code>, <code>Delete: [Owner]</code>, <code>History: [@Read]</code></td><td class="wrap">Who can do each operation. Required for a platform form (start-up error without it).</td></tr>
+<tr><td><code>Defaults</code></td><td class="wrap"><code>TaxYear: {Options[1]}</code>, <code>WeekEnding: {Options[0]}</code>, <code>TaxPreparer: {User.LanID}</code></td><td class="wrap">Values for a new record, by control name.</td></tr>
+<tr><td><code>Computed</code></td><td class="wrap"><code>WeeklyTotal: Sum(...)</code></td><td class="wrap">Server-calculated columns. Functions: <code>Sum</code>, <code>Count</code>, <code>Min</code>, <code>Max</code>.</td></tr>
+<tr><td><code>SoftDelete</code></td><td class="wrap"><code>{ "Field": "IsDeleted" }</code></td><td class="wrap">The delete column. Must be <code>IsDeleted</code>.</td></tr>
+<tr><td><code>HeaderNameWithId</code></td><td class="wrap"><code>{Name} - {ID}</code></td><td class="wrap">Header text for a saved record.</td></tr>
+<tr><td><code>Section</code></td><td class="wrap"><code>Name</code>, <code>Description</code>, <code>HeaderName</code>, <code>Controls</code>, <code>Buttons</code></td><td class="wrap">The form layout.</td></tr>
+</table></div>
+<h3>6.3 Controls and buttons</h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th class="wrap">Meaning and TTDV2 example</th></tr>
+<tr><td><code>Name</code></td><td class="wrap">Control name (stable identifier). The output name in a save.</td></tr>
+<tr><td><code>Field</code></td><td class="wrap">The column in the main table. <code>TaxPreparer</code> maps to <code>TaxPreparerLanId</code>.</td></tr>
+<tr><td><code>Label</code>, <code>PlaceHolder</code></td><td class="wrap">Display texts.</td></tr>
+<tr><td><code>Type</code></td><td class="wrap">Selects the renderer: <code>section</code> (container with <code>ChildControls</code>), <code>text</code>, <code>select</code>, <code>ngselect</code>, <code>textarea</code>, <code>date</code>, <code>datetimepicker</code>, <code>checkbox</code>, <code>check</code>, <code>option</code>, <code>currency</code>, <code>percent</code>, <code>user</code>, <code>grid</code>.</td></tr>
+<tr><td><code>Class</code>, <code>DivClass</code></td><td class="wrap">CSS classes. TTDV2 uses Tailwind classes (<code>grid grid-cols-3 gap-6 items-start p-8 bg-white</code>) and <code>grid-column-start-end-1-2</code> (in <code>atlas-platform.scss</code>).</td></tr>
+<tr><td><code>Disabled</code>, <code>Visible</code></td><td class="wrap">Initial state. <code>AccountNumber</code>, <code>AccountName</code>, <code>ModifiedBy</code> are disabled.</td></tr>
+<tr><td><code>Multiple</code></td><td class="wrap">Multi-select. <code>Account</code> has <code>false</code>.</td></tr>
+<tr><td><code>Options</code></td><td class="wrap">Fixed options: <code>Category</code> = <code>OTHER</code>, <code>STMT_N</code>, <code>TAX_N</code>.</td></tr>
+<tr><td><code>OptionsSource</code></td><td class="wrap"><code>Provider</code> + <code>Roles</code> or <code>Parameters</code>. TTDV2: <code>PBAccounts</code>; <code>Years</code> (<code>Before: 3</code>, <code>After: 1</code>); <code>UsersInRoles</code> (<code>Roles: [Prepare, Owner]</code>); <code>WeekEndings</code> (<code>Count: 4</code>, <code>DayOfWeek: Sunday</code>).</td></tr>
+<tr><td><code>KeepSavedValue</code></td><td class="wrap">A saved value that is no longer an option stays valid and shows.</td></tr>
+<tr><td><code>Effects</code></td><td class="wrap"><code>When</code> (<code>HasValue</code>, <code>Equals</code>, <code>NotEquals</code>, <code>In</code>) + <code>Show</code>, <code>Hide</code>, <code>Require</code>, <code>Unrequire</code>, <code>Enable</code>, <code>Disable</code>, <code>Set</code>, <code>Clear</code>, <code>SetFromOption</code>.</td></tr>
+<tr><td><code>Validator</code></td><td class="wrap"><code>Required</code>, <code>MaxLength</code>, <code>MinLength</code>, <code>Pattern</code>, <code>Integer</code>, <code>Min</code>, <code>Max</code>, <code>Message</code>.</td></tr>
+<tr><td><code>Audit</code></td><td class="wrap"><code>false</code> stores <code>***</code> in the audit. Not used by TTDV2.</td></tr>
+<tr><td><code>Grid</code></td><td class="wrap"><code>BindMode: SingleRowFields</code> (each column is a field of the main table), <code>Columns</code> (ag-grid keys: <code>headerName</code>, <code>field</code>, <code>width</code>, <code>cellRenderer</code>, <code>cellRendererParams</code>, <code>wrapHeaderText</code>, <code>autoHeaderHeight</code>, platform key <code>HeaderFromDate</code>), <code>Paginate</code>.</td></tr>
+<tr><td>Button keys</td><td class="wrap"><code>Name</code>, <code>Label</code>, <code>Visible</code>, <code>Disabled</code>, <code>Action.Type</code> (<code>Save</code>, <code>Delete</code>, <code>Close</code>), <code>Rules</code>. TTDV2: <code>Submit</code> (Prepare owner or <code>@Admin</code>), <code>Delete</code> (<code>Owner</code>), <code>Close</code>.</td></tr>
+</table></div>
+<h3>6.4 Dashboard: <code>TTDV2.Dashboard.json</code></h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th class="wrap">Meaning</th></tr>
+<tr><td><code>Name</code></td><td class="wrap">Dashboard name.</td></tr>
+<tr><td><code>Tabs[].ID</code>, <code>Code</code>, <code>Label</code></td><td class="wrap">Tab identifier, the app of the rows, the tab text.</td></tr>
+<tr><td><code>Source</code></td><td class="wrap"><code>Table</code>: rows from the app table. A tab has a <code>Procedure</code> or <code>Source: Table</code>; the platform runs only <code>Table</code> tabs.</td></tr>
+<tr><td><code>Filter</code></td><td class="wrap">List of conditions joined with AND. <code>Any</code> is a group joined with OR. Keys: <code>Column</code>, <code>Op</code> (<code>Eq</code>, <code>NotEq</code>, <code>In</code>, <code>IsNull</code>, <code>NotNull</code>, <code>Gt</code>, <code>Lt</code>; default <code>Eq</code>), <code>Value</code>, <code>Values</code>. Value tokens: <code>{LanId}</code>, <code>{AppCode}</code>, <code>{TabCode}</code>.</td></tr>
+<tr><td><code>OrderBy</code></td><td class="wrap">List of <code>"Column [DESC]"</code>.</td></tr>
+<tr><td><code>MaxRows</code></td><td class="wrap">Row limit (<code>TOP</code>). Must be greater than 0.</td></tr>
+<tr><td><code>Columns</code></td><td class="wrap"><code>Name</code>, <code>Label</code>, <code>Type</code> (<code>number</code>, <code>date</code>, <code>user</code>), <code>Format</code>, <code>Hidden</code>, <code>Width</code>, <code>Link</code> (<code>Edit</code>), <code>Sum</code>.</td></tr>
+<tr><td><code>Rules</code>, <code>Menus</code></td><td class="wrap">Tab rules (default Hidden when no rule matches) and row menus. TTDV2 has none: menus come from <code>Permissions</code>.</td></tr>
+<tr><td><code>Buttons</code></td><td class="wrap"><code>Add</code> with <code>Target: { AppCode: TTDV2, Id: 0 }</code>.</td></tr>
+</table></div>
+<h3>6.5 Tokens</h3>
+<div class="table-wrap"><table>
+<tr><th>Token</th><th>Where</th><th class="wrap">Value</th></tr>
+<tr><td><code>{User.LanID}</code></td><td>Defaults</td><td class="wrap">The LAN ID of the current user.</td></tr>
+<tr><td><code>{User.DisplayName}</code></td><td>Defaults</td><td class="wrap">The display name of the current user.</td></tr>
+<tr><td><code>{Today}</code></td><td>Defaults</td><td class="wrap">The local date of today (<code>TimeProvider</code>).</td></tr>
+<tr><td><code>{Options[n]}</code></td><td>Defaults</td><td class="wrap">The value of option n of the control. TTDV2 <code>Years</code> starts with next year, so <code>{Options[1]}</code> is this year.</td></tr>
+<tr><td><code>{LanId}</code>, <code>{AppCode}</code>, <code>{TabCode}</code></td><td>Dashboard filters</td><td class="wrap">The current user, the app code, the tab code.</td></tr>
+</table></div>
+<h3>6.6 How to add a new app</h3>
+<p>A new platform app needs no new C# and no new TypeScript. Use TTDV2 as the example.</p>
+<ol>
+<li>Write the SQL script from <a href="sql/05-new-app-template.sql">sql/05-new-app-template.sql</a>: schema, main table (typed columns, <code>ID int IDENTITY</code>, <code>IsDeleted bit NOT NULL DEFAULT 0</code>, <code>rowversion</code>, <code>nvarchar</code> for free text), audit table, app row, roles. Add the <code>CP_Atlas_ScriptLog</code> row inside the main transaction. Put it in a release folder as <code>040</code> is.</li>
+<li>Write <code>&lt;CODE&gt;.app.json</code>, <code>&lt;CODE&gt;.json</code> and <code>&lt;CODE&gt;.Dashboard.json</code> in <code>Config/</code>.</li>
+<li>Add one line to <code>program.cs</code>: <code>builder.Services.AddAtlasModule&lt;ConfigSectionService&gt;("&lt;CODE&gt;");</code>.</li>
+<li>Add <code>AppSettings:Modules:&lt;CODE&gt;</code> (<code>Enabled</code>, <code>AccessMode</code>) to the <code>appsettings.json</code> of each environment.</li>
+<li>Add each new Tailwind class of the JSON to the <code>safelist</code> in <code>tailwind.config.js</code>.</li>
+<li>Run <code>--atlas-check</code>. The result must be 0 errors.</li>
+<li>Restart the app pool. Give roles to the testers only.</li>
+<li>Test the new app (dashboard, add, edit, history, delete) and one current app.</li>
+</ol>
+<p>An app that needs custom logic gets a subclass of <code>ConfigSectionService</code> with <code>OnLoad</code>, <code>OnBeforeSave</code> or <code>OnAfterSave</code> (or <code>AppOptionProviders</code>), and its name in the manifest <code>Service</code>. A module reads through the raw contexts only and changes the record in <code>OnBeforeSave</code>. <code>OnAfterSave</code> must not throw. Ask before you add app code (section 12).</p>
+</section>
+
+<!-- ============================== 7 ============================== -->
+<section id="s7">
+<h2>7. Database</h2>
+<h3>7.1 Objects</h3>
+<div class="table-wrap"><table>
+<tr><th>Object</th><th>Script</th><th class="wrap">Use</th></tr>
+<tr><td><code>dbo.CP_Atlas_ScriptLog</code></td><td><code>020</code></td><td class="wrap">One row for each platform script that ran (<code>ScriptName</code>, <code>Release</code>, <code>AppliedAtUtc</code>, <code>AppliedBy</code>). The API does not write to it.</td></tr>
+<tr><td><code>dbo.vw_CP_Atlas_ActiveUserRole</code></td><td><code>030</code></td><td class="wrap">The active roles of each user: joins <code>CP_Atlas_User</code>, <code>CP_Atlas_UserEntitlement</code>, <code>CP_Atlas_Entitlement</code> and <code>CP_Atlas_Application</code>, with only rows that are not deleted. Columns include <code>LanId</code>, <code>ApplicationCode</code>, <code>RoleName</code>, <code>IsRead</code>, <code>IsWrite</code>, <code>IsAdmin</code>.</td></tr>
+<tr><td>Schema <code>TTDV2</code>, <code>TTDV2.General</code></td><td><code>040</code></td><td class="wrap">The main table: <code>ID int IDENTITY(10000,1)</code>, typed business columns, <code>TaxPreparerLanId</code>, system columns, <code>IsDeleted bit NOT NULL DEFAULT 0</code>, <code>RowVersion rowversion</code>. Filtered indexes on <code>CreatedBy</code>, <code>TaxPreparerLanId</code>, <code>ModifiedBy</code> <code>WHERE [IsDeleted] = 0</code>.</td></tr>
+<tr><td><code>TTDV2.AuditLog</code></td><td><code>040</code></td><td class="wrap">Standard audit shape (<code>RefID</code>, <code>RefType</code>, <code>CreatedBy</code>, <code>CreatedByLanId</code>, <code>CreatedDate</code>, <code>LogMessage</code>). Index on <code>RefID</code>, <code>RefType</code>.</td></tr>
+<tr><td>App row and roles</td><td><code>040</code></td><td class="wrap">One <code>dbo.CP_Atlas_Application</code> row (<code>TTDV2</code>) and the roles <code>Read</code>, <code>Prepare</code>, <code>Owner</code> in <code>dbo.CP_Atlas_Entitlement</code>. The user grants go in <code>dbo.CP_Atlas_UserEntitlement</code> (current table).</td></tr>
+</table></div>
+<p>The platform does not change a current table. The current TTD tables are only read by <code>050</code>. Database changes are SQL scripts only. Do not use EF migrations, <code>EnsureCreated</code> or automatic seeding for platform tables. If you scaffold <code>CPSharepointContext</code> again, leave out the TTDV2 tables, <code>CP_Atlas_ScriptLog</code> and the view: <code>AtlasPlatformContext</code> maps them.</p>
+<h3>7.2 Scripts and when to run them</h3>
+<p>Folder: <a href="../../atlas-platform/sql/release-p1/README.md">sql/release-p1/</a>. Run in number order with SSMS or <code>sqlcmd -I -b</code>. Each script is additive, idempotent and writes its <code>CP_Atlas_ScriptLog</code> row inside its main transaction, so a failed script has no log row.</p>
+<div class="table-wrap"><table>
+<tr><th>Script</th><th class="wrap">What it does</th><th class="wrap">When</th><th class="wrap">Placeholders</th></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/020-script-log.sql">020-script-log.sql</a></td><td class="wrap">Makes <code>dbo.CP_Atlas_ScriptLog</code>.</td><td class="wrap">One time, first platform script.</td><td>—</td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/030-active-user-roles-view.sql">030-active-user-roles-view.sql</a></td><td class="wrap">Makes the view (<code>CREATE OR ALTER</code>).</td><td class="wrap">One time. Before it, run the read-only count in INTEGRATION.md section 3 (0 is the expected result).</td><td>—</td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/040-ttdv2-app.sql">040-ttdv2-app.sql</a></td><td class="wrap">Schema, tables, indexes, app row, roles. Steps 2a and 2b upgrade an earlier run in place. Step 6 has the <code>GRANT</code> line for the API login (comment).</td><td class="wrap">One time for each environment.</td><td><code>&lt;RUN_BY&gt;</code></td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql">050-ttdv2-copy-from-ttd.sql</a></td><td class="wrap">Part 1 (read only) lists values that cannot be converted. Part 2 copies the TTD roles to TTDV2, revokes all TTD roles, checks that TTD did not change (error 55007), copies the records (IDs kept) and the audit entries (<code>RefType = 'TTD'</code>).</td><td class="wrap"><b>Change-over day only.</b></td><td><code>&lt;SERVER_TIME_ZONE&gt;</code>, <code>&lt;RUN_BY&gt;</code></td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql">090-ttdv2-rollback.sql</a></td><td class="wrap">Gives back the TTD roles that <code>050</code> revoked, soft-deletes the TTDV2 roles and app row. Keeps the TTDV2 tables.</td><td class="wrap"><b>Rollback only.</b> First set <code>Enabled = false</code>.</td><td><code>&lt;RUN_BY&gt;</code>, <code>&lt;COPY_RUN_BY&gt;</code></td></tr>
+</table></div>
+<div class="stop"><b>CAUTION:</b> Do not run <code>050</code> in the shared development database. <code>050</code> revokes the TTD roles of all users. Run <code>050</code> only on the change-over day. Run <code>090</code> only for a rollback. A change to <code>050</code> or <code>090</code> is a stop-and-ask item.</div>
+<p class="small">The scripts write the log names <code>12-ttdv2-app.sql</code> and <code>12-ttdv2-copy-from-ttd.sql</code> (the names of the spec 12 scripts), not the file names <code>040</code> and <code>050</code>. <code>090</code> finds the <code>050</code> run by this name. These names are stable identifiers.</p>
+<h3>7.3 Open cut-over risks R01 and R02</h3>
+<p>An independent review (2026-11-01) found two High risks in <code>050</code>/<code>090</code>. Each has a test that shows it. They are not fixed. They are open decisions (<a href="PENDING_DECISIONS.html">PENDING_DECISIONS.html</a>, Q07 and Q08). Decide before <code>050</code> or <code>090</code> runs anywhere.</p>
+<div class="table-wrap"><table>
+<tr><th>ID</th><th class="wrap">Risk</th><th>Decision</th></tr>
+<tr><td>R01</td><td class="wrap"><code>090</code> finds the roles to give back by operator and a 1-hour time window. If an admin revoked a TTD role on purpose in that hour, <code>090</code> gives it back.</td><td>Q07 (open)</td></tr>
+<tr><td>R02</td><td class="wrap">After a rollback, users work in TTD again. A new run of <code>050</code> skips rows whose ID is already in TTDV2, so TTDV2 shows old data. Then it revokes the TTD roles again.</td><td>Q08 (open)</td></tr>
+</table></div>
+</section>
+
+<!-- ============================== 8 ============================== -->
+<section id="s8">
+<h2>8. Security and access</h2>
+<p>Authentication is target code (IIS Windows authentication, <code>IUserInfo</code>). <code>UserInfoCurrentUserSource</code> gives the current user to the platform. <code>AtlasUserContext</code> reads the roles of the user one time for each request from <code>dbo.vw_CP_Atlas_ActiveUserRole</code> (the app and its parent).</p>
+<h3>8.1 Three mechanisms</h3>
+<div class="table-wrap"><table>
+<tr><th>Mechanism</th><th class="wrap">Input</th><th class="wrap">Output</th><th class="wrap">Runs on</th></tr>
+<tr><td><code>Permissions</code></td><td class="wrap">Roles, flags, owner</td><td class="wrap">Allow or refuse an operation (View, Create, Edit, Delete, History)</td><td class="wrap">Server (<code>AtlasAccessService</code>)</td></tr>
+<tr><td><code>Rules</code></td><td class="wrap">Roles, flags, owner, states</td><td class="wrap">Visible, hidden, read-only or editable parts</td><td class="wrap">Server (<code>AtlasRuleEngine</code>)</td></tr>
+<tr><td><code>Effects</code></td><td class="wrap">Field values</td><td class="wrap">Show, hide, require, set, clear other fields</td><td class="wrap">Client and server</td></tr>
+</table></div>
+<h3>8.2 Access decisions</h3>
+<ul>
+<li>A user with no role in the app is refused for each operation.</li>
+<li>View: the <code>View</code> list (no list = allowed). History: the <code>History</code> list, else the View result. Create and Delete: their lists.</li>
+<li>Edit: <code>Edit.All</code> allows all records; <code>Edit.Own</code> allows only records where the user LAN ID is in one of the <code>OwnerFields</code> (case of the column name does not matter).</li>
+<li>A list entry matches a role name or a flag token (<code>@Read</code>, <code>@Write</code>, <code>@Admin</code>). An empty list matches nobody.</li>
+<li><code>UserPermissions</code> tells the client <code>CanCreate</code>, <code>CanEdit</code>, <code>CanDelete</code>, <code>CanViewHistory</code>. In <code>LogOnly</code>, <code>CanEdit</code> is always true, so the Save button stays; the rules still make the fields read-only.</li>
+</ul>
+<h3>8.3 AccessMode</h3>
+<div class="table-wrap"><table>
+<tr><th>Mode</th><th class="wrap">Result of a refused operation</th></tr>
+<tr><td><code>LogOnly</code></td><td class="wrap">Logs <code>Atlas.AccessDenied</code> (41001) and continues for View, Edit and History, and for the load of a new form. A refused Delete and a refused save of a new record give 403. Use it while the role grants are checked.</td></tr>
+<tr><td><code>Enforce</code></td><td class="wrap">Logs <code>Atlas.AccessDenied</code> and gives 403 "Access denied".</td></tr>
+<tr><td>Module off</td><td class="wrap"><code>Enabled = false</code> (or disabled by the check): 404, not in the menu. The current apps operate. This is the rollback switch, not an access mode.</td></tr>
+</table></div>
+<p>A setting value that is not valid fails closed: <code>Enabled</code> becomes false, <code>AccessMode</code> becomes <code>Enforce</code>, and the start-up check gives an error. The check warns when <code>AccessMode</code> is <code>LogOnly</code> outside Development.</p>
+<h3>8.4 Rules for TTDV2</h3>
+<p><code>RuleMode: MostPermissive</code>: all matched rules count. A part is visible when one rule makes it visible, and disabled only when all matched rules disable it. <code>RuleDefault: ReadOnly</code>: when no rule matches, a part is visible but disabled.</p>
+<div class="table-wrap"><table>
+<tr><th>User</th><th class="wrap">Matched rules</th><th class="wrap">Form</th></tr>
+<tr><td>Read</td><td class="wrap"><code>@Read</code></td><td class="wrap">Read-only</td></tr>
+<tr><td>Prepare, own record</td><td class="wrap"><code>@Read</code> + <code>Prepare</code>/<code>IsOwner</code></td><td class="wrap">Editable</td></tr>
+<tr><td>Prepare, record of another user</td><td class="wrap"><code>@Read</code></td><td class="wrap">Read-only, no Save button</td></tr>
+<tr><td>Prepare, new record</td><td class="wrap"><code>@Read</code> + <code>Prepare</code>/<code>IsOwner</code> (a new record is owned)</td><td class="wrap">Editable</td></tr>
+<tr><td>Owner</td><td class="wrap"><code>@Read</code> + <code>@Admin</code></td><td class="wrap">Editable</td></tr>
+</table></div>
+<p>With <code>FirstMatch</code>, a Prepare user would match only the first rule and could never edit. A child control that the JSON disables stays disabled unless a rule names it in <code>EnableControls</code>. An effect cannot show a field that a rule hid. <code>CPRule.States</code> is not used yet: the rule context gets an empty state list (no workflow in P1).</p>
+<h3>8.5 Record visibility and hidden data</h3>
+<ul>
+<li>The dashboard filters decide which rows a user sees in a tab (for example <code>{LanId}</code> filters). A hidden tab gets no rows.</li>
+<li>Each Edit, Delete and History request checks the access again for the record on the server.</li>
+<li>At load, a rule-hidden field gets no value and no options. At save, a value for a hidden or disabled field is refused. The save response has no rule-hidden fields.</li>
+<li>In History, a rule-hidden field shows <code>***</code> (<code>AtlasAuditMask</code>). A control with <code>Audit: false</code> is stored as <code>***</code>.</li>
+</ul>
+<h3>8.6 What gives 403</h3>
+<ul>
+<li><code>Enforce</code>: any refused View, Create, Edit, Delete or History (dashboard, load, save, delete, history).</li>
+<li>All modes: a refused Delete; a refused save of a new record.</li>
+</ul>
+<p>The problem body is <code>ProblemDetails</code> with title "Access denied" and the reason in <code>detail</code>.</p>
+</section>
+
+<!-- ============================== 9 ============================== -->
+<section id="s9">
+<h2>9. Changes to the target code</h2>
+<p>This section follows <a href="../../atlas-platform/INTEGRATION.md">INTEGRATION.md</a> sections 1 and 2. It adds no other step. The reference files of the bundle (<code>reference/StandIn/*</code>) show each edit in a working file.</p>
+<h3 id="s9-1">9.1 The fall-through rule</h3>
+<div class="note">Each platform line runs first. When the code is an available platform app, the platform line returns. Else the line does nothing, and the current code after it runs with no change. Do not remove or change the current <code>if</code> chains: they serve the current apps.</div>
+<pre><code>// CPAtlasService.LoadDashboard at the target, after the edit (shape)
+public CPAtlasDashboard LoadDashboard(string code)
+{
+    // PLATFORM
+    if (/* code is an available platform app */)
+        return resolver!.Get&lt;IApplicationService&gt;(app, "dashboard").LoadDashboard();
+
+    return LoadApplicationService(AtlasAppCode.ToLegacy(code, configStore))!.LoadDashboard();   // current chain
+}</code></pre>
+<p><code>AtlasAppCode.ToLegacy</code> gives the same enum as <code>Enum.Parse&lt;CPApplicationCode&gt;</code> for the current codes and numbers. For a platform app that is not available (<code>Enabled = false</code>), it gives 404 in place of a logged 500. For any other code it gives the <code>Enum.Parse</code> error, as before.</p>
+
+<h3 id="s9-2">9.2 Edits for each target file</h3>
+<h4>Data/DTO/CPAtlasApplicationConfig.cs, CPAtlasDashboardConfig.cs, CPAtlasPage.cs, CPAtlasLog.cs</h4>
+<p>Add the word <code>partial</code> to these 23 classes. The platform adds optional properties in <code>Data/Platform/Dto/CPPlatformDto.cs</code>. Null means the current behaviour. No behaviour change.</p>
+<ul>
+<li><code>CPAtlasApplicationConfig.cs</code>: <code>CPAtlasApplicationConfig</code>, <code>CPApplicationStep</code>, <code>CPApplicationSection</code>, <code>CPApplicationControl</code>, <code>CPValidator</code>, <code>CPKeyValue</code>, <code>CPGrid</code>, <code>CPGridColumn</code>, <code>CPCellRendererParam</code>, <code>CPAttachment</code>, <code>CPWorkflow</code>, <code>CPWorkflowCondition</code>, <code>CPWorkflowNotification</code>, <code>CPButton</code>, <code>CPSkipValidation</code>, <code>CPRule</code>.</li>
+<li><code>CPAtlasDashboardConfig.cs</code>: <code>CPAtlasDashboardConfig</code>, <code>CPAtlasDashboard</code>, <code>CPAtlasTab</code>, <code>CPParameter</code>, <code>CPMenu</code>.</li>
+<li><code>CPAtlasPage.cs</code> and <code>CPAtlasLog.cs</code>: <code>CPAtlasPage</code>, <code>CPAuditLog</code>.</li>
+</ul>
+<h4>program.cs</h4>
+<p>The target <code>program.cs</code> builds its own configuration root (<code>var configuration = new ConfigurationBuilder()...</code>) and then <code>var app = builder.Build();</code>. Add the platform lines around <code>Build()</code>:</p>
+<pre><code>bool check = args.Contains("--atlas-check", StringComparer.OrdinalIgnoreCase);       // before CreateBuilder
+args = [.. args.Where(x =&gt; !string.Equals(x, "--atlas-check", StringComparison.OrdinalIgnoreCase))];
+var builder = WebApplication.CreateBuilder(args);
+...
+builder.Services.AddAtlasPlatform(configuration);                 // the root that program.cs builds
+builder.Services.AddAtlasModule&lt;ConfigSectionService&gt;("TTDV2");
+var app = builder.Build();
+if (check) return await app.Services.RunAtlasCheckAsync(Console.Out);   // exit code 0/1, no web server
+await app.Services.StartAtlasPlatformAsync();                      // optional (the hosted service does the same)</code></pre>
+<p class="small">See <a href="../../atlas-platform/src/BBH.CP.Atlas.App/StandIn/Program.cs">StandIn/Program.cs</a> for a working shape. It ends with <code>return 0;</code> after <code>RunAsync</code>. Namespaces: <code>BBH.CP.Atlas.App.Platform</code> (extensions, start-up) and <code>BBH.CP.Atlas.Service.Application</code> (<code>ConfigSectionService</code>). The platform reads its settings only from this <code>configuration</code> (the target reads <code>appsettings.json</code> in <code>AppContext.BaseDirectory</code> only).</p>
+<h4>BBH.CP.Atlas.App.csproj and appsettings.json</h4>
+<ul>
+<li>The three <code>Config/TTDV2*.json</code> files: Copy to Output, <code>PreserveNewest</code> (INTEGRATION.md section 1).</li>
+<li><code>appsettings.json</code> of each environment: <code>AppSettings:Modules:TTDV2:Enabled</code> and <code>AppSettings:Modules:TTDV2:AccessMode</code> (INTEGRATION.md section 4; section 10 of this guide).</li>
+</ul>
+<h4>Service/CPAtlasService.cs</h4>
+<ol>
+<li>Add the optional constructor parameters at the end: <code>IAtlasModuleResolver? resolver = null, IAtlasConfigStore? configStore = null, ILogger? logger = null</code>. The current calls still compile.</li>
+<li>Change the signatures: <code>LoadDashboard(CPApplicationCode Code)</code> becomes <code>LoadDashboard(string code)</code>; <code>RemovePage(CPApplicationCode code, int id)</code> becomes <code>RemovePage(string code, int id)</code>.</li>
+<li>Copy the lines marked <code>PLATFORM</code> from <code>reference/StandIn/CPAtlasService.cs</code> to the start of <code>GetApplication</code> (after the procedure call), <code>LoadDashboard</code>, <code>LoadSectionPage</code>, <code>ManagePage</code>, <code>RemovePage</code>, <code>AuditLog</code> and <code>GetAuditLog</code>. The PLATFORM lines call the private helper <code>Platform(string? code)</code> of the reference file. INTEGRATION.md does not name it; copy it with the lines.</li>
+<li>After each PLATFORM line, change the enum of the current chain to <code>AtlasAppCode.ToLegacy</code>, exactly:</li>
+</ol>
+<pre><code>LoadDashboard:   return LoadApplicationService(AtlasAppCode.ToLegacy(code, configStore))!.LoadDashboard();
+LoadSectionPage: return LoadSectionService(page.Code ?? AtlasAppCode.ToLegacy(page.AppCode, configStore), workflowContextReader)!.LoadPage(page);
+ManagePage:      return LoadApplicationService(page.Code ?? AtlasAppCode.ToLegacy(page.AppCode, configStore))!.SavePage(page, files);
+RemovePage:      return LoadApplicationService(AtlasAppCode.ToLegacy(code, configStore))!.RemovePage(id);
+AuditLog:        LoadApplicationService(page.Code ?? AtlasAppCode.ToLegacy(page.AppCode, configStore))!.AuditLog(page);
+GetAuditLog:     return LoadApplicationService(AtlasAppCode.ToLegacy(appCode, configStore))!.GetAuditLog(appCode, refID);</code></pre>
+<p><code>ManagePage</code> and <code>AuditLog</code> keep <code>JsonConvert</code> (Newtonsoft reads the new optional properties). <code>LoadStep</code>, <code>LoadStepPage</code>, <code>Execute</code> and <code>RemoveAttachment</code> do not change.</p>
+<h4>Controllers/V1/CPAtlasController.cs</h4>
+<ul>
+<li><code>LoadDashboard(CPApplicationCode code)</code> becomes <code>LoadDashboard(string code)</code>. <code>RemovePage(CPApplicationCode code, int id)</code> becomes <code>RemovePage(string code, int id)</code>. The current callers send <code>code=TTD</code>, which binds the same. A number value maps to the enum name (<code>AtlasAppCode.FromRequest</code>).</li>
+<li>Inject <code>IAtlasModuleResolver</code> and <code>IAtlasConfigStore</code> and pass them to <code>new CPAtlasService(...)</code>. Optional: inject <code>ILogger&lt;CPAtlasController&gt;</code> and pass it as the last argument, so a menu-step error is logged (<code>Atlas.ConfigError</code>).</li>
+<li>Inside the <code>if</code> chains (for example <code>RemoveAttachment</code>), use <code>AtlasAppCode.ToLegacy(code, configStore)</code> in place of <code>Enum.Parse&lt;CPApplicationCode&gt;(...)</code>.</li>
+<li><code>Download</code> and <code>RemoveAttachment</code> stay.</li>
+</ul>
+<p class="small">CPSecurityController: INTEGRATION.md section 2 has no edit for it.</p>
+<h4>app.routes.ts</h4>
+<pre><code>import { atlasPlatformRoutes } from './platform/atlas-platform.routes';
+export const routes: Routes = [ /* current routes stay */ ...atlasPlatformRoutes ];</code></pre>
+<h4>app.config.ts</h4>
+<pre><code>provideAtlasGridComponents({ TextEditor, SelectEditor, NumericEditor }),   // from Shared/Component/Cell-editors</code></pre>
+<p>The <code>grid</code> control finds a cell component by the <code>cellRenderer</code> name in the JSON. <code>provideToastr()</code> and the ag-grid module registration in <code>main.ts</code> are already at the target.</p>
+<h4>Shared/Component/dashboard/cp-atlas-dashboard/cp-atlas-dashboard.ts</h4>
+<ol>
+<li>Import <code>AtlasDashboardNavigation</code>, <code>columnDefs</code> and <code>sumsRow</code>. Add <code>private atlasNavigation = inject(AtlasDashboardNavigation);</code>.</li>
+<li><code>onClick</code> becomes <code>async onClick(controlName: string)</code>. Its first line: <code>if (await this.atlasNavigation.open(null, 0, this.buttons.find((x) =&gt; x.Name === controlName)?.Target)) return;</code></li>
+<li><code>editRow</code> becomes <code>async editRow(data: any)</code>. Its first line: <code>if (await this.atlasNavigation.open(this.applicationCode, data.ID)) return;</code> (<code>applicationCode</code> is the code of the active tab, set in <code>setGridData</code>).</li>
+<li><code>GenerateColumns(tab)</code>, first line:</li>
+</ol>
+<pre><code>if ((tab as any)?.Columns?.length) return columnDefs(tab as any,
+  { edit: (r) =&gt; this.editRow(r), history: (r) =&gt; this.historyRow(r), remove: (r) =&gt; this.deleteRow(r) },
+  ActionMenuComponent);</code></pre>
+<p>For that tab, set <code>pinnedBottomRowData</code> to <code>[sumsRow(tab as any, rows)]</code> when it is not null. The current <code>if</code> chains stay after these lines. <code>open</code> returns <code>false</code> for an app with no <code>FormType</code>, so the current apps do not change. No template change.</p>
+<h4>angular.json, tailwind.config.js, package.json, menu</h4>
+<ul>
+<li><code>angular.json</code>: add <code>"src/app/platform/atlas-platform.scss"</code> to <code>styles</code> after <code>src/styles.scss</code> (build and test sections). Do not copy the stand-in <code>stylePreprocessorOptions</code>.</li>
+<li><code>tailwind.config.js</code>: add <code>safelist: ['grid', 'grid-cols-2', 'grid-cols-3', 'gap-6', 'items-start', 'p-8', 'bg-white']</code>. The target scan reads <code>src/**/*.{html,ts}</code> only, not the server JSON. Keep <code>platform/atlas-tailwind-classes.ts</code> until the safelist is confirmed.</li>
+<li><code>package.json</code>: no new package. The platform uses <code>ag-grid-community</code>/<code>ag-grid-angular</code> 33, <code>@ng-select/ng-select</code> 21, <code>ngx-toastr</code> 20 and <code>@pbdev/pbdev-core</code>.</li>
+<li>Menu (app component): show an app only when <code>HasDashboard</code> is not <code>false</code>.</li>
+</ul>
+
+<h3 id="s9-3">9.3 Copy the bundle</h3>
+<p>The bundle is one self-extracting PowerShell file made by <a href="../../atlas-platform/local/make-target-package.py">make-target-package.py</a>. It holds only committed files. It has 84 files in <code>copy/</code>, 8 files in <code>reference/</code> and <code>MANIFEST.txt</code> (SHA-256, size, path for each file).</p>
+<pre><code>powershell -ExecutionPolicy Bypass -File .\atlas-target-package.ps1 -Destination C:\temp\atlas-772b394</code></pre>
+<ol>
+<li>Run the command on Windows PowerShell 5.1 or later. Give a new folder: the script stops if the folder exists. It never writes into the target repo.</li>
+<li>Read the result. The script checks each file against the SHA-256 in the script. "OK: 92 files (commit 772b394)" means that all files are correct. <code>MISSING</code> or <code>CHANGED</code> stops the script.</li>
+<li>Copy each file under <code>copy\</code> to the same path in the target (table below).</li>
+<li>Read the files under <code>reference\</code> for the hand edits of section 9.2. Do not copy them.</li>
+</ol>
+<div class="table-wrap"><table>
+<tr><th>Bundle folder</th><th class="wrap">Target path</th></tr>
+<tr><td><code>copy/BBH.CP.Atlas.Data/Platform/</code></td><td class="wrap"><code>BBH.CP.Atlas.Data/Platform/</code></td></tr>
+<tr><td><code>copy/BBH.CP.Atlas.Service/Platform/</code></td><td class="wrap"><code>BBH.CP.Atlas.Service/Platform/</code></td></tr>
+<tr><td><code>copy/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs</code></td><td class="wrap"><code>BBH.CP.Atlas.Service/Application/</code></td></tr>
+<tr><td><code>copy/BBH.CP.Atlas.App/Platform/</code></td><td class="wrap"><code>BBH.CP.Atlas.App/Platform/</code></td></tr>
+<tr><td><code>copy/BBH.CP.Atlas.App/Config/TTDV2*.json</code></td><td class="wrap"><code>BBH.CP.Atlas.App/Config/</code> (Copy to Output: PreserveNewest)</td></tr>
+<tr><td><code>copy/WebUi/src/app/platform/</code></td><td class="wrap"><code>WebUi/src/app/platform/</code> (the target <code>angular.json</code> has <code>sourceRoot: src</code>)</td></tr>
+<tr><td><code>copy/sql/release-p1/</code></td><td class="wrap">The DBA release folder</td></tr>
+<tr><td><code>reference/</code></td><td class="wrap">Do not copy. <code>INTEGRATION.md</code>, <code>PBDEV.md</code>, <code>Config-README.md</code>, <code>StandIn/CPAtlasService.cs</code>, <code>StandIn/CPAtlasController.cs</code>, <code>StandIn/Program.cs</code>, <code>StandIn/app.routes.ts</code>, <code>StandIn/app.config.ts</code>.</td></tr>
+</table></div>
+<p class="small">Bundle <code>772b394</code> changes comments only, compared with <code>bcb4b2b</code> (now at target dev). Copy all files again. There is no new integration step.</p>
+
+<h3 id="s9-4">9.4 Checklist</h3>
+<div class="table-wrap"><table class="check">
+<tr><th>Done</th><th>Item</th><th class="wrap">Where</th></tr>
+<tr><td><input type="checkbox" aria-label="Done: extract bundle"></td><td class="wrap">Extract the bundle to a new folder. The result is "OK: 92 files".</td><td class="wrap">9.3</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: copy files"></td><td class="wrap">Copy all files under <code>copy\</code> by target path.</td><td class="wrap">9.3</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: partial"></td><td class="wrap"><code>partial</code> on the 23 DTO classes.</td><td class="wrap">9.2, Data/DTO</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: program.cs"></td><td class="wrap"><code>program.cs</code>: <code>AddAtlasPlatform</code>, <code>AddAtlasModule</code>, <code>StartAtlasPlatformAsync</code>, <code>--atlas-check</code>.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: csproj and settings"></td><td class="wrap">Config files copy to output. <code>AppSettings:Modules:TTDV2</code> in <code>appsettings.json</code>.</td><td class="wrap">9.2, 10</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: CPAtlasService"></td><td class="wrap"><code>CPAtlasService.cs</code>: 3 optional parameters, 2 signatures, 7 PLATFORM lines, 6 <code>ToLegacy</code> lines.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: CPAtlasController"></td><td class="wrap"><code>CPAtlasController.cs</code>: 2 signatures, injection, <code>ToLegacy</code> in the chains.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: routes"></td><td class="wrap"><code>app.routes.ts</code>: <code>...atlasPlatformRoutes</code>.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: app.config"></td><td class="wrap"><code>app.config.ts</code>: <code>provideAtlasGridComponents</code>.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: dashboard"></td><td class="wrap"><code>cp-atlas-dashboard.ts</code>: navigation, <code>onClick</code>, <code>editRow</code>, <code>GenerateColumns</code>, totals row.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: styles"></td><td class="wrap"><code>angular.json</code> styles and <code>tailwind.config.js</code> safelist.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: menu"></td><td class="wrap">Menu: hide an app when <code>HasDashboard</code> is <code>false</code>.</td><td class="wrap">9.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: SQL"></td><td class="wrap">SQL <code>020</code>, <code>030</code> (after the count), <code>040</code>. Not <code>050</code>, not <code>090</code>.</td><td class="wrap">7.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: grant"></td><td class="wrap">API login: <code>SELECT, INSERT, UPDATE, DELETE</code> on schema <code>TTDV2</code> (QC and production).</td><td class="wrap">7.2</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: roles"></td><td class="wrap">TTDV2 roles to the testers only.</td><td class="wrap">5.1</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: build"></td><td class="wrap">Target build with 0 errors. <code>--atlas-check</code> returns 0.</td><td class="wrap">4.6</td></tr>
+<tr><td><input type="checkbox" aria-label="Done: checks"></td><td class="wrap">Checks after the integration (9.5).</td><td class="wrap">9.5</td></tr>
+</table></div>
+
+<h3 id="s9-5">9.5 Checks after the integration</h3>
+<div class="table-wrap"><table>
+<tr><th>App</th><th class="wrap">Check</th><th class="wrap">Expected result</th></tr>
+<tr><td>TTDV2</td><td class="wrap">Open the menu and the dashboard.</td><td class="wrap">TTDV2 is in the menu. 3 tabs. Dates <code>dd-MMM-yyyy</code>. Total row on the report tabs.</td></tr>
+<tr><td>TTDV2</td><td class="wrap">Add New. Select an account, enter minutes, save.</td><td class="wrap">Account number and name fill in. <code>WeeklyTotal</code> updates. "Record saved successfully", back to the dashboard.</td></tr>
+<tr><td>TTDV2</td><td class="wrap">Edit the record. Enter <code>1.5</code> or <code>1441</code>.</td><td class="wrap">Field error "Enter whole minutes from 0 to 1440."</td></tr>
+<tr><td>TTDV2</td><td class="wrap">History (form and dashboard menu).</td><td class="wrap">Create and Update entries. A save with no change adds no entry.</td></tr>
+<tr><td>TTDV2</td><td class="wrap">Delete as Owner. Delete as Prepare (direct call).</td><td class="wrap">Owner: "Record deleted successfully", the row leaves all tabs. Prepare: 403.</td></tr>
+<tr><td>TTDV2</td><td class="wrap">Open a record of another user as Prepare.</td><td class="wrap">Read-only, no Save button.</td></tr>
+<tr><td>Each current app</td><td class="wrap">Open the dashboard, add, edit one row, open History.</td><td class="wrap">The same behaviour as before the integration.</td></tr>
+<tr><td>Rollback switch</td><td class="wrap">Set <code>Enabled = false</code>, restart.</td><td class="wrap">TTDV2 is not in the menu. A direct TTDV2 call gives 404. The current apps operate.</td></tr>
+</table></div>
+</section>
+
+<!-- ============================== 10 ============================== -->
+<section id="s10">
+<h2>10. Operations</h2>
+<h3>10.1 Settings</h3>
+<div class="table-wrap"><table>
+<tr><th>Key</th><th>Value</th><th class="wrap">Note</th></tr>
+<tr><td><code>AppSettings:ConfigFolder</code></td><td><code>Config</code> (default)</td><td class="wrap">Folder of the JSON files, relative to the content root.</td></tr>
+<tr><td><code>AppSettings:Atlas:OnStartupError</code></td><td><code>DisableModule</code> (default)</td><td class="wrap">Or <code>Stop</code>. See 4.3.</td></tr>
+<tr><td><code>AppSettings:Modules:TTDV2:Enabled</code></td><td class="wrap">Dev <code>true</code>. Production <code>false</code> until the business approves.</td><td class="wrap">Rollback switch. Only <code>true</code>/<code>false</code>; other text disables the app.</td></tr>
+<tr><td><code>AppSettings:Modules:TTDV2:AccessMode</code></td><td class="wrap">Dev <code>Enforce</code>. First production release <code>LogOnly</code>.</td><td class="wrap"><code>Enforce</code> after one release of log review. Other text gives <code>Enforce</code> and an error.</td></tr>
+<tr><td class="wrap"><code>AppSettings:Modules:TTDV2:AuditMode</code>, <code>RuleMode</code>, <code>RuleDefault</code></td><td>(not set)</td><td class="wrap">Optional overrides. A value that is not valid keeps the manifest value and gives an error.</td></tr>
+</table></div>
+<p>The platform reads these keys only from the configuration given to <code>AddAtlasPlatform(configuration)</code>. At the target this is the <code>appsettings.json</code> in the app folder (no environment files, no environment variables, no reload). Put the values for each environment in its deployed <code>appsettings.json</code>.</p>
+<h3>10.2 Restart rules</h3>
+<p>Restart the app pool after a change to: a setting, a manifest, a form or dashboard file, an app table (a new column or a new type), or a role structure that the start-up check uses. After the restart, run <code>--atlas-check</code>. After a short SQL failure at start-up, a disabled app does not come back by itself: restart when SQL is available.</p>
+<h3>10.3 Problem responses</h3>
+<div class="table-wrap"><table>
+<tr><th>Status</th><th>Title</th><th class="wrap">Typical cause</th><th class="wrap">What to do</th></tr>
+<tr><td>400</td><td>Bad request</td><td class="wrap">No app code, a code that is not valid, a feature that the app service does not have, an app with no <code>SoftDelete</code> setting.</td><td class="wrap">Correct the request or the config.</td></tr>
+<tr><td>403</td><td>Access denied</td><td class="wrap">The access check refused the operation (section 8.6).</td><td class="wrap">Check the roles (view <code>vw_CP_Atlas_ActiveUserRole</code>), <code>Permissions</code>, <code>AccessMode</code>, the log <code>Atlas.AccessDenied</code>.</td></tr>
+<tr><td>404</td><td>Not found</td><td class="wrap">The app is not registered, <code>Enabled = false</code>, disabled by the check, its table did not load, or the record does not exist (or is deleted).</td><td class="wrap">Read the <code>detail</code>. Check <code>--atlas-check</code>, <code>Atlas.AppDisabled</code>, <code>Atlas.AppNotAvailable</code>, the <code>AddAtlasModule</code> line.</td></tr>
+<tr><td>500</td><td>Configuration error</td><td class="wrap">A config defect found in a request (for example no <code>Section</code>, an unknown option provider). Logged as <code>Atlas.ConfigError</code>.</td><td class="wrap">Run <code>--atlas-check</code>. A valid config does not reach this error.</td></tr>
+<tr><td>200 + <code>Errors</code></td><td>—</td><td class="wrap">A save that stopped: field errors, <code>NotAllowed</code>, <code>NotInOptions</code>, <code>InvalidGrid</code>, <code>Conflict</code>, <code>VersionRequired</code>, <code>SaveFailed</code>.</td><td class="wrap">The form shows the errors. For <code>Conflict</code>: open the record again and repeat the change.</td></tr>
+</table></div>
+<p class="small">The body is made by the host <code>ProblemDetailsFactory</code> (<code>AddProblemDetails</code>), with <code>type</code> and <code>traceId</code>. There is no 409: a version conflict is a save error in an HTTP 200 response.</p>
+<h3>10.4 What to check when something fails</h3>
+<div class="table-wrap"><table>
+<tr><th>Symptom</th><th class="wrap">Look first at</th></tr>
+<tr><td class="wrap">TTDV2 is not in the menu</td><td class="wrap">The user roles (view), <code>Enabled</code>, <code>Atlas.AppDisabled</code> in the start-up log, the <code>HasDashboard</code> menu edit, <code>AtlasApplicationMenu</code>.</td></tr>
+<tr><td class="wrap">404 for TTDV2</td><td class="wrap"><code>--atlas-check</code>, the <code>AddAtlasModule</code> line, <code>Enabled</code>, the tables (the API login must see them).</td></tr>
+<tr><td class="wrap">A field is hidden or read-only</td><td class="wrap"><code>Rules</code> and <code>Effects</code> in <code>TTDV2.json</code>, <code>RuleMode</code>, <code>AtlasRuleEngine</code>, <code>AtlasServerEffects</code> / <code>atlas-effects.ts</code>.</td></tr>
+<tr><td class="wrap">Save gives a field error</td><td class="wrap">The <code>Validator</code> in the JSON, <code>AtlasFieldValidator</code>, <code>AtlasValueConverter</code>, the column type.</td></tr>
+<tr><td class="wrap">Wrong dashboard columns or totals</td><td class="wrap"><code>TTDV2.Dashboard.json</code>, <code>atlas-dashboard-columns.ts</code>, the <code>GenerateColumns</code> line.</td></tr>
+<tr><td class="wrap">Form layout is one long column</td><td class="wrap">The Tailwind <code>safelist</code>, <code>atlas-platform.scss</code> in <code>angular.json</code>.</td></tr>
+<tr><td class="wrap">Grid cell editor does not show</td><td class="wrap"><code>provideAtlasGridComponents</code> in <code>app.config.ts</code>, the <code>cellRenderer</code> name.</td></tr>
+<tr><td class="wrap">Wrong History</td><td class="wrap"><code>TTDV2.AuditLog</code>, <code>AtlasAuditWriter</code>, <code>AuditRefTypes</code>, the History Log modal.</td></tr>
+<tr><td class="wrap">A current app does not operate</td><td class="wrap">Highest priority. The <code>ToLegacy</code> lines in <code>CPAtlasService</code> and <code>CPAtlasController</code>, the <code>open(...)</code> lines in <code>cp-atlas-dashboard.ts</code>. Set <code>Enabled = false</code> while you look.</td></tr>
+</table></div>
+<p>To report a platform bug, use the list in <a href="ATLAS_TEAM_NOTES.html">ATLAS_TEAM_NOTES.html</a> section 6: app and screen, role, action, result (screen text, console, failed call), the <code>Atlas.</code> log lines, expected result, and the state of the current apps.</p>
+</section>
+
+<!-- ============================== 11 ============================== -->
+<section id="s11">
+<h2>11. Tests and quality gates</h2>
+<h3>11.1 The 5 platform gates</h3>
+<p>Run them before you mark a change as done (<a href="../../AGENTS.MD">AGENTS.MD</a>, "Platform quality gates"). Stop the local API first: a running API locks the App dll.</p>
+<pre><code>dotnet build atlas-platform/AtlasPlatform.slnx -warnaserror
+dotnet test atlas-platform/AtlasPlatform.slnx
+dotnet run --project atlas-platform/src/BBH.CP.Atlas.App --launch-profile StandIn -- --atlas-check
+cd atlas-platform/WebUi &amp;&amp; npx ng build &amp;&amp; npx ng test --watch=false
+cd atlas-platform/WebUi &amp;&amp; npm run check:target-flags</code></pre>
+<div class="table-wrap"><table>
+<tr><th>Gate</th><th class="wrap">Expected result</th></tr>
+<tr><td>Build</td><td class="wrap">0 warnings (<code>Directory.Build.props</code> treats warnings as errors).</td></tr>
+<tr><td>.NET tests</td><td class="wrap">All pass. The SQL tests make and drop their own databases (<code>SqlServerDatabaseFixture</code>).</td></tr>
+<tr><td>--atlas-check</td><td class="wrap">Prints <code>0 error(s), 0 warning(s)</code> and exits 0.</td></tr>
+<tr><td>ng build, ng test</td><td class="wrap">0 warnings; all specs pass.</td></tr>
+<tr><td>check:target-flags</td><td class="wrap">Clean. It type-checks <code>platform/</code> with the target flags (<code>strictNullChecks: false</code>) through <code>tsconfig.target-flags.json</code>.</td></tr>
+</table></div>
+<h3>11.2 Test projects</h3>
+<div class="table-wrap"><table>
+<tr><th>Folder</th><th class="wrap">What it tests</th></tr>
+<tr><td><code>tests/.../Api/</code></td><td class="wrap"><code>AtlasCheckTests</code> (start-up check and lint), <code>EndpointTests</code>, <code>ProblemFilterTests</code>, <code>StandInHostTests</code>.</td></tr>
+<tr><td><code>tests/.../Dashboard/</code></td><td class="wrap"><code>TabQueryBuilderTests</code>, <code>Ttdv2DashboardTests</code>.</td></tr>
+<tr><td><code>tests/.../Data/</code></td><td class="wrap"><code>AtlasPlatformContextTests</code>, <code>AtlasValueConverterTests</code>, <code>CopyScriptTests</code> (<code>050</code>), <code>Ttdv2AppScriptTests</code> (<code>040</code>).</td></tr>
+<tr><td><code>tests/.../Registry/</code></td><td class="wrap"><code>RegistryTests</code>, <code>ApplicationMenuTests</code>.</td></tr>
+<tr><td><code>tests/.../Rules/</code>, <code>Security/</code></td><td class="wrap"><code>RuleEngineTests</code>, <code>AccessServiceTests</code>, <code>UserContextSqlTests</code>.</td></tr>
+<tr><td><code>tests/.../Sections/</code></td><td class="wrap"><code>Ttdv2SectionTests</code>, <code>SectionStepTests</code> (no database), <code>DateOptionProviderTests</code>, <code>EffectParityTests</code> and <code>ValidatorParityTests</code> (run the shared TypeScript case files).</td></tr>
+<tr><td><code>WebUi/src/app/platform/*.spec.ts</code></td><td class="wrap"><code>platform.spec.ts</code> (pure functions) and <code>platform.component.spec.ts</code> (TestBed). Runner-neutral: they run on the local Vitest and the target Karma/Jasmine.</td></tr>
+</table></div>
+<h3>11.3 Comment rules and CODE_TRACE.md</h3>
+<p>Comments follow the Google style, in ASD-STE100. A doc comment tells the contract: what the member does, what the inputs and the result mean, what can go wrong. Comments have no history and no references (no review, defect, decision or spec IDs). The links from code to specs and reviews are in <a href="CODE_TRACE.md">CODE_TRACE.md</a> (file and member, no line numbers). <code>CodeCommentRulesTests</code> fails when a comment has a reference ID, or when a <code>CODE_TRACE.md</code> row names a file or member that does not exist. Test files and <code>050</code>/<code>090</code> are not checked.</p>
+<h3>11.4 Rebuild the bundle</h3>
+<p>Rebuild the bundle when a copied file or <code>INTEGRATION.md</code> changes. Commit first: the script refuses uncommitted changes in <code>atlas-platform/</code>.</p>
+<pre><code>python atlas-platform/local/make-target-package.py atlas-platform/local/package/atlas-target-package.ps1</code></pre>
+<p>The <code>COPY</code> and <code>REFERENCE</code> lists in the script decide the content. A new platform folder outside these lists is not in the bundle: add it to the list.</p>
+</section>
+
+<!-- ============================== 12 ============================== -->
+<section id="s12">
+<h2>12. How to change the platform safely</h2>
+<h3>12.1 Backward compatibility</h3>
+<ul>
+<li>The current apps (TTD, CDT, SQMSO, SQMSB, AIN) must not change. A platform line in a shared target file runs first and falls through.</li>
+<li>Changes to the <code>v1/...</code> requests and responses are additive. New fields are optional.</li>
+<li>Stable identifiers: app codes, role names, table and column names, JSON keys, control names, log event IDs 41001 to 41024. Do not rename them.</li>
+<li>Database changes: SQL scripts only, additive, idempotent, with a <code>CP_Atlas_ScriptLog</code> row. No EF migrations, no <code>EnsureCreated</code>, no automatic seeding for platform tables.</li>
+<li>No new package. Use only what the target has.</li>
+<li>Keep public .NET surfaces: add overloads or optional parameters (for example <code>FindActive(..., tracking)</code>, <code>ToWire(..., utc)</code>), do not change a signature.</li>
+<li>Use <code>TimeProvider</code>. Do not call <code>DateTime.UtcNow</code> outside the composition root.</li>
+</ul>
+<h3>12.2 Keep it generic</h3>
+<p>A new app must not need new C# or TypeScript. Do not put field-name <code>if</code> chains, fixed field lists or app redirects in the platform. If an app needs something, add a generic feature (a token, an option provider, an effect, a control type) that the JSON turns on. To add a computed function, change <code>AtlasComputedFields</code>; to add a token, change <code>AtlasDefaultTokens</code>; to add a control type, call <code>provideAtlasRenderers</code> or <code>AtlasRendererRegistry.register</code>.</p>
+<h3>12.3 Stop and ask first</h3>
+<ul>
+<li>A change to a persisted column, a stable identifier, or a <code>v1/...</code> contract.</li>
+<li>A new package, or a new target file that must change.</li>
+<li>A fix that needs app-specific code in the platform.</li>
+<li>Any change to <code>050</code> or <code>090</code>, including R01 and R02.</li>
+<li>The <code>PROJECT.md</code> section 22 triggers that apply (for example <code>DateTime.UtcNow</code>, engine adapter work).</li>
+</ul>
+<h3>12.4 The change path</h3>
+<ol>
+<li>Change the file in the platform source.</li>
+<li>Add or change a test.</li>
+<li>Run the 5 gates.</li>
+<li>Commit. Rebuild the bundle if a copied file changed.</li>
+<li>Copy the changed files to the target. Do the hand edits only if <code>INTEGRATION.md</code> section 2 changed.</li>
+<li>Test TTDV2 and one current app at the target.</li>
+</ol>
+</section>
+
+<!-- ============================== 13 ============================== -->
+<section id="s13">
+<h2>13. Known limits and open items</h2>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th class="wrap">State</th><th class="wrap">Source</th></tr>
+<tr><td>Q01</td><td class="wrap">The "small bugs" of integration steps 5 and 6: the list is not sent yet.</td><td class="wrap"><a href="PENDING_DECISIONS.html">PENDING_DECISIONS.html</a></td></tr>
+<tr><td>R01, R02</td><td class="wrap">Open High risks of <code>090</code> and a second <code>050</code> run (section 7.3). Q07, Q08.</td><td class="wrap">PENDING_DECISIONS.html</td></tr>
+<tr><td>R04</td><td class="wrap">The All Report total sums only the loaded rows (<code>MaxRows: 5000</code>), with no warning on the screen (Q09, Q11).</td><td class="wrap">PENDING_DECISIONS.html</td></tr>
+<tr><td>R03</td><td class="wrap">Multi-select delimiter: the client uses <code>#$#</code>, the server option check splits on a comma. TTDV2 has no multi-select (Q10).</td><td class="wrap">PENDING_DECISIONS.html</td></tr>
+<tr><td>Q51</td><td class="wrap">Engine adapter (module 10) is design only. <code>CPRule.States</code> is not used yet: the rule context has an empty state list. TTDV2 has no workflow.</td><td class="wrap"><a href="10-engine-adapter.html">10-engine-adapter.html</a></td></tr>
+<tr><td>Procedure tabs</td><td class="wrap">The platform dashboard runs only <code>Source: Table</code> tabs. Fix before an app needs a procedure tab (Q27).</td><td class="wrap"><a href="ATLAS_TEAM_NOTES.html">ATLAS_TEAM_NOTES.html</a></td></tr>
+<tr><td>Sync I/O</td><td class="wrap">The platform database I/O is synchronous, as the target code. Measure with dev data first.</td><td class="wrap">ATLAS_TEAM_NOTES.html</td></tr>
+<tr><td>Start-up recovery</td><td class="wrap">After a short SQL failure at start-up, a disabled app comes back only after a restart (Q28).</td><td class="wrap">ATLAS_TEAM_NOTES.html</td></tr>
+<tr><td>User control value</td><td class="wrap">A LAN ID in an editable <code>user</code> control is not validated. TTDV2 has only a disabled one (Q29).</td><td class="wrap">ATLAS_TEAM_NOTES.html</td></tr>
+<tr><td>Dashboard <code>Code</code></td><td class="wrap"><code>CPAtlasDashboard.Code</code> is 0 for TTDV2. Use <code>AppCode</code>.</td><td class="wrap">INTEGRATION.md section 5</td></tr>
+<tr><td>Attachments</td><td class="wrap">No attachments in P1 (<code>AttachmentTable: null</code>).</td><td class="wrap"><a href="08-attachments.html">08-attachments.html</a></td></tr>
+<tr><td>Tailwind list</td><td class="wrap">Delete <code>atlas-tailwind-classes.ts</code> when the safelist is confirmed (Q36).</td><td class="wrap">PENDING_DECISIONS.html</td></tr>
+<tr><td>Go-live</td><td class="wrap"><code>LogOnly</code> then <code>Enforce</code> (Q19), who approves <code>Enabled</code> (Q20), when <code>050</code> runs (Q21), <code>GRANT</code> on schema <code>TTDV2</code> in QC and production (Q03).</td><td class="wrap">PENDING_DECISIONS.html</td></tr>
+<tr><td>Bundle content</td><td class="wrap">The untracked review file <code>WebUi/src/app/platform/review-contracts.spec.ts</code> is not committed, so it is not in the bundle (Q46).</td><td class="wrap"><a href="../../CODEX_HANDOFF.md">CODEX_HANDOFF.md</a></td></tr>
+</table></div>
+</section>
+
+<!-- ============================== 14 ============================== -->
+<section id="s14">
+<h2>14. Glossary</h2>
+<dl class="gloss">
+<dt>Platform</dt><dd>The generic, metadata-driven app layer of CP Atlas in <code>atlas-platform/</code>.</dd>
+<dt>Platform app</dt><dd>An app that the platform serves: a manifest, a registration line, enabled, tables loaded. TTDV2 is the pilot.</dd>
+<dt>Current app</dt><dd>An app with its own code at the target: TTD, CDT, SQMSO, SQMSB, AIN. Its code is in the enum <code>CPApplicationCode</code>.</dd>
+<dt>Target</dt><dd>The CP Atlas code of the target team (back end and <code>WebUi</code>).</dd>
+<dt>Manifest</dt><dd>The file <code>&lt;CODE&gt;.app.json</code> (<code>AtlasAppManifest</code>).</dd>
+<dt>Form file, dashboard file</dt><dd><code>&lt;CODE&gt;.json</code> and <code>&lt;CODE&gt;.Dashboard.json</code>.</dd>
+<dt>Registration line</dt><dd>One <code>AddAtlasModule&lt;ConfigSectionService&gt;("&lt;CODE&gt;")</code> line in <code>program.cs</code>.</dd>
+<dt>PLATFORM line</dt><dd>A line in a shared target method that sends a platform app to the platform and does nothing for a current app.</dd>
+<dt>Fall-through rule</dt><dd>The platform line runs first; for a current app, the current <code>if</code> chain runs after it with no change.</dd>
+<dt>Stand-in</dt><dd>A local copy of target code (<code>StandIn/</code>, <code>stand-in/</code>) so that the platform builds and runs here. Not copied.</dd>
+<dt>Bundle</dt><dd>The self-extracting file <code>atlas-target-package.ps1</code> with <code>copy/</code>, <code>reference/</code> and <code>MANIFEST.txt</code>.</dd>
+<dt>Start-up check</dt><dd><code>AtlasStartupCheck.Run</code> and <code>AtlasConfigLint</code>: compares the config with the tables and registrations. <code>--atlas-check</code> runs it with no web server.</dd>
+<dt>Access mode</dt><dd><code>LogOnly</code> (log a refusal and continue) or <code>Enforce</code> (403).</dd>
+<dt>Rule</dt><dd>A <code>CPRule</code>: roles, owner and states give visible, hidden, read-only or editable parts.</dd>
+<dt>Effect</dt><dd>A value-driven change of other fields (<code>CPEffect</code>), on the client and the server.</dd>
+<dt>Permissions</dt><dd>The roles that allow each operation (<code>CPPermissions</code>).</dd>
+<dt>Owner</dt><dd>A user whose LAN ID is in one of the <code>OwnerFields</code> of the record. Not the same as the role <code>Owner</code>.</dd>
+<dt>Flag token</dt><dd><code>@Read</code>, <code>@Write</code>, <code>@Admin</code>, from the role flags <code>IsRead</code>, <code>IsWrite</code>, <code>IsAdmin</code>.</dd>
+<dt>Allow list</dt><dd>The save step that accepts only fields that the user can change (<code>AtlasAllowList</code>).</dd>
+<dt>Server-set field</dt><dd>A system column, a <code>Computed</code> field or an effect target. The server ignores a sent value.</dd>
+<dt>Soft delete</dt><dd>A delete that sets <code>IsDeleted = 1</code>. The row stays.</dd>
+<dt>Version</dt><dd>The Base64 text of the <code>rowversion</code> column. The save compares it to find a conflict.</dd>
+<dt>Wire value</dt><dd>The text form of a value in a request or response (<code>AtlasValueConverter.ToWire</code>, <code>FromWire</code>).</dd>
+<dt>Change-over day</dt><dd>The day when <code>050</code> copies TTD to TTDV2 and TTD stops.</dd>
+<dt>Gate</dt><dd>One of the 5 platform quality commands (section 11).</dd>
+</dl>
+</section>
+
+<!-- ============================== 15 ============================== -->
+<section id="s15">
+<h2>15. File index</h2>
+<p><span class="tag copy">copy</span> = in the bundle <code>copy/</code>, copy to the target. <span class="tag ref">reference</span> = in the bundle <code>reference/</code>, read only. <span class="tag local">local</span> = this repo only.</p>
+<p>Bundle content from the <code>COPY</code> and <code>REFERENCE</code> lists of <code>make-target-package.py</code> at this commit: 84 copy files and 8 reference files.</p>
+<div class="table-wrap"><table><tr><th>File</th><th>Kind</th><th>What it is</th></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Data/Platform/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasColumnMetadataReader.cs">AtlasColumnMetadataReader.cs</a></td><td><span class="tag copy">copy</span></td><td>Reads the columns of the app tables from sys.columns at start-up into the registry.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasDataExtensions.cs">AtlasDataExtensions.cs</a></td><td><span class="tag copy">copy</span></td><td>AddAtlasPlatformData, BeginSharedTransaction, NewRecord, FindActive.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasPlatformContext.cs">AtlasPlatformContext.cs</a></td><td><span class="tag copy">copy</span></td><td>Generic EF Core context: each registered table is a shared-type entity (Records(&quot;Schema.Name&quot;)).</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasSqlTypes.cs">AtlasSqlTypes.cs</a></td><td><span class="tag copy">copy</span></td><td>Maps a SQL Server type to a .NET type and an EF Core store type.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasTable.cs">AtlasTable.cs</a></td><td><span class="tag copy">copy</span></td><td>AtlasTable and AtlasColumn: name, type, key, IsDeleted, row version, default.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasTableRegistry.cs">AtlasTableRegistry.cs</a></td><td><span class="tag copy">copy</span></td><td>Keeps the table definitions in memory; IsLoaded, MarkLoaded.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasValueConverter.cs">AtlasValueConverter.cs</a></td><td><span class="tag copy">copy</span></td><td>FromWire, ToWire, SameValue: wire text to and from the column type.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/README.md">README.md</a></td><td><span class="tag copy">copy</span></td><td>Folder notes.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Data/Platform/Dto/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/Platform/Dto/CPPlatformDto.cs">CPPlatformDto.cs</a></td><td><span class="tag copy">copy</span></td><td>Optional platform properties of the current DTO classes (partial) and new DTOs.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/AtlasJson.cs">AtlasJson.cs</a></td><td><span class="tag copy">copy</span></td><td>JSON read with a clear error message (tolerant of unknown members).</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/AtlasLog.cs">AtlasLog.cs</a></td><td><span class="tag copy">copy</span></td><td>All platform log events, IDs 41001 to 41024.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/AtlasPlatformServices.cs">AtlasPlatformServices.cs</a></td><td><span class="tag copy">copy</span></td><td>Registers the Service project services.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/AtlasProblemException.cs">AtlasProblemException.cs</a></td><td><span class="tag copy">copy</span></td><td>An error with an HTTP status: NotFound, BadRequest, Forbidden, Config.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/README.md">README.md</a></td><td><span class="tag copy">copy</span></td><td>Folder notes.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/Audit/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditMask.cs">AtlasAuditMask.cs</a></td><td><span class="tag copy">copy</span></td><td>Shows *** for values of hidden fields in History.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditWriter.cs">AtlasAuditWriter.cs</a></td><td><span class="tag copy">copy</span></td><td>Writes and reads the server audit rows; ToText for the target History Log.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/Dashboard/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs">AtlasDashboardService.cs</a></td><td><span class="tag copy">copy</span></td><td>Load: tabs, rows, menus and buttons for the current user.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasTabQueryBuilder.cs">AtlasTabQueryBuilder.cs</a></td><td><span class="tag copy">copy</span></td><td>Build: parameterized SQL of a Source: Table tab; Quote; Operators.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/Options/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Options/AtlasOptionProviders.cs">AtlasOptionProviders.cs</a></td><td><span class="tag copy">copy</span></td><td>IAtlasOptionProvider and PBAccounts, UsersInRoles, Years, WeekEndings.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/Registry/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs">AtlasAppManifest.cs</a></td><td><span class="tag copy">copy</span></td><td>Manifest model, its enums, and AtlasAppCode (IsValid, FromRequest, ToLegacy, IsLegacy).</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasApplicationMenu.cs">AtlasApplicationMenu.cs</a></td><td><span class="tag copy">copy</span></td><td>Enrich: FormType and HasDashboard on the v1/Application rows.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasConfigStore.cs">AtlasConfigStore.cs</a></td><td><span class="tag copy">copy</span></td><td>IAtlasConfigStore: reads manifests, forms and dashboards one time; applies AppSettings:Modules.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasDisabledApps.cs">AtlasDisabledApps.cs</a></td><td><span class="tag copy">copy</span></td><td>The apps that the start-up check disabled; AtlasStartupErrorMode.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasModuleResolver.cs">AtlasModuleResolver.cs</a></td><td><span class="tag copy">copy</span></td><td>IAtlasModule, AtlasModuleRegistration, IAtlasModuleResolver (IsPlatformApp, Get).</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasPlatformConfiguration.cs">AtlasPlatformConfiguration.cs</a></td><td><span class="tag copy">copy</span></td><td>The configuration given to AddAtlasPlatform and its sources.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasPlatformOptions.cs">AtlasPlatformOptions.cs</a></td><td><span class="tag copy">copy</span></td><td>Platform setting keys (ConfigFolder, OnStartupError); AtlasEnumText.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/Rules/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Rules/AtlasRuleEngine.cs">AtlasRuleEngine.cs</a></td><td><span class="tag copy">copy</span></td><td>Evaluate and ApplyToSection: role, owner and state rules.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/Sections/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasAllowList.cs">AtlasAllowList.cs</a></td><td><span class="tag copy">copy</span></td><td>Check: the fields that a save accepts, refuses or ignores.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasComputedFields.cs">AtlasComputedFields.cs</a></td><td><span class="tag copy">copy</span></td><td>Computed functions Sum, Count, Min, Max: TryParse, Evaluate, Compute.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasDefaultTokens.cs">AtlasDefaultTokens.cs</a></td><td><span class="tag copy">copy</span></td><td>Default tokens {User.LanID}, {User.DisplayName}, {Today}, {Options[n]}.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasFieldValidator.cs">AtlasFieldValidator.cs</a></td><td><span class="tag copy">copy</span></td><td>Server validators, the same rules and texts as the client.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasFormFields.cs">AtlasFormFields.cs</a></td><td><span class="tag copy">copy</span></td><td>The fields of a form and their state after rules and effects.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasModuleServices.cs">AtlasModuleServices.cs</a></td><td><span class="tag copy">copy</span></td><td>The services that a module class gets in one constructor parameter.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasServerEffects.cs">AtlasServerEffects.cs</a></td><td><span class="tag copy">copy</span></td><td>Apply, Values, Matches: the effects on the server.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Platform/Security/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasAccessService.cs">AtlasAccessService.cs</a></td><td><span class="tag copy">copy</span></td><td>Evaluate, Demand, IsOwner, UserPermissions.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasRoles.cs">AtlasRoles.cs</a></td><td><span class="tag copy">copy</span></td><td>AtlasAppRoles: roles of a user for an app and the flag tokens.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasSql.cs">AtlasSql.cs</a></td><td><span class="tag copy">copy</span></td><td>Small parameterized queries on the target connection.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasUserContext.cs">AtlasUserContext.cs</a></td><td><span class="tag copy">copy</span></td><td>The current user and roles (vw_CP_Atlas_ActiveUserRole); user directory with name cache.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.Service/Application/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs">ConfigSectionService.cs</a></td><td><span class="tag copy">copy</span></td><td>The generic app service: LoadPage, SavePage, RemovePage, LoadDashboard, GetAuditLog, hooks.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.App/Platform/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs">AtlasConfigLint.cs</a></td><td><span class="tag copy">copy</span></td><td>CheckUnknownProperties and CheckForm: JSON checks for the start-up check.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasPlatformServiceCollectionExtensions.cs">AtlasPlatformServiceCollectionExtensions.cs</a></td><td><span class="tag copy">copy</span></td><td>AddAtlasPlatform and AddAtlasModule.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasPlatformStartup.cs">AtlasPlatformStartup.cs</a></td><td><span class="tag copy">copy</span></td><td>StartAtlasPlatformAsync, RunAtlasCheckAsync, AtlasPlatformStartupService.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasProblemExceptionFilter.cs">AtlasProblemExceptionFilter.cs</a></td><td><span class="tag copy">copy</span></td><td>Changes an AtlasProblemException to a problem response.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs">AtlasStartupCheck.cs</a></td><td><span class="tag copy">copy</span></td><td>Run: compares the config with the tables and registrations.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/README.md">README.md</a></td><td><span class="tag copy">copy</span></td><td>Folder notes.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Platform/UserInfoCurrentUserSource.cs">UserInfoCurrentUserSource.cs</a></td><td><span class="tag copy">copy</span></td><td>Gets the current user from the target IUserInfo.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/BBH.CP.Atlas.App/Config/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.app.json">TTDV2.app.json</a></td><td><span class="tag copy">copy</span></td><td>TTDV2 manifest.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.json">TTDV2.json</a></td><td><span class="tag copy">copy</span></td><td>TTDV2 form: sections, controls, rules, permissions, defaults, computed.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.Dashboard.json">TTDV2.Dashboard.json</a></td><td><span class="tag copy">copy</span></td><td>TTDV2 dashboard: 3 tabs and the Add button.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/WebUi/src/app/platform/</code></th></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-api.service.ts">atlas-api.service.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasApiService: the v1 calls.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-dates.ts">atlas-dates.ts</a></td><td><span class="tag copy">copy</span></td><td>isNil, parseLocalDay.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-errors.ts">atlas-errors.ts</a></td><td><span class="tag copy">copy</span></td><td>problemText: the user text of an HTTP error.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-history-dialog.ts">atlas-history-dialog.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasHistoryDialog: the History Log of the platform form.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-models.ts">atlas-models.ts</a></td><td><span class="tag copy">copy</span></td><td>The server DTOs as the API sends them (PascalCase).</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-navigation.ts">atlas-navigation.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasDashboardNavigation, formRoute, formTypeOf, ATLAS_DASHBOARD_LINK.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-notice.service.ts">atlas-notice.service.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasNoticeService: save and delete messages (ngx-toastr).</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-pbdev.ts">atlas-pbdev.ts</a></td><td><span class="tag copy">copy</span></td><td>The only import of @pbdev/pbdev-core; toSelectOptions; atlasControlId.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-platform.routes.ts">atlas-platform.routes.ts</a></td><td><span class="tag copy">copy</span></td><td>atlasPlatformRoutes: form/:code/:id.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-platform.scss">atlas-platform.scss</a></td><td><span class="tag copy">copy</span></td><td>Styles of the platform form, dashboard columns and dialogs.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/atlas-tailwind-classes.ts">atlas-tailwind-classes.ts</a></td><td><span class="tag copy">copy</span></td><td>Tailwind class names of the JSON files (until the safelist is confirmed).</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/platform.component.spec.ts">platform.component.spec.ts</a></td><td><span class="tag copy">copy</span></td><td>TestBed specs of the form, renderers and dialogs.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/platform.spec.ts">platform.spec.ts</a></td><td><span class="tag copy">copy</span></td><td>Specs of the pure functions.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/WebUi/src/app/platform/dashboard/</code></th></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/dashboard/atlas-action-menu.ts">atlas-action-menu.ts</a></td><td><span class="tag copy">copy</span></td><td>Fallback Actions menu (the target uses its ActionMenuComponent).</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/dashboard/atlas-dashboard-columns.ts">atlas-dashboard-columns.ts</a></td><td><span class="tag copy">copy</span></td><td>columnDefs and sumsRow for a tab with Columns.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/dashboard/atlas-dashboard.component.html">atlas-dashboard.component.html</a></td><td><span class="tag copy">copy</span></td><td>Reference dashboard template (local route only).</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/dashboard/atlas-dashboard.component.ts">atlas-dashboard.component.ts</a></td><td><span class="tag copy">copy</span></td><td>Reference dashboard component (local route only).</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/WebUi/src/app/platform/form/</code></th></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-effect-cases.ts">atlas-effect-cases.ts</a></td><td><span class="tag copy">copy</span></td><td>Shared effect and computed cases (client and server tests).</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-effects.ts">atlas-effects.ts</a></td><td><span class="tag copy">copy</span></td><td>applyEffects: the effects on the client.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-field-a11y.directive.ts">atlas-field-a11y.directive.ts</a></td><td><span class="tag copy">copy</span></td><td>Accessible name, state and error of each input.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-form-model.ts">atlas-form-model.ts</a></td><td><span class="tag copy">copy</span></td><td>buildFormGroup, buildOutputs, value kinds, computeValue.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.html">atlas-form.component.html</a></td><td><span class="tag copy">copy</span></td><td>The generic form template.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts">atlas-form.component.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasFormComponent: load, effects, save, delete, history.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-grid-components.ts">atlas-grid-components.ts</a></td><td><span class="tag copy">copy</span></td><td>provideAtlasGridComponents: target cell components by name.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-renderer-registry.ts">atlas-renderer-registry.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasRendererRegistry, provideAtlasRenderers: control type to component.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-validator-cases.ts">atlas-validator-cases.ts</a></td><td><span class="tag copy">copy</span></td><td>Shared validator cases (client and server tests).</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/atlas-validators.ts">atlas-validators.ts</a></td><td><span class="tag copy">copy</span></td><td>Client validators and error texts.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/WebUi/src/app/platform/form/renderers/</code></th></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/renderers/atlas-grid-renderer.ts">atlas-grid-renderer.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasGridRenderer (ag-grid) and dateHeader.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/platform/form/renderers/atlas-renderers.ts">atlas-renderers.ts</a></td><td><span class="tag copy">copy</span></td><td>AtlasRendererBase and the renderer of each control type.</td></tr>
+<tr><th colspan="3">Bundle folder <code>copy/sql/release-p1/</code></th></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/020-script-log.sql">020-script-log.sql</a></td><td><span class="tag copy">copy</span></td><td>Script log table.</td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/030-active-user-roles-view.sql">030-active-user-roles-view.sql</a></td><td><span class="tag copy">copy</span></td><td>Active user roles view.</td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/040-ttdv2-app.sql">040-ttdv2-app.sql</a></td><td><span class="tag copy">copy</span></td><td>TTDV2 schema, tables, indexes, app row, roles.</td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql">050-ttdv2-copy-from-ttd.sql</a></td><td><span class="tag copy">copy</span></td><td>TTD to TTDV2 copy. Change-over day only.</td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql">090-ttdv2-rollback.sql</a></td><td><span class="tag copy">copy</span></td><td>Rollback. Rollback only.</td></tr>
+<tr><td><a href="../../atlas-platform/sql/release-p1/README.md">README.md</a></td><td><span class="tag copy">copy</span></td><td>Run order and placeholders of the scripts.</td></tr>
+<tr><th colspan="3">Bundle folder <code>reference/</code></th></tr>
+<tr><td><a href="../../atlas-platform/INTEGRATION.md">INTEGRATION.md</a></td><td><span class="tag ref">reference</span></td><td>Integration steps, settings, checks, findings.</td></tr>
+<tr><td><a href="../../atlas-platform/PBDEV.md">PBDEV.md</a></td><td><span class="tag ref">reference</span></td><td>@pbdev/pbdev-core names and inputs.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/Config/README.md">README.md</a></td><td><span class="tag ref">reference</span></td><td>Folder notes.</td></tr>
+<tr><th colspan="3">Bundle folder <code>reference/StandIn/</code></th></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/StandIn/CPAtlasService.cs">CPAtlasService.cs</a></td><td><span class="tag ref">reference</span></td><td>Stand-in of the target service: shows the PLATFORM lines.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/StandIn/Controllers/V1/CPAtlasController.cs">CPAtlasController.cs</a></td><td><span class="tag ref">reference</span></td><td>Stand-in of the target controller: string code, injection.</td></tr>
+<tr><td><a href="../../atlas-platform/src/BBH.CP.Atlas.App/StandIn/Program.cs">Program.cs</a></td><td><span class="tag ref">reference</span></td><td>Stand-in host: the program.cs platform lines and --atlas-check.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/app.routes.ts">app.routes.ts</a></td><td><span class="tag ref">reference</span></td><td>Local routes: shows ...atlasPlatformRoutes.</td></tr>
+<tr><td><a href="../../atlas-platform/WebUi/src/app/app.config.ts">app.config.ts</a></td><td><span class="tag ref">reference</span></td><td>Local providers: shows provideAtlasGridComponents.</td></tr>
+</table></div>
+<h3>Local-only files (selection)</h3><div class="table-wrap"><table><tr><th>File</th><th>Kind</th><th class="wrap">What it is</th></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/src/BBH.CP.Atlas.App/StandIn/StandInHost.cs">src/BBH.CP.Atlas.App/StandIn/StandInHost.cs</a></td><td><span class="tag local">local</span></td><td class="wrap">Local demo host (stand-in authentication, controllers).</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/src/BBH.CP.Atlas.App/StandIn/Controllers/V1/CPSecurityController.cs">src/BBH.CP.Atlas.App/StandIn/Controllers/V1/CPSecurityController.cs</a></td><td><span class="tag local">local</span></td><td class="wrap">Stand-in of v1/authorize and the local test users.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/StandIn/Application/Interfaces/ServiceInterfaces.cs">src/BBH.CP.Atlas.Service/StandIn/Application/Interfaces/ServiceInterfaces.cs</a></td><td><span class="tag local">local</span></td><td class="wrap">Stand-in of IApplicationService and ISectionService.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/src/BBH.CP.Atlas.Service/StandIn/CPApplicationService.cs">src/BBH.CP.Atlas.Service/StandIn/CPApplicationService.cs</a></td><td><span class="tag local">local</span></td><td class="wrap">Stand-in of the target base service.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/src/BBH.CP.Atlas.Data/StandIn/DTO/CPAtlasApplicationConfig.cs">src/BBH.CP.Atlas.Data/StandIn/DTO/CPAtlasApplicationConfig.cs</a></td><td><span class="tag local">local</span></td><td class="wrap">Stand-in of the target DTOs (with partial).</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/src/BBH.CP.Atlas.App/appsettings.Development.json">src/BBH.CP.Atlas.App/appsettings.Development.json</a></td><td><span class="tag local">local</span></td><td class="wrap">Local settings (Modules:TTDV2, stand-in users).</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/src/BBH.CP.Atlas.App/BBH.CP.Atlas.App.csproj">src/BBH.CP.Atlas.App/BBH.CP.Atlas.App.csproj</a></td><td><span class="tag local">local</span></td><td class="wrap">Local project file (Config copy to output).</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/AtlasPlatform.slnx">AtlasPlatform.slnx</a></td><td><span class="tag local">local</span></td><td class="wrap">Solution of the local build and tests.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/Directory.Build.props">Directory.Build.props</a></td><td><span class="tag local">local</span></td><td class="wrap">net10.0, TreatWarningsAsErrors.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/tests/BBH.CP.Atlas.Platform.Tests/CodeCommentRulesTests.cs">tests/BBH.CP.Atlas.Platform.Tests/CodeCommentRulesTests.cs</a></td><td><span class="tag local">local</span></td><td class="wrap">Comment rules and CODE_TRACE.md check.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/tests/BBH.CP.Atlas.Platform.Tests/Data/SqlServerDatabaseFixture.cs">tests/BBH.CP.Atlas.Platform.Tests/Data/SqlServerDatabaseFixture.cs</a></td><td><span class="tag local">local</span></td><td class="wrap">Makes and drops a test database.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/WebUi/src/app/stand-in/pbdev-core/pbdev-core.ts">WebUi/src/app/stand-in/pbdev-core/pbdev-core.ts</a></td><td><span class="tag local">local</span></td><td class="wrap">Local stand-in of @pbdev/pbdev-core.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/WebUi/tsconfig.target-flags.json">WebUi/tsconfig.target-flags.json</a></td><td><span class="tag local">local</span></td><td class="wrap">Type check of platform/ with the target flags.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/WebUi/tailwind.config.js">WebUi/tailwind.config.js</a></td><td><span class="tag local">local</span></td><td class="wrap">Local Tailwind config with the safelist.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/local/README.md">local/README.md</a></td><td><span class="tag local">local</span></td><td class="wrap">How to run the local review (database, API, WebUi).</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/local/make-target-package.py">local/make-target-package.py</a></td><td><span class="tag local">local</span></td><td class="wrap">Builds the bundle from committed files.</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/local/package/atlas-target-package.ps1">local/package/atlas-target-package.ps1</a></td><td><span class="tag local">local</span></td><td class="wrap">The bundle (commit 772b394).</td></tr>
+<tr><td class="wrap"><a href="../../atlas-platform/local/setup-local-db.ps1">local/setup-local-db.ps1</a></td><td><span class="tag local">local</span></td><td class="wrap">Makes the local database.</td></tr>
+<tr><td class="wrap"><a href="../../docs/atlas-platform/sql/05-new-app-template.sql">docs/atlas-platform/sql/05-new-app-template.sql</a></td><td><span class="tag local">local</span></td><td class="wrap">SQL template for a new app.</td></tr>
+</table></div>
+</section>
+
+<footer>
+<h2 style="font-size:1rem">Document record</h2>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th class="wrap">Value</th></tr>
+<tr><td>Title</td><td class="wrap">CP Atlas platform: code, integration and TTDV2 flow</td></tr>
+<tr><td>File</td><td class="wrap"><code>docs/atlas-platform/CP_ATLAS_PLATFORM_GUIDE.html</code></td></tr>
+<tr><td>Date</td><td class="wrap">2026-11-10</td></tr>
+<tr><td>Code version</td><td class="wrap"><code>fc5f9c7</code> (platform code equal to <code>772b394</code>)</td></tr>
+<tr><td>Bundle</td><td class="wrap"><code>772b394</code>, 92 files (84 copy, 8 reference)</td></tr>
+<tr><td>Sources</td><td class="wrap">The platform code, <code>INTEGRATION.md</code>, <code>PBDEV.md</code>, <code>make-target-package.py</code>, the bundle, <code>CODEX_HANDOFF.md</code> section A, <code>ATLAS_CODE_MAP.html</code>, <code>ATLAS_TEAM_NOTES.html</code>, <code>PENDING_DECISIONS.html</code></td></tr>
+<tr><td>Language</td><td class="wrap">ASD-STE100 Simplified Technical English, about 80%</td></tr>
+<tr><td>Companion</td><td class="wrap"><a href="../CP_ATLAS_ENGINE_GUIDE.html">CP_ATLAS_ENGINE_GUIDE.html</a> (workflow engine)</td></tr>
+<tr><td>Rule</td><td class="wrap">The code is the source of truth. Report a difference between this guide and the code.</td></tr>
+</table></div>
+</footer>
+</main>
+</body>
+</html>
