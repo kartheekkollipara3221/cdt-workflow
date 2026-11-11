@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>State machine decisions</title>
+<style>
+:root{color-scheme:light;--bg:#edf1f5;--paper:#fff;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--amber:#8a5a00;--amberbg:#fff7e6;--amberline:#c58a1a;--red:#a3271f;--redbg:#fdeeee;--code:#f4f6f8;--th:#eff4f7;--box:#fbfdfe;--sel:#e3effa;--grey:#4f5d69;--greybg:#eef1f3}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--amberline:#d9a441;--red:#f19a92;--redbg:#3a1c1a;--code:#1f2e3a;--th:#1c2b37;--box:#1a2833;--sel:#1d3a4f;--grey:#b3c0cb;--greybg:#22303b}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1820;--paper:#16222c;--ink:#dce6ee;--muted:#9aacbb;--line:#2c3d4b;--navy:#9fd0f0;--blue:#5aa6d6;--bluebg:#16303f;--green:#7fd39a;--greenbg:#173326;--amber:#f0c066;--amberbg:#33290f;--amberline:#d9a441;--red:#f19a92;--redbg:#3a1c1a;--code:#1f2e3a;--th:#1c2b37;--box:#1a2833;--sel:#1d3a4f;--grey:#b3c0cb;--greybg:#22303b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:24px auto;background:var(--paper);padding:36px 40px;border-radius:12px}
+h1,h2,h3,h4{color:var(--navy);line-height:1.25}
+h1{font-size:1.85rem;margin:6px 0 10px}
+h2{font-size:1.35rem;margin:42px 0 10px;border-top:1px solid var(--line);padding-top:22px}
+h3{font-size:1.1rem;margin:26px 0 8px}
+h4{font-size:1rem;margin:0 0 6px}
+p{margin:10px 0}
+ul,ol{padding-left:24px}
+li{margin:4px 0}
+a{color:var(--blue);text-underline-offset:3px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.12rem}
+.small{font-size:.88rem;color:var(--muted)}
+code{font:.86em ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow:auto;font:13px/1.5 ui-monospace,Consolas,monospace;margin:8px 0}
+pre code{background:none;padding:0;font-size:inherit;overflow-wrap:normal}
+.note,.warn,.ok,.stop{padding:12px 16px;margin:14px 0;border-left:4px solid var(--blue);background:var(--bluebg);border-radius:0 8px 8px 0}
+.warn{border-color:var(--amberline);background:var(--amberbg)}
+.ok{border-color:var(--green);background:var(--greenbg)}
+.stop{border-color:var(--red);background:var(--redbg)}
+.note>:first-child,.warn>:first-child,.ok>:first-child,.stop>:first-child{margin-top:0}
+.note>:last-child,.warn>:last-child,.ok>:last-child,.stop>:last-child{margin-bottom:0}
+.big{font-size:1.15rem}
+.tbl{overflow-x:auto;margin:10px 0 18px}
+.tbl.wide table{min-width:640px}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--th)}
+.tag,.lab{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 8px;border-radius:10px;white-space:nowrap;vertical-align:1px;margin:1px 2px 1px 0}
+.t-now{background:var(--greenbg);color:var(--green)}
+.t-later{background:var(--amberbg);color:var(--amber)}
+.t-no{background:var(--greybg);color:var(--grey)}
+.t-size{background:var(--bluebg);color:var(--blue)}
+.t-stop,.lab-inf{background:var(--redbg);color:var(--red)}
+.lab-known{background:var(--amberbg);color:var(--amber)}
+.lab-fact{background:var(--bluebg);color:var(--blue)}
+nav ul{columns:2;padding-left:18px;margin:8px 0}
+nav li{margin:3px 0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
+.tile{border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:0}
+.tile .n{font-size:2rem;font-weight:750;line-height:1.1;color:var(--navy)}
+.tile .w{font-weight:650}
+.tile .s{font-size:.86rem;color:var(--muted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:0}
+.steps{display:grid;gap:12px;margin:14px 0;padding:0;list-style:none}
+.step{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:0}
+.step .num{grid-row:span 2;display:flex;align-items:center;justify-content:center;width:2.1em;height:2.1em;border-radius:999px;background:var(--blue);color:var(--paper);font-weight:750}
+.step h3{margin:2px 0 0;font-size:1.05rem}
+.step div{min-width:0}
+.item{border:1px solid var(--line);border-left:4px solid var(--green);border-radius:0 8px 8px 0;padding:10px 18px;margin:16px 0}
+.item.later{border-left-color:var(--amberline)}
+.item.no{border-left-color:var(--grey)}
+.item.target{border-left-color:var(--blue)}
+.item h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:6px 0 8px}
+.item h3 .id{color:var(--muted)}
+.words{columns:2;column-gap:30px;margin:10px 0}
+.words div{break-inside:avoid;margin-bottom:9px}
+.words dt{font-weight:650}
+.words dd{margin:0}
+footer{border-top:1px solid var(--line);margin-top:40px;padding-top:18px;font-size:.9rem}
+footer dt{font-weight:650}
+footer dd{margin:0 0 10px}
+/* answer sheet */
+.group{margin-top:22px}
+fieldset.q{border:1px solid var(--line);border-radius:10px;padding:12px 16px 14px;margin:12px 0;background:var(--box);min-width:0}
+fieldset.q.done{border-left:4px solid var(--green)}
+fieldset.q legend{padding:0;margin:0 0 6px;width:100%;float:left}
+fieldset.q legend+*{clear:both}
+.qhead{display:flex;gap:8px 10px;align-items:baseline;flex-wrap:wrap}
+.qid{font:700 .8rem ui-monospace,Consolas,monospace;color:var(--blue);background:var(--bluebg);padding:2px 7px;border-radius:6px}
+.qtitle{font-weight:650;color:var(--navy)}
+.sev{font-size:.72rem;font-weight:700;padding:1px 8px;border-radius:10px}
+.sev.high{background:var(--redbg);color:var(--red)}
+.sev.med{background:var(--amberbg);color:var(--amber)}
+.sev.info{background:var(--bluebg);color:var(--blue)}
+.ctx{margin:8px 0 10px;font-size:.93rem}
+.opts{display:grid;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--paper)}
+.opt:has(input:checked){background:var(--sel);border-color:var(--blue)}
+.opt input{margin-top:5px;flex:none}
+.opt b{color:var(--navy)}
+.rec{display:inline-block;font-size:.72rem;font-weight:700;color:var(--green);background:var(--greenbg);padding:1px 7px;border-radius:10px;margin-left:6px}
+textarea{width:100%;font:inherit;font-size:.92rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:4px;min-height:44px;resize:vertical}
+label.nl{display:block;font-size:.82rem;color:var(--muted);margin-top:10px}
+.bar{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--line);padding:10px 0;margin:14px 0 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar button{font:inherit;font-weight:650;padding:8px 14px;border-radius:8px;border:1px solid var(--blue);background:var(--blue);color:var(--paper);cursor:pointer}
+.bar button.sec{background:transparent;color:var(--blue)}
+.prog{font-size:.9rem;color:var(--muted)}
+#msg{font-size:.9rem;color:var(--green)}
+#out{display:none;width:100%;min-height:220px;margin-top:10px;font:.84rem/1.45 ui-monospace,Consolas,monospace}
+@media (max-width:700px){main{padding:18px 16px;margin:0;border-radius:0}nav ul,.words{columns:1}.two{grid-template-columns:1fr}h1{font-size:1.5rem}th,td{padding:6px 8px}.item{padding:10px 12px}}
+@media print{body{background:#fff}main{max-width:none;margin:0;padding:0}nav,.bar,#out{display:none}.item,.step,fieldset.q,tr{break-inside:avoid}h2,h3{break-after:avoid}}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+<div class="eyebrow">CP Atlas · workflow engine and Atlas platform · recommendation and decisions · 2026-11-10</div>
+<h1>Implicit state machines: what I would do, and what I need from you</h1>
+<p class="lead">You asked: "If you owned the code of the workflow engine and of the platform integration, would you act on the findings?" This report gives my answer, the reasons, the order of the work, and the decisions that only you can make. It does not approve work. Nothing starts before you answer.</p>
+<div class="note"><b>Basis.</b> Commit <code>65adf79</code>, branch <code>console-code-first-0518</code>. The code is the same as at <code>c729452</code>, the commit of the inventory, because <code>65adf79</code> changed only documents. For this report I read the code again at each point where a decision depends on it. No code changed. No build or test ran.</div>
+<div class="note"><b>Independent assessment.</b> On the same day, a separate review checked the inventory against the code: <a href="IMPLICIT_STATE_MACHINES_ASSESSMENT.md"><code>docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md</code></a>. It agrees with most findings. I read it, and this report uses four of its points: W8 moves into step 3, the W5 fix must be a conditional update, and W9 and W10 become narrower. Section 1 lists all changes.</div>
+<p class="small">Writing target: about 80% ASD-STE100. This is a style target, not a measured score. Code names stay as they are. The findings are in <a href="IMPLICIT_STATE_MACHINES.md">the inventory</a>, and their explanation is in <a href="IMPLICIT_STATE_MACHINES_EXPLAINED.html">the explained page</a>.</p>
+<nav aria-label="Contents">
+<ul>
+<li><a href="#answer">1. Short answer</a></li>
+<li><a href="#how">2. How I decided</a></li>
+<li><a href="#plan">3. The plan in four steps</a></li>
+<li><a href="#items">4. The items, one by one</a></li>
+<li><a href="#owner">5. What ownership changes</a></li>
+<li><a href="#target">6. For the target team</a></li>
+<li><a href="#decisions">7. Your decisions (answer sheet)</a></li>
+<li><a href="#words">8. Words used on this page</a></li>
+<li><a href="#sources">9. Sources</a></li>
+</ul>
+</nav>
+</header>
+
+<!-- ============================================================ 1 -->
+<h2 id="answer">1. Short answer</h2>
+<div class="ok">
+<p class="big"><b>Yes, but only part of it.</b></p>
+<p>I would not run one project to make all 24 machines explicit. Most of the machines are small, or SQL constraints already guard them. A few holes have real effects, and most fixes for them are small.</p>
+</div>
+
+<div class="tiles">
+<div class="tile"><div class="n">9</div><div class="w">work items now</div><div class="s">W1 (in part), W4, W5, W6, W7, W8, W9 (narrow), W10 (narrow), W13</div></div>
+<div class="tile"><div class="n">3</div><div class="w">small extra fixes now</div><div class="s">The SQMS version literal, the save with no change, a warning for rules with <code>States</code></div></div>
+<div class="tile"><div class="n">2</div><div class="w">work items later</div><div class="s">W3, W11: each when its trigger comes</div></div>
+<div class="tile"><div class="n">2</div><div class="w">not as written</div><div class="s">W2 (only in the files that the fixes change), W12 (a feature)</div></div>
+</div>
+
+<h3>The 13 work items at a glance</h3>
+<div class="tbl wide"><table>
+<tr><th>Item</th><th>My answer</th><th>When</th><th>Main reason</th></tr>
+<tr><td><a href="#w13">W13</a> cut-over scripts</td><td><span class="tag t-now">Yes, first</span></td><td>Step 2, before the change-over day</td><td>The only finding that can remove access for all TTD users.</td></tr>
+<tr><td><a href="#w9">W9</a> app availability</td><td><span class="tag t-now">Yes, narrow</span></td><td>Step 2</td><td>One place, the dashboard tab, gives a different result. Fix that place.</td></tr>
+<tr><td><a href="#w10">W10</a> form status</td><td><span class="tag t-now">Yes, narrow</span></td><td>Step 2</td><td>In the form, Save and Delete can run at the same time. Small.</td></tr>
+<tr><td><a href="#w1">W1</a> transition tests</td><td><span class="tag t-now">Yes, in part</span></td><td>Step 3</td><td>Tests for E01, E03 and E05 only: the machines that the fixes change.</td></tr>
+<tr><td><a href="#w4">W4</a> SaveDraft race</td><td><span class="tag t-now">Yes</span></td><td>Step 3</td><td>A known High defect. Small.</td></tr>
+<tr><td><a href="#w7">W7</a> metadata checks</td><td><span class="tag t-now">Yes</span></td><td>Step 3</td><td>It protects each new workflow and each activation.</td></tr>
+<tr><td><a href="#w5">W5</a> cancel during send</td><td><span class="tag t-now">Yes</span></td><td>Step 3</td><td>The record says <code>Cancelled</code> for an e-mail that went out. Small.</td></tr>
+<tr><td><a href="#w6">W6</a> SLA-only request</td><td><span class="tag t-now">Yes, option A</span></td><td>Step 3</td><td>A clear error in place of an unexpected error. Small.</td></tr>
+<tr><td><a href="#w8">W8</a> F09 race</td><td><span class="tag t-now">Yes</span></td><td>Step 3</td><td>The fix is in the same file as W5 and W6, so the target merges that file one time.</td></tr>
+<tr><td><a href="#later">W11</a> client rule locks</td><td><span class="tag t-later">Later</span></td><td>When an app needs it</td><td>The server already refuses the value. TTDV2 does not reach the case.</td></tr>
+<tr><td><a href="#later">W3</a> one delivery helper</td><td><span class="tag t-later">Later</span></td><td>With the next delivery change</td><td>Most of the three differences have a reason.</td></tr>
+<tr><td><a href="#w2">W2</a> all constants</td><td><span class="tag t-no">Not as written</span></td><td>In step 3, in part</td><td>The <code>CHECK</code> constraints already refuse a wrong status on write.</td></tr>
+<tr><td><a href="#w12">W12</a> engine adapter</td><td><span class="tag t-no">Not as written</span></td><td>Q51 decides</td><td>A feature, not a fix.</td></tr>
+</table></div>
+
+<div class="warn">
+<h4>Changes since my chat answer</h4>
+<ol>
+<li><b>W6: option A, not option B.</b> In the chat I recommended option B and named D03 as the reason. That was wrong. The same request already gives HTTP 400 "Invalid workflow SLA input." for other SLA errors (<code>WorkflowActionService.cs:92-98</code>). D03 is about the business results, not about this error path. Also, the target code already catches the same exception type. So option A uses paths that exist. The explained page also named option A as the smallest change.</li>
+<li><b>The version check on delete (P01) moves to "later".</b> The delete call goes through two target files, <code>CPAtlasController.cs</code> and <code>CPAtlasService.cs</code>, with only the app code and the record ID. A version needs a change in both target files. That is stop-and-ask, and it is more work than I said in the chat.</li>
+<li><b>W8 moves from "later" into step 3.</b> Its fix is in the same file as W5 and W6, so the target merges that file one time. The independent assessment also rates it High.</li>
+<li><b>W5 must use a conditional database update.</b> The independent assessment found a second ordering: a cancel that EF Core tracked before the send can overwrite <code>Sent</code>.</li>
+<li><b>W9 and W10 become narrower.</b> W9 fixes only the place that differs. W10 makes Save and Delete exclusive in the form. The dashboard in this repository is only a local reference, because the target uses its own dashboard.</li>
+</ol>
+</div>
+
+<!-- ============================================================ 2 -->
+<h2 id="how">2. How I decided</h2>
+<p>I asked five questions for each finding.</p>
+<div class="tbl"><table>
+<tr><th>Question</th><th>How it changes the order</th></tr>
+<tr><td>What is the effect?</td><td>Lost access, wrong data or a false record comes first. A rare effect with no harm comes last.</td></tr>
+<tr><td>Who can get it?</td><td>A hole that each new app or each new workflow can get counts more than a hole that only old data can get.</td></tr>
+<tr><td>How large is the fix?</td><td>Small fixes with a clear effect come first.</td></tr>
+<tr><td>Does a caller see a change?</td><td>A change for callers or for target files needs your approval, and it must be additive.</td></tr>
+<tr><td>Is it proved?</td><td>An item with the label "Inference - verify" gets a failing test first. If the test passes, I drop the item.</td></tr>
+</table></div>
+<p>These rules stay the same for every item (<a href="../AGENTS.MD"><code>AGENTS.MD</code></a>, inventory section 1.4):</p>
+<ul>
+<li>No state-machine library, no new package, no BPMN, no rule language.</li>
+<li>Stored status texts, keys, result codes and log names do not change. A constant must have the same text as the SQL <code>CHECK</code> constraint.</li>
+<li>Database changes only as SQL scripts. Any change to <code>050</code> or <code>090</code> is stop-and-ask.</li>
+<li>The settled decisions stay settled: D08, O4, O5, O6, D01, D07.</li>
+</ul>
+
+<!-- ============================================================ 3 -->
+<h2 id="plan">3. The plan in four steps</h2>
+<ol class="steps">
+<li class="step"><span class="num">1</span><h3>You answer section 7</h3><div>Select an option for each decision, then send me the copied text. I record your answers in <code>CODEX_HANDOFF.md</code>.</div></li>
+<li class="step"><span class="num">2</span><h3>Platform package, before the change-over day</h3><div><a href="#w13">W13</a> (as Q07 and Q08 decide), <a href="#w9">W9</a> (narrow), <a href="#w10">W10</a> (narrow), <a href="#p01">the save with no change</a> and <a href="#p04">the warning for rules with <code>States</code></a>. Then the five platform gates and a package rebuild. You copy the changed files to the target dev region. The bug fixes of Q01 can go in the same package (Q06).</div></li>
+<li class="step"><span class="num">3</span><h3>Engine release, when Q40 says</h3><div><a href="#w1">W1</a> (race tests, and E01, E03, E05), <a href="#w4">W4</a>, <a href="#w7">W7</a> with the SQMS version fix, <a href="#w5">W5</a>, <a href="#w6">W6</a> and <a href="#w8">W8</a>. Then the gates of <code>PROJECT.md</code> section 21 and the completion summary. The target merges each changed runtime file one time.</div></li>
+<li class="step"><span class="num">4</span><h3>Later items, each when its trigger comes</h3><div>W11, W3, the E10 query and the version check on delete. <a href="#later">Section 4.3</a> gives the trigger of each item.</div></li>
+</ol>
+<div class="note"><b>Why the platform comes first.</b> The platform is the active component, and W13 must be ready before the change-over day. The engine is paused until Q40. The recommendation for Q40 in <a href="atlas-platform/PENDING_DECISIONS.html"><code>PENDING_DECISIONS.html</code></a> is: after the Atlas bug fixes and the team review.</div>
+
+<!-- ============================================================ 4 -->
+<h2 id="items">4. The items, one by one</h2>
+<p>Each item gives: what is wrong today, what I would change, what users and callers see, and the decision that it needs.</p>
+
+<h3>4.1 Step 2: the platform package</h3>
+
+<article class="item" id="w13">
+<h3><span class="id">W13</span> Cut-over and rollback scripts (P08) <span class="tag t-now">Step 2, first</span><span class="tag t-size">Medium</span><span class="tag t-stop">Stop-and-ask</span></h3>
+<p><b>Today.</b> On the change-over day, <code>050</code> gives the TTDV2 roles, revokes all TTD roles and copies the TTD data. It does not store which roles it revoked. To undo this, <code>090</code> finds the roles again with a rule: revoked by the same person, in the hour before the time of the <code>050</code> log row (<code>090:31-39</code>). <code>050</code> writes its log row one time only (<code>050:207</code>).</p>
+<p><b>Three holes.</b></p>
+<ol>
+<li><b>R01</b> <span class="lab lab-known">Known, High, tested</span> <code>090</code> also gives back a role that an admin revoked on purpose in that hour. A removed user gets access again.</li>
+<li><b>R02</b> <span class="lab lab-known">Known, High, tested</span> A second cut-over after a rollback copies only the rows whose ID is not in TTDV2 (<code>050:191, 203</code>). TTDV2 shows old data. Then the script revokes the TTD roles again.</li>
+<li><b>Second run</b> <span class="lab lab-inf">Inference - verify</span> After a second cut-over, <code>090</code> uses the time of the first run (<code>090:25-26</code>). Its one-hour rule does not find the roles that the second run revoked.</li>
+</ol>
+<div class="tbl"><table>
+<tr><th>When</th><th>Script</th><th>Effect today (example times)</th></tr>
+<tr><td>Day 1, 09:00</td><td><code>050</code></td><td>Revokes the TTD roles. The log row gets the time 09:00.</td></tr>
+<tr><td>Day 1, 11:00</td><td><code>090</code></td><td>Gives back the roles that the same person revoked between 08:00 and 09:00. The users have TTD again.</td></tr>
+<tr><td>Day 2, 09:00</td><td><code>050</code>, after the app is installed again</td><td>Revokes the TTD roles again. The log row keeps the time of day 1.</td></tr>
+<tr><td>Day 2, 10:00</td><td><code>090</code></td><td>Looks between 08:00 and 09:00 of day 1, and finds no role of day 2. It removes the TTDV2 roles.</td></tr>
+<tr><td colspan="2"><b>Result</b></td><td><b>The users have no TTD role and no TTDV2 role.</b></td></tr>
+</table></div>
+<p><b>Change.</b> The same as the recommended options A of Q07 and Q08 in <code>PENDING_DECISIONS.html</code>:</p>
+<ul>
+<li><code>050</code> writes the exact IDs of the user entitlements that it revokes to a new log table. This is a new SQL script: additive, idempotent, with a <code>CP_Atlas_ScriptLog</code> row.</li>
+<li><code>090</code> gives back only those IDs. The one-hour rule goes away. This closes R01 and the second-run hole.</li>
+<li><code>050</code> stops, with no change and no revoke, when TTDV2 already has copied rows. This closes R02 for now. A second cut-over then needs a reconciliation procedure first.</li>
+</ul>
+<p><b>Users see.</b> A rollback gives back exactly the roles that the cut-over removed. A second cut-over cannot run by mistake.</p>
+<p><b>Proof.</b> The review of 2026-11-01 has tests that show R01 and R02. The platform SQL tests make and drop their own databases. I never run <code>050</code> or <code>090</code> in the shared development database.</p>
+<p><b>Your decision.</b> <a href="#d-q07">Q07</a>, <a href="#d-q08">Q08</a> and <a href="#d-q21">Q21</a>.</p>
+<p class="small">The inventory and the hand-off write "Q07 to Q10". Only Q07 and Q08 are about <code>050</code> and <code>090</code>. Q09 (R04, the All Report total) and Q10 (R03, the multiple-select delimiter) are other review findings. This plan does not need them.</p>
+</article>
+
+<article class="item" id="w9">
+<h3><span class="id">W9</span> App availability: the dashboard tab (P05) <span class="tag t-now">Step 2</span><span class="tag t-size">Small</span></h3>
+<p><b>Today.</b> Five inputs decide if an app is available: (1) the registration line, (2) a manifest file, (3) <code>Enabled</code>, (4) no start-up errors, (5) the tables are loaded. Seven places in the code read these inputs, and they do not all read the same inputs.</p>
+<p><b>Example.</b> A dashboard tab of app A can show the rows of app B. For that tab, the code reads only <code>Enabled</code> and the View check of app B (<code>AtlasDashboardService.cs:98-111</code>). It does not read the start-up errors of app B. So the tab can show rows of an app that the start-up check disabled. <span class="lab lab-inf">Inference - verify</span> The inventory called the risk low. The independent assessment says that this depends on the metadata and on the reason why app B was disabled. The View check still runs, so this is not an access bypass by itself.</p>
+<p><b>Change (narrow).</b> First a test for the foreign tab. Then the tab uses the same rule as the resolver, which reads all five inputs. The menu, the fall-through to the current apps and the public error results stay the same.</p>
+<p><b>Why narrow.</b> The inventory proposes one function for all seven places. Only one place gives a different result today, so a narrow fix is enough. The independent assessment agrees. A shared function is necessary only if a second difference appears.</p>
+<p><b>Users see.</b> No change, with one exception: the tab of the example is hidden and gets no rows. This is the same result as for an app with <code>Enabled = false</code> today.</p>
+<p><b>Your decision.</b> <a href="#d-sm7">SM7</a>.</p>
+</article>
+
+<article class="item" id="w10">
+<h3><span class="id">W10</span> A busy state for delete in the form (P10) <span class="tag t-now">Step 2</span><span class="tag t-size">Small</span></h3>
+<p><b>Today.</b> After "Yes" in the delete dialog, the form closes the dialog and sends the request (<code>atlas-form.component.ts:331-344</code>). The buttons are disabled only during a save (<code>atlas-form.component.html:71-72</code>). While the delete runs, the user can press Delete or Save again.</p>
+<p><b>Change (narrow).</b> In the form, Save and Delete cannot run at the same time: a busy state for delete, and the buttons are disabled while a request runs. One full page status in place of the separate flags is optional; I would not do it now.</p>
+<p><b>The dashboard.</b> The dashboard in this repository (P11) has the same gap, but it is a local reference. The target uses its own dashboard, <code>cp-atlas-dashboard.ts</code>, which is target code (<a href="../atlas-platform/INTEGRATION.md"><code>INTEGRATION.md</code></a>). The local copy can get the same guard; for the target dashboard, see <a href="#target">section 6</a>.</p>
+<p><b>Users see.</b> The buttons are disabled for the short time of a delete. The look stays the same as the target.</p>
+<p><b>Your decision.</b> <a href="#d-sm7">SM7</a>.</p>
+</article>
+
+<article class="item" id="p01">
+<h3><span class="id">P01</span> A save with no changed field <span class="tag t-now">Step 2</span><span class="tag t-size">Small</span></h3>
+<p><b>Today.</b> Each save sets <code>ModifiedBy</code> and <code>ModifiedDate</code> (<code>ConfigSectionService.cs:476-477</code>), also when no field changed. The audit already sees "no change" and writes no entry. But the row is written, so its row version changes.</p>
+<p><b>Example.</b> Users A and B open record 7. A clicks Save with no change. Then B changes a field and clicks Save. B gets <code>Conflict</code>, but nobody changed the record. <span class="lab lab-inf">Inference - verify</span> A test must show it first.</p>
+<p><b>Change.</b> When no field and no computed value changed, the save writes nothing and returns the same version.</p>
+<p><b>Users see.</b> No false <code>Conflict</code>. A save with no change does not move the record to the top of the dashboard, because the dashboard sorts by <code>ModifiedDate</code>, newest first.</p>
+<p><b>Your decision.</b> <a href="#d-sm8">SM8</a>.</p>
+</article>
+
+<article class="item" id="p04">
+<h3><span class="id">P04</span> A warning for rules with <code>States</code> <span class="tag t-now">Step 2</span><span class="tag t-size">Small</span></h3>
+<p><b>Today.</b> A rule with <code>States</code> never matches, because no code gives the platform a record state yet. That is the job of the engine adapter (module 10, Q51). The start-up check says nothing about such a rule (<code>AtlasRuleEngine.cs:185-191</code>). An author can write the rule and think that it works.</p>
+<p><b>Change.</b> <code>--atlas-check</code> and the start-up check give one warning for each rule with <code>States</code>.</p>
+<p><b>Users see.</b> Nothing. No JSON file in <code>atlas-platform/</code> has <code>States</code> today, so the TTDV2 check stays at 0 warnings.</p>
+<p><b>Your decision.</b> <a href="#d-sm7">SM7</a>.</p>
+</article>
+
+<h3>4.2 Step 3: the engine release</h3>
+
+<article class="item" id="w1">
+<h3><span class="id">W1</span> Tests first: the races, then the moves of E01, E03 and E05 <span class="tag t-now">Step 3</span><span class="tag t-size">Small to medium</span></h3>
+<p><b>Today.</b> Each machine has tests for the normal moves. No test reproduces the races, and no test walks a full table of permitted and refused moves.</p>
+<p><b>Change.</b> First, one test for each race of step 3 (W4, W5, W8). Each test uses two SQL connections and a pause point, as the independent assessment describes. Each test must fail before its fix. Then tests for the permitted and refused moves of E01 (workflow instance), E03 (SLA schedule) and E05 (e-mail outbox), the machines that the fixes change.</p>
+<p><b>Not now.</b> One test class for each of the 24 machines. E02, E04 and E06 do not change in this plan, and they have their own tests.</p>
+<p><b>Users see.</b> Nothing. Tests are not copied to the target.</p>
+<p><b>Your decision.</b> <a href="#d-sm1">SM1</a> (scope) and <a href="#d-q40">Q40</a>.</p>
+</article>
+
+<article class="item" id="w4">
+<h3><span class="id">W4</span> SaveDraft race (E01) <span class="tag t-now">Step 3</span><span class="tag t-size">Small</span><span class="lab lab-known">Known, High</span></h3>
+<p><b>Today.</b> Each action updates the instance with a version check. If another request moved the instance first, no row changes, the transaction rolls back, and the result is <code>ConcurrencyConflict</code>. <code>SaveDraft</code> skips this update:</p>
+<pre><code>// WorkflowExecutionService.cs:675-699 (shortened)
+var isSaveDraft = string.Equals(workflow.ActionKey, "SaveDraft", StringComparison.Ordinal);
+if (!isSaveDraft)
+{
+    var updatedRows = dbContext.WorkflowInstances
+        .Where(row =&gt; row.Id == instance.Id &amp;&amp; row.Version == instance.Version)
+        .ExecuteUpdate(...);
+    if (updatedRows == 0)
+    {
+        // roll back, return ConcurrencyConflict
+    }
+}
+// A SaveDraft commits with no version check.</code></pre>
+<p><b>Example.</b> Request A (SaveDraft) reads the instance in <code>Draft</code> and passes its last check. Then request B (Submit) moves the instance and commits. Then A commits its audit and its idempotency record, with no final version check, as if the record were still a draft.</p>
+<p class="small">Two limits (the independent assessment, section 4.1): a transition that commits before the last check of A is found, so the gap is only after that check. Section data is in the gap only when the caller asks the engine to store it; the workflow API sets <code>PersistSectionData = false</code> (<code>WorkflowActionService.cs:127</code>).</p>
+<p><b>Change.</b> A SaveDraft also checks the version at its write, in its transaction. It keeps the approved rule that a SaveDraft does not change the version. If the instance moved, the result is <code>ConcurrencyConflict</code> and nothing is saved.</p>
+<p><b>Callers see.</b> A SaveDraft that loses the race gets <code>ConcurrencyConflict</code>, the same as other actions. This is rare. Q41 already recommends this item as the first engine fix (<code>CODEX_HANDOFF.md</code>, section B).</p>
+<p><b>Your decision.</b> <a href="#d-q41">Q41</a> and <a href="#d-sm2">SM2</a>.</p>
+</article>
+
+<article class="item" id="w7">
+<h3><span class="id">W7</span> Metadata checks for all workflows, and the SQMS version (E01, E02, E04, E08) <span class="tag t-now">Step 3</span><span class="tag t-size">Medium</span></h3>
+<p><b>Today.</b> The engine is generic, so the metadata decides the behaviour. Some metadata errors give bad states, and nothing reports them before they occur:</p>
+<ul>
+<li>A terminal move that does not close the open task. The instance is <code>Completed</code>, but a task stays <code>Pending</code> and its SLA schedule stays <code>Active</code> (E01).</li>
+<li>A task with an SLA policy whose creating transition has no e-mail route. Each SLA scan finds the reminder <code>Blocked</code> and writes only a warning (E04).</li>
+<li>Two active versions of one workflow. Start fails (E08).</li>
+<li>A version with no <code>Draft</code> state. A new instance has no move (E01).</li>
+<li>A reference to a metadata row that is not active. Example: a new task reads its task definition with no <code>IsActive</code> filter, but the SLA code needs an active task definition (E08).</li>
+</ul>
+<p>Only PortfolioTrade has some of these checks today (<code>SeedVerificationService.cs:47</code>).</p>
+<p><b>SQMS version.</b> <code>SqmsScheduledService.cs:246</code> sends the version number <code>1</code> as a literal. If SQMS gets an active version 2, the open and reminder e-mails get <code>NotFound</code>.</p>
+<p><b>Change.</b> A check command for all workflows that lists errors and warnings. You run it before each activation. Nothing changes at run time. The SQMS scheduler uses the active version in place of the literal <code>1</code>.</p>
+<p><b>Users see.</b> Nothing today, because SQMS has only version 1.</p>
+<p><b>Your decision.</b> <a href="#d-sm5">SM5</a>.</p>
+</article>
+
+<article class="item" id="w5">
+<h3><span class="id">W5</span> Cancel during send (E05) <span class="tag t-now">Step 3</span><span class="tag t-size">Small</span><span class="lab lab-inf">Inference - verify</span></h3>
+<p><b>Today.</b> Two orders of events give a false record.</p>
+<p><b>Order 1 (the inventory).</b></p>
+<ol>
+<li>The worker claims reminder row 41: <code>Processing</code>, with its token.</li>
+<li>The worker checks the SLA schedule (<code>Active</code>) and starts the send.</li>
+<li>At the same time, a transition closes the task. The SLA code sets row 41 to <code>Cancelled</code> and clears the token (<code>WorkflowSlaSynchronizationService.cs:219-231</code>).</li>
+<li>The send succeeds. "Mark Sent" looks for <code>Processing</code> and the token (<code>ProcessNotificationOutboxService.cs:141-155</code>). It finds no row.</li>
+<li>Result: the e-mail went out, but row 41 says <code>Cancelled</code>. The run shows only a warning.</li>
+</ol>
+<p><b>Order 2 (the independent assessment, section 4.3).</b></p>
+<ol>
+<li>The SLA code reads row 41 into EF Core tracking and sets it to <code>Cancelled</code> in memory.</li>
+<li>Before the SLA code saves, the worker sends the e-mail and sets row 41 to <code>Sent</code> in the database.</li>
+<li>The SLA code saves. The outbox has no concurrency token, so the save writes <code>Cancelled</code> over <code>Sent</code>.</li>
+</ol>
+<p><b>Change (option A).</b> The SLA code cancels with one conditional database update: only rows that are still <code>Pending</code> when the update runs. This closes both orders. A row that a sender claimed is not changed: it says <code>Sent</code> when the send succeeds. When the send fails, the row goes back to <code>Pending</code>. Then the worker cancels it at its next claim, because the worker checks the schedule after each claim (<code>ProcessNotificationOutboxService.cs:104-136</code>).</p>
+<p><b>The rule behind option A.</b> A database update cannot call back an e-mail that the sender already accepted. So when a send has started, the send wins, and the record shows what occurred.</p>
+<p><b>Users see.</b> The same e-mails as today. Only the record changes: it becomes true.</p>
+<p><b>Your decision.</b> <a href="#d-sm3">SM3</a>.</p>
+</article>
+
+<article class="item" id="w6">
+<h3><span class="id">W6</span> SLA-only request when no task is open (E03, E09) <span class="tag t-now">Step 3</span><span class="tag t-size">Small</span><span class="lab lab-inf">Inference - verify</span></h3>
+<p><b>Today.</b> A request with an SLA date and no action key changes the SLA of the open task. If the instance has no open task (for example in state <code>Draft</code>, or when it is completed), <code>ResolvePendingTask</code> uses <code>.Single()</code> and throws <code>InvalidOperationException</code> (<code>WorkflowSlaSynchronizationService.cs:171-178</code>). The API catches only <code>WorkflowSlaValidationException</code> (<code>WorkflowActionService.cs:92-98</code>). So the caller gets HTTP 500 "An unexpected error occurred.", and the log records a server error for a mistake of the caller.</p>
+<p><b>Change (option A).</b> When no task is open, the engine throws <code>WorkflowSlaValidationException</code> with a message that names the case: the instance does not exist, or it has no open task. The API already turns this exception into HTTP 400 "Invalid workflow SLA input." with the message.</p>
+<p><b>Callers see.</b> HTTP 400 with a clear message, in place of HTTP 500. Only one engine file changes. At the target, the same exception type is already caught, but the catch is empty (<a href="#target">section 6</a>).</p>
+<p><b>Why option A.</b> It uses an answer that the same request already gives for other SLA errors, and an exception type that the target already catches. Option B needs a new result code. Option C hides a mistake of the caller.</p>
+<p><b>Your decision.</b> <a href="#d-sm4">SM4</a>.</p>
+</article>
+
+<article class="item" id="w8">
+<h3><span class="id">W8</span> SLA change and task completion at the same time (F09, E03) <span class="tag t-now">Step 3</span><span class="tag t-size">Medium</span><span class="lab lab-known">Known, F09</span></h3>
+<p><b>Today.</b> The sequence:</p>
+<ol>
+<li>An SLA change reads the open task (<code>WorkflowSlaSynchronizationService.cs:29</code>).</li>
+<li>Another request completes that task and its schedule, and commits.</li>
+<li>The SLA change finds no active schedule. It adds a new <code>Active</code> schedule for the task that it read before.</li>
+</ol>
+<p>Result: a completed task with an <code>Active</code> schedule. The SLA scan selects only schedules of <code>Pending</code> tasks (<code>RunSlaService.cs:49-78</code>), so no scan reads this schedule, and no e-mail goes out. The task row has no row version, and the unique index permits the new schedule, because the old schedule is completed.</p>
+<p><b>Change.</b> The SLA change checks the task again at its write, in its transaction. Example: a conditional update of the task row, "only if it is still <code>Pending</code>". If the task is closed, the SLA change stops with the same "no open task" answer as W6.</p>
+<p><b>Why in step 3.</b> In the chat I put it "later", because no wrong e-mail goes out. I moved it: the fix is in the same file as W5 and W6, so the target merges that file one time. The independent assessment rates it High, because the schedule data must stay correct.</p>
+<p><b>Callers see.</b> In this rare race, the SLA change gets the "no open task" answer of <a href="#d-sm4">SM4</a> in place of a success.</p>
+<p><b>Your decision.</b> <a href="#d-sm1">SM1</a> (scope) and <a href="#d-sm4">SM4</a> (the answer).</p>
+</article>
+
+<h3 id="later">4.3 Step 4: later items and their triggers</h3>
+<p>These items wait for a trigger: an event that makes them necessary. Until then, their risk is low or a guard already exists.</p>
+<div class="tbl wide"><table>
+<tr><th>Item</th><th>Today</th><th>Trigger to start</th></tr>
+<tr><td><b>W11</b> client rule locks (P03)</td><td>The server refuses a changed value, so the data is safe. The user can see an editable field and then an error. TTDV2 has only <code>SetFromOption</code> and <code>Clear</code> effects, so it does not reach the case.</td><td>An app with Show or Enable effects on fields that rules lock. It needs an optional field in the load response: a <code>v1</code> change, so stop-and-ask.</td></tr>
+<tr><td><b>W3</b> one delivery helper (E05)</td><td>The worker and the API dispatcher each have their own copy. Most of the three differences have a reason.</td><td>The next change to the delivery code. The explained page, question 4, gives a suggestion for each difference.</td></tr>
+<tr><td><b>E10</b> open-date query</td><td>The query joins all audit rows of <code>OpenOpportunityForBidding</code> (<code>SqlSqmsDataStore.cs:66-70</code>). The metadata permits this action one time for each instance.</td><td>A metadata change that lets an opportunity open two times.</td></tr>
+<tr><td><b>P01</b> version check on delete</td><td>A user can delete a record that another user changed after the first user opened it. The delete call carries only the app code and the record ID, through two target files.</td><td>The next planned change of <code>CPAtlasController.cs</code> and <code>CPAtlasService.cs</code> at the target.</td></tr>
+</table></div>
+
+<h3>4.4 Not as written</h3>
+<article class="item no" id="w2">
+<h3><span class="id">W2</span> Constants for all 96 status literals <span class="tag t-no">In part only</span></h3>
+<p><b>Today.</b> 96 status literals in 13 files (inventory, appendix A). The SQL <code>CHECK</code> constraints already refuse a wrong status when a row is written (<code>WorkflowDbContext.cs:272, 318, 365, 454</code>). The risk that stays is a wrong text in a query, and the tests find that.</p>
+<p><b>What I would do.</b> Add the constants only in the files that the fixes of step 3 change, as <code>const string</code>. Not <code>static readonly</code>, and not an enum: a <code>const</code> keeps the SQL text the same, so the filtered indexes stay in use (the explained page, section 7, "Why const").</p>
+<p><b>Your decision.</b> <a href="#d-sm6">SM6</a>.</p>
+</article>
+<article class="item no" id="w12">
+<h3><span class="id">W12</span> Record state, the <code>Execute</code> action, the workflow history source <span class="tag t-no">A feature</span></h3>
+<p>This is the engine adapter (module 10). It is a feature for the first platform app that has a workflow, not a fix. Q51 decides when. The recommendation in <code>PENDING_DECISIONS.html</code> is: with the first platform app that has a workflow. You do not have to answer it for this plan.</p>
+</article>
+
+<!-- ============================================================ 5 -->
+<h2 id="owner">5. What ownership changes</h2>
+<div class="two">
+<div class="card">
+<h4>What changes</h4>
+<ul>
+<li>Most items are small. Today, open decisions and approvals stop them, not the size of the work: Q40 and Q41 for the engine, Q07 and Q08 for W13, a contract approval for W6.</li>
+<li>An owner makes these decisions. Then the small fixes cost little.</li>
+<li>An owner of the integration also does the merge at the target. One release for each component keeps the number of merges low.</li>
+</ul>
+</div>
+<div class="card">
+<h4>What stays the same</h4>
+<ul>
+<li>Backward compatibility: current callers, stored values and keys stay valid.</li>
+<li>The quality gates: <code>PROJECT.md</code> section 21 for the engine and the five platform gates in <code>AGENTS.MD</code>, with the regression tests.</li>
+<li>Only additive contract changes. Database changes only as SQL scripts.</li>
+<li>No state-machine library and no new package.</li>
+<li>The settled decisions: D08 (<code>Draft</code> and <code>SaveDraft</code>), O4 (no parallel approvals), O5 (timers never move state), O6 (no condition expressions), D01 (authentication), D07 (unique business object IDs).</li>
+</ul>
+</div>
+</div>
+<div class="note"><b>Why now.</b> Nothing is live. The pilot runs in the dev region at the target. A fix to a life cycle costs least before there is production data to migrate.</div>
+
+<!-- ============================================================ 6 -->
+<h2 id="target">6. For the target team</h2>
+<p>The target code belongs to the target team. I read the read-only copy in <code>target-implementation-read-only/</code>. I did not change it. Give these requirements to the team.</p>
+
+<article class="item target">
+<h3>1. SLA errors must reach the user (part of Q42, "SLA error propagation")</h3>
+<p>In the read-only copy, three services catch <code>WorkflowSlaValidationException</code> and do nothing, because the <code>throw</code> is a comment:</p>
+<ul>
+<li><code>Service/Application/CPCDTServices.txt:733-739</code></li>
+<li><code>Service/Application/CPSQMSBService.cs.txt:545-551</code></li>
+<li><code>Service/Application/CPSQMSOService.txt:449-455</code></li>
+</ul>
+<p>The next statement reads <code>synchronization!.Changed</code>, but <code>synchronization</code> is still <code>null</code>. So each SLA input error becomes a <code>NullReferenceException</code>.</p>
+<pre><code>// Read-only copy of the target, CPCDTServices.txt:722-744 (shortened)
+WorkflowSlaSynchronizationResult synchronization = null;
+try
+{
+    synchronization = this.WorkflowSLAService!.Synchronize(...);
+}
+catch (WorkflowSlaValidationException exception)
+{
+    //throw new WorkflowApiRequestException(
+    //    StatusCodes.Status400BadRequest,
+    //    "Invalid workflow SLA input.",
+    //    exception.Message);
+}
+var synchronizedEnvelope = new WorkflowActionResultBuilder().BuildSlaSynchronized(
+    normalized,
+    requestHash,
+    synchronization!.Changed,   // null after an SLA error
+    synchronization.ScheduleVersion);</code></pre>
+<p><b>Requirement.</b> Give the error to the user, for example as a validation message. With W6 option A, the "no open task" case uses the same exception, so one fix at the target covers both cases.</p>
+</article>
+
+<article class="item target">
+<h3>2. Merges</h3>
+<p>Step 2: copy the changed platform files from the rebuilt package, as <a href="../atlas-platform/INTEGRATION.md"><code>INTEGRATION.md</code></a> says. Step 3: merge each changed engine runtime file one time.</p>
+</article>
+
+<article class="item target">
+<h3>3. Later: a version check on delete</h3>
+<p>The delete call is <code>RemovePage(string code, int id)</code> in <code>Controllers/V1/CPAtlasController.cs</code> and <code>Service/CPAtlasService.cs</code>. A version check needs a change in both files. This waits for the trigger in section 4.3.</p>
+</article>
+
+<article class="item target">
+<h3>4. The target dashboard: a guard for delete (W10)</h3>
+<p>The local dashboard in this repository has no busy state for delete. The target dashboard, <code>cp-atlas-dashboard.ts</code>, is target code, and I did not check it. If it has the same gap, the fix is a change for the target team. The platform form gets its guard in step 2.</p>
+</article>
+
+<!-- ============================================================ 7 -->
+<h2 id="decisions">7. Your decisions (answer sheet)</h2>
+<p>Select one option for each item, or write in the notes. <span class="rec" style="margin:0">Recommended</span> marks my recommendation. Then click <b>Copy answers</b> and paste the text into the chat. I record your answers in <code>CODEX_HANDOFF.md</code>. This browser keeps your selections on this computer.</p>
+<div class="note"><b>Fast path.</b> Click <b>Fill empty items with recommendations</b>, change the items that you do not agree with, and click <b>Copy answers</b>.</div>
+
+<div id="answers">
+<div class="bar">
+<button id="copy" type="button">Copy answers</button>
+<button id="recs" class="sec" type="button">Fill empty items with recommendations</button>
+<button id="clear" class="sec" type="button">Clear all</button>
+<span class="prog" id="prog" aria-live="polite"></span><span id="msg" aria-live="polite"></span>
+</div>
+<textarea id="out" readonly aria-label="Copied answers"></textarea>
+
+<div class="group" data-title="Decisions that are already in PENDING_DECISIONS.html">
+<h3>7.1 Decisions that are already in <code>PENDING_DECISIONS.html</code></h3>
+<p class="small">The same questions and options as in <a href="atlas-platform/PENDING_DECISIONS.html">PENDING_DECISIONS.html</a>. An answer here does not change the selections on that page. When you send the text, I record the answer for both pages.</p>
+
+<fieldset class="q" data-q="Q07" id="d-q07">
+<legend><span class="qhead"><span class="qid">Q07</span><span class="qtitle">R01: rollback restores a role that was revoked on purpose</span><span class="sev high">High</span></span></legend>
+<p class="ctx"><code>090</code> finds the roles to restore by operator and a 1-hour time window. If an admin revoked a TTD role in that hour, <code>090</code> gives it back. A removed user gets access again. Option A also closes the second-run hole of <a href="#w13">W13</a>.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="Q07" value="A" data-rec><span><b>A.</b> <span class="ot">Fix: 050 writes the exact entitlement IDs that it revokes to a new log table; 090 restores only those IDs</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="Q07" value="B"><span><b>B.</b> <span class="ot">Document it as a known limit; the DBA checks the role list before 090</span></span></label>
+<label class="opt"><input type="radio" name="Q07" value="C"><span><b>C.</b> <span class="ot">Remove the role restore from 090; the DBA restores roles by hand</span></span></label>
+</div>
+<label class="nl" for="n-Q07">Notes (optional)</label>
+<textarea id="n-Q07" data-q="Q07"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="Q08" id="d-q08">
+<legend><span class="qhead"><span class="qid">Q08</span><span class="qtitle">R02: re-cutover after a rollback loses newer TTD data and history</span><span class="sev high">High</span></span></legend>
+<p class="ctx">After a rollback, users work in TTD again. A new run of <code>050</code> skips rows whose ID is already in TTDV2, and then revokes the TTD roles again. TTDV2 shows old data.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="Q08" value="A" data-rec><span><b>A.</b> <span class="ot">Fix now: 050 stops (no change, no revoke) when TTDV2 already has copied rows; write a reconciliation procedure later, before a second cutover</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="Q08" value="B"><span><b>B.</b> <span class="ot">Fix now with a full reconciliation procedure (changes on both sides, audit identity)</span></span></label>
+<label class="opt"><input type="radio" name="Q08" value="C"><span><b>C.</b> <span class="ot">Rule only: no second cutover after a rollback; document it</span></span></label>
+</div>
+<label class="nl" for="n-Q08">Notes (optional)</label>
+<textarea id="n-Q08" data-q="Q08"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="Q21" id="d-q21">
+<legend><span class="qhead"><span class="qid">Q21</span><span class="qtitle">When 050 runs (AR-11)</span><span class="sev med">Medium</span></span></legend>
+<p class="ctx"><code>050</code> copies TTD data and revokes the TTD roles. If you know the date of the change-over day, write it in the notes. W13 must be ready before that date.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="Q21" value="A" data-rec><span><b>A.</b> <span class="ot">On the change-over day, after the business sign-off and after R01 and R02 are fixed</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="Q21" value="B"><span><b>B.</b> <span class="ot">On the change-over day, with R01 and R02 documented as known limits</span></span></label>
+<label class="opt"><input type="radio" name="Q21" value="C"><span><b>C.</b> <span class="ot">Not decided yet</span></span></label>
+</div>
+<label class="nl" for="n-Q21">Notes (optional)</label>
+<textarea id="n-Q21" data-q="Q21"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="Q40" id="d-q40">
+<legend><span class="qhead"><span class="qid">Q40</span><span class="qtitle">When to start the engine defects</span><span class="sev info">Info</span></span></legend>
+<p class="ctx">SaveDraft race (High), D06, D09, D10, D02 status, F07 to F09; ordered list WP1 to WP8. For this plan, the answer also decides when the engine release of step 3 starts.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="Q40" value="A" data-rec><span><b>A.</b> <span class="ot">After the Atlas bug fixes and the team review</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="Q40" value="B"><span><b>B.</b> <span class="ot">Now, in parallel</span></span></label>
+<label class="opt"><input type="radio" name="Q40" value="C"><span><b>C.</b> <span class="ot">Not this quarter</span></span></label>
+</div>
+<label class="nl" for="n-Q40">Notes (optional)</label>
+<textarea id="n-Q40" data-q="Q40"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="Q41" id="d-q41">
+<legend><span class="qhead"><span class="qid">Q41</span><span class="qtitle">First engine fix</span><span class="sev high">High</span></span></legend>
+<p class="ctx">SaveDraft can commit Draft data after a concurrent transition (no version guard). This is <a href="#w4">W4</a>.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="Q41" value="A" data-rec><span><b>A.</b> <span class="ot">SaveDraft race</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="Q41" value="B"><span><b>B.</b> <span class="ot">A different item (write which)</span></span></label>
+</div>
+<label class="nl" for="n-Q41">Notes (optional)</label>
+<textarea id="n-Q41" data-q="Q41"></textarea>
+</fieldset>
+</div>
+
+<div class="group" data-title="New decisions from this report">
+<h3>7.2 New decisions from this report</h3>
+
+<fieldset class="q" data-q="SM1" id="d-sm1">
+<legend><span class="qhead"><span class="qid">SM1</span><span class="qtitle">Scope: which parts of the plan do you approve?</span><span class="sev info">Info</span></span></legend>
+<p class="ctx">Step 2: W13, W9 (narrow), W10 (narrow), the save with no change (P01), the warning for rules with <code>States</code> (P04). Step 3: W1 (race tests, and E01, E03, E05), W4, W7 with the SQMS version, W5, W6, W8. This answer is also the answer to question 1 of the inventory, section 8.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM1" value="A" data-rec><span><b>A.</b> <span class="ot">Steps 2 and 3, as written</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM1" value="B"><span><b>B.</b> <span class="ot">Step 2 only; the engine waits</span></span></label>
+<label class="opt"><input type="radio" name="SM1" value="C"><span><b>C.</b> <span class="ot">Step 3 only</span></span></label>
+<label class="opt"><input type="radio" name="SM1" value="D"><span><b>D.</b> <span class="ot">Item by item (write the items in the notes)</span></span></label>
+</div>
+<label class="nl" for="n-SM1">Notes (optional)</label>
+<textarea id="n-SM1" data-q="SM1"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="SM2" id="d-sm2">
+<legend><span class="qhead"><span class="qid">SM2</span><span class="qtitle">W4: the result for a SaveDraft that comes after another move</span><span class="sev high">High</span></span></legend>
+<p class="ctx">Another request moved the instance first. Today the SaveDraft still saves its data, its audit and its idempotency record.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM2" value="A" data-rec><span><b>A.</b> <span class="ot">ConcurrencyConflict, the same as other actions; nothing is saved; the caller loads the record again</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM2" value="B"><span><b>B.</b> <span class="ot">A different result (write it in the notes)</span></span></label>
+</div>
+<label class="nl" for="n-SM2">Notes (optional)</label>
+<textarea id="n-SM2" data-q="SM2"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="SM3" id="d-sm3">
+<legend><span class="qhead"><span class="qid">SM3</span><span class="qtitle">W5: an e-mail that is sent while its task closes</span><span class="sev med">Medium</span></span></legend>
+<p class="ctx">Today the e-mail can go out while the row says <code>Cancelled</code>. Two orders of events cause it (<a href="#w5">W5</a>).</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM3" value="A" data-rec><span><b>A.</b> <span class="ot">The SLA code cancels with one conditional database update, only rows that are still Pending; a claimed row finishes and says Sent when the send succeeds</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM3" value="B"><span><b>B.</b> <span class="ot">Keep the cancel, and add a mark on the row that the e-mail went out (a new meaning for a column)</span></span></label>
+<label class="opt"><input type="radio" name="SM3" value="C"><span><b>C.</b> <span class="ot">No change; document it</span></span></label>
+</div>
+<label class="nl" for="n-SM3">Notes (optional)</label>
+<textarea id="n-SM3" data-q="SM3"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="SM4" id="d-sm4">
+<legend><span class="qhead"><span class="qid">SM4</span><span class="qtitle">W6: the answer for an SLA-only request when no task is open</span><span class="sev med">Medium</span></span></legend>
+<p class="ctx">Today: HTTP 500 "An unexpected error occurred." The same request already gives HTTP 400 "Invalid workflow SLA input." for other SLA errors. This is a contract change for one case, so it needs your approval. W8 uses the same answer when a task closes during an SLA change. It answers the W6 part of question 5 of the inventory, section 8.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM4" value="A" data-rec><span><b>A.</b> <span class="ot">HTTP 400 "Invalid workflow SLA input." with a message that names the case (no open task, or no instance)</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM4" value="B"><span><b>B.</b> <span class="ot">A structured result (Success = false, a new result code) with HTTP 500, as for business failures (D03)</span></span></label>
+<label class="opt"><input type="radio" name="SM4" value="C"><span><b>C.</b> <span class="ot">No error: the request changes nothing and succeeds, as for a task with no SLA policy</span></span></label>
+<label class="opt"><input type="radio" name="SM4" value="D"><span><b>D.</b> <span class="ot">No change; document it</span></span></label>
+</div>
+<label class="nl" for="n-SM4">Notes (optional)</label>
+<textarea id="n-SM4" data-q="SM4"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="SM5" id="d-sm5">
+<legend><span class="qhead"><span class="qid">SM5</span><span class="qtitle">W7: the metadata check for all workflows</span><span class="sev med">Medium</span></span></legend>
+<p class="ctx">A check command that lists metadata errors before an activation. Nothing changes at run time.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM5" value="A" data-rec><span><b>A.</b> <span class="ot">A check command (together with the seed verification); you run it before each activation script</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM5" value="B"><span><b>B.</b> <span class="ot">As A, and the SQL activation scripts also stop when they find the same errors</span></span></label>
+<label class="opt"><input type="radio" name="SM5" value="C"><span><b>C.</b> <span class="ot">Not now</span></span></label>
+</div>
+<label class="nl" for="n-SM5">Notes (optional)</label>
+<textarea id="n-SM5" data-q="SM5"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="SM6" id="d-sm6">
+<legend><span class="qhead"><span class="qid">SM6</span><span class="qtitle">Engine release and the constants (W2)</span><span class="sev info">Info</span></span></legend>
+<p class="ctx">The target has copies of 13 engine runtime files. Each changed file must be merged at the target again. This answer is also the answer to question 3 of the inventory, section 8.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM6" value="A" data-rec><span><b>A.</b> <span class="ot">One release for all step 3 items; constants only in the files that these fixes change; one merge at the target</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM6" value="B"><span><b>B.</b> <span class="ot">One release for each item</span></span></label>
+<label class="opt"><input type="radio" name="SM6" value="C"><span><b>C.</b> <span class="ot">As A, and all 96 literals in the 13 files (the full W2)</span></span></label>
+</div>
+<label class="nl" for="n-SM6">Notes (optional)</label>
+<textarea id="n-SM6" data-q="SM6"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="SM7" id="d-sm7">
+<legend><span class="qhead"><span class="qid">SM7</span><span class="qtitle">Small platform changes that users can see</span><span class="sev info">Info</span></span></legend>
+<p class="ctx">(1) W9: a dashboard tab with rows of an app that the start-up check disabled is hidden and gets no rows. (2) W10: in the form, Save and Delete cannot run at the same time; the buttons are disabled while a delete runs. (3) P04: the start-up check warns about a rule with <code>States</code>.</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM7" value="A" data-rec><span><b>A.</b> <span class="ot">Accept all three</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM7" value="B"><span><b>B.</b> <span class="ot">Accept some (write the numbers in the notes)</span></span></label>
+<label class="opt"><input type="radio" name="SM7" value="C"><span><b>C.</b> <span class="ot">None now</span></span></label>
+</div>
+<label class="nl" for="n-SM7">Notes (optional)</label>
+<textarea id="n-SM7" data-q="SM7"></textarea>
+</fieldset>
+
+<fieldset class="q" data-q="SM8" id="d-sm8">
+<legend><span class="qhead"><span class="qid">SM8</span><span class="qtitle">P01: a save with no changed field</span><span class="sev med">Medium</span></span></legend>
+<p class="ctx">Today such a save writes <code>ModifiedBy</code>, <code>ModifiedDate</code> and a new row version. A second user can then get a false <code>Conflict</code> (Inference - verify).</p>
+<div class="opts">
+<label class="opt"><input type="radio" name="SM8" value="A" data-rec><span><b>A.</b> <span class="ot">Write nothing when no field changed; the record keeps its place on the dashboard</span><span class="rec">Recommended</span></span></label>
+<label class="opt"><input type="radio" name="SM8" value="B"><span><b>B.</b> <span class="ot">Keep the behaviour of today; document the false Conflict</span></span></label>
+</div>
+<label class="nl" for="n-SM8">Notes (optional)</label>
+<textarea id="n-SM8" data-q="SM8"></textarea>
+</fieldset>
+</div>
+</div>
+
+<h3>7.3 Not needed now</h3>
+<p>You do not have to answer these items for this plan.</p>
+<div class="tbl"><table>
+<tr><th>Item</th><th>Why not now</th><th>When</th></tr>
+<tr><td>Q51 (W12, engine adapter)</td><td>A feature, not a fix.</td><td>With the first platform app that has a workflow (recommendation of Q51).</td></tr>
+<tr><td>Inventory question 4 (the W3 differences)</td><td>W3 is a later item.</td><td>With the next change to the delivery code.</td></tr>
+<tr><td>W11 (the load response contract)</td><td>TTDV2 does not reach the case.</td><td>When an app has Show or Enable effects on fields that rules lock.</td></tr>
+<tr><td>D02, and a false "delivery failed" (assessment, section 4.4)</td><td>When the worker claims a new e-mail first, the API dispatcher finds no row and reports <code>NotificationDeliveryFailed</code> for an action that committed. What the API must report after a committed action is the open decision D02.</td><td>With D02, in the engine backlog of Q40.</td></tr>
+<tr><td>E06: the request hash and the idempotency key (assessment, section 2)</td><td>The request hash does not include <code>AssignedRoleKey</code>, and the action API makes a new key for each call. Not part of this plan.</td><td>In the engine backlog of Q40.</td></tr>
+<tr><td>D04 (no dead-letter state)</td><td>Not part of this plan.</td><td>It stays an open owner decision.</td></tr>
+<tr><td>Version check on delete (P01)</td><td>Two target files must change.</td><td>With the next planned change of those files.</td></tr>
+<tr><td>Q09 and Q10 (R04, R03)</td><td>They are not about <code>050</code> and <code>090</code>.</td><td>They stay open in <code>PENDING_DECISIONS.html</code>.</td></tr>
+<tr><td>Q06 (package rebuild)</td><td>Already in <code>PENDING_DECISIONS.html</code>.</td><td>Step 2 adds its items to that rebuild.</td></tr>
+</table></div>
+
+<h3>7.4 Where each question of the inventory goes</h3>
+<div class="tbl"><table>
+<tr><th>Inventory, section 8</th><th>Answered by</th></tr>
+<tr><td>1. Goal: explicit, close the holes, or both?</td><td><a href="#d-sm1">SM1</a></td></tr>
+<tr><td>2. Does this work start the engine again?</td><td><a href="#d-q40">Q40</a> and <a href="#d-q41">Q41</a></td></tr>
+<tr><td>3. W2: all files, or one machine at a time?</td><td><a href="#d-sm6">SM6</a></td></tr>
+<tr><td>4. W3: keep or remove each difference?</td><td>Not needed now (7.3)</td></tr>
+<tr><td>5. W6 and W11: additive contract changes?</td><td>W6: <a href="#d-sm4">SM4</a>. W11: not needed now.</td></tr>
+<tr><td>6. When does the engine adapter (W12) start?</td><td>Q51, not needed now</td></tr>
+<tr><td>7. W13 needs Q07 to Q10</td><td><a href="#d-q07">Q07</a> and <a href="#d-q08">Q08</a>; Q09 and Q10 are not needed for W13</td></tr>
+</table></div>
+
+<!-- ============================================================ 8 -->
+<h2 id="words">8. Words used on this page</h2>
+<dl class="words">
+<div><dt>Additive change</dt><dd>A change that adds and removes nothing. Old callers continue to work.</dd></div>
+<div><dt>Cut-over, rollback</dt><dd>The change from TTD to TTDV2 on the change-over day (script <code>050</code>), and the way back (script <code>090</code>).</dd></div>
+<div><dt>Gate</dt><dd>A check that must pass before a step is done: build, tests, <code>--atlas-check</code>.</dd></div>
+<div><dt>Inference - verify</dt><dd>A conclusion from reading the code. A test must prove it before a fix.</dd></div>
+<div><dt>Literal</dt><dd>A fixed text in the code, for example <code>"Pending"</code>.</dd></div>
+<div><dt>Merge at the target</dt><dd>The changed file goes into the target code again.</dd></div>
+<div><dt>Package</dt><dd>The set of platform files that you copy to the target.</dd></div>
+<div><dt>Row version</dt><dd>A value that SQL Server changes at each write of a row. A save compares it to find a conflict.</dd></div>
+<div><dt>Runtime file</dt><dd>An engine file that the target has a copy of. There are 13.</dd></div>
+<div><dt>SLA-only request</dt><dd>A request with an SLA date and no action key.</dd></div>
+<div><dt>Stop-and-ask</dt><dd>A change that needs your approval before code.</dd></div>
+<div><dt>Trigger</dt><dd>The event that makes a later item necessary.</dd></div>
+</dl>
+
+<!-- ============================================================ 9 -->
+<h2 id="sources">9. Sources</h2>
+<ul>
+<li><a href="IMPLICIT_STATE_MACHINES.md">docs/IMPLICIT_STATE_MACHINES.md</a>: the inventory.</li>
+<li><a href="IMPLICIT_STATE_MACHINES_EXPLAINED.html">docs/IMPLICIT_STATE_MACHINES_EXPLAINED.html</a>: the explanation of the findings.</li>
+<li><a href="IMPLICIT_STATE_MACHINES_ASSESSMENT.md">docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md</a>: the independent assessment of the inventory, 2026-11-10.</li>
+<li><a href="atlas-platform/PENDING_DECISIONS.html">docs/atlas-platform/PENDING_DECISIONS.html</a>: Q07, Q08, Q21, Q40, Q41, Q51.</li>
+<li><a href="../CODEX_HANDOFF.md">CODEX_HANDOFF.md</a>, <a href="../AGENTS.MD">AGENTS.MD</a>, <a href="../PROJECT.md">PROJECT.md</a>.</li>
+<li>Engine: <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs">WorkflowExecutionService.cs</a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs">WorkflowSlaSynchronizationService.cs</a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs">RunSlaService.cs</a>, <a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs">ProcessNotificationOutboxService.cs</a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs">WorkflowActionService.cs</a>, <a href="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs">SqmsScheduledService.cs</a>.</li>
+<li>Platform: <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs">ConfigSectionService.cs</a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs">AtlasDashboardService.cs</a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Rules/AtlasRuleEngine.cs">AtlasRuleEngine.cs</a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts">atlas-form.component.ts</a>, <a href="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql">050-ttdv2-copy-from-ttd.sql</a>, <a href="../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql">090-ttdv2-rollback.sql</a>.</li>
+<li>Target, read-only copy (git-ignored, so no link): <code>target-implementation-read-only/Service/Application/CPCDTServices.txt</code>, <code>CPSQMSBService.cs.txt</code>, <code>CPSQMSOService.txt</code>.</li>
+</ul>
+
+<footer>
+<dl>
+<dt>Document record</dt>
+<dd>Made 2026-11-10 from commit <code>65adf79</code> (the code is the same as at <code>c729452</code>). A recommendation for your decision, not approved work.</dd>
+<dt>Changes to the chat answer</dt>
+<dd>W6 now recommends option A. The version check on delete moved to "later". W8 moved into step 3. W5 needs a conditional update. W9 and W10 are narrower. Section 1 gives the reasons.</dd>
+<dt>Writing</dt>
+<dd>About 80% ASD-STE100. Code names, file names and quoted messages stay as they are.</dd>
+</dl>
+</footer>
+
+</main>
+<script>
+(function () {
+  var KEY = 'cp-atlas-state-machine-decisions-v1';
+  var root = document.getElementById('answers');
+  if (!root) return;
+  var state = {};
+  try { state = JSON.parse(window.localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save() { try { window.localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function entry(id) { if (!state[id]) state[id] = {}; return state[id]; }
+  function list(sel, from) { return Array.prototype.slice.call((from || root).querySelectorAll(sel)); }
+  var boxes = list('fieldset.q');
+  var out = document.getElementById('out');
+  var msg = document.getElementById('msg');
+
+  function refresh() {
+    var n = 0;
+    boxes.forEach(function (box) {
+      var s = state[box.getAttribute('data-q')] || {};
+      var done = !!s.choice;
+      if (done) n++;
+      box.classList.toggle('done', done);
+    });
+    document.getElementById('prog').textContent = n + ' of ' + boxes.length + ' answered';
+  }
+
+  boxes.forEach(function (box) {
+    var s = state[box.getAttribute('data-q')] || {};
+    if (s.choice) {
+      var r = box.querySelector('input[type="radio"][value="' + s.choice + '"]');
+      if (r) r.checked = true;
+    }
+    var t = box.querySelector('textarea');
+    if (t && typeof s.note === 'string') t.value = s.note;
+  });
+
+  root.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t && t.type === 'radio') { entry(t.name).choice = t.value; save(); refresh(); }
+  });
+  root.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'TEXTAREA' && t.getAttribute('data-q')) { entry(t.getAttribute('data-q')).note = t.value; save(); }
+  });
+
+  function today() {
+    var n = new Date();
+    function two(x) { return (x < 10 ? '0' : '') + x; }
+    return n.getFullYear() + '-' + two(n.getMonth() + 1) + '-' + two(n.getDate());
+  }
+
+  function text() {
+    var lines = ['State machine decisions (' + today() + ')'];
+    var open = [];
+    list('.group').forEach(function (group) {
+      var head = false;
+      list('fieldset.q', group).forEach(function (box) {
+        var id = box.getAttribute('data-q');
+        var s = state[id] || {};
+        var note = (s.note || '').trim();
+        if (!s.choice) open.push(id);
+        if (!s.choice && !note) return;
+        if (!head) { lines.push('', '## ' + group.getAttribute('data-title')); head = true; }
+        var line = id + ' ' + box.querySelector('.qtitle').textContent + ': ';
+        if (s.choice) {
+          var r = box.querySelector('input[type="radio"][value="' + s.choice + '"]');
+          var ot = r ? r.parentNode.querySelector('.ot') : null;
+          line += s.choice + ' - ' + (ot ? ot.textContent : '');
+        } else {
+          line += '(no option selected)';
+        }
+        if (note) line += ' | Note: ' + note;
+        lines.push(line);
+      });
+    });
+    if (open.length) lines.push('', 'Not answered: ' + open.join(', '));
+    return lines.join('\n');
+  }
+
+  document.getElementById('copy').addEventListener('click', function () {
+    var t = text();
+    out.value = t;
+    out.style.display = 'block';
+    function fallback() {
+      out.focus();
+      out.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      msg.textContent = ok ? 'Copied. Paste the text into the chat.' : 'Select the text below and copy it.';
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { msg.textContent = 'Copied. Paste the text into the chat.'; }, fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  document.getElementById('recs').addEventListener('click', function () {
+    boxes.forEach(function (box) {
+      var id = box.getAttribute('data-q');
+      if ((state[id] || {}).choice) return;
+      var r = box.querySelector('input[data-rec]');
+      if (r) { r.checked = true; entry(id).choice = r.value; }
+    });
+    save();
+    refresh();
+  });
+
+  document.getElementById('clear').addEventListener('click', function () {
+    state = {};
+    save();
+    boxes.forEach(function (box) {
+      list('input[type="radio"]', box).forEach(function (r) { r.checked = false; });
+      var t = box.querySelector('textarea');
+      if (t) t.value = '';
+    });
+    out.value = '';
+    out.style.display = 'none';
+    msg.textContent = '';
+    refresh();
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

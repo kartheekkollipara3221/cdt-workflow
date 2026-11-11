@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-07, end of session; model Fable 5.1)
+# CP Atlas hand-off - read this first (updated 2026-11-10, independent source review)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -9,6 +9,8 @@ The dated history entries below are unchanged, newest first: platform and target
 ## A. Atlas platform (atlas-platform/) - ACTIVE
 
 ### State
+- Independent source assessment completed 2026-11-10: docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md (see section C).
+  Review only. No platform implementation, SQL, target integration, or package change. No application tests were run.
 - Target dev integration with package bcb4b2b: steps 0-6 ALL DONE (user-reported, each "complete, no errors"). TTDV2
   dashboard, form, save, history and delete work at the target. Dev settings: Enabled true, AccessMode Enforce.
 - Step 5/6 "small bugs": the user has NOT sent the list yet (PENDING_DECISIONS.html Q01).
@@ -55,6 +57,8 @@ The dated history entries below are unchanged, newest first: platform and target
 ## B. Workflow engine (src/, workflow-api/) - PAUSED until the platform work is stable
 
 ### State
+- The 2026-11-10 implicit-state assessment is analysis only. Engine implementation remains paused. The assessment
+  supports the SaveDraft and SLA completion races and adds two outbox interleavings for confirmation (section C).
 - Published on origin/console-code-first-0518, NOT deployed to the target workers: C06 (code ad47084, notes c0983b4),
   PKCS 10.0.13 (df270b2), C13 (7350a4a), C14 (f47c99c), H01 (d881c15), CDT v2 (55728f6).
 - CDT v2 at the target (TEST database, 2026-10-19, all user-reported, not independently verified): SQL 20261014 outbox
@@ -84,20 +88,54 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## C. Implicit state machine inventory (added 2026-11-09; analysis only, no code change)
 
-- File: docs/IMPLICIT_STATE_MACHINES.md (NOT committed). Made from the code at c729452. No build or test was run for it.
-- Explanation for the user (ASD-STE100 HTML, 2026-11-09, committed; its links to the inventory file need that file
-  committed too): docs/IMPLICIT_STATE_MACHINES_EXPLAINED.html.
+- Current goal completed 2026-11-10: independently assess the inventory against source, with an agree/disagree verdict.
+- New assessment: docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md, source HEAD 65adf7942daee4cf0bfadc50862903d64337fa91.
+  It covers all E01-E13, P01-P11, I1-I10, and W1-W13. Runtime folders have no diff from the inventory baseline c729452.
+- HTML edition added at the user's request (2026-11-10): docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.html.
+  The assessment text and source references are preserved. Content coverage, 113 file links, 112 source-line anchors,
+  and browser rendering were checked. This was a format conversion, with no application tests or package rebuild.
+- Verdict: most risk descriptions are supported. Several entries are read models, policies, or pipelines rather than
+  lifecycle defects. Do not treat a status-constant refactor as a concurrency fix.
+- Corrections: deleted records can retain readable history (P01); the SLA unique-violation check uses SQL error numbers
+  (E06); the initial whole-form disable runs after effects (P03); the local dashboard is a target reference (P11).
+  Re-cutover leaves stale TTDV2 data and omits later history; it does not physically delete the newer TTD source data.
+- Additional source inferences, NOT reproduced: stale tracked cancellation can overwrite Sent; a worker claim can make
+  immediate API dispatch report failure without an SMTP failure. Each has a confirming test described in the assessment.
+- Changed files for this review: docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md and CODEX_HANDOFF.md only.
+  Build/test/seed/sample status: not run (source review). Documentation links and diff checked. Package not rebuilt.
+- Remaining: user selects any implementation work. Existing approval boundaries still apply. No runtime, target, or
+  deployed-database verification was done. No fixes were authorized by the request for this assessment.
+- Next-session prompt: "Read PROJECT.md and CODEX_HANDOFF.md sections A-C, then
+  docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md. The approved item is <item and scope>. Recheck its source and reproduce
+  its stated scenario before proposing the smallest compatible fix. Keep engine implementation paused otherwise."
+
+- File: docs/IMPLICIT_STATE_MACHINES.md (committed 2026-11-10 with the decision report and the assessment). Made from
+  the code at c729452. No build or test was run for it.
+- Explanation for the user (ASD-STE100 HTML, 2026-11-09, committed): docs/IMPLICIT_STATE_MACHINES_EXPLAINED.html.
   Examples and figures for each finding, the meaning of W1-W13 and of the 7 questions, with suggestions (not
   decisions). Second read of the code for the 7 inferences: all code paths agree; no test was run. It adds one
   consequence of the P08 inference: after a second cut-over and a second rollback, users have no TTD and no TTDV2 role.
+- Decision report (ASD-STE100 HTML, 2026-11-10, committed): docs/IMPLICIT_STATE_MACHINES_DECISIONS.html. Answer to
+  "if you owned both components": 9 work items now (platform package: W13, W9 narrow, W10 narrow; one engine release:
+  W1 race tests + E01/E03/E05, W4, W7, W5, W6, W8), 2 later (W3, W11), W2 only in the changed files, W12 = feature
+  (Q51). Extra small fixes: SQMS literal version 1, P01 save with no change, --atlas-check warning for rules with
+  States. Answer sheet ("Copy answers"): Q07, Q08, Q21, Q40, Q41 (same options as PENDING_DECISIONS.html) + SM1-SM8.
+  Changes to the chat answer: W6 = option A (the SLA-only path already maps WorkflowSlaValidationException to HTTP
+  400); version check on delete moved to later (RemovePage(code, id) goes through 2 target files). After reading the
+  independent assessment above: W8 into the engine release (same file as W5/W6), W5 = one conditional UPDATE of rows
+  still Pending (also closes the stale tracked cancel), W9/W10 narrow (the dashboard here is a local reference).
+  Target finding (read-only copy, for the target team, part of Q42 "SLA error propagation"): CPCDTServices,
+  CPSQMSBService and CPSQMSOService catch WorkflowSlaValidationException with the throw commented out, then read
+  synchronization!.Changed -> NullReferenceException.
 - Content: 13 engine machines (E01-E13) and 11 platform machines (P01-P11): states, transitions, code lines, holes,
   tests; the rules that connect the machines; 13 candidate work items (W1-W13); 7 questions for the user.
 - Main findings: the engine has no constant or enum for a persisted status (96 literals in 13 files); the outbox
   delivery machine is written two times (worker + API dispatcher, 3 behaviour differences); the platform has the places
   for a record workflow state (CPRule.States, Step, action Execute) but nothing gives them a value (engine adapter,
   Q51); app availability is derived at 7 locations with rules that are not the same.
-- Next: the user selects work items and answers section 8 of the file. Engine items need Q40/Q41 first. W13 (050/090)
-  is stop-and-ask (Q07-Q10). Nothing in the file is approved work.
+- Next: the user answers section 7 of docs/IMPLICIT_STATE_MACHINES_DECISIONS.html (it covers section 8 of the
+  inventory). Engine items need Q40/Q41 first. W13 (050/090) is stop-and-ask (Q07/Q08; Q09/Q10 are not about the
+  scripts). Nothing in the files is approved work.
 - Prompt: section 10 of the file.
 
 ## How we work (both components)

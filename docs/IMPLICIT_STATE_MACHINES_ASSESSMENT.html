@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Independent source-backed assessment of 24 implicit state machine findings in CP Atlas, with verdicts, evidence limits, and proposed confirmation tests.">
+<title>CP Atlas - Independent state machine assessment</title><style>
+:root{color-scheme:light;--ink:#192b3a;--muted:#536577;--line:#d8e1e8;--blue:#174f84;--paper:#fff;--bg:#f3f6fa;--code:#edf2f6}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--blue);text-underline-offset:3px;overflow-wrap:anywhere}a:hover{color:#092d50}a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid #cb8522;outline-offset:4px}
+.skip{position:absolute;left:16px;top:-70px;background:white;padding:12px;z-index:10}.skip:focus{top:12px}
+header{background:#132b42;color:#fff;border-bottom:5px solid #cf9d48}header .inner{max-width:1360px;margin:auto;padding:38px 36px 32px}.eyebrow{margin:0 0 8px;letter-spacing:.1em;text-transform:uppercase;color:#bfd2e3;font-size:12px;font-weight:700}h1{font-size:clamp(26px,3vw,38px);line-height:1.2;letter-spacing:-.02em;margin:0 0 13px;max-width:880px}header p:last-child{margin:0;color:#d5e1ec;max-width:850px}
+.layout{display:grid;grid-template-columns:225px minmax(0,1fr);gap:32px;max-width:1360px;margin:auto;padding:30px 36px 64px}aside{align-self:start;position:sticky;top:22px}aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:0 0 12px;color:var(--muted);border:0;padding:0}nav a{display:block;text-decoration:none;font-size:13px;line-height:1.45;padding:9px 10px;border-left:2px solid var(--line)}nav a:hover{background:#e8eef5;border-color:var(--blue)}.aside-note{font-size:12px;color:var(--muted);line-height:1.5}.print{font:inherit;font-size:13px;border:1px solid #b9cbd9;background:#fff;color:var(--blue);padding:9px 14px;border-radius:5px;cursor:pointer;margin:18px 0 4px}
+main{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:28px 32px;box-shadow:0 4px 18px #18344c08}p{margin:0 0 15px}h2{font-size:23px;line-height:1.3;margin:40px 0 17px;padding-top:23px;border-top:1px solid var(--line);letter-spacing:-.015em}h3{font-size:19px;line-height:1.4;margin:29px 0 13px}li{margin:7px 0}ul,ol{padding-left:24px;margin:12px 0 20px}code{background:var(--code);font:0.86em/1.5 Consolas,"Courier New",monospace;padding:2px 4px;border-radius:3px;overflow-wrap:anywhere}.lead-verdict{background:#eaf2fa;border-left:4px solid #2c689f;padding:18px 20px;font-size:18px;line-height:1.5;margin:22px 0}.evidence-limit{background:#fff6e5;border-left:4px solid #ac781d;padding:15px 18px;font-size:14px;line-height:1.65}.source-note{color:var(--muted);font-size:13px;padding:10px 0 16px;border-bottom:1px solid var(--line)}
+.table-wrap{width:100%;overflow-x:auto;margin:18px 0 24px;border:1px solid var(--line);border-radius:5px}table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.6}th,td{text-align:left;vertical-align:top;padding:14px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}thead th{background:#edf3f8;color:#254b6a;font-size:12px;letter-spacing:.03em}tbody tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#fafcfe}td:first-child{font-weight:650;width:20%;min-width:115px}.verdict{width:23%;min-width:145px}.verdict.agree{color:#1c614d}.verdict.mixed{color:#825b13}.line-ref{font-size:12px;color:var(--muted);white-space:nowrap}tr:target{background:#fff1cb}footer{margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}dl{display:grid;grid-template-columns:170px minmax(0,1fr);gap:8px 16px}dt{font-weight:650}dd{margin:0}footer h2{font-size:19px;margin-top:0;border:0;padding:0}
+@media(max-width:950px){.layout{grid-template-columns:1fr;padding:20px;gap:18px}aside{position:static}nav{display:grid;grid-template-columns:1fr 1fr}.aside-note{margin-bottom:0}main{padding:22px}header .inner{padding:30px 22px}}@media(max-width:600px){body{font-size:15px}.layout{padding:14px}.table-wrap table{min-width:650px}main{padding:18px}h2{font-size:21px}nav{grid-template-columns:1fr}dl{grid-template-columns:1fr;gap:2px}dd{margin-bottom:12px}}
+@media print{@page{size:A4 landscape;margin:13mm}body{font-size:10pt;background:#fff}header{background:#fff;color:#172b40;border-bottom:2px solid #172b40}header .inner{padding:0 0 12px}header p:last-child,.eyebrow{color:#415368}h1{font-size:23pt}aside,.skip{display:none}.layout{display:block;padding:0;max-width:none}main{padding:0;border:0;box-shadow:none}h2{font-size:16pt;break-after:avoid}h3{font-size:13pt;break-after:avoid}.table-wrap{overflow:visible;border:0}table{font-size:9pt}thead{display:table-header-group}tr{break-inside:avoid}th,td{padding:8px;border:1px solid #ccd4dd}a{color:inherit;text-decoration:none}.line-ref{font-size:8pt}.lead-verdict,.evidence-limit{-webkit-print-color-adjust:exact;print-color-adjust:exact}footer{break-inside:avoid}}
+</style></head><body>
+<a class="skip" href="#report">Skip to the report</a>
+<header><div class="inner"><p class="eyebrow">CP Atlas / Independent source review / 10 November 2026</p>
+<h1>Implicit state machines:<br>independent assessment</h1>
+<p>Verdicts on 13 engine findings and 11 platform findings, with deeper analysis and a recommendation for each proposed work item.</p></div></header>
+<div class="layout"><aside><h2>In this report</h2><nav aria-label="Report contents"><a href="#1-what-the-inventory-gets-right-and-where-i-disagree">1. What the inventory gets right, and where I disagree</a><a href="#2-verdict-for-each-engine-finding">2. Verdict for each engine finding</a><a href="#3-verdict-for-each-platform-finding">3. Verdict for each platform finding</a><a href="#4-deeper-analysis-of-the-important-paths">4. Deeper analysis of the important paths</a><a href="#5-corrections-to-the-claimed-invariants">5. Corrections to the claimed invariants</a><a href="#6-my-disposition-of-w1-to-w13">6. My disposition of W1 to W13</a><a href="#7-completion-record">7. Completion record</a><a href="#html-delivery">HTML delivery</a></nav>
+<button class="print" type="button" onclick="window.print()">Print / Save as PDF</button>
+<p class="aside-note">Source review only.<br>Runtime scenarios were not reproduced.</p></aside>
+<main id="report"><p class="source-note">Source links use paths relative to this repository. Keep this report in the <code>docs</code> folder to use them. The line number is shown beside each source link.</p>
+<p>Date: 2026-11-10. Reviewed local source: <code>65adf7942daee4cf0bfadc50862903d64337fa91</code>.</p>
+<p>Input: <a href="IMPLICIT_STATE_MACHINES.md">IMPLICIT_STATE_MACHINES.md</a>. The original inventory is unchanged.</p>
+<p class="lead-verdict"><strong>Verdict: I agree with most of the risk descriptions. I partly agree with the classification. I disagree with a blanket state-machine refactor.</strong></p>
+<p>The important defects concern concurrent writes, incomplete validation, and different owners of the same outcome. Status constants can improve readability. They cannot make those writes atomic.</p>
+<p>This assessment uses the current C#, TypeScript, templates, JSON metadata, SQL, and test source. It does not use the inventory as proof. The inspected runtime folders have no Git differences from the inventory's baseline, <code>c729452</code>. The corrections below therefore concern the analysis, rather than later runtime changes.</p>
+<p class="evidence-limit"><strong>Evidence limit:</strong> No application test, build, browser test, HTTP request, SQL script, seed command, or sample was executed for this assessment. A source-supported concurrency sequence is not a reproduced incident. Existing test names below identify inspected coverage, not a fresh passing test run. Target code and deployed databases were not inspected.</p>
+<h2 id="1-what-the-inventory-gets-right-and-where-i-disagree">1. What the inventory gets right, and where I disagree</h2>
+<p>The inventory is useful as a map of lifecycle rules. E01 to E06, P01, P06, P08, and the asynchronous client operations have real lifecycle behaviour.</p>
+<p>However, several entries are decisions or calculations, rather than separate state machines that need a transition class:</p>
+<ul>
+<li>E07 selects a request path.</li>
+<li>E09 translates a result into a response. Its commit-versus-delivery problem is real, but a result-code enum does not solve it.</li>
+<li>E13 calculates available actions from persisted state and actor roles.</li>
+<li>P02 is already an ordered save pipeline with a <code>SaveState</code> object.</li>
+<li>P05 calculates app availability from several inputs.</li>
+<li>P07 evaluates access policy. P09 already centralizes the active-role predicate in a SQL view.</li>
+</ul>
+<p>Separate Boolean values can also describe independent facts. A history dialog and a page save need not become one large enum. A single enum for every combination could make the component harder to understand.</p>
+<p>The engine already has important explicit enforcement: SQL status checks, filtered unique indexes, version-guarded instance updates, and outbox claim tokens. The issue is where those protections stop. See <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675">instance update<span class="line-ref"> (line 675)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L310" title="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L310">task constraint<span class="line-ref"> (line 310)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L352" title="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L352">schedule constraints<span class="line-ref"> (line 352)</span></a>, and <a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L81" title="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L81">outbox claim<span class="line-ref"> (line 81)</span></a>.</p>
+<h2 id="2-verdict-for-each-engine-finding">2. Verdict for each engine finding</h2>
+<div aria-label="Assessment table" class="table-wrap" role="region" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Finding</th>
+<th scope="col">Verdict</th>
+<th scope="col">My assessment and source</th>
+</tr>
+</thead>
+<tbody>
+<tr id="E01">
+<td>E01 Instance lifecycle</td>
+<td class="verdict agree"><strong>Agree with the defects.</strong></td>
+<td>SaveDraft skips the final version-guarded update. Terminal completion depends on task metadata, without an independent check that no pending task remains. The accepted <code>Draft</code> and <code>SaveDraft</code> identifiers are not new defects. <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L644" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L644">Execution<span class="line-ref"> (line 644)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675">terminal and task writes<span class="line-ref"> (line 675)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs#L387" title="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs#L387">start<span class="line-ref"> (line 387)</span></a>.</td>
+</tr>
+<tr id="E02">
+<td>E02 Task lifecycle</td>
+<td class="verdict agree"><strong>Agree with the description. Low refactoring priority.</strong></td>
+<td>One service creates and completes tasks. SQL enforces at most one pending task. The different query methods do not create a defect when that constraint holds. A mismatched close-task key does return <code>ConcurrencyConflict</code>, even when metadata caused the mismatch. <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L296" title="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L296">Constraint<span class="line-ref"> (line 296)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L1043" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L1043">guard<span class="line-ref"> (line 1043)</span></a>.</td>
+</tr>
+<tr id="E03">
+<td>E03 SLA schedule lifecycle</td>
+<td class="verdict agree"><strong>Agree.</strong></td>
+<td>The no-task exception path and the task-completion race are supported by source. Schedule rowversion protects conflicting edits to the same schedule. It does not enforce the relationship between a completed task and a newly inserted schedule. <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L25" title="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L25">Synchronization<span class="line-ref"> (line 25)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L352" title="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L352">rowversion<span class="line-ref"> (line 352)</span></a>.</td>
+</tr>
+<tr id="E04">
+<td>E04 Reminder cursor</td>
+<td class="verdict mixed"><strong>Partly agree.</strong></td>
+<td>Repeated warnings and an unchanged cursor are real operational concerns. Deriving reminder kind from time and the saved policy is not itself a defect. <code>Blocked</code> is an analytical label for a failed attempt, not necessarily a permanent lifecycle state. The primary task email dependency is real. <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L172" title="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L172">Scan<span class="line-ref"> (line 172)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L219" title="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L219">primary email<span class="line-ref"> (line 219)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L354" title="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L354">kind calculation<span class="line-ref"> (line 354)</span></a>.</td>
+</tr>
+<tr id="E05">
+<td>E05 Outbox delivery</td>
+<td class="verdict agree"><strong>Agree. Highest-value lifecycle review area.</strong></td>
+<td>Delivery logic is duplicated. However, worker recovery and immediate API delivery have different purposes. Their differences need individual decisions. Cancellation has two race orderings, described below. <a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L25" title="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L25">Worker<span class="line-ref"> (line 25)</span></a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs#L25" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs#L25">dispatcher<span class="line-ref"> (line 25)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L219" title="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L219">cancellation<span class="line-ref"> (line 219)</span></a>.</td>
+</tr>
+<tr id="E06">
+<td>E06 Idempotency</td>
+<td class="verdict mixed"><strong>Agree with specific gaps. Partly agree with classification.</strong></td>
+<td>Row absence/presence is a reasonable small protocol. The request hash omits <code>AssignedRoleKey</code>, while the action API generates a new key on each call. Those are more important than naming the protocol states. One inventory citation is wrong: the SLA unique-violation check uses SQL error numbers, not message text. <a href="../src/WorkflowEngine.Application/Normalization/CanonicalRequestHasher.cs#L21" title="../src/WorkflowEngine.Application/Normalization/CanonicalRequestHasher.cs#L21">Hasher<span class="line-ref"> (line 21)</span></a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L40" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L40">API key<span class="line-ref"> (line 40)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L539" title="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L539">SLA exception check<span class="line-ref"> (line 539)</span></a>.</td>
+</tr>
+<tr id="E07">
+<td>E07 Request paths</td>
+<td class="verdict mixed"><strong>Agree with the paths. Disagree that they need a separate machine.</strong></td>
+<td>These are request variants and caller options. The most important question is whether each path applies the necessary validation and concurrency checks. <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L79" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L79">SLA-only branch<span class="line-ref"> (line 79)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675">SaveDraft branch<span class="line-ref"> (line 675)</span></a>.</td>
+</tr>
+<tr id="E08">
+<td>E08 Activation and metadata flags</td>
+<td class="verdict agree"><strong>Agree, with a narrower description.</strong></td>
+<td>There is no unique active-version constraint. Start ignores the definition-level flag. Task readers apply <code>IsActive</code> differently. Version activation procedures do exist, so “no publication procedure” is too broad. The unresolved problem is generic enforcement and safe treatment of published metadata. <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L73" title="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L73">Version mapping<span class="line-ref"> (line 73)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs#L441" title="../src/WorkflowEngine.Infrastructure/WorkflowStart/StartWorkflowService.cs#L441">start lookup<span class="line-ref"> (line 441)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Persistence/Seed/WorkflowSeedService.cs#L97" title="../src/WorkflowEngine.Infrastructure/Persistence/Seed/WorkflowSeedService.cs#L97">activation method<span class="line-ref"> (line 97)</span></a>.</td>
+</tr>
+<tr id="E09">
+<td>E09 Result and HTTP mapping</td>
+<td class="verdict mixed"><strong>Agree with the committed-action ambiguity. Disagree with the machine label.</strong></td>
+<td>The API can return failure after the engine commits successfully. This is an outcome contract issue. Constants do not reconcile the two outcomes. These findings apply to the standalone workflow API code inspected here. They do not prove target in-process caller behaviour. <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L121" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L121">Post-commit dispatch<span class="line-ref"> (line 121)</span></a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowActionController.cs#L24" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Controllers/WorkflowActionController.cs#L24">failure mapping<span class="line-ref"> (line 24)</span></a>.</td>
+</tr>
+<tr id="E10">
+<td>E10 SQMS scheduler</td>
+<td class="verdict mixed"><strong>Partly agree.</strong></td>
+<td>SQMS-specific timers belong in this caller layer. They do not violate the generic engine boundary. Version <code>1</code> and the dependence on audit/projection rows are real coupling. Reopening duplication is conditional on future metadata changes. It is not reachable through the current opening transition. <a href="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs#L41" title="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs#L41">Scheduler<span class="line-ref"> (line 41)</span></a>, <a href="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs#L243" title="../src/WorkflowEngine.Sqms/Scheduling/SqmsScheduledService.cs#L243">fixed version<span class="line-ref"> (line 243)</span></a>, <a href="../src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs#L66" title="../src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs#L66">audit join<span class="line-ref"> (line 66)</span></a>, <a href="../sql/sqms/002_sqms_workflow_metadata_dml.sql#L393" title="../sql/sqms/002_sqms_workflow_metadata_dml.sql#L393">current transitions<span class="line-ref"> (line 393)</span></a>.</td>
+</tr>
+<tr id="E11">
+<td>E11 SQMS projection</td>
+<td class="verdict agree"><strong>Agree with the integration risk, with a qualification.</strong></td>
+<td>Scheduled writes have an explicit owner and share the engine transaction. User-action projection belongs to the target. That boundary is not evidence of a broken transaction at the target. Drift can also hide candidates completely, without an <code>InvalidTransition</code> warning. <a href="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs#L172" title="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs#L172">Ownership<span class="line-ref"> (line 172)</span></a>, <a href="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs#L514" title="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs#L514">projection<span class="line-ref"> (line 514)</span></a>, <a href="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs#L564" title="../src/WorkflowEngine.Sqms/SqmsWorkflowService.cs#L564">transaction<span class="line-ref"> (line 564)</span></a>, <a href="../src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs#L66" title="../src/WorkflowEngine.Sqms/Persistence/SqlSqmsDataStore.cs#L66">candidate filter<span class="line-ref"> (line 66)</span></a>.</td>
+</tr>
+<tr id="E12">
+<td>E12 Participant capture</td>
+<td class="verdict agree"><strong>Agree. No refactor justified by this finding.</strong></td>
+<td>Capture and duplicate rejection are local to one service. Immutable participant rows are an intentional snapshot. <a href="../src/WorkflowEngine.Infrastructure/WorkflowStart/WorkflowParticipantCaptureService.cs#L17" title="../src/WorkflowEngine.Infrastructure/WorkflowStart/WorkflowParticipantCaptureService.cs#L17">Capture<span class="line-ref"> (line 17)</span></a>.</td>
+</tr>
+<tr id="E13">
+<td>E13 Actor access</td>
+<td class="verdict mixed"><strong>Agree with the calculation. Disagree with treating it as a lifecycle defect.</strong></td>
+<td>This is a read model. Available actions depend on active transitions, active actions, roles, and completion status. A new persisted access state would add another value to synchronize. <a href="../src/WorkflowEngine.Infrastructure/WorkflowContext/WorkflowContextReader.cs#L86" title="../src/WorkflowEngine.Infrastructure/WorkflowContext/WorkflowContextReader.cs#L86">Reader<span class="line-ref"> (line 86)</span></a>.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="3-verdict-for-each-platform-finding">3. Verdict for each platform finding</h2>
+<div aria-label="Assessment table" class="table-wrap" role="region" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Finding</th>
+<th scope="col">Verdict</th>
+<th scope="col">My assessment and source</th>
+</tr>
+</thead>
+<tbody>
+<tr id="P01">
+<td>P01 Record lifecycle</td>
+<td class="verdict mixed"><strong>Partly agree. One factual correction.</strong></td>
+<td>Delete has no client version token. No restore path is present. Neither fact alone proves a requirement violation. The assertion that deleted records are also unavailable to history is false. History deliberately remains readable for a permitted user. A business no-op save can still update system fields. <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L725" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L725">Delete<span class="line-ref"> (line 725)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L758" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L758">history<span class="line-ref"> (line 758)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L468" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L468">system fields<span class="line-ref"> (line 468)</span></a>.</td>
+</tr>
+<tr id="P02">
+<td>P02 Save pipeline</td>
+<td class="verdict agree"><strong>Agree with the description. No separate state-machine refactor needed.</strong></td>
+<td>The ordered steps and <code>SaveState</code> are already explicit. Returning validation errors in the result and transport errors as exceptions is a protocol choice. The client handles both. Logging an <code>OnAfterSave</code> failure preserves the committed outcome. <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L263" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L263">Pipeline<span class="line-ref"> (line 263)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L514" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L514">after-save handling<span class="line-ref"> (line 514)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L315" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L315">client<span class="line-ref"> (line 315)</span></a>.</td>
+</tr>
+<tr id="P03">
+<td>P03 Field state</td>
+<td class="verdict agree"><strong>Agree with the rule/effect mismatch. Narrow the impact.</strong></td>
+<td>The server preserves rule locks. Client setters do not. This can create an editable field whose update the server refuses. The server also removes rule-hidden values from load responses. This finding does not establish a data disclosure or server authorization bypass. Initial effects run before the final whole-form disable, which limits the report's read-only-form claim. <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasServerEffects.cs#L32" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasServerEffects.cs#L32">Server locks<span class="line-ref"> (line 32)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L108" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L108">client order<span class="line-ref"> (line 108)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L170" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L170">client setters<span class="line-ref"> (line 170)</span></a>.</td>
+</tr>
+<tr id="P04">
+<td>P04 Unconnected workflow state</td>
+<td class="verdict agree"><strong>Agree. Missing capability, not a hidden working machine.</strong></td>
+<td>Rule contexts receive no states. <code>Execute</code> follows the client's default close path. The lint warns about unsupported actions. The adapter is needed before a workflow-based platform app can rely on these features. This is not evidence that TTDV2 requires an adapter. <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L800" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L800">Empty state list<span class="line-ref"> (line 800)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Rules/AtlasRuleEngine.cs#L185" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Rules/AtlasRuleEngine.cs#L185">state match<span class="line-ref"> (line 185)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L270" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L270">button handling<span class="line-ref"> (line 270)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs#L166" title="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs#L166">lint<span class="line-ref"> (line 166)</span></a>.</td>
+</tr>
+<tr id="P05">
+<td>P05 App availability</td>
+<td class="verdict mixed"><strong>Agree with the cross-app gap. Partly agree with the refactor scope.</strong></td>
+<td>The resolver already performs the full check. The menu calls it. Those are not seven independent implementations. Foreign dashboard tabs do bypass the startup-disabled set. Centralizing that decision is useful, provided legacy fall-through and error behaviour remain intact. <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasModuleResolver.cs#L45" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasModuleResolver.cs#L45">Resolver<span class="line-ref"> (line 45)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasApplicationMenu.cs#L35" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasApplicationMenu.cs#L35">menu<span class="line-ref"> (line 35)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs#L87" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs#L87">foreign tab<span class="line-ref"> (line 87)</span></a>.</td>
+</tr>
+<tr id="P06">
+<td>P06 Startup</td>
+<td class="verdict agree"><strong>Agree with the lifecycle. Low refactoring priority.</strong></td>
+<td>A gate and an <code>IsLoaded</code> check already coordinate startup. In <code>DisableModule</code> mode, <code>MarkLoaded</code> means the startup attempt finished, including failures that disabled apps. It does not mean all tables loaded successfully. The restart policy is deliberate. <a href="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasPlatformStartup.cs#L29" title="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasPlatformStartup.cs#L29">Gate<span class="line-ref"> (line 29)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasPlatformStartup.cs#L48" title="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasPlatformStartup.cs#L48">failure handling<span class="line-ref"> (line 48)</span></a>.</td>
+</tr>
+<tr id="P07">
+<td>P07 Access and rollout</td>
+<td class="verdict mixed"><strong>Agree with the decision table. Disagree that asymmetry is automatically a defect.</strong></td>
+<td>Create-at-save and Delete enforce denial even in <code>LogOnly</code>. Those exceptions are explicit in code. A shared helper must preserve them. These are policy modes, not record lifecycle states. <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasAccessService.cs#L42" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasAccessService.cs#L42">Access policy<span class="line-ref"> (line 42)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L329" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L329">create guard<span class="line-ref"> (line 329)</span></a>.</td>
+</tr>
+<tr id="P08">
+<td>P08 Cut-over and rollback</td>
+<td class="verdict agree"><strong>Agree. High priority before operational use.</strong></td>
+<td>Rollback infers which role grants to restore from actor and time. Re-cutover skips existing business rows and later history. The first log timestamp remains the rollback reference after another cut-over. The data remains in TTD, so “stale active data and missing copied history” is more precise than physical data loss. <a href="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L178" title="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L178">Copy<span class="line-ref"> (line 178)</span></a>, <a href="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L205" title="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L205">log<span class="line-ref"> (line 205)</span></a>, <a href="../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql#L25" title="../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql#L25">rollback<span class="line-ref"> (line 25)</span></a>.</td>
+</tr>
+<tr id="P09">
+<td>P09 User roles</td>
+<td class="verdict mixed"><strong>Agree with the facts. Disagree with the implication that another machine is needed.</strong></td>
+<td>The SQL view already defines the active-role predicate in one place. The platform reads it once per request. Mutation ownership is outside that reader. <a href="../atlas-platform/sql/release-p1/030-active-user-roles-view.sql#L30" title="../atlas-platform/sql/release-p1/030-active-user-roles-view.sql#L30">View<span class="line-ref"> (line 30)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasUserContext.cs#L56" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Security/AtlasUserContext.cs#L56">reader<span class="line-ref"> (line 56)</span></a>.</td>
+</tr>
+<tr id="P10">
+<td>P10 Form</td>
+<td class="verdict mixed"><strong>Agree with the missing delete guard. Partly agree with the proposed redesign.</strong></td>
+<td><code>remove()</code> has no busy state. Save and delete can overlap. Add an operation guard before considering a broader component rewrite. Independent dialogs are not themselves evidence of invalid state. <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L287" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L287">Save guard<span class="line-ref"> (line 287)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L331" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L331">delete<span class="line-ref"> (line 331)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.html#L71" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.html#L71">button disable<span class="line-ref"> (line 71)</span></a>.</td>
+</tr>
+<tr id="P11">
+<td>P11 Dashboard, history, cache</td>
+<td class="verdict mixed"><strong>Partly agree. Narrow the deployment claim.</strong></td>
+<td>The local dashboard delete lacks a busy guard. Its source header says it is a target reference, while the target keeps its current dashboard. This does not prove a target dashboard defect. History already cancels superseded loads. The navigation promise cache is normal caching. <a href="../atlas-platform/WebUi/src/app/platform/dashboard/atlas-dashboard.component.ts#L1" title="../atlas-platform/WebUi/src/app/platform/dashboard/atlas-dashboard.component.ts#L1">Dashboard scope<span class="line-ref"> (line 1)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/dashboard/atlas-dashboard.component.ts#L164" title="../atlas-platform/WebUi/src/app/platform/dashboard/atlas-dashboard.component.ts#L164">delete<span class="line-ref"> (line 164)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/atlas-history-dialog.ts#L84" title="../atlas-platform/WebUi/src/app/platform/atlas-history-dialog.ts#L84">history<span class="line-ref"> (line 84)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/atlas-navigation.ts#L60" title="../atlas-platform/WebUi/src/app/platform/atlas-navigation.ts#L60">cache<span class="line-ref"> (line 60)</span></a>.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="4-deeper-analysis-of-the-important-paths">4. Deeper analysis of the important paths</h2>
+<h3 id="41-savedraft-a-second-read-does-not-close-the-write-gap">4.1 SaveDraft: a second read does not close the write gap</h3>
+<p class="lead-verdict"><strong>Verdict: agree. Known issue. High priority when engine fixes resume.</strong></p>
+<p>The engine re-reads the instance and pending task inside the transaction. It checks the request guards and the selected transition. This is useful protection. However, SaveDraft performs no conditional write to the instance after those reads.</p>
+<p>A supported interleaving is:</p>
+<ol>
+<li>Request A reads <code>Draft</code> and passes the transaction's guards.</li>
+<li>Request B changes the workflow state and commits.</li>
+<li>Request A writes its data, audit, and idempotency record, then commits without a final instance-version check.</li>
+</ol>
+<p>The narrow gap is after A's last check. It is not true that every SaveDraft submitted after a transition succeeds. A transition committed before A's re-read is detected.</p>
+<p>The console path can persist <code>MockSectionData</code>. The inspected workflow API sets <code>PersistSectionData = false</code>. Therefore this review does not establish a target business-table overwrite. It does establish a gap in the generic action's concurrency boundary.</p>
+<p>Evidence: <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L640" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L640">transaction and guards<span class="line-ref"> (line 640)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675">conditional branch<span class="line-ref"> (line 675)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L858" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L858">audit and commit<span class="line-ref"> (line 858)</span></a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L121" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L121">API caller options<span class="line-ref"> (line 121)</span></a>.</p>
+<p><strong>Confirming test:</strong> Use two SQL connections. Pause SaveDraft after its final guard, commit a transition, then release SaveDraft. Inspect the result, audit, section data, and idempotency row. A fix must preserve the approved rule that SaveDraft does not increment the workflow version.</p>
+<h3 id="42-sla-distinguish-a-simple-missing-task-error-from-the-completion-race">4.2 SLA: distinguish a simple missing-task error from the completion race</h3>
+<p class="lead-verdict"><strong>Verdict: agree with both, but they need different tests and fixes.</strong></p>
+<p>An actionless API request with <code>slaTargetDate</code> calls synchronization directly. <code>ResolvePendingTask()</code> calls <code>Single()</code>. No task therefore causes <code>InvalidOperationException</code>. The local catch handles only <code>WorkflowSlaValidationException</code>. The global exception handler maps the other exception to a generic 500.</p>
+<p>This path is source-supported for a validly shaped request naming an unknown instance, a Draft instance without a task, or a completed instance without a task. It needs no concurrency to fail.</p>
+<p>Evidence: <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L79" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L79">API branch<span class="line-ref"> (line 79)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L171" title="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L171">task lookup<span class="line-ref"> (line 171)</span></a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Infrastructure/GlobalExceptionHandler.cs#L47" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Infrastructure/GlobalExceptionHandler.cs#L47">exception mapping<span class="line-ref"> (line 47)</span></a>.</p>
+<p>The completion race has a more specific ordering:</p>
+<ol>
+<li>Synchronization reads the pending task.</li>
+<li>Another transaction completes that task and its schedule, then commits.</li>
+<li>Synchronization reads no active schedule and inserts a new active schedule for the task it already loaded.</li>
+</ol>
+<p>Synchronization does not recheck task status at the final write. It also does not reject a completed instance. <code>WorkflowTask</code> has no configured rowversion. The schedule's rowversion cannot protect this new schedule from a relationship violation. The unique active-schedule index also permits it because the old schedule is completed.</p>
+<p>The next SLA scan excludes the completed task. The result can therefore be an active schedule that no scan processes.</p>
+<p>Evidence: <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L29" title="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L29">read and insert order<span class="line-ref"> (line 29)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L142" title="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L142">completion<span class="line-ref"> (line 142)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L296" title="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L296">task mapping<span class="line-ref"> (line 296)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L49" title="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L49">scan filters<span class="line-ref"> (line 49)</span></a>.</p>
+<p><strong>Confirming tests:</strong> Test the three no-task API cases separately. For the race, pause after the task read and complete the task on another connection before the active-schedule query. Existing synchronization tests cover sequential completion and rescheduling, not this ordering.</p>
+<h3 id="43-outbox-cancellation-the-inventory-understates-the-write-race">4.3 Outbox cancellation: the inventory understates the write race</h3>
+<p class="lead-verdict"><strong>Verdict: agree with the reported ordering. Add a second ordering for investigation.</strong></p>
+<p>The reported case is valid: the sender runs, completion cancels the outbox row and clears its token, then the sender succeeds. The worker's conditional <code>Sent</code> update matches no row. The message can be delivered while the row says <code>Cancelled</code>.</p>
+<p>A second source-supported ordering is more direct:</p>
+<ol>
+<li><code>CancelUndeliveredOccurrences()</code> reads a <code>Processing</code> row into EF tracking and changes its local status to <code>Cancelled</code>.</li>
+<li>Before those changes are saved, the worker completes delivery and updates that database row to <code>Sent</code>.</li>
+<li>The cancellation transaction saves its tracked changes.</li>
+</ol>
+<p>The outbox has no configured concurrency token. The cancellation path does not issue a conditional update that rechecks status or the processing token at write time. Its earlier query predicate does not become a final update guard. Thus the stale cancellation can overwrite the <code>Sent</code> status. <code>SentAtUtc</code> may remain populated, because cancellation does not change that property.</p>
+<p>This second ordering is a source inference. No concurrent SQL test was executed here. Existing tests that preserve an already-sent row query that row after it is sent. They do not prove protection against this stale tracked write.</p>
+<p>Evidence: <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L219" title="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L219">tracked cancellation<span class="line-ref"> (line 219)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L160" title="../src/WorkflowEngine.Infrastructure/Sla/WorkflowSlaSynchronizationService.cs#L160">save after cancellation<span class="line-ref"> (line 160)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L138" title="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L138">worker completion<span class="line-ref"> (line 138)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L413" title="../src/WorkflowEngine.Infrastructure/Persistence/WorkflowDbContext.cs#L413">outbox mapping<span class="line-ref"> (line 413)</span></a>, <a href="../tests/WorkflowEngine.Tests/WorkflowSlaSynchronizationTests.cs#L49" title="../tests/WorkflowEngine.Tests/WorkflowSlaSynchronizationTests.cs#L49">existing sequential test<span class="line-ref"> (line 49)</span></a>.</p>
+<p>An in-memory transition guard would not solve either race. A conditional database update can protect the persisted status. It cannot recall a message already accepted by the sender. The cancellation policy must distinguish those two concerns.</p>
+<p><strong>Confirming tests:</strong> Use a controlled sender for cancellation during send. Use a second connection and a barrier between cancellation's query and save for the stale-write ordering. Check status, token, <code>SentAtUtc</code>, <code>CancelledAtUtc</code>, sender calls, and warnings.</p>
+<h3 id="44-two-delivery-callers-can-produce-a-failure-without-an-smtp-failure">4.4 Two delivery callers can produce a failure without an SMTP failure</h3>
+<p class="lead-verdict"><strong>Verdict: the inventory's E05/E09 combination has this additional consequence.</strong></p>
+<p>The action can commit a pending notification. The worker can then claim or send it before the API dispatcher queries pending rows. The dispatcher finds zero pending rows and returns failure. The API changes the committed action result to <code>NotificationDeliveryFailed</code>.</p>
+<p>If both callers read the pending row first, the worker can win the atomic claim. The API dispatcher then also returns failure. These paths do not require a broken SMTP server.</p>
+<p>This is conditional on the background worker running at the same time as immediate dispatch. It is not evidence that the target uses this dispatcher.</p>
+<p>Evidence: <a href="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L81" title="../src/WorkflowEngine.Infrastructure/Notifications/ProcessNotificationOutboxService.cs#L81">worker claim<span class="line-ref"> (line 81)</span></a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs#L36" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionNotificationDispatcher.cs#L36">empty selection and lost claim<span class="line-ref"> (line 36)</span></a>, <a href="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L155" title="../workflow-api/src/WorkflowEngine.WorkflowApi/Services/WorkflowActionService.cs#L155">result mutation<span class="line-ref"> (line 155)</span></a>.</p>
+<p><strong>Confirming test:</strong> Let the worker claim the action's row immediately after the action commits. Then run the dispatcher and inspect both the persisted workflow and the HTTP result. A helper extraction alone does not decide what the API should report.</p>
+<h3 id="45-metadata-validity-is-the-real-issue-behind-several-engine-machines">4.5 Metadata validity is the real issue behind several engine machines</h3>
+<p class="lead-verdict"><strong>Verdict: agree with generic validation, rather than more lifecycle classes.</strong></p>
+<p>The generic executor can mark an instance completed while metadata leaves a task pending. It can also create a task on a terminal transition. Neither is prevented by the instance status check or the one-pending-task index.</p>
+<p>The primary-email requirement is another cross-entity dependency. The SLA scan requires exactly one non-SLA outbox row for the task. It copies that row's body and HTML body. Reminder-specific recipient snapshots do not remove this dependency.</p>
+<p>The first skipped scan might report missing recipients before it reaches the missing-primary-email check. Therefore “no primary email” does not imply that exact warning will always appear first.</p>
+<p>Evidence: <a href="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675" title="../src/WorkflowEngine.Infrastructure/WorkflowExecution/WorkflowExecutionService.cs#L675">terminal/task writes<span class="line-ref"> (line 675)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L172" title="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L172">recipient selection<span class="line-ref"> (line 172)</span></a>, <a href="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L219" title="../src/WorkflowEngine.Infrastructure/Sla/RunSlaService.cs#L219">primary-email dependency<span class="line-ref"> (line 219)</span></a>.</p>
+<p>The existing nonliteral-terminal-state test proves terminal behaviour for a taskless workflow. It does not prove that invalid task metadata is refused. <a href="../tests/WorkflowEngine.Tests/WorkflowTerminalStateTests.cs#L20" title="../tests/WorkflowEngine.Tests/WorkflowTerminalStateTests.cs#L20">Test source<span class="line-ref"> (line 20)</span></a>.</p>
+<p><strong>Confirming tests:</strong> Supply a terminal transition that leaves an existing task open, another that creates a task, and an SLA task without a primary notification. Assert rollback or validation under the chosen future contract. A check-only command can report these conditions without changing runtime contracts.</p>
+<h3 id="46-platform-effects-and-availability-conditional-but-valid-gaps">4.6 Platform effects and availability: conditional, but valid gaps</h3>
+<p><strong>Rule locks:</strong> Choose an editable form where a rule disables one field. Add an <code>Enable</code> effect from another field. The client can enable the target. The server retains its rule lock and refuses a changed submitted value. This is a consistency defect for metadata that uses these effects.</p>
+<p>TTDV2's inspected effects are <code>SetFromOption</code> and <code>Clear</code>. Its present JSON does not exercise that <code>Enable</code>/<code>Show</code> case. Also, <code>build()</code> runs initial effects before it disables a form with <code>canSave = false</code>. The broader claim that initial effects leave every read-only form editable is not supported.</p>
+<p>Evidence: <a href="../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.json#L53" title="../atlas-platform/src/BBH.CP.Atlas.App/Config/TTDV2.json#L53">TTDV2 effects<span class="line-ref"> (line 53)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L108" title="../atlas-platform/WebUi/src/app/platform/form/atlas-form.component.ts#L108">client initialization<span class="line-ref"> (line 108)</span></a>, <a href="../atlas-platform/WebUi/src/app/platform/form/atlas-effects.ts#L54" title="../atlas-platform/WebUi/src/app/platform/form/atlas-effects.ts#L54">client effect application<span class="line-ref"> (line 54)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasAllowList.cs#L45" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Sections/AtlasAllowList.cs#L45">server refusal<span class="line-ref"> (line 45)</span></a>.</p>
+<p><strong>Cross-app availability:</strong> App A can have a dashboard tab for app B. Suppose B's table loaded, B's setting is enabled, and a separate B validation error caused startup to disable B. The foreign-tab code checks the setting and View access. It does not check <code>AtlasDisabledApps</code>. A's startup check validates the tab table and query, rather than every B validation result.</p>
+<p>That is a credible path to showing rows from a startup-disabled app. “Low risk” cannot be concluded without the actual metadata and the reason B was disabled. The View check still runs, so this finding does not by itself prove an authorization bypass.</p>
+<p>Evidence: <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs#L87" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs#L87">foreign-app checks<span class="line-ref"> (line 87)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs#L328" title="../atlas-platform/src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs#L328">tab startup checks<span class="line-ref"> (line 328)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasModuleResolver.cs#L74" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Registry/AtlasModuleResolver.cs#L74">full resolver check<span class="line-ref"> (line 74)</span></a>.</p>
+<p><strong>Confirming tests:</strong> Test rule-disabled and rule-hidden targets in the actual form component. For availability, load B's table, disable B through the startup-disabled collection, and request A's foreign tab with otherwise valid View access.</p>
+<h3 id="47-cut-over-a-script-log-row-is-not-a-complete-record-of-the-operation">4.7 Cut-over: a script-log row is not a complete record of the operation</h3>
+<p class="lead-verdict"><strong>Verdict: agree with R01, R02, and the second-rollback inference.</strong></p>
+<ul>
+<li><strong>R01:</strong> An administrator revokes a TTD grant within the preceding hour. The same administrator then runs <code>050</code>. Later, <code>090</code> can restore that deliberately revoked grant. The actor/time predicate cannot distinguish it from grants changed by <code>050</code>.</li>
+<li><strong>R02:</strong> After rollback, users edit an existing TTD record and add history. A later <code>050</code> skips the record because its ID already exists in TTDV2. The audit copy skips later entries when any copied TTD audit entry exists for that record. It then revokes TTD access again.</li>
+<li><strong>Second rollback:</strong> <code>050</code> does not add another log row. A later cut-over gives the grants a modification timestamp after the first recorded cut-over. <code>090</code> still searches the first timestamp's window. It can leave those TTD grants revoked while disabling TTDV2 grants too.</li>
+</ul>
+<p>Evidence: <a href="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L147" title="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L147">grant copy and revoke<span class="line-ref"> (line 147)</span></a>, <a href="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L178" title="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L178">record and history filters<span class="line-ref"> (line 178)</span></a>, <a href="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L205" title="../atlas-platform/sql/release-p1/050-ttdv2-copy-from-ttd.sql#L205">single log row<span class="line-ref"> (line 205)</span></a>, <a href="../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql#L25" title="../atlas-platform/sql/release-p1/090-ttdv2-rollback.sql#L25">restore window and TTDV2 disable<span class="line-ref"> (line 25)</span></a>.</p>
+<p>R01 and R02 already have independent review test source. I inspected those tests but did not execute them. Their existence is not evidence of a fresh passing or failing run. <a href="../atlas-platform/review/2026-11-01/IndependentReviewTests.cs#L31" title="../atlas-platform/review/2026-11-01/IndependentReviewTests.cs#L31">Existing reproductions<span class="line-ref"> (line 31)</span></a>.</p>
+<p><strong>Confirming tests:</strong> Run only in an isolated disposable database. Include intentional prior revocation, re-cutover after business edits, and a second rollback. Use distinct timestamps for each operation. Reconciliation must also consider edits made in TTDV2 before rollback. Blindly replacing TTDV2 rows would not be a safe general correction.</p>
+<h3 id="48-record-history-delete-concurrency-and-business-no-op-saves">4.8 Record history, delete concurrency, and business no-op saves</h3>
+<p>The P01 history claim needs correction. <code>GetAuditLog()</code> passes a possibly null active record to the History permission check and continues reading audit. It does not throw NotFound. An existing test deletes a record and then reads its Create, Update, and Delete history.</p>
+<p>Evidence: <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L758" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L758">history method<span class="line-ref"> (line 758)</span></a>, <a href="../atlas-platform/tests/BBH.CP.Atlas.Platform.Tests/Sections/Ttdv2SectionTests.cs#L235" title="../atlas-platform/tests/BBH.CP.Atlas.Platform.Tests/Sections/Ttdv2SectionTests.cs#L235">test after deletion<span class="line-ref"> (line 235)</span></a>.</p>
+<p>Delete lacks protection against changes since the user's form load. It still uses a tracked record with rowversion mapping, so it can detect a conflicting write after the delete request's own read. Those are different concurrency windows. The report should not be read as saying Delete has no database concurrency protection at all.</p>
+<p>Evidence: <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L730" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L730">tracked delete read<span class="line-ref"> (line 730)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasPlatformContext.cs#L63" title="../atlas-platform/src/BBH.CP.Atlas.Data/Platform/AtlasPlatformContext.cs#L63">rowversion mapping<span class="line-ref"> (line 63)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L692" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L692">conflict handling<span class="line-ref"> (line 692)</span></a>.</p>
+<p>A business no-op save updates <code>ModifiedBy</code> and <code>ModifiedDate</code>. If either tracked value changes, a database update can change rowversion even when no business audit entry is added. If those values remain identical, the source alone does not justify saying an update always occurs.</p>
+<p>Evidence: <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L436" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L436">tracked mapping<span class="line-ref"> (line 436)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L476" title="../atlas-platform/src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs#L476">system fields<span class="line-ref"> (line 476)</span></a>, <a href="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditWriter.cs#L30" title="../atlas-platform/src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditWriter.cs#L30">audit omission<span class="line-ref"> (line 30)</span></a>.</p>
+<p><strong>Confirming tests:</strong> Separate stale-form deletion from a write concurrent with the delete request. For a no-op save, advance the injected clock and check the rowversion and the audit count independently.</p>
+<h2 id="5-corrections-to-the-claimed-invariants">5. Corrections to the claimed invariants</h2>
+<div aria-label="Assessment table" class="table-wrap" role="region" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Inventory rule</th>
+<th scope="col">Correction or qualification</th>
+</tr>
+</thead>
+<tbody>
+<tr id="I1">
+<td>I1: Completed instance has no pending task</td>
+<td>A desired invariant, not generic enforcement. The terminal transition's metadata can violate it.</td>
+</tr>
+<tr id="I2">
+<td>I2: Completed task has no active schedule</td>
+<td>Sequential completion enforces it. The late synchronization sequence can violate it.</td>
+</tr>
+<tr id="I3">
+<td>I3: Inactive schedule has no pending/processing reminders</td>
+<td>Intended cancellation rule. It does not prove that no email was sent. Concurrent delivery and tracked cancellation need separate checks.</td>
+</tr>
+<tr id="I4">
+<td>I4: Pending SLA task has one active schedule</td>
+<td>Normal creation is transactional. The filtered index enforces <strong>at most one</strong>, not existence. Metadata or direct data changes can still leave none.</td>
+</tr>
+<tr id="I5">
+<td>I5: Task due date equals active schedule overdue time</td>
+<td>Synchronization writes both. This is not an independent database relationship constraint.</td>
+</tr>
+<tr id="I6">
+<td>I6: One pending task for each instance</td>
+<td>Correct wording: <strong>at most one pending task</strong>. Draft, terminal, and taskless workflows can have zero.</td>
+</tr>
+<tr id="I7">
+<td>I7: One active version</td>
+<td>No database constraint enforces it. Inactive workflows can also intentionally have no active version.</td>
+</tr>
+<tr id="I8">
+<td>I8: SLA task has a primary email</td>
+<td>Required by the current scan, but not a generic metadata invariant checked before execution.</td>
+</tr>
+<tr id="I9">
+<td>I9: SQMS projections equal engine state</td>
+<td>Scheduled transitions enforce the writes together. User-action consistency depends on target integration, which this review did not inspect.</td>
+</tr>
+<tr id="I10">
+<td>I10: Client/server field state matches</td>
+<td>Shared effect and validator cases cover parts of the behaviour. They do not prove parity of rule locks, whole-form permission handling, and component operation lifetimes.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The supporting constraints and write paths are linked in sections 2 to 4. These statements distinguish enforced limits from desired relationships.</p>
+<h2 id="6-my-disposition-of-w1-to-w13">6. My disposition of W1 to W13</h2>
+<p>These are recommendations, not an implementation plan or approval to change code.</p>
+<div aria-label="Assessment table" class="table-wrap" role="region" tabindex="0"><table>
+<thead>
+<tr>
+<th scope="col">Work item</th>
+<th scope="col">My take</th>
+</tr>
+</thead>
+<tbody>
+<tr id="W1">
+<td>W1 Transition tests</td>
+<td><strong>Support, narrowed.</strong> Start with SQL interleavings and cross-entity invariants for the selected fix. Do not require a new class for every named machine before fixing a specific defect. Existing behaviour tests already cover many normal transitions.</td>
+</tr>
+<tr id="W2">
+<td>W2 Status constants</td>
+<td><strong>Optional, later.</strong> Preserve every persisted string. Make small edits when touching the affected service. The literal count is not a defect count. Constants do not provide concurrency safety.</td>
+</tr>
+<tr id="W3">
+<td>W3 Shared delivery helper</td>
+<td><strong>Support after behaviour decisions.</strong> Share proven common operations. Keep recovery selection, retry fairness, and API delivery-result semantics explicit. Do not automatically give the API every worker responsibility.</td>
+</tr>
+<tr id="W4">
+<td>W4 SaveDraft race</td>
+<td><strong>High priority when engine fixes resume.</strong> Reproduce the final-check gap. Preserve SaveDraft's existing version semantics.</td>
+</tr>
+<tr id="W5">
+<td>W5 Cancel during send</td>
+<td><strong>Support and expand.</strong> Include stale tracked cancellation overwriting <code>Sent</code>, as well as cancellation while the sender runs. Agree on delivery versus cancellation semantics first.</td>
+</tr>
+<tr id="W6">
+<td>W6 SLA-only no-task result</td>
+<td><strong>Support.</strong> Deterministic invalid-state handling is worthwhile. Decide the public response and status behaviour before implementation.</td>
+</tr>
+<tr id="W7">
+<td>W7 Generic metadata validation</td>
+<td><strong>Support before additional workflow onboarding.</strong> Include terminal task rules, first-state validity, SLA primary-email requirements, active metadata references, and active-version selection. A check command can be separate from runtime behaviour changes.</td>
+</tr>
+<tr id="W8">
+<td>W8 SLA completion race</td>
+<td><strong>High priority alongside W4.</strong> Protect the task/schedule relationship at the database write boundary. Schedule rowversion alone is insufficient.</td>
+</tr>
+<tr id="W9">
+<td>W9 Availability function</td>
+<td><strong>Support a narrow correction.</strong> Test foreign dashboard tabs first. Preserve legacy menu behaviour, fall-through, and public error results. The current full resolver check need not become a new framework.</td>
+</tr>
+<tr id="W10">
+<td>W10 Client operation state</td>
+<td><strong>Support the delete guard first.</strong> Make Save and Delete mutually exclusive while a request is active. A full page-state enum is optional. The dashboard issue is confirmed in the local reference component only.</td>
+</tr>
+<tr id="W11">
+<td>W11 Client rule locks</td>
+<td><strong>Support before using conflicting Show/Enable effects.</strong> Preserve server authority. Test the full component and rule context, not only the pure effect helper. TTDV2's current effects do not exercise the reported case.</td>
+</tr>
+<tr id="W12">
+<td>W12 Engine adapter</td>
+<td><strong>Keep as planned feature work.</strong> Its missing state/action support is real. It is not a prerequisite for every cleanup item or for the current workflow-free pilot.</td>
+</tr>
+<tr id="W13">
+<td>W13 Cut-over state</td>
+<td><strong>High priority before cut-over/rollback use.</strong> Record exact affected grants or define another reliable reconciliation method. Define repeat cut-over behaviour. Changes to <code>050</code> or <code>090</code> require the existing scoped approval.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Within approved scope, I would prioritize W13 before operational migration use. For engine correctness, I would prioritize W4 and W8, then the W5 delivery races. W6 is a smaller deterministic correction. W10 is a focused client correction. W7, W9, and W11 matter before broader metadata use. W2 is not a prerequisite for any of these.</p>
+<p>The existing E09 committed-action result ambiguity and E06 assignment-role hash omission also remain substantive concerns. They should not disappear behind a status-constant refactor.</p>
+<h2 id="7-completion-record">7. Completion record for the source review</h2>
+<p>Changed: Added this independent assessment and a review checkpoint in <code>CODEX_HANDOFF.md</code>. No runtime or SQL implementation changed.</p>
+<p>Why: Give a source-backed verdict for all 24 findings, correct overstated claims, and identify the most useful confirmation tests.</p>
+<p>Tests run: None. This was a source review. The concurrency sequences and conditional UI paths remain unexecuted. Documentation links and the final diff were checked separately.</p>
+<p>Seed verification run: Not run. No engine seed changed. Not applicable for the platform documentation changes.</p>
+<p>Sample JSON executed: Not run. No workflow execution was requested. Not applicable for the platform documentation changes.</p>
+<p>Files updated: <code>docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md</code>, <code>CODEX_HANDOFF.md</code>.</p>
+<p>Open issues: The defects remain unfixed. Runtime confirmation, target behaviour, and implementation decisions remain open. The review does not resume paused engine implementation.</p>
+<p>Package rebuilt: No. No copied platform file or <code>INTEGRATION.md</code> changed.</p><footer id="html-delivery"><h2>HTML delivery</h2><dl>
+<dt>Changed:</dt><dd>Created this HTML report and added its path to the handoff.</dd>
+<dt>Why:</dt><dd>Provide the independent assessment in the requested HTML format.</dd>
+<dt>Tests run:</dt><dd>Report structure, content coverage, source links, and browser rendering checked. No application tests ran for this format conversion.</dd>
+<dt>Seed verification run:</dt><dd>Not applicable (documentation only).</dd>
+<dt>Sample JSON executed:</dt><dd>Not applicable (documentation only).</dd>
+<dt>Files updated:</dt><dd>docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.html and CODEX_HANDOFF.md.</dd>
+<dt>Open issues:</dt><dd>The assessment's runtime confirmation and implementation items remain open.</dd>
+<dt>Package rebuilt:</dt><dd>No. No copied platform file or integration guide changed.</dd>
+</dl></footer></main></div></body></html>
