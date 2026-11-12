@@ -68,7 +68,8 @@ public class AtlasPlatformContext : DbContext
                     if (column.IsRowVersion)
                         property.IsRowVersion();
                     else if (column.IsIdentity)
-                        property.ValueGeneratedOnAdd().UseIdentityColumn();
+                        // The host can also reference the Oracle provider, which has a method with the same name.
+                        SqlServerPropertyBuilderExtensions.UseIdentityColumn(property.ValueGeneratedOnAdd());
                     else if (column.IsComputed)
                         property.ValueGeneratedOnAddOrUpdate();
                     else if (column.UsesDatabaseDefault)
