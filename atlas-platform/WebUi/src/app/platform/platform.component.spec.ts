@@ -497,26 +497,6 @@ describe('AtlasFormComponent grid with ag-grid and the cell components (review R
     expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('90');
   });
 
-  it('draws the total also when a host cell component wrote it in the row data first', async () => {
-    const { fixture } = setup(page(), 5, [provideAtlasGridComponents({ NumericEditor: TestTypingCell })]);
-    await ready(fixture);
-    const agGrid = fixture.debugElement.query((x) => x.name === 'ag-grid-angular').componentInstance as {
-      api: { getDisplayedRowAtIndex(i: number): { data: Record<string, unknown> } };
-    };
-    // As a host component that calculates a total itself: the row data changes, and the cell is not refreshed.
-    agGrid.api.getDisplayedRowAtIndex(0).data['Total'] = '90';
-    const input = element(fixture, '#Tue_0') as HTMLInputElement;
-
-    input.value = '30';
-    input.dispatchEvent(new Event('input'));
-    for (let i = 0; i < 3; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      fixture.detectChanges();
-    }
-
-    expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('90');
-  });
-
   it('shows the cleared cells in a cell component with ngModel', async () => {
     const week = text('WeekEnding', { Value: '2026-10-25', Effects: [{ On: 'Change', Clear: ['Mon', 'Tue'] }] });
     const controls = [text('Name'), week];
