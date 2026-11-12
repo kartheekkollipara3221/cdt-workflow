@@ -61,6 +61,9 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     floatingFilterComponentParams: { suppressFilterButton: true },
     filterParams: {},
     unSortIcon: true,
+    // The browser moves the focus with Tab, so Tab goes to the next cell input and, after the last cell, out of the
+    // grid. The cell input loses the focus, so the cell component sends its value.
+    suppressKeyboardEvent: (params) => params.event.key === 'Tab',
   };
   /** The row selection. The target writes rowSelection="single" (deprecated in ag-grid 33). This is the same setting. */
   protected readonly rowSelection: RowSelectionOptions = { mode: 'singleRow', checkboxes: false, enableClickSelection: true };
@@ -83,8 +86,25 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     }
     this.rowData = [{ ...rowGroup.getRawValue() }];
     this.columns = (this.control.Grid?.Columns ?? []).map((column) => this.columnDef(column, rowGroup));
-    // A Computed cell (for example WeeklyTotal) or a server response can change the group. Show it in the grid row.
-    this.group.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+    // A Computed cell (for example WeeklyTotal), an effect or a server response can change the group.
+    // The grid copies the values one time, after the change is complete. Thus an effect that clears many cells
+    // and the Computed values that follow give one copy, and the order of the listeners has no effect.
+    this.group.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.scheduleSync());
+  }
+
+  private syncPending = false;
+
+  /** Copies the form values and the header dates to the grid one time, after the current change. */
+  private scheduleSync(): void {
+    if (this.syncPending) {
+      return;
+    }
+    this.syncPending = true;
+    queueMicrotask(() => {
+      this.syncPending = false;
+      if (this.api?.isDestroyed()) {
+        return;
+      }
       this.syncGrid();
       this.syncHeaders();
     });

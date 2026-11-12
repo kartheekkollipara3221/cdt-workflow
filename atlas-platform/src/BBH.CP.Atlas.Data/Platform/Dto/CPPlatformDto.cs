@@ -240,6 +240,14 @@ namespace BBH.CP.Atlas.Data.DTO
     /// <summary>A control effect: when the condition matches, the actions change other controls.</summary>
     public class CPEffect
     {
+        /// <summary>
+        /// When the effect runs. Null: when the form loads and at each change. "Change": only when the user changes the value.
+        /// </summary>
+        /// <remarks>
+        /// The server does not apply a "Change" effect. It is a help for the user, not a rule.
+        /// </remarks>
+        public string? On { get; set; }
+
         /// <summary>The condition on the value of the control. Null = always.</summary>
         public CPEffectCondition? When { get; set; }
         /// <summary>Controls to show.</summary>

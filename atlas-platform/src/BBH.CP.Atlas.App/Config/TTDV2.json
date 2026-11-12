@@ -153,6 +153,12 @@
             "PlaceHolder": "Week Ending",
             "OptionsSource": { "Provider": "WeekEndings", "Parameters": { "Count": "4", "DayOfWeek": "Sunday" } },
             "KeepSavedValue": true,
+            "Effects": [
+              {
+                "On": "Change",
+                "Clear": [ "MondayMinute", "TuesdayMinute", "WednesdayMinute", "ThursdayMinute", "FridayMinute", "SaturdayMinute", "SundayMinute" ]
+              }
+            ],
             "Validator": { "Required": true }
           }
         ]

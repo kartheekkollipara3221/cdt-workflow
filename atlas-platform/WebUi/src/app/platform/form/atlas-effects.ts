@@ -58,10 +58,14 @@ export function optionData(options: CPKeyValue[] | null | undefined, value: unkn
   return (options ?? []).find((x) => x.Value === String(value))?.Data ?? null;
 }
 
-/** Runs the effects of one control for its current value. */
-export function applyEffects(control: CPApplicationControl, value: unknown, target: AtlasEffectTarget): void {
+/**
+ * Runs the effects of one control for its current value.
+ *
+ * @param changed True when the user changed the value. An effect with On "Change" runs only then.
+ */
+export function applyEffects(control: CPApplicationControl, value: unknown, target: AtlasEffectTarget, changed = false): void {
   for (const effect of control.Effects ?? []) {
-    if (!matches(effect.When, value)) {
+    if ((effect.On === 'Change' && !changed) || !matches(effect.When, value)) {
       continue;
     }
     effect.Show?.forEach((name) => target.setVisible(name, true));

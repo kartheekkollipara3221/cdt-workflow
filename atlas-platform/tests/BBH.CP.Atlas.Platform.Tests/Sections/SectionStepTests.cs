@@ -92,6 +92,21 @@ public class SectionStepTests
         Assert.Equal([("MondayMinute", (string?)"0")], AtlasServerEffects.Values(fields, field => field.Name == "Category" ? "OTHER" : null, _ => []).ToList());
     }
 
+    [Fact]
+    public void The_server_does_not_apply_an_effect_that_runs_only_on_a_user_change()
+    {
+        AtlasFormFields fields = Fields(
+            Control("WeekEnding", effects: [new CPEffect { On = "Change", Clear = ["MondayMinute"], Hide = ["Note"] }]),
+            Control("Note"),
+            Control("MondayMinute"));
+
+        HashSet<string> derived = AtlasServerEffects.Apply(fields, field => field.Name == "WeekEnding" ? "2026-11-15" : null);
+
+        Assert.Empty(derived);
+        Assert.True(fields.Find("Note")!.Visible);
+        Assert.Empty(AtlasServerEffects.Values(fields, field => field.Name == "WeekEnding" ? "2026-11-15" : null, _ => []));
+    }
+
     [Theory]
     [InlineData(null, "x", true)]
     [InlineData(true, "", false)]

@@ -30,6 +30,12 @@ export interface CPEffectCondition {
 
 /** An effect of a control: the changes to other controls when the condition is true. */
 export interface CPEffect {
+  /**
+   * When the effect runs. Null: when the form loads and at each change. "Change": only when the user changes the value.
+   *
+   * The server does not apply a "Change" effect. It is a help for the user only.
+   */
+  On?: 'Change' | null;
   When?: CPEffectCondition | null;
   Show?: string[] | null;
   Hide?: string[] | null;

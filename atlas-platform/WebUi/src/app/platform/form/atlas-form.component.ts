@@ -141,8 +141,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     for (const control of sources) {
       this.form.get(control.Name)?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => this.runEffects(control, value));
     }
+    this.effectValues.clear();
     for (const control of sources) {
-      applyEffects(control, toOutputValue(control, this.form.get(control.Name)?.value), this);
+      const value = toOutputValue(control, this.form.get(control.Name)?.value);
+      this.effectValues.set(control.Name, value);
+      applyEffects(control, value, this);
     }
   }
 
@@ -206,6 +209,8 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
    * The start-up check also reports a cycle.
    */
   private readonly effectsRunning = new Set<string>();
+  /** The last value of each effect source, to find a real change. */
+  private readonly effectValues = new Map<string, unknown>();
 
   /**
    * Runs the effects of a control for a new value.
@@ -218,7 +223,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
     this.effectsRunning.add(control.Name);
     try {
-      applyEffects(control, toOutputValue(control, value), this);
+      const output = toOutputValue(control, value);
+      // Angular also sends valueChanges for the same value, for example when a response sets the form again.
+      const changed = String(output ?? '') !== String(this.effectValues.get(control.Name) ?? '');
+      this.effectValues.set(control.Name, output);
+      applyEffects(control, output, this, changed);
     } finally {
       this.effectsRunning.delete(control.Name);
     }
@@ -226,7 +235,8 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
 
   setValue(name: string, value: string | null): void {
     const control = this.controlsByName.get(name);
-    this.form.get(name)?.setValue(control ? toModelValue(control, value) : (value ?? ''));
+    // A grid field (for example MondayMinute) is in the form group of its grid, not at the top level.
+    findControl(this.form, name)?.setValue(control ? toModelValue(control, value) : (value ?? ''));
   }
 
   // ---------- Template helpers ----------

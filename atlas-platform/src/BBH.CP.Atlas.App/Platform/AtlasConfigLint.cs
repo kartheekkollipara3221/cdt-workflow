@@ -97,6 +97,8 @@ public static partial class AtlasConfigLint
             foreach (CPEffect effect in control.Effects ?? [])
             {
                 string where = $"an effect of '{control.Name}'";
+                if (effect.On != null && !AtlasServerEffects.IsChangeOnly(effect))
+                    error($"{where} has On '{effect.On}'. Use \"Change\" or leave it out.");
                 Names(names, where, effect.Show, error);
                 Names(names, where, effect.Hide, error);
                 Names(names, where, effect.Require, error);

@@ -79,6 +79,20 @@ describe('effects (spec 01, 5.1)', () => {
     expect(cleared.calls).toEqual(['visible X false', 'value AccountNumber null']);
   });
 
+  it('runs an effect with On "Change" only for a user change', () => {
+    const control: CPApplicationControl = {
+      Name: 'WeekEnding', Label: 'Week Ending', Type: 'select',
+      Effects: [{ On: 'Change', Clear: ['MondayMinute'] }],
+    };
+    const load = new Recorder();
+    applyEffects(control, '2026-11-08', load);
+    expect(load.calls).toEqual([]);
+
+    const change = new Recorder();
+    applyEffects(control, '2026-11-15', change, true);
+    expect(change.calls).toEqual(['value MondayMinute null']);
+  });
+
   it('gives no data when an option has no Data, as the server (review FABLE F14)', () => {
     expect(optionData([{ Value: '12345 - Smith Trust' }], '12345 - Smith Trust')).toBeNull();
   });

@@ -306,6 +306,18 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
     }
 
     [Fact]
+    public async Task An_effect_On_value_other_than_Change_is_an_error()
+    {
+        CopyRealConfig();
+        ReplaceInForm("\"On\": \"Change\"", "\"On\": \"Load\"");
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("an effect of 'WeekEnding' has On 'Load'", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_newer_SchemaVersion_is_an_error()
     {
         CopyRealConfig();

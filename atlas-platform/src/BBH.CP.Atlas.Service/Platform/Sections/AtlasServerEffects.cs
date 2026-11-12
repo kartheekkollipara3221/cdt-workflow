@@ -27,7 +27,7 @@ public static class AtlasServerEffects
         foreach (AtlasFormField source in Sources(fields))
         {
             string? value = current(source);
-            foreach (CPEffect effect in source.Control.Effects!)
+            foreach (CPEffect effect in ServerEffects(source))
             {
                 foreach (string target in effect.SetFromOption?.Keys ?? Enumerable.Empty<string>())
                     derived.Add(target);
@@ -66,7 +66,7 @@ public static class AtlasServerEffects
         foreach (AtlasFormField source in Sources(fields))
         {
             string? value = current(source);
-            foreach (CPEffect effect in source.Control.Effects!)
+            foreach (CPEffect effect in ServerEffects(source))
             {
                 if (!Matches(effect.When, value))
                     continue;
@@ -111,6 +111,13 @@ public static class AtlasServerEffects
             return false;
         return true;
     }
+
+    /// <summary>Returns true when the effect runs only on a user change (On "Change"). The server does not apply it.</summary>
+    public static bool IsChangeOnly(CPEffect effect) =>
+        string.Equals(effect.On, "Change", StringComparison.OrdinalIgnoreCase);
+
+    private static IEnumerable<CPEffect> ServerEffects(AtlasFormField source) =>
+        source.Control.Effects!.Where(x => !IsChangeOnly(x));
 
     private static IEnumerable<AtlasFormField> Sources(AtlasFormFields fields) =>
         fields.All.Where(x => x.Control.Effects is { Count: > 0 } && !x.IsGridField);

@@ -109,6 +109,13 @@ atlas-form {
     justify-content: center !important;
   }
 
+  // A form grid has no sticky rows. Chrome lets Tab stop on an empty scroll area,
+  // so Tab from the last cell would stop there and not on the next field.
+  atlas-grid-renderer .ag-sticky-top-viewport,
+  atlas-grid-renderer .ag-sticky-bottom-viewport {
+    overflow: hidden !important;
+  }
+
   .grid-column-start-end-1-2 {
     grid-column-start: 1;
     grid-column-end: 3;

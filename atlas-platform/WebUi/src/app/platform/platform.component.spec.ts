@@ -398,6 +398,45 @@ describe('AtlasFormComponent grid with ag-grid and the cell components (review R
     }
     expect(headers()).toEqual(['Mon', 'Tue', 'Total']);
   });
+
+  it('clears the cells when the user changes the week, but not on load or for the same week (On "Change")', async () => {
+    const week = text('WeekEnding', { Value: '2026-10-25', Effects: [{ On: 'Change', Clear: ['Mon', 'Tue'] }] });
+    const controls = [text('Name'), week];
+    const { fixture } = setup({ ...page(), Controls: [...section(controls).Controls!, grid()] }, 5, [
+      provideAtlasGridComponents({ NumericEditor: TestNumericCell }),
+    ]);
+    await ready(fixture);
+    const settle = async () => {
+      for (let i = 0; i < 3; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        fixture.detectChanges();
+      }
+    };
+    const form = fixture.componentInstance.form;
+
+    expect(form.get('WeeklyHour.Mon')?.value).toBe('60');
+
+    form.get('WeekEnding')!.setValue('2026-10-25');
+    await settle();
+    expect(form.get('WeeklyHour.Mon')?.value).toBe('60');
+
+    form.get('WeekEnding')!.setValue('2026-11-01');
+    await settle();
+    expect(form.get('WeeklyHour.Mon')?.value).toBe('');
+    expect((element(fixture, '#Mon_0') as HTMLInputElement).value).toBe('');
+    expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('0');
+  });
+
+  it('lets the browser move the focus with Tab, so ag-grid does not keep it in the cell', async () => {
+    const { fixture } = setup(page(), 5, [provideAtlasGridComponents({ NumericEditor: TestNumericCell })]);
+    await ready(fixture);
+    const grid = fixture.debugElement.query((x) => x.name === 'ag-grid-angular').componentInstance as {
+      defaultColDef: { suppressKeyboardEvent: (p: { event: KeyboardEvent }) => boolean };
+    };
+
+    expect(grid.defaultColDef.suppressKeyboardEvent({ event: new KeyboardEvent('keydown', { key: 'Tab' }) })).toBe(true);
+    expect(grid.defaultColDef.suppressKeyboardEvent({ event: new KeyboardEvent('keydown', { key: 'Enter' }) })).toBe(false);
+  });
 });
 
 describe('AtlasHistoryDialog (review NG-10)', () => {
