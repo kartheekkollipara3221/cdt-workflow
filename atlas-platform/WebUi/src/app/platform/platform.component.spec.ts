@@ -46,7 +46,7 @@ class TestNumericCell {
 
 /**
  * A cell component that calls params.ngModelChange for each key, as the target NumericEditor.
- * Its refresh changes the value, and the input shows it at the next change detection.
+ * Its refresh shows the new value, as the target NumericEditor after its refresh change.
  */
 @Component({
   selector: 'test-typing-cell',
@@ -68,8 +68,10 @@ class TestTypingCell {
     this.value = value;
     this.params.ngModelChange?.({ value, rowData: null });
   }
+  /** As the target NumericEditor with the refresh change of the integration guide: keeps the params and shows the value. */
   refresh(params: TestTypingCell['params']): boolean {
-    this.agInit(params);
+    this.params = params;
+    this.value = String(params.value ?? '');
     return true;
   }
 }
