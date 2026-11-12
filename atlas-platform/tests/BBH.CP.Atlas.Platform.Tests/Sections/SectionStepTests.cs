@@ -56,6 +56,9 @@ public class SectionStepTests
     [InlineData("{Today}", "2026-10-25")]
     [InlineData("{Options[1]}", "B")]
     [InlineData("{Options[5]}", null)]
+    [InlineData("{Today.Next(Sunday)}", "2026-10-25")]
+    [InlineData("{today.next(saturday)}", "2026-10-31")]
+    [InlineData("{Today.Next(Monday)}", "2026-10-26")]
     [InlineData("Draft", "Draft")]
     public void Default_tokens_resolve(string token, string? expected)
     {
@@ -72,6 +75,8 @@ public class SectionStepTests
     {
         Assert.False(AtlasDefaultTokens.IsValid("{Todya}"));
         Assert.False(AtlasDefaultTokens.IsValid("{Options[x]}"));
+        Assert.False(AtlasDefaultTokens.IsValid("{Today.Next(Sundy)}"));
+        Assert.False(AtlasDefaultTokens.IsValid("{Today.Next(1)}"));
     }
 
     [Fact]

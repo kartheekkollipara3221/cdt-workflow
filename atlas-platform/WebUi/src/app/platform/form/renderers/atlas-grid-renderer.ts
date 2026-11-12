@@ -164,8 +164,35 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
       }
       delete def['cellRenderer'];
     }
-    def.cellRendererParams = { ...(column.cellRendererParams ?? {}), disabled: !!column.cellRendererParams?.disabled || !cell || cell.disabled };
+    def.cellRendererParams = {
+      ...(column.cellRendererParams ?? {}),
+      disabled: !!column.cellRendererParams?.disabled || !cell || cell.disabled,
+      // The cell components call ngModelChange for each key. Thus a Computed cell changes while the user types.
+      ngModelChange: (change: { value?: unknown }) => column.field && this.onCellInput(column.field, change?.value),
+    };
     return def;
+  }
+
+  /**
+   * Copies the value that the user types in a cell to the form control of the field.
+   *
+   * The grid row gets the same value first. Thus the grid does not draw the cell again, and the input keeps the focus.
+   */
+  onCellInput(field: string, value: unknown): void {
+    const cell = this.rowGroup?.get(field);
+    if (!cell) {
+      return;
+    }
+    const text = isNil(value) ? '' : String(value);
+    const data = this.api?.getDisplayedRowAtIndex(0)?.data as Record<string, unknown> | undefined;
+    if (data) {
+      data[field] = text;
+    }
+    if (String(cell.value ?? '') !== text) {
+      cell.setValue(text);
+    }
+    cell.markAsTouched();
+    this.cdr.markForCheck();
   }
 
   private headerName(column: CPGridColumn): string | undefined {
@@ -189,10 +216,17 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     if (!rowGroup || !node) {
       return;
     }
+    let changed = false;
     for (const [field, value] of Object.entries(rowGroup.getRawValue() as Record<string, unknown>)) {
       if (String(node.data?.[field] ?? '') !== String(value ?? '')) {
         node.setDataValue(field, value);
+        changed = true;
       }
+    }
+    if (changed) {
+      // The grid gives the new value to the refresh method of the cell component. The component shows it only after
+      // a change detection, and with zone.js and an OnPush parent no change detection can come. Thus check the cells now.
+      this.cdr.detectChanges();
     }
     this.cdr.markForCheck();
   }

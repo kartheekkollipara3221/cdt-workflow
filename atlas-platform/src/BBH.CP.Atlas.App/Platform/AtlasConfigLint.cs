@@ -170,7 +170,7 @@ public static partial class AtlasConfigLint
         {
             Names(names, "Defaults", [name], error);
             if (!AtlasDefaultTokens.IsValid(token))
-                error($"the default token '{token}' of '{name}' is not known (known: {string.Join(", ", AtlasDefaultTokens.Fixed)}, {{Options[n]}}).");
+                error($"the default token '{token}' of '{name}' is not known (known: {string.Join(", ", AtlasDefaultTokens.Fixed)}, {AtlasDefaultTokens.TodayNext}, {{Options[n]}}).");
         }
     }
 

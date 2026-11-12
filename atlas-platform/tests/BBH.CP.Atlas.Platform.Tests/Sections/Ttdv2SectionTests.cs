@@ -47,7 +47,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
 
         Assert.Equal("2026", Control(section, "TaxYear").Value);              // {Options[1]}
         Assert.Equal("2027", Control(section, "TaxYear").Options![0].Value);
-        Assert.Equal("2026-10-18", Control(section, "WeekEnding").Value);     // last Sunday
+        Assert.Equal("2026-10-25", Control(section, "WeekEnding").Value);     // coming Sunday: {Today.Next(Sunday)}
         Assert.Equal(["2026-10-18", "2026-10-25", "2026-11-01", "2026-11-08"], Control(section, "WeekEnding").Options!.Select(x => x.Value));
         Assert.Equal(Prep, Control(section, "TaxPreparer").Value);
         Assert.Contains(Control(section, "TaxPreparer").Options!, x => x.Value == Prep && x.Label == "Pat Preparer");

@@ -294,7 +294,7 @@ namespace BBH.CP.Atlas.Service.Application
         }
 
         /// <summary>
-        /// Returns the value of a default token: {User.LanID}, {User.DisplayName}, {Today} or {Options[n]}.
+        /// Returns the value of a default token: {User.LanID}, {User.DisplayName}, {Today}, {Today.Next(Day)} or {Options[n]}.
         /// Other text is the value.
         /// </summary>
         protected string? ResolveDefault(string token, IReadOnlyList<CPKeyValue>? options) =>

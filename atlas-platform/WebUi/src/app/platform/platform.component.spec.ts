@@ -16,6 +16,7 @@ import { AtlasHistoryDialog } from './atlas-history-dialog';
 import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
 import { provideAtlasGridComponents } from './form/atlas-grid-components';
 import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 
 // As the target main.ts (it registers AllEnterpriseModule): the grids use the registered modules.
@@ -38,6 +39,36 @@ class TestNumericCell {
     this.disabled = !!params.disabled;
   }
   refresh(params: TestNumericCell['params']): boolean {
+    this.agInit(params);
+    return true;
+  }
+}
+
+/**
+ * A cell component that calls params.ngModelChange for each key, as the target NumericEditor.
+ * Its refresh changes the value, and the input shows it at the next change detection.
+ */
+@Component({
+  selector: 'test-typing-cell',
+  imports: [FormsModule],
+  template: `<input [id]="id" [(ngModel)]="value" (ngModelChange)="onInput($event)" [disabled]="disabled" (blur)="params.setValue(value)" />`,
+})
+class TestTypingCell {
+  params!: TestNumericCell['params'] & { ngModelChange?: (p: { value: unknown; rowData: unknown }) => void };
+  value = '';
+  id = '';
+  disabled = false;
+  agInit(params: TestTypingCell['params']): void {
+    this.params = params;
+    this.value = String(params.value ?? '');
+    this.id = params.ctrlname + '_' + params.node.rowIndex;
+    this.disabled = !!params.disabled;
+  }
+  onInput(value: string): void {
+    this.value = value;
+    this.params.ngModelChange?.({ value, rowData: null });
+  }
+  refresh(params: TestTypingCell['params']): boolean {
     this.agInit(params);
     return true;
   }
@@ -423,6 +454,61 @@ describe('AtlasFormComponent grid with ag-grid and the cell components (review R
     form.get('WeekEnding')!.setValue('2026-11-01');
     await settle();
     expect(form.get('WeeklyHour.Mon')?.value).toBe('');
+    expect((element(fixture, '#Mon_0') as HTMLInputElement).value).toBe('');
+    expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('0');
+  });
+
+  it('changes the total while the user types, and keeps the input that the user types in', async () => {
+    const { fixture } = setup(page(), 5, [provideAtlasGridComponents({ NumericEditor: TestTypingCell })]);
+    await ready(fixture);
+    const input = element(fixture, '#Tue_0') as HTMLInputElement;
+
+    input.value = '30';
+    input.dispatchEvent(new Event('input'));
+    for (let i = 0; i < 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      fixture.detectChanges();
+    }
+
+    expect(fixture.componentInstance.form.get('WeeklyHour.Tue')?.value).toBe('30');
+    expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('90');
+    expect(element(fixture, '#Tue_0') === input).toBe(true);
+  });
+
+  it('changes the total while the user types, in the change detection mode of the target (provideZoneChangeDetection)', async () => {
+    if (typeof Zone === 'undefined') {
+      expect(true).toBe(true); // zone.js is not loaded (local Vitest); the target Karma runs this test
+      return;
+    }
+    const { fixture } = setup(page(), 5, [
+      provideZoneChangeDetection({ eventCoalescing: true }),
+      provideAtlasGridComponents({ NumericEditor: TestTypingCell }),
+    ]);
+    await ready(fixture);
+    const input = element(fixture, '#Tue_0') as HTMLInputElement;
+
+    input.value = '30';
+    input.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('90');
+  });
+
+  it('shows the cleared cells in a cell component with ngModel', async () => {
+    const week = text('WeekEnding', { Value: '2026-10-25', Effects: [{ On: 'Change', Clear: ['Mon', 'Tue'] }] });
+    const controls = [text('Name'), week];
+    const { fixture } = setup({ ...page(), Controls: [...section(controls).Controls!, grid()] }, 5, [
+      provideAtlasGridComponents({ NumericEditor: TestTypingCell }),
+    ]);
+    await ready(fixture);
+
+    fixture.componentInstance.form.get('WeekEnding')!.setValue('2026-11-01');
+    for (let i = 0; i < 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      fixture.detectChanges();
+    }
+
     expect((element(fixture, '#Mon_0') as HTMLInputElement).value).toBe('');
     expect((element(fixture, '#Total_0') as HTMLInputElement).value).toBe('0');
   });
