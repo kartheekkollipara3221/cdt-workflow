@@ -85,6 +85,9 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
       return;
     }
     this.rowData = [{ ...rowGroup.getRawValue() }];
+    for (const [field, value] of Object.entries(this.rowData[0])) {
+      this.shown.set(field, text(value));
+    }
     this.columns = (this.control.Grid?.Columns ?? []).map((column) => this.columnDef(column, rowGroup));
     // A Computed cell (for example WeeklyTotal), an effect or a server response can change the group.
     // The grid copies the values one time, after the change is complete. Thus an effect that clears many cells
@@ -93,6 +96,13 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
   }
 
   private syncPending = false;
+  /**
+   * The value that each cell component got last, by field.
+   *
+   * A host cell component can write the row data directly (for example a total), and then the cell does not show
+   * that value. Thus the grid compares the form with this map, not with the row data.
+   */
+  private readonly shown = new Map<string, string>();
 
   /** Copies the form values and the header dates to the grid one time, after the current change. */
   private scheduleSync(): void {
@@ -127,7 +137,8 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     if (!cell) {
       return;
     }
-    const value = isNil(event.newValue) ? '' : String(event.newValue);
+    const value = text(event.newValue);
+    this.shown.set(field!, value);
     if (String(cell.value ?? '') !== value) {
       cell.setValue(value);
     }
@@ -183,13 +194,14 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     if (!cell) {
       return;
     }
-    const text = isNil(value) ? '' : String(value);
+    const typed = text(value);
     const data = this.api?.getDisplayedRowAtIndex(0)?.data as Record<string, unknown> | undefined;
     if (data) {
-      data[field] = text;
+      data[field] = typed;
     }
-    if (String(cell.value ?? '') !== text) {
-      cell.setValue(text);
+    this.shown.set(field, typed);
+    if (String(cell.value ?? '') !== typed) {
+      cell.setValue(typed);
     }
     cell.markAsTouched();
     this.cdr.markForCheck();
@@ -216,20 +228,31 @@ export class AtlasGridRenderer extends AtlasRendererBase implements OnInit {
     if (!rowGroup || !node) {
       return;
     }
-    let changed = false;
+    const changed: string[] = [];
     for (const [field, value] of Object.entries(rowGroup.getRawValue() as Record<string, unknown>)) {
-      if (String(node.data?.[field] ?? '') !== String(value ?? '')) {
-        node.setDataValue(field, value);
-        changed = true;
+      if (this.shown.get(field) === text(value)) {
+        continue;
       }
+      if (text(node.data?.[field]) !== text(value)) {
+        node.setDataValue(field, value);
+      }
+      this.shown.set(field, text(value));
+      changed.push(field);
     }
-    if (changed) {
-      // The grid gives the new value to the refresh method of the cell component. The component shows it only after
-      // a change detection, and with zone.js and an OnPush parent no change detection can come. Thus check the cells now.
+    if (changed.length) {
+      // force: the grid calls the refresh method of the cell component also when the row data has the value already.
+      this.api!.refreshCells({ rowNodes: [node], columns: changed, force: true });
+      // The component shows the new value only after a change detection. With zone.js and an OnPush parent,
+      // no change detection can come. Thus check the cells now.
       this.cdr.detectChanges();
     }
     this.cdr.markForCheck();
   }
+}
+
+/** Returns a cell value as text. Null and undefined give an empty text. */
+function text(value: unknown): string {
+  return isNil(value) ? '' : String(value);
 }
 
 /**
