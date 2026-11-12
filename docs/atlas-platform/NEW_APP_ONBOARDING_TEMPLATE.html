@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Atlas new app onboarding</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--blue:#1d5f8a;--bluebg:#edf5fb;--amberbg:#fff7e6;--fill:#fffdf2}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1280px;margin:24px auto 80px;background:#fff;padding:44px 48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2rem;margin:10px 0}h2{font-size:1.4rem;margin:0 0 14px}h3{font-size:1.05rem;margin:22px 0 6px}
+section{border-top:1px solid var(--line);margin-top:32px;padding-top:26px;scroll-margin-top:64px}
+code{font:.86em ui-monospace,Consolas,monospace;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.08rem}
+.note{padding:12px 16px;border-left:4px solid #c58a1a;background:var(--amberbg)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0 4px}
+th,td{padding:8px 10px;border:1px solid var(--line);vertical-align:top;text-align:left;min-width:90px}
+th{background:#eff4f7;font-weight:650}
+td[contenteditable]{background:var(--fill);min-height:2.2em;white-space:pre-wrap;overflow-wrap:anywhere;cursor:text}
+td[contenteditable]:focus{outline:2px solid var(--blue);outline-offset:-2px;background:#fff}
+table.qa td:last-child,table.qa th:last-child{width:58%}
+tr.example td{color:var(--muted);background:#f7f9fb;font-style:italic}
+tr.example td i{font-style:normal;font-weight:650}
+td.del{min-width:0;width:34px;text-align:center;border:none;background:none;padding:4px}
+.tools{margin:4px 0 16px}
+button{font:inherit;font-size:.86rem;padding:5px 12px;border:1px solid #b8c7d2;border-radius:6px;background:#fff;color:var(--navy);cursor:pointer}
+button:hover{background:var(--bluebg)}
+button.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+button.x{padding:1px 7px;color:var(--muted)}
+.bar{position:sticky;top:0;z-index:5;background:#103950;color:#fff;padding:9px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar b{margin-right:auto}.bar span{font-size:.84rem;opacity:.85}
+nav{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.88rem;margin:18px 0 0}
+nav a{color:var(--blue);text-decoration:none}nav a:hover{text-decoration:underline}
+ul.checks{list-style:none;padding-left:0}ul.checks li{margin:6px 0}ul.checks input{margin-right:8px;transform:scale(1.15)}
+.blockname span{display:inline-block;min-width:260px;min-height:1.9em;padding:2px 8px;border:1px solid var(--line);background:var(--fill);vertical-align:middle}
+.copy-block{border-top:2px dashed var(--line);margin-top:22px;padding-top:8px}
+@media (max-width:720px){main{margin:0;padding:22px 16px;border-radius:0}}
+@media print{.bar,.tools,nav,td.del,button{display:none!important}body{background:#fff}main{box-shadow:none;margin:0;padding:0;max-width:none}td[contenteditable]{background:#fff}}
+</style>
+</head>
+<body>
+<div class="bar">
+<b>CP Atlas platform: new app onboarding</b>
+<span id="state">Not saved</span>
+<button type="button" id="no-examples">Remove example rows</button>
+<button type="button" id="print">Print / PDF</button>
+<button type="button" id="save" class="primary">Save a copy</button>
+</div>
+<main>
+<div class="eyebrow">Atlas platform · onboarding template · version 1 · 2026-11-12</div>
+<h1>CP Atlas platform: new app onboarding template</h1>
+<p class="lead">Version 1, 2026-11-12. The team that owns the new app fills in this document. The platform team uses it to write the app metadata (JSON and SQL) and to find the work that is not metadata.</p>
+<nav><a href="#s-how-to-fill-in-this-template">How to fill in this template</a><a href="#s-1-app-identity">1. App identity</a><a href="#s-2-roles-and-access">2. Roles and access</a><a href="#s-3-pages-and-sections">3. Pages and sections</a><a href="#s-4-fields">4. Fields</a><a href="#s-5-field-behaviour">5. Field behaviour</a><a href="#s-6-tables-inside-the-form">6. Tables inside the form</a><a href="#s-7-new-components">7. New components</a><a href="#s-8-buttons">8. Buttons</a><a href="#s-9-dashboard">9. Dashboard</a><a href="#s-10-workflow">10. Workflow</a><a href="#s-11-data">11. Data</a><a href="#s-12-attachments">12. Attachments</a><a href="#s-13-other-systems-and-reports">13. Other systems and reports</a><a href="#s-14-test-scenarios">14. Test scenarios</a><a href="#s-15-open-points">15. Open points</a><a href="#s-16-evidence-checklist">16. Evidence checklist</a></nav>
+<section id="s-how-to-fill-in-this-template">
+<h2>How to fill in this template</h2>
+<p class="note">Type in the yellow cells. Use the buttons to add a row or a block. Select <b>Save a copy</b> to download the file with your answers. You can open the saved file and continue. Send the saved file and the attachments to the platform team.</p>
+<ul><li>Give facts about the app. Do not write JSON and do not design the solution.</li><li>Fill in each table. Add rows as necessary.</li><li>If you do not know an answer, write <code>not known</code>. Do not leave a cell empty and do not guess.</li><li>If an item does not apply, write <code>none</code>.</li><li>Attach evidence where the template asks for it: screenshots, current code, spreadsheets, sample records, sample emails.</li><li>The rows marked <i>Example</i> show the level of detail. They come from the pilot app TTDV2 or from a sample workflow. The button <b>Remove example rows</b> deletes them.</li><li>Names of roles, states, actions and fields become permanent identifiers after the release. Write the names that the business uses.</li></ul>
+<p>After the first pass, the platform team sends a gap report. It puts each item in one of three groups: metadata only, new generic platform code, workflow engine or adapter change. It also lists questions. Code starts after you answer the questions.</p>
+</section>
+<section id="s-1-app-identity">
+<h2>1. App identity</h2>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Item</th><th>Answer</th></tr></thead><tbody>
+<tr><td>App name (shown to the user)</td><td contenteditable="true"></td></tr>
+<tr><td>Proposed app code (short, capitals, for example <code>TTDV2</code>)</td><td contenteditable="true"></td></tr>
+<tr><td>Menu position (parent app or top level)</td><td contenteditable="true"></td></tr>
+<tr><td>Business owner (name, team)</td><td contenteditable="true"></td></tr>
+<tr><td>Technical contact (name)</td><td contenteditable="true"></td></tr>
+<tr><td>Purpose of the app (2 to 4 sentences)</td><td contenteditable="true"></td></tr>
+<tr><td>Does it replace a current app, spreadsheet or mailbox? Which one?</td><td contenteditable="true"></td></tr>
+<tr><td>Must old data move into the new app? (see section 11)</td><td contenteditable="true"></td></tr>
+<tr><td>Number of users</td><td contenteditable="true"></td></tr>
+<tr><td>Number of new records in one year</td><td contenteditable="true"></td></tr>
+<tr><td>Largest number of rows a user sees in one list</td><td contenteditable="true"></td></tr>
+<tr><td>Date you need it in the development region</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p><b>Form shape.</b> Select one:</p>
+<ul class="checks">
+<li><label><input type="checkbox"> One page. The user sees all sections on one page (as TTD, SQMSO, AIN).</label></li>
+<li><label><input type="checkbox"> Steps. The user goes through pages in a sequence (as CDT). Give the list of steps in section 3.</label></li>
+<li><label><input type="checkbox"> Not known.</label></li>
+</ul>
+</section>
+<section id="s-2-roles-and-access">
+<h2>2. Roles and access</h2>
+<p>One row for each role.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Role name</th><th>Who gets it, and who approves</th><th>View</th><th>Create</th><th>Edit own records</th><th>Edit all records</th><th>Delete</th><th>See history</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Prepare</td><td>Tax preparers; approved by the team lead</td><td>yes</td><td>yes</td><td>yes</td><td>no</td><td>no</td><td>yes</td></tr>
+<tr class="example"><td><i>Example:</i> Owner</td><td>Tax team managers</td><td>yes</td><td>yes</td><td>yes</td><td>yes</td><td>yes</td><td>yes</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Which fields make a user the "owner" of a record? (for example: the creator, the user in the field "Reviewer")</td><td contenteditable="true"></td></tr>
+<tr><td>Can each user see all records, or only some? Give the rule in words.</td><td contenteditable="true"></td></tr>
+<tr><td>Can one user have two or more of these roles? If yes, which role wins?</td><td contenteditable="true"></td></tr>
+<tr><td>Is there a read-only role (audit, support)?</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+</section>
+<section id="s-3-pages-and-sections">
+<h2>3. Pages and sections</h2>
+<p>One row for each section of the form, in screen order. Attach a screenshot or a sketch of each page.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>Step (only for a step form)</th><th>Section title</th><th>Columns in the layout (1, 2 or 3)</th><th>Who sees it</th><th>When it shows (always, or a condition)</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> 1</td><td>none</td><td>Account Details</td><td>3</td><td>all roles</td><td>always</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+</section>
+<section id="s-4-fields">
+<h2>4. Fields</h2>
+<p>One row for each field, in screen order.</p>
+<p><b>Type</b> must be one of the types the platform has today, or <code>NEW</code> (then fill in section 7):</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Type</th><th>What the user sees</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td>One line of text</td></tr>
+<tr><td><code>textarea</code></td><td>Text with many lines</td></tr>
+<tr><td><code>currency</code></td><td>Amount</td></tr>
+<tr><td><code>percent</code></td><td>Percentage</td></tr>
+<tr><td><code>select</code></td><td>Drop-down list, one value</td></tr>
+<tr><td><code>ngselect</code></td><td>Drop-down list with search, one value or many values</td></tr>
+<tr><td><code>date</code></td><td>Date picker</td></tr>
+<tr><td><code>checkbox</code></td><td>Check box</td></tr>
+<tr><td><code>option</code></td><td>Radio buttons</td></tr>
+<tr><td><code>user</code></td><td>A person, shown by name (read-only)</td></tr>
+<tr><td><code>grid</code></td><td>Table inside the form (fill in section 6)</td></tr>
+</tbody></table></div>
+<p><b>Option source</b> must be one of these, or a description of a new source:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Source</th><th>Gives</th></tr></thead><tbody>
+<tr><td>Fixed list</td><td>The values you write in the "Rules and notes" column</td></tr>
+<tr><td><code>PBAccounts</code></td><td>Accounts (number and name)</td></tr>
+<tr><td><code>UsersInRoles</code></td><td>Users who have the roles you name</td></tr>
+<tr><td><code>Years</code></td><td>A range of years around the current year</td></tr>
+<tr><td><code>WeekEndings</code></td><td>The last week-ending dates</td></tr>
+<tr><td>New source</td><td>Write: the table, procedure or system; the value; the label; any filter</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>Section</th><th>Label</th><th>Type</th><th>Required</th><th>Limits (length, min, max, format)</th><th>Option source</th><th>Default value</th><th>Read-only when</th><th>Hidden when</th><th>Rules and notes</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> 1</td><td>Account Details</td><td>Account</td><td><code>ngselect</code>, one value</td><td>yes</td><td>none</td><td><code>PBAccounts</code></td><td>none</td><td>never</td><td>never</td><td>Fills fields 2 and 3</td></tr>
+<tr class="example"><td><i>Example:</i> 2</td><td>Account Details</td><td>Selected Account Number</td><td><code>text</code></td><td>yes</td><td>none</td><td>none</td><td>from field 1</td><td>always</td><td>never</td><td></td></tr>
+<tr class="example"><td><i>Example:</i> 5</td><td>Work Details</td><td>Category</td><td><code>select</code></td><td>yes</td><td>none</td><td>Fixed list</td><td>none</td><td>never</td><td>never</td><td>OTHER, STMT_N, TAX_N</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+</section>
+<section id="s-5-field-behaviour">
+<h2>5. Field behaviour</h2>
+<h3>5.1 When one field changes another</h3>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>When this occurs</th><th>Then</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> 1</td><td>The user selects an Account</td><td>Set "Selected Account Number" and "Selected Account Name" from the account</td></tr>
+<tr class="example"><td><i>Example:</i> 2</td><td>The user clears the Account</td><td>Clear the two fields</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<p>Include: show or hide, make required, make read-only, set a value, clear a value, change the options of a list.</p>
+<h3>5.2 Calculated values</h3>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Field</th><th>Formula in words</th><th>When it calculates again</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Weekly Total</td><td>Sum of Monday to Sunday minutes</td><td>When a day changes</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<h3>5.3 Checks across fields</h3>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>Check</th><th>Message to the user (exact text)</th><th>Stops the save?</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> 1</td><td>End date is on or after start date</td><td>"End date must not be before start date."</td><td>yes</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+</section>
+<section id="s-6-tables-inside-the-form" data-repeat="1">
+<h2>6. Tables inside the form</h2>
+<p>One block for each <code>grid</code> field in section 4. Use <b>Add another block</b> for the next one.</p>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Item</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Field label</td><td contenteditable="true"></td></tr>
+<tr><td>Number of rows: one fixed row, a fixed list of rows, or the user adds rows</td><td contenteditable="true"></td></tr>
+<tr><td>Can the user add, change and delete rows? Which roles?</td><td contenteditable="true"></td></tr>
+<tr><td>Largest number of rows</td><td contenteditable="true"></td></tr>
+<tr><td>Totals row? Which columns?</td><td contenteditable="true"></td></tr>
+<tr><td>Must each row have its own history?</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Column label</th><th>Type</th><th>Editable</th><th>Required</th><th>Limits</th><th>Notes</th></tr></thead><tbody>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<p class="tools"><button type="button" class="copy">+ Add another block</button></p>
+</section>
+<section id="s-7-new-components" data-repeat="1">
+<h2>7. New components</h2>
+<p>A new component is a control or a screen part that the platform does not have (section 4 list). Each one is new platform code, so the platform team needs the most detail here. Use <b>Add another block</b> for each component.</p>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Item</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Name of the component</td><td contenteditable="true"></td></tr>
+<tr><td>What the user does with it, step by step</td><td contenteditable="true"></td></tr>
+<tr><td>Where it is in CP Atlas today (app, page, file name), or <code>new</code></td><td contenteditable="true"></td></tr>
+<tr><td>Library control it uses (<code>@pbdev</code>, ag-grid, ng-select, other)</td><td contenteditable="true"></td></tr>
+<tr><td>What it needs to show itself (data, options, settings)</td><td contenteditable="true"></td></tr>
+<tr><td>What it saves (one value, a list, rows, a file)</td><td contenteditable="true"></td></tr>
+<tr><td>Behaviour when read-only</td><td contenteditable="true"></td></tr>
+<tr><td>Behaviour when the value is not valid (message text)</td><td contenteditable="true"></td></tr>
+<tr><td>Does it call a service or another system? Which one?</td><td contenteditable="true"></td></tr>
+<tr><td>Do you think other apps will use it?</td><td contenteditable="true"></td></tr>
+<tr><td>Screenshot or sketch attached?</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="note">Rule: the platform cannot add a package. The component must use the libraries that CP Atlas has today.</p>
+<p class="tools"><button type="button" class="copy">+ Add another block</button></p>
+</section>
+<section id="s-8-buttons">
+<h2>8. Buttons</h2>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Label</th><th>What it does</th><th>Who sees it</th><th>When it shows</th><th>Question before it runs (exact text, or <code>none</code>)</th><th>Message after success (exact text)</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Save</td><td>Saves the record</td><td>Prepare (own records), Owner</td><td>always</td><td>none</td><td>default</td></tr>
+<tr class="example"><td><i>Example:</i> Approve</td><td>Workflow action "Approve" (section 10.3)</td><td>Reviewer</td><td>state "In Review"</td><td>"Approve this request?"</td><td>"Request approved."</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+</section>
+<section id="s-9-dashboard">
+<h2>9. Dashboard</h2>
+<h3>9.1 Tabs</h3>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Tab label</th><th>Records it shows (rule in words)</th><th>Who sees the tab</th><th>Sort order</th><th>Largest number of rows</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Current Tax Timesheet</td><td>Records that I created, that I changed, or where I am the preparer</td><td>all roles</td><td>Last change, newest first</td><td>500</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<h3 data-repeat-from="1">9.2 Columns</h3>
+<p>One table for each tab. Use <b>Add another tab</b> for the next tab.</p>
+<p class="blockname">Tab label: <span contenteditable="true"></span></p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Column label</th><th>Field</th><th>Type (text, number, date, currency, user)</th><th>Opens the record?</th><th>Total at the bottom?</th></tr></thead><tbody>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<p class="tools"><button type="button" class="copy">+ Add another tab</button></p>
+<h3>9.3 Other dashboard items</h3>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Is there an "Add New" button? Who sees it?</td><td contenteditable="true"></td></tr>
+<tr><td>Row menu items (Edit, Delete, History, other) and who sees each one</td><td contenteditable="true"></td></tr>
+<tr><td>Does a current stored procedure give the data of a tab? Name it.</td><td contenteditable="true"></td></tr>
+<tr><td>Export to Excel necessary?</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+</section>
+<section id="s-10-workflow">
+<h2>10. Workflow</h2>
+<p>Fill in this section if a record goes through approval or review states. If not, write <code>none</code> here and go to section 11.</p>
+<h3>10.1 General</h3>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Name of the workflow</td><td contenteditable="true"></td></tr>
+<tr><td>When does it start? (first save, or a button such as "Submit")</td><td contenteditable="true"></td></tr>
+<tr><td>Can the user save a draft before the workflow starts?</td><td contenteditable="true"></td></tr>
+<tr><td>Can the user save changes in a state and not do an action?</td><td contenteditable="true"></td></tr>
+<tr><td>Can a record have more than one workflow at the same time?</td><td contenteditable="true"></td></tr>
+<tr><td>Can a finished record start again?</td><td contenteditable="true"></td></tr>
+<tr><td>Is there a current workflow in the engine that this app must use? Give the key.</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<h3>10.2 States</h3>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>State name</th><th>Meaning</th><th>Status text the user sees</th><th>End state?</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Draft</td><td>The maker prepares the request</td><td>Draft</td><td>no</td></tr>
+<tr class="example"><td><i>Example:</i> In Review</td><td>The reviewer examines the request</td><td>Pending Review</td><td>no</td></tr>
+<tr class="example"><td><i>Example:</i> Approved</td><td>The request is complete</td><td>Approved</td><td>yes</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<h3>10.3 Transitions</h3>
+<p>One row for each movement. This table is the most important part of the workflow.</p>
+<p>The engine selects the next state from the current state and the action. If the next state depends on a field value, write one row for each value and put the value in the "Condition" column.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>From state</th><th>Action (button label)</th><th>Who can do it (role, or the user in a field)</th><th>Condition (or <code>none</code>)</th><th>Fields or comment that must be filled</th><th>To state</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> 1</td><td>Draft</td><td>Submit</td><td>Maker (the creator)</td><td>none</td><td>all required fields</td><td>In Review</td></tr>
+<tr class="example"><td><i>Example:</i> 2</td><td>In Review</td><td>Approve</td><td>Reviewer</td><td>none</td><td>none</td><td>Approved</td></tr>
+<tr class="example"><td><i>Example:</i> 3</td><td>In Review</td><td>Send Back</td><td>Reviewer</td><td>none</td><td>Comment</td><td>Draft</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<h3>10.4 Tasks and time limits (SLA)</h3>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>State</th><th>Who has the task (role, or the user in a field)</th><th>Time limit</th><th>Clock (calendar hours or business hours)</th><th>Reminder (when, to whom)</th><th>After the limit (who gets the escalation)</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> In Review</td><td>The user in the field "Reviewer"</td><td>48 hours</td><td>business hours</td><td>24 hours before, to the reviewer</td><td>The reviewer's manager mailbox</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<h3>10.5 Emails</h3>
+<p>One row for each email. Attach the subject and the body text of each one, or a sample of the current email.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>Sent when (transition #, reminder, escalation)</th><th>To</th><th>Cc</th><th>Subject</th><th>Body attached?</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> 1</td><td>Transition 1</td><td>The reviewer</td><td>The maker</td><td>"Request {ID} is ready for review"</td><td>yes</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<p>For "To" and "Cc" write one of: a role, the user in a named field, or a fixed mailbox address.</p>
+<h3>10.6 Fields by state</h3>
+<p>Which sections or fields can each role change in each state? Write <code>edit</code>, <code>read</code> or <code>hidden</code>. A section name is enough if all its fields are the same.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Section or field</th><th>State</th><th>Role</th><th>Access</th><th>Required in this state?</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Review Comments</td><td>In Review</td><td>Reviewer</td><td>edit</td><td>yes for "Send Back"</td></tr>
+<tr class="example"><td><i>Example:</i> Review Comments</td><td>Draft</td><td>Maker</td><td>hidden</td><td>no</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<h3>10.7 Special cases</h3>
+<p>Answer <code>yes</code> or <code>no</code>. For each <code>yes</code>, give the rule in words.</p>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Can a user take back (recall) a submitted record?</td><td contenteditable="true"></td></tr>
+<tr><td>Can a task move to another user (reassign, delegate)?</td><td contenteditable="true"></td></tr>
+<tr><td>Do two or more persons approve at the same time (parallel approval)?</td><td contenteditable="true"></td></tr>
+<tr><td>Must the maker and the approver be different persons?</td><td contenteditable="true"></td></tr>
+<tr><td>Can an administrator move a record to a state by hand?</td><td contenteditable="true"></td></tr>
+<tr><td>Does an action start work in another system?</td><td contenteditable="true"></td></tr>
+<tr><td>Must the form show the workflow history (who, action, date, comment)?</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+</section>
+<section id="s-11-data">
+<h2>11. Data</h2>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Does a table for this data exist today? Give the database, schema and table.</td><td contenteditable="true"></td></tr>
+<tr><td>Must old records move into the new app? Number of records, and where they are.</td><td contenteditable="true"></td></tr>
+<tr><td>Which lists come from reference data? Who owns that data?</td><td contenteditable="true"></td></tr>
+<tr><td>Is "delete" a real delete, or does the record stay hidden?</td><td contenteditable="true"></td></tr>
+<tr><td>Which fields must the history show? (all, or a list)</td><td contenteditable="true"></td></tr>
+<tr><td>Fields with personal or confidential data</td><td contenteditable="true"></td></tr>
+<tr><td>How long must the records stay?</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p>Attach 3 to 5 sample records with real-looking values (no confidential data).</p>
+</section>
+<section id="s-12-attachments">
+<h2>12. Attachments</h2>
+<div class="table-wrap"><table class="fill qa">
+<thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Can the user attach files?</td><td contenteditable="true"></td></tr>
+<tr><td>File types and largest file size</td><td contenteditable="true"></td></tr>
+<tr><td>Who can add, see and delete a file?</td><td contenteditable="true"></td></tr>
+<tr><td>Do these rights change with the workflow state?</td><td contenteditable="true"></td></tr>
+<tr><td>Are attachments tied to the record, or to a section or step?</td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+</section>
+<section id="s-13-other-systems-and-reports">
+<h2>13. Other systems and reports</h2>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>System or report</th><th>Direction (in or out)</th><th>Data</th><th>When</th><th>Contact</th></tr></thead><tbody>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+</section>
+<section id="s-14-test-scenarios">
+<h2>14. Test scenarios</h2>
+<p>Give one normal path and 3 to 5 other paths. The platform team makes its tests from these.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>Scenario</th><th>Start (role, record state)</th><th>Steps</th><th>Expected result</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> 1</td><td>Normal approval</td><td>Maker, no record</td><td>Create, fill all fields, Submit; Reviewer: Approve</td><td>State "Approved"; email 1 sent to the reviewer</td></tr>
+<tr class="example"><td><i>Example:</i> 2</td><td>Wrong role</td><td>Maker, record in "In Review"</td><td>Open the record</td><td>No "Approve" button; all fields read-only</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<p>Test users in the development region (one for each role):</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Role</th><th>User (LAN ID)</th></tr></thead><tbody>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+</section>
+<section id="s-15-open-points">
+<h2>15. Open points</h2>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>#</th><th>Question or item you cannot answer now</th><th>Who can answer</th><th>Date expected</th></tr></thead><tbody>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+</section>
+<section id="s-16-evidence-checklist">
+<h2>16. Evidence checklist</h2>
+<ul class="checks">
+<li><label><input type="checkbox"> Screenshot or sketch of each page (section 3)</label></li>
+<li><label><input type="checkbox"> Screenshot or sketch of each new component (section 7)</label></li>
+<li><label><input type="checkbox"> Current code, spreadsheet or form, if the app replaces something (section 1)</label></li>
+<li><label><input type="checkbox"> Subject and body of each email (section 10.5)</label></li>
+<li><label><input type="checkbox"> Workflow diagram, if you have one (the table in 10.3 stays the source)</label></li>
+<li><label><input type="checkbox"> Sample records (section 11)</label></li>
+<li><label><input type="checkbox"> Table definitions of current tables (section 11)</label></li>
+</ul>
+</section>
+</main>
+<script>
+(function(){
+  var dirty=false, state=document.getElementById('state');
+  function mark(){dirty=true;state.textContent='Changes not saved to a file';}
+  document.addEventListener('input',mark);
+  // Paste as plain text, so that pasted content does not bring its own format.
+  document.addEventListener('paste',function(e){
+    var t=e.target.closest&&e.target.closest('td[contenteditable]');
+    if(!t)return;
+    e.preventDefault();
+    var text=(e.clipboardData||window.clipboardData).getData('text');
+    document.execCommand('insertText',false,text);
+  });
+  function blankRow(table){
+    var n=table.tHead.rows[0].cells.length, tr=document.createElement('tr');
+    for(var i=0;i<n;i++){var td=document.createElement('td');td.setAttribute('contenteditable','true');tr.appendChild(td);}
+    var d=document.createElement('td');d.className='del';
+    d.innerHTML='<button type="button" class="x" title="Remove this row">&times;</button>';
+    tr.appendChild(d);
+    return tr;
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    if(b.classList.contains('add-row')){
+      var table=b.parentNode.previousElementSibling.querySelector('table');
+      var tr=blankRow(table);table.tBodies[0].appendChild(tr);tr.cells[0].focus();mark();
+    }else if(b.classList.contains('x')){
+      b.closest('tr').remove();mark();
+    }else if(b.classList.contains('copy')){
+      copyBlock(b);mark();
+    }else if(b.id==='no-examples'){
+      document.querySelectorAll('tr.example').forEach(function(r){r.remove();});mark();
+    }else if(b.id==='save'){
+      save();
+    }else if(b.id==='print'){
+      window.print();
+    }
+  });
+  // Makes an empty copy of the tables of a block, for a second grid, component or tab.
+  function copyBlock(btn){
+    var nodes=[], n=btn.parentNode.previousElementSibling;
+    while(n&&!(n.tagName==='H2'||n.tagName==='H3')){if(!n.classList.contains('copy-block'))nodes.unshift(n);n=n.previousElementSibling;}
+    var wrap=document.createElement('div');wrap.className='copy-block';
+    nodes.forEach(function(x){
+      if(x.classList.contains('table-wrap')||x.classList.contains('tools')||x.classList.contains('blockname')){
+        var c=x.cloneNode(true);
+        c.querySelectorAll('[contenteditable]').forEach(function(td){td.textContent='';});
+        c.querySelectorAll('tr.example').forEach(function(r){r.remove();});
+        wrap.appendChild(c);
+      }
+    });
+    btn.parentNode.parentNode.insertBefore(wrap,btn.parentNode);
+    wrap.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  function save(){
+    // The checked state is a property; write it to the attribute so that the saved file keeps it.
+    document.querySelectorAll('input[type=checkbox]').forEach(function(c){
+      if(c.checked)c.setAttribute('checked','');else c.removeAttribute('checked');
+    });
+    state.textContent='Saved '+new Date().toLocaleString();
+    var name=(document.querySelector('#s-1-app-identity td[contenteditable]')||{}).textContent||'';
+    name=name.trim().replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    var blob=new Blob(['<!doctype html>\n'+document.documentElement.outerHTML],{type:'text/html'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='atlas-onboarding-'+(name||'new-app')+'.html';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+    dirty=false;
+  }
+  window.addEventListener('beforeunload',function(e){if(dirty){e.preventDefault();e.returnValue='';}});
+})();
+</script>
+</body>
+</html>
