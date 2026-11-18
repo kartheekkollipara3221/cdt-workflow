@@ -116,6 +116,8 @@ public static partial class AtlasConfigLint
 
             if (control.Validator?.Pattern is { Length: > 0 } pattern && !Compiles(pattern))
                 error($"the Pattern of '{control.Name}' is not a valid regular expression.");
+            if (control.Validator?.Step is <= 0)
+                error($"the Step of '{control.Name}' must be more than 0.");
         }
     }
 

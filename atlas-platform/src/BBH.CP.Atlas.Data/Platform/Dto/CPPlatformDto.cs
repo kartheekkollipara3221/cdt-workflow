@@ -73,6 +73,9 @@ namespace BBH.CP.Atlas.Data.DTO
 
         /// <summary>The highest permitted number. Null = no upper limit.</summary>
         public decimal? Max { get; set; }
+
+        /// <summary>The number must be a multiple of this value. Null = each number is permitted.</summary>
+        public decimal? Step { get; set; }
     }
 
     /// <summary>The platform data of an option.</summary>

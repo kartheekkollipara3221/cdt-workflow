@@ -127,6 +127,8 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     [InlineData("1:30", "Integer")]
     [InlineData("-5", "Min")]
     [InlineData("1441", "Max")]
+    [InlineData("7", "Step")]
+    [InlineData("62", "Step")]
     public void A_bad_minute_value_is_refused_with_a_field_error(string monday, string code)
     {
         CPAtlasPage result = Svc(Prep, Ttdv2Roles.Prepare).SavePage(NewInput(monday: monday), NoFiles);

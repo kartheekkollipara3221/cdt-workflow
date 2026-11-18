@@ -4,7 +4,7 @@
 // The shared test cases are in atlas-validator-cases.ts. The rules:
 //  - A value of only spaces is empty. Required fails, and the other checks do not run.
 //  - Pattern is anchored as Angular Validators.pattern does. It adds ^ and $ when they are not there.
-//  - The number checks run in this order: Integer, then "a number" (no exponent), then Min and Max.
+//  - The number checks run in this order: Integer, then "a number" (no exponent), then Min, Max and Step.
 //  - When Validator.Message is set, it is the text of each failure.
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { isNil } from '../atlas-dates';
@@ -73,6 +73,19 @@ export function atlasMax(max: number): ValidatorFn {
   };
 }
 
+/** Returns a validator that fails with `step` when a number is not a multiple of step. */
+export function atlasStep(step: number): ValidatorFn {
+  return (control) => {
+    const value = text(control).trim();
+    if (empty(control.value) || !numberText.test(value)) {
+      return null;
+    }
+    const ratio = Number(value) / step;
+    // A decimal step (0.1) gives a ratio that is not exact in binary.
+    return Math.abs(ratio - Math.round(ratio)) < 1e-9 ? null : { step: { step } };
+  };
+}
+
 /**
  * Returns the client validators of a control.
  *
@@ -103,7 +116,9 @@ export function atlasValidators(validator: CPValidator | null | undefined, requi
   const max = validator.Max;
   const hasMin = !isNil(min);
   const hasMax = !isNil(max);
-  if (validator.Integer || hasMin || hasMax) {
+  const step = validator.Step;
+  const hasStep = !isNil(step) && step > 0;
+  if (validator.Integer || hasMin || hasMax || hasStep) {
     list.push(atlasNumber);
   }
   if (hasMin) {
@@ -111,6 +126,9 @@ export function atlasValidators(validator: CPValidator | null | undefined, requi
   }
   if (hasMax) {
     list.push(atlasMax(max));
+  }
+  if (hasStep) {
+    list.push(atlasStep(step));
   }
   return list;
 }
@@ -129,6 +147,7 @@ export function errorCode(errors: ValidationErrors | null): string | null {
     ['number', 'InvalidNumber'],
     ['min', 'Min'],
     ['max', 'Max'],
+    ['step', 'Step'],
   ];
   return order.find(([key]) => errors[key])?.[1] ?? null;
 }
@@ -165,6 +184,8 @@ export function errorText(errors: ValidationErrors | null, label: string, valida
       return `${label} must be ${errors['min'].min} or more.`;
     case 'Max':
       return `${label} must be ${errors['max'].max} or less.`;
+    case 'Step':
+      return `${label} must be a multiple of ${errors['step'].step}.`;
     default:
       return `${label} is not valid.`;
   }

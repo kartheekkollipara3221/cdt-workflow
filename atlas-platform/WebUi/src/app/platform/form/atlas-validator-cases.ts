@@ -35,5 +35,14 @@ export const ATLAS_VALIDATOR_CASES: AtlasValidatorCase[] = [
   { "validator": { "Min": 1 }, "value": ".5", "code": "Min", "message": "Field must be 1 or more." },
   { "validator": { "Max": 1440 }, "value": "1441", "code": "Max", "message": "Field must be 1440 or less." },
   { "validator": { "Max": 1440 }, "value": "1440", "code": null, "message": null },
-  { "validator": { "Max": 10, "Message": "Too big." }, "value": "11", "code": "Max", "message": "Too big." }
+  { "validator": { "Max": 10, "Message": "Too big." }, "value": "11", "code": "Max", "message": "Too big." },
+  { "validator": { "Step": 5 }, "value": "7", "code": "Step", "message": "Field must be a multiple of 5." },
+  { "validator": { "Step": 5 }, "value": "0", "code": null, "message": null },
+  { "validator": { "Step": 5 }, "value": "1440", "code": null, "message": null },
+  { "validator": { "Step": 5 }, "value": "", "code": null, "message": null },
+  { "validator": { "Step": 5 }, "value": "abc", "code": "InvalidNumber", "message": "Field must be a number." },
+  { "validator": { "Step": 0.1 }, "value": "0.3", "code": null, "message": null },
+  { "validator": { "Step": 0.1 }, "value": "0.35", "code": "Step", "message": "Field must be a multiple of 0.1." },
+  { "validator": { "Max": 1440, "Step": 5 }, "value": "1441", "code": "Max", "message": "Field must be 1440 or less." },
+  { "validator": { "Integer": true, "Step": 5, "Message": "Steps of 5." }, "value": "12", "code": "Step", "message": "Steps of 5." }
 ];

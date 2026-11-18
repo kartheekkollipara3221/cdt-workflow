@@ -38,7 +38,7 @@ public static partial class AtlasFieldValidator
         if (!string.IsNullOrEmpty(validator.Pattern) && !PatternMatches(validator.Pattern, value))
             return Error(field.Name, "Pattern", Text($"{label} has a format that is not valid."));
 
-        if (validator.Integer || validator.Min != null || validator.Max != null)
+        if (validator.Integer || validator.Min != null || validator.Max != null || validator.Step != null)
         {
             string text = value.Trim();
             if (validator.Integer && !IntegerText().IsMatch(text))
@@ -50,6 +50,8 @@ public static partial class AtlasFieldValidator
                 return Error(field.Name, "Min", Text($"{label} must be {min.ToString(CultureInfo.InvariantCulture)} or more."));
             if (validator.Max is { } max && number > max)
                 return Error(field.Name, "Max", Text($"{label} must be {max.ToString(CultureInfo.InvariantCulture)} or less."));
+            if (validator.Step is { } step && step > 0 && number % step != 0)
+                return Error(field.Name, "Step", Text($"{label} must be a multiple of {step.ToString(CultureInfo.InvariantCulture)}."));
         }
 
         return null;
