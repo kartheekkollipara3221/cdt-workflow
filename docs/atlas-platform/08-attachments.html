@@ -45,7 +45,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 </head>
 <body>
 <main>
-<div class="eyebrow">CP Atlas reusable platform · module 8 · design only · draft 2 · 2026-10-25</div>
+<div class="eyebrow">CP Atlas reusable platform · module 8 · design only · draft 3 · 2026-11-18</div>
 <h1>Attachments: reusable design</h1>
 <p class="lead">This report examines how CP Atlas uploads, stores, downloads and removes files. It gives one attachment service for all apps, with the same access control as the record, and it removes two High security issues (H1, H2).</p>
 
@@ -53,7 +53,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p><strong>Language.</strong> This report uses ASD-STE100 Simplified Technical English at approximately 80% compliance. Code names, JSON keys and file names stay as they are in the source.</p>
 <p><strong>Ownership.</strong> The target team owns the CP Atlas code. This report gives requirements and a design to that team. This report does not change the workflow engine or the target code.</p>
 <p><strong>Source.</strong> <code>target-implementation-read-only/</code>. Line numbers refer to these <code>.txt</code> copies.</p>
-<p><strong>Status.</strong> Draft 2, 2026-10-25. All open questions answered (section 9). Design only. No target code is changed.</p>
+<p><strong>Status.</strong> Draft 3, 2026-11-18. All open questions answered (section 9). Decisions for the first platform app with attachments are in section 10; for a platform app they replace the parts of 4.4 and 4.5 that they name. Design only. No target code is changed.</p>
 <p>Related: <a href="README.md">platform index</a> · <a href="01-section-master.html">module 1: Section Master</a> · <a href="../TARGET_ATLAS_ISSUES_BY_SEVERITY.html">issues by severity</a>.</p>
 </div>
 
@@ -231,6 +231,15 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <li>Answered (2026-10-25): 10 MB for each file; default types <code>.pdf</code>, <code>.docx</code>, <code>.xlsx</code>, <code>.csv</code>, <code>.txt</code>, <code>.msg</code>, <code>.png</code>, <code>.jpg</code> (4.3).</li>
 <li>Answered (2026-10-25): no scan service. The endpoint protection on the servers and the type checks are enough (section 8).</li>
 <li>Answered (2026-10-25): no. Upload, download and remove only; no file versions, no preview (4.6).</li>
+</ol>
+</section>
+<section id="10-decisions-for-the-first-platform-app-2026-11-18">
+<h2>10. Decisions for the first platform app (2026-11-18)</h2>
+<p>The user made these decisions for P2, the first platform app with attachments. They apply to platform apps. CDT does not change: its <code>v1/Download</code> and <code>v1/RemoveAttachment</code> stay as they are. The CDT security fix (steps 1 to 3 of section 6) stays a separate item.</p>
+<ol>
+<li>Download route: a new platform controller, <code>App/Platform/AtlasAttachmentController.cs</code>, with <code>GET v1/Attachment/{appCode}/{id}</code> (4.4). No target-owned file changes for attachments. Reason: the target <code>CPAtlasController</code> binds <code>code</code> as the <code>CPApplicationCode</code> enum in <code>Download</code> and <code>RemoveAttachment</code>, so a platform app code gets HTTP 400 before a platform line can run. <code>v1/Download</code> also reads the disk in the controller, so a platform line there would be in the CDT download path.</li>
+<li>Removal on save, not at once. The user selects remove and accepts the question (the same dialog as CDT). The form then shows the file as "removed when you save". <code>v1/ManagePage</code> removes it in the same transaction as the record, the new files, the audit entries and the version check. A new optional field of the save request gives the IDs of the removed files (additive). If the user closes the form with no save, the platform removes nothing. A platform app does not use <code>v1/RemoveAttachment</code>, and the platform has no remove route.</li>
+<li>Request size: the IIS default stays: about 28.6 MB for each request. The target sets no limit. The platform refuses a save whose new files are more than 25 MB in total. The client checks the total before it sends and shows a clear message ("Save at most 25 MB at one time"). The server checks again. The limit for each file stays 10 MB (4.3). If users often need more, a later additive change can raise the limit for the save route only.</li>
 </ol>
 </section>
 </main>

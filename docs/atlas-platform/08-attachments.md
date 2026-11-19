@@ -1,6 +1,6 @@
 # Module 8: Attachments
 
-Status: Draft 2, 2026-10-25. All open questions answered (section 9). Design only. No target code is changed.
+Status: Draft 3, 2026-11-18. All open questions answered (section 9). Decisions for the first platform app with attachments are in section 10; for a platform app they replace the parts of 4.4 and 4.5 that they name. Design only. No target code is changed.
 
 ## 1. Purpose
 
@@ -163,3 +163,11 @@ Steps 1 and 2 remove two High issues and can go first, in a small release of the
 2. Answered (2026-10-25): 10 MB for each file; default types `.pdf`, `.docx`, `.xlsx`, `.csv`, `.txt`, `.msg`, `.png`, `.jpg` (4.3).
 3. Answered (2026-10-25): no scan service. The endpoint protection on the servers and the type checks are enough (section 8).
 4. Answered (2026-10-25): no. Upload, download and remove only; no file versions, no preview (4.6).
+
+## 10. Decisions for the first platform app (2026-11-18)
+
+The user made these decisions for P2, the first platform app with attachments. They apply to platform apps. CDT does not change: its `v1/Download` and `v1/RemoveAttachment` stay as they are. The CDT security fix (steps 1 to 3 of section 6) stays a separate item.
+
+1. Download route: a new platform controller, `App/Platform/AtlasAttachmentController.cs`, with `GET v1/Attachment/{appCode}/{id}` (4.4). No target-owned file changes for attachments. Reason: the target `CPAtlasController` binds `code` as the `CPApplicationCode` enum in `Download` and `RemoveAttachment`, so a platform app code gets HTTP 400 before a platform line can run. `v1/Download` also reads the disk in the controller, so a platform line there would be in the CDT download path.
+2. Removal on save, not at once. The user selects remove and accepts the question (the same dialog as CDT). The form then shows the file as "removed when you save". `v1/ManagePage` removes it in the same transaction as the record, the new files, the audit entries and the version check. A new optional field of the save request gives the IDs of the removed files (additive). If the user closes the form with no save, the platform removes nothing. A platform app does not use `v1/RemoveAttachment`, and the platform has no remove route.
+3. Request size: the IIS default stays: about 28.6 MB for each request. The target sets no limit. The platform refuses a save whose new files are more than 25 MB in total. The client checks the total before it sends and shows a clear message ("Save at most 25 MB at one time"). The server checks again. The limit for each file stays 10 MB (4.3). If users often need more, a later additive change can raise the limit for the save route only.
