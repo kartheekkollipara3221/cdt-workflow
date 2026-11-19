@@ -8,9 +8,9 @@ The dated history entries below are unchanged, newest first: platform and target
 
 ## A. Atlas platform (atlas-platform/) - ACTIVE
 
-### State (2026-11-18)
-- HEAD c362aa7, PUSHED (origin/console-code-first-0518 = c362aa7). Last target package: built from 93446aa (B84, 050
-  ReferenceID); previous 7862bef (B83). Local app runs with `npm run start:target-look` + API StandIn; user tested it on 2026-11-18: "working fine".
+### State (2026-11-19)
+- HEAD c79593d, NOT PUSHED (origin = c362aa7; 7 local commits 93446aa..c79593d). Last target package: built from
+  8aa11e3 (B85, audit ReferenceID/ReferenceType + 045); previous 93446aa (B84). Local app runs with `npm run start:target-look` + API StandIn; user tested it on 2026-11-18: "working fine".
 - Target dev integration of TTDV2 (package bcb4b2b, steps 0-6) DONE. Target dev test bugs fixed 2026-11-12 to 11-18,
   each row in atlas-platform/INTEGRATION.md: B78 UseIdentityColumn (Oracle provider ambiguity), B79 grid Tab order /
   sticky viewport / clear minutes on new week (effect "On": "Change"), B80 live Weekly Total, cell redraw,
@@ -55,13 +55,17 @@ The dated history entries below are unchanged, newest first: platform and target
   (no remove route), IIS default kept + platform limit 25 MB of new files per save.
 2 F1 part 1 DONE 2026-11-18 (B84, 93446aa, package from 93446aa): owner chose option A, 050 reads
   TTD.AuditLog.ReferenceID (works only where the rename exists; QC/prod must have it before 050 runs there).
-  F1 part 2 OPEN: platform audit column names for new apps (RefID vs ReferenceID; options: keep RefID, or manifest
-  column names with RefID default).
+  F1 part 2 DONE 2026-11-19 (B85, 8aa11e3, package from 8aa11e3): owner: follow the target design, TTDV2 is dev
+  data only. Platform writes/reads ReferenceID/ReferenceType; 040 + 05 template make them (index
+  IX_AuditLog_ReferenceID); NEW 045 renames an older TTDV2.AuditLog (sp_rename, idempotent, 55021 if both names);
+  050 writes ReferenceID/ReferenceType='TTD'; --atlas-check errors on an audit table without them. Stable names kept:
+  CPAuditLog.RefID, GetAuditLog refID, CPAtlasPage.RefID, AuditRefTypes. Local DB: 045 run. TARGET ACTION: stop app
+  pool, run 045, copy the files of the B85 row, start, --atlas-check 0 errors.
 3 P2 app name and the filled-in template.
 4 PENDING_DECISIONS.html: Q01 bug list, Q07/Q08 before 050/090 run anywhere, the rest as before (Q02-Q51).
 
 ### Next
-1. Ask F1 part 2 (audit column names for new apps).
+1. User: copy the package (B85 row order) to the target dev region; push when asked.
 2. When the P2 template arrives: gap report, then code module 8 then module 10 (stop-and-ask) for section forms, plus
    the `richtext` control. Platform gates, package rebuild, INTEGRATION.md rows for the target changes.
 3. After P2: the architecture review page.
@@ -160,13 +164,19 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## Next-session prompt
 "Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
-section A Pending, one question at a time: F1 part 2 (audit column names for new apps). Keep the broad
+section A Pending, one question at a time (next: P2 app name and template). Keep the broad
 goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
 nothing breaks the existing system."
 
 ---
 
 # HISTORY (newest first; entries unchanged)
+
+---
+
+# DONE - 2026-11-19. B85 audit columns ReferenceID/ReferenceType (8aa11e3, package c79593d).
+- Gates: build 0 warnings; 321 .NET tests; --atlas-check 0/0 (after 045 on the local DB); ng build clean; 104 specs;
+  target-flags clean. New tests: AuditReferenceColumnsScriptTests (4), An_AuditTable_with_the_old_RefID_and_RefType_names_is_an_error.
 
 ---
 
