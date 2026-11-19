@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-10, independent source review)
+# CP Atlas hand-off - read this first (updated 2026-11-18, target sync, template v2, P2 preparation)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -8,58 +8,60 @@ The dated history entries below are unchanged, newest first: platform and target
 
 ## A. Atlas platform (atlas-platform/) - ACTIVE
 
-### State
-- Comment pass 2026-11-10 (user request: Google-style comments in ASD-STE100, no agent history in the code):
-  comments only, in 101 platform files (src/, WebUi/src/, sql 020/030/040; NOT 050/090 = stop-and-ask, NOT tests).
-  Rules: AGENTS.md "Code comments (platform)". Removed spec/review/decision references are in
-  docs/atlas-platform/CODE_TRACE.md (256 rows, file + member). Guard: CodeCommentRulesTests (2 tests). Proof of no
-  code change: comments stripped from HEAD and working copy compare equal for every file. All 5 platform gates
-  passed. One ID stays on purpose: a SQL comment inside a C# raw string (AtlasUserContext.LoadRoles), that is code.
-  New package for the target (comments only; copy all files again, no new integration step).
-- Independent source assessment completed 2026-11-10: docs/IMPLICIT_STATE_MACHINES_ASSESSMENT.md (see section C).
-  Review only. No platform implementation, SQL, target integration, or package change. No application tests were run.
-- Target dev integration with package bcb4b2b: steps 0-6 ALL DONE (user-reported, each "complete, no errors"). TTDV2
-  dashboard, form, save, history and delete work at the target. Dev settings: Enabled true, AccessMode Enforce.
-- Step 5/6 "small bugs": the user has NOT sent the list yet (PENDING_DECISIONS.html Q01).
-- Hand-off documents (docs/atlas-platform/, ASD-STE100 ~80%): ATLAS_CODE_MAP.html (19 sections; commits 9c3e5a2,
-  f11307d, 73ba67b, 7dba558), ATLAS_TEAM_NOTES.html (3fb38d8), both PUSHED (origin at 3fb38d8);
-  PENDING_DECISIONS.html (51 questions, 9 categories, options + recommendations + "Copy answers"; NOT committed).
-- Governance edits 2026-11-07 (NOT committed; show the diff to the user first): PROJECT.md section 0 (product context),
-  AGENTS.md (CP Atlas note, GSD/gates scoped to the engine, new "Atlas platform" section with rules, gates,
-  stop-and-ask, working style; handoff layout), this file (A/B layout), PENDING_DECISIONS.html (category 8 renamed,
-  Q51 engine adapter, Q50 text).
-- Behaviour corrections recorded in the team notes (my step texts had them wrong): save returns to the dashboard;
-  WeekEndings = last Sunday (today if Sunday) + next 3 Sundays, default = last Sunday; Years = this year+1 down to this
-  year-3, default {Options[1]} = this year; dashboard dates dd-MMM-yyyy.
-- Independent review 2026-11-01 (untracked: atlas-platform/CODEX_HANDOFF.md, atlas-platform/review/2026-11-01/,
-  WebUi/src/app/platform/review-contracts.spec.ts): 4 test-reproduced, UNFIXED findings. R01 High (090 restores roles
-  revoked on purpose before 050), R02 High (re-cutover after rollback loses newer TTD data/history, then revokes TTD
-  roles again), R04 Medium (All Report Total sums only the 5000 loaded rows, no warning), R03 Medium (multi-select
-  delimiter #$# vs comma; TTDV2 unaffected). Decide before 050/090 run anywhere (Q07-Q10).
-- Fixed 2026-11-10 (comment pass): the Service/StandIn/CPAtlasService.cs header now names the package path
-  reference/StandIn/CPAtlasService.cs (it named a file that did not exist, Q06). Local servers stopped; restart only on request (atlas-platform/local/README.md).
+### State (2026-11-18)
+- HEAD c362aa7, PUSHED (origin/console-code-first-0518 = c362aa7). Last target package: 7862bef (built from 8d08a62,
+  B83). Local app runs with `npm run start:target-look` + API StandIn; user tested it on 2026-11-18: "working fine".
+- Target dev integration of TTDV2 (package bcb4b2b, steps 0-6) DONE. Target dev test bugs fixed 2026-11-12 to 11-18,
+  each row in atlas-platform/INTEGRATION.md: B78 UseIdentityColumn (Oracle provider ambiguity), B79 grid Tab order /
+  sticky viewport / clear minutes on new week (effect "On": "Change"), B80 live Weekly Total, cell redraw,
+  {Today.Next(Day)} token (WeekEnding = coming Sunday), B81 WITHDRAWN (wrong cause), B82 TARGET change approved by owner
+  (NumericEditor.refresh sets this.value; confirmed present in the 11-18 target copy), B83 validator "Step" (TTDV2
+  minutes in steps of 5).
+- New-app onboarding template docs/atlas-platform/NEW_APP_ONBOARDING_TEMPLATE.html: v1 2026-11-12 (500b5fa), v2
+  2026-11-18 (c362aa7): filepicker + richtext types, package rule (CKEditor 5 approved), recipient LAN ID field (10.1),
+  section 12 "Attachments and rich text" (12.1 types, 12.2 rules, 12.3 rich text), evidence items. Pushed.
+- Target files of 2026-11-18 received: target-implementation-read-only/lastet_target_files/latest_target_files_11182026/
+  (41 files + "cp sharepoint.txt" schema dump; git-ignored; NEWER than the older read-only copy, use them first).
+  Confirmed: all platform integration lines present (Program.cs, CPAtlasService, app.routes, app.config, partial DTOs);
+  TTDV2 tables = our 040; auth = browser Windows credentials (plain v1/Download links work); @pbdev/pbdev-core ^6.0.0,
+  ag-grid ~33.1.0 (half of Q05). CDT attachment code unchanged (module 8 section 2 still true). CPSQMSOService = model
+  for a section form with workflow; all module 10 findings still present.
+- NEW FINDINGS in the 11-18 target files (not yet acted on):
+  F1 Audit columns renamed RefID -> ReferenceID (+ ReferenceType) in TTD, SQMS, AIN, CDT_AuditLog and new apps. Only
+     TTDV2.AuditLog keeps RefID/RefType. 050 reads TTD.AuditLog.RefID -> 050 WILL FAIL at change-over (050 change =
+     stop-and-ask). AtlasAuditWriter hard-codes RefID/RefType.
+  F2 v1/Download and v1/RemoveAttachment bind `code` as CPApplicationCode enum -> a platform app code gets HTTP 400
+     before a platform line; the target must change the parameter to string (same URL) for module 8.
+  F3 New schemas BSU, CFP, PBSU, RIN (old style: Attachment.Type = control name, FK BSUGeneralId/InflowId, display names,
+     local dates, no LanId/RowVersion). User: P2 is NOT BSU; these are not our concern now.
+  F4 CP_Atlas_Application.IconName added (no action seen).
+  F5 The new appsettings_json.txt holds a real DB password and JWT key: never copy; user told.
+- P2 (next app) = section form + 2 attachment types + workflow (modules 8 and 10). App name not given yet; the owner
+  fills in the v2 template. Rich text: CKEditor 5, LATEST `ckeditor5` + `@ckeditor/ckeditor5-angular` with
+  licenseKey 'GPL' (self-hosted = free, no load limit; licence closed: BBH already uses CKEditor 5 in one app). User
+  says Angular 21 is tested; test it in the P2 app. Installed 41.4.2 is in the CVE-2024-45613 range -> replace it.
+  Needs: control type `richtext`, own Base64 picture adapter, server-side HTML sanitizing, plain text on dashboard and
+  History. MIT fallback if ever needed: Jodit (1 package).
+- Architecture review page for the target team (they cannot navigate the code): agreed as a self-read page (option C,
+  ASD-STE100 ~80%), two parts (design architecture + code navigation), file ATLAS_ARCHITECTURE_REVIEW.html. User
+  decided: build it AFTER P2 (I recommended before).
+- Still from earlier: independent review 2026-11-01 findings R01-R04 UNFIXED (untracked atlas-platform/CODEX_HANDOFF.md,
+  atlas-platform/review/2026-11-01/, WebUi/.../review-contracts.spec.ts); governance edits and PENDING_DECISIONS.html
+  are committed (c729452).
 
-### Pending (full detail with options = docs/atlas-platform/PENDING_DECISIONS.html)
-1 TTDV2 at target: Q01 bug summary, Q02 step-0 numbers (RowsLeftOut, warnings), Q03 GRANT on schema TTDV2 (QC/prod),
-  Q04 CP_Atlas_Application code list (AR-02), Q05 pbdev-select + exact @pbdev/pbdev-core version, Q06 package rebuild.
-2 Review R01-R04: Q07-Q10 fix choices; Q11 MaxRows 5000 confirm.
-3 Design choices B3/B4/B7/B9/B10/B14/B15 confirm or change: Q12-Q18 (B3 was asked 2026-10-25, never answered).
-4 Go-live/target team: Q19 LogOnly then Enforce, Q20 Enabled approver, Q21 when 050 runs (AR-11), Q22 team review
-  format, Q23 owner + author guide/JSON Schema (AR-08, SV-07), Q24 RV-L11 time base, Q25 RV-L13 LanID index.
-5 Before app #2: Q26 which app, Q27 RV-N1 procedure tabs, Q28 RV-07 start-up retry, Q29 RV-L03 user-control validation,
-  Q30 AR-09 feature table, Q31 CreatedByLanId in 05 template, Q32 N5 multi-row grids.
-6 Performance/backlog: Q33 PF9 first then PF1, Q34 deferred SV-13/DA-10/NG-11/HO-04, Q35 RV-L20/22/23/25, Q36 delete
-  atlas-tailwind-classes.ts.
-7 Specs/current target: Q37 module 2 Step Master, Q38 P3 security fixes H1/H2/DB-01, Q39 Confirm items
-  H10-H12/M17/M24/M6/L18.
-9 Housekeeping: Q46 commit the 2026-11-01 review files, Q47 engine/CDT review reports, Q48 .agents/skills-lock/ghcp
-  parked files, Q49 scratch DBs (cdtv2_*, burrito_*) + smtp4dev, Q50 record answers here.
+### Pending
+1 Module 8 decisions (asked 2026-11-17): reuse v1/Download with a platform line (needs F2 target change), removal at once
+  through v1/RemoveAttachment, IIS request limit.
+2 F1: platform audit column names for new apps (RefID vs ReferenceID; options: keep RefID, or manifest column names
+  with RefID default) and the 050 fix for the rename (stop-and-ask).
+3 P2 app name and the filled-in template.
+4 PENDING_DECISIONS.html: Q01 bug list, Q07/Q08 before 050/090 run anywhere, the rest as before (Q02-Q51).
 
 ### Next
-1. Commit the governance edits after the user has seen the PROJECT.md/AGENTS.md diff.
-2. User answers PENDING_DECISIONS.html: Q01 (bug summary) first; Q07/Q08 before 050 or 090 run anywhere.
-3. Fix the step 5/6 bugs and R01/R02 as decided: fix here, platform gates, rebuild the package, user re-copies.
-4. Team review (Q22), go-live decisions (Q19-Q21), then the "before app #2" items as decided.
+1. Ask the open points one at a time, in this order: module 8 decisions (with F2), then F1 (audit names, 050).
+2. When the P2 template arrives: gap report, then code module 8 then module 10 (stop-and-ask) for section forms, plus
+   the `richtext` control. Platform gates, package rebuild, INTEGRATION.md rows for the target changes.
+3. After P2: the architecture review page.
 
 ## B. Workflow engine (src/, workflow-api/) - PAUSED until the platform work is stable
 
@@ -151,16 +153,31 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
   (python atlas-platform/local/make-target-package.py atlas-platform/local/package/atlas-target-package.ps1; refuses
   uncommitted changes), user re-copies the changed files. Never edit platform files at the target.
 - Engine work: PROJECT.md sections 1-28, GSD phases, section 21 gates.
-- Commit/push only when asked. Commit trailer: Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>.
+- Commit/push only when asked. Commit trailer: Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> (or the trailer the session reminder gives).
 
 ## Next-session prompt
-"Resume. Read the top of CODEX_HANDOFF.md (sections A and B). <Pasted answers from PENDING_DECISIONS.html | Commit the
-governance edits: yes/no>. Keep the broad goal: CP Atlas = engine + platform, one product; seamless integration at the
-target, platform generic and simple, nothing breaks the existing system."
+"Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
+section A Pending, one question at a time: module 8 decisions (with F2), then F1 (audit names, 050). Keep the broad
+goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
+nothing breaks the existing system."
 
 ---
 
 # HISTORY (newest first; entries unchanged)
+
+---
+
+# DONE - 2026-11-12 to 2026-11-18. Target dev bug fixes B78-B83, template v1/v2, target sync, P2 preparation.
+- Commits: 6c79e36/500b5fa template v1; daa1f61 B78; a3db0d6 B79; 07fe254 B80; 9d65edf B81 (reverted e26dfdf);
+  f3734ad B82 doc; 8d08a62 B83; packages 52074a0, a2b41d2, 1c15abe, 509bd05, dd86bfe, 4db3731, 7862bef; c362aa7
+  template v2. All pushed (origin at c362aa7).
+- 2026-11-18 session: resumed; local app started (target look) and tested by the user; target files of 11-18 compared
+  with the older copy and with modules 8 and 10 (findings F1-F5 in section A); rich text editor options (CKEditor 5
+  chosen; ngx-editor rejected: no tables, no Angular 21 main package; TipTap vs Jodit compared as MIT fallbacks);
+  architecture review page agreed for after P2; template v2. Memories: target-sync-2026-11-18,
+  atlas-p2-rich-text-editor, atlas-architecture-review-page-after-p2.
+- Build/test status: B83 gates were run in its own session (not re-run 2026-11-18). Template v2: browser checks only
+  (add-row on the new tables, no duplicate IDs, nav links, no sideways scroll at 500 px); no platform build (document).
 
 ---
 
