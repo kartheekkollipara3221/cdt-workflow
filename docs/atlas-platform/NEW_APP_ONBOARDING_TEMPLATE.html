@@ -50,10 +50,11 @@ ul.checks{list-style:none;padding-left:0}ul.checks li{margin:6px 0}ul.checks inp
 <button type="button" id="save" class="primary">Save a copy</button>
 </div>
 <main>
-<div class="eyebrow">Atlas platform · onboarding template · version 1 · 2026-11-12</div>
+<div class="eyebrow">Atlas platform · onboarding template · version 2 · 2026-11-18</div>
 <h1>CP Atlas platform: new app onboarding template</h1>
-<p class="lead">Version 1, 2026-11-12. The team that owns the new app fills in this document. The platform team uses it to write the app metadata (JSON and SQL) and to find the work that is not metadata.</p>
-<nav><a href="#s-how-to-fill-in-this-template">How to fill in this template</a><a href="#s-1-app-identity">1. App identity</a><a href="#s-2-roles-and-access">2. Roles and access</a><a href="#s-3-pages-and-sections">3. Pages and sections</a><a href="#s-4-fields">4. Fields</a><a href="#s-5-field-behaviour">5. Field behaviour</a><a href="#s-6-tables-inside-the-form">6. Tables inside the form</a><a href="#s-7-new-components">7. New components</a><a href="#s-8-buttons">8. Buttons</a><a href="#s-9-dashboard">9. Dashboard</a><a href="#s-10-workflow">10. Workflow</a><a href="#s-11-data">11. Data</a><a href="#s-12-attachments">12. Attachments</a><a href="#s-13-other-systems-and-reports">13. Other systems and reports</a><a href="#s-14-test-scenarios">14. Test scenarios</a><a href="#s-15-open-points">15. Open points</a><a href="#s-16-evidence-checklist">16. Evidence checklist</a></nav>
+<p class="lead">Version 2, 2026-11-18. The team that owns the new app fills in this document. The platform team uses it to write the app metadata (JSON and SQL) and to find the work that is not metadata.</p>
+<p class="note">New in version 2: the field types <code>filepicker</code> and <code>richtext</code> (section 4), the rule for new packages (section 7), the recipient fields (section 10.1), and the tables for attachments and rich text (section 12).</p>
+<nav><a href="#s-how-to-fill-in-this-template">How to fill in this template</a><a href="#s-1-app-identity">1. App identity</a><a href="#s-2-roles-and-access">2. Roles and access</a><a href="#s-3-pages-and-sections">3. Pages and sections</a><a href="#s-4-fields">4. Fields</a><a href="#s-5-field-behaviour">5. Field behaviour</a><a href="#s-6-tables-inside-the-form">6. Tables inside the form</a><a href="#s-7-new-components">7. New components</a><a href="#s-8-buttons">8. Buttons</a><a href="#s-9-dashboard">9. Dashboard</a><a href="#s-10-workflow">10. Workflow</a><a href="#s-11-data">11. Data</a><a href="#s-12-attachments">12. Attachments and rich text</a><a href="#s-13-other-systems-and-reports">13. Other systems and reports</a><a href="#s-14-test-scenarios">14. Test scenarios</a><a href="#s-15-open-points">15. Open points</a><a href="#s-16-evidence-checklist">16. Evidence checklist</a></nav>
 <section id="s-how-to-fill-in-this-template">
 <h2>How to fill in this template</h2>
 <p class="note">Type in the yellow cells. Use the buttons to add a row or a block. Select <b>Save a copy</b> to download the file with your answers. You can open the saved file and continue. Send the saved file and the attachments to the platform team.</p>
@@ -129,6 +130,8 @@ ul.checks{list-style:none;padding-left:0}ul.checks li{margin:6px 0}ul.checks inp
 <tr><td><code>option</code></td><td>Radio buttons</td></tr>
 <tr><td><code>user</code></td><td>A person, shown by name (read-only)</td></tr>
 <tr><td><code>grid</code></td><td>Table inside the form (fill in section 6)</td></tr>
+<tr><td><code>filepicker</code></td><td>File upload, with the list of attached files (fill in section 12.1)</td></tr>
+<tr><td><code>richtext</code></td><td>Text with format: tables, lists, headings, links, pictures (fill in section 12.3)</td></tr>
 </tbody></table></div>
 <p><b>Option source</b> must be one of these, or a description of a new source:</p>
 <div class="table-wrap"><table>
@@ -211,7 +214,7 @@ ul.checks{list-style:none;padding-left:0}ul.checks li{margin:6px 0}ul.checks inp
 <tr><td>Do you think other apps will use it?</td><td contenteditable="true"></td></tr>
 <tr><td>Screenshot or sketch attached?</td><td contenteditable="true"></td></tr>
 </tbody></table></div>
-<p class="note">Rule: the platform cannot add a package. The component must use the libraries that CP Atlas has today.</p>
+<p class="note">Rule: use the libraries that CP Atlas has today, if possible. A new package needs the approval of the platform team and the target team. CKEditor 5 is approved for rich text (<code>richtext</code>), so it is not a new component.</p>
 <p class="tools"><button type="button" class="copy">+ Add another block</button></p>
 </section>
 <section id="s-8-buttons">
@@ -264,6 +267,7 @@ ul.checks{list-style:none;padding-left:0}ul.checks li{margin:6px 0}ul.checks inp
 <tr><td>Can a record have more than one workflow at the same time?</td><td contenteditable="true"></td></tr>
 <tr><td>Can a finished record start again?</td><td contenteditable="true"></td></tr>
 <tr><td>Is there a current workflow in the engine that this app must use? Give the key.</td><td contenteditable="true"></td></tr>
+<tr><td>Each person who gets a task or an email (sections 10.4 and 10.5): which field holds that person? The field must keep the user name (LAN ID), not only the display name.</td><td contenteditable="true"></td></tr>
 </tbody></table></div>
 <h3>10.2 States</h3>
 <div class="table-wrap"><table class="fill">
@@ -338,15 +342,37 @@ ul.checks{list-style:none;padding-left:0}ul.checks li{margin:6px 0}ul.checks inp
 <p>Attach 3 to 5 sample records with real-looking values (no confidential data).</p>
 </section>
 <section id="s-12-attachments">
-<h2>12. Attachments</h2>
+<h2>12. Attachments and rich text</h2>
+<p>Fill in 12.1 and 12.2 for each <code>filepicker</code> field in section 4. Fill in 12.3 for each <code>richtext</code> field. If the app has none of these fields, write <code>none</code> here and go to section 13.</p>
+<h3>12.1 Attachment types</h3>
+<p>One row for each <code>filepicker</code> field. Each field is one type of attachment, for example "Supporting Documents" and "Signed Agreement".</p>
+<p class="note">Limits of the platform: 10 MB for each file. Default file types: <code>.pdf</code>, <code>.docx</code>, <code>.xlsx</code>, <code>.csv</code>, <code>.txt</code>, <code>.msg</code>, <code>.png</code>, <code>.jpg</code>. A field can have a smaller size or fewer types, not more. If you need a different type, write it in section 15.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Field label (section 4)</th><th>Required</th><th>One file or many</th><th>Largest number of files</th><th>File types</th><th>Largest file size (MB)</th><th>Who can add a file</th><th>Who can see and download</th><th>Who can remove a file</th><th>Changes by workflow state</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Supporting Documents</td><td>yes</td><td>many</td><td>5</td><td><code>.pdf</code>, <code>.docx</code>, <code>.xlsx</code>, <code>.msg</code></td><td>10</td><td>Maker</td><td>all roles</td><td>Maker</td><td>Read-only after "Submit"</td></tr>
+<tr class="example"><td><i>Example:</i> Signed Agreement</td><td>yes in "In Review"</td><td>one</td><td>1</td><td><code>.pdf</code></td><td>5</td><td>Reviewer</td><td>all roles</td><td>Reviewer</td><td>Shows only in "In Review" and "Approved"</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<h3>12.2 Attachment rules</h3>
 <div class="table-wrap"><table class="fill qa">
 <thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>
-<tr><td>Can the user attach files?</td><td contenteditable="true"></td></tr>
-<tr><td>File types and largest file size</td><td contenteditable="true"></td></tr>
-<tr><td>Who can add, see and delete a file?</td><td contenteditable="true"></td></tr>
-<tr><td>Do these rights change with the workflow state?</td><td contenteditable="true"></td></tr>
 <tr><td>Are attachments tied to the record, or to a section or step?</td><td contenteditable="true"></td></tr>
+<tr><td>Must an email send a file, or a link to the record only? (section 10.5)</td><td contenteditable="true"></td></tr>
+<tr><td>Must the dashboard show attachments (for example a column with the number of files)?</td><td contenteditable="true"></td></tr>
+<tr><td>Do current files exist that must move into the new app? Number of files, total size, and where they are.</td><td contenteditable="true"></td></tr>
+<tr><td>Files with personal or confidential data</td><td contenteditable="true"></td></tr>
 </tbody></table></div>
+<p>The platform keeps the history of each file: who added it, who removed it, and when. To change a file, the user removes it and adds the new file.</p>
+<h3>12.3 Rich text fields</h3>
+<p>One row for each <code>richtext</code> field. The editor is CKEditor 5.</p>
+<div class="table-wrap"><table class="fill">
+<thead><tr><th>Field label (section 4)</th><th>Tables necessary?</th><th>Pictures necessary? Largest picture size (MB)</th><th>Other formats (headings, lists, links, bold, colours)</th><th>Largest text size (characters or pages)</th><th>Paste from Word or email expected?</th><th>Shown in an email? (section 10.5)</th><th>Shown on the dashboard?</th></tr></thead><tbody>
+<tr class="example"><td><i>Example:</i> Fee Schedule Detail</td><td>yes</td><td>no</td><td>headings, lists, bold</td><td>about 5 pages</td><td>yes, tables from Word</td><td>yes, in email 1</td><td>no</td></tr>
+<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+</tbody></table></div>
+<p class="tools"><button type="button" class="add-row">+ Add row</button></p>
+<p class="note">The dashboard and the History window show rich text with no format. Before the save, the server removes content that is not safe, for example scripts. A picture is kept inside the text, so a large picture makes the record large.</p>
 </section>
 <section id="s-13-other-systems-and-reports">
 <h2>13. Other systems and reports</h2>
@@ -391,6 +417,8 @@ ul.checks{list-style:none;padding-left:0}ul.checks li{margin:6px 0}ul.checks inp
 <li><label><input type="checkbox"> Workflow diagram, if you have one (the table in 10.3 stays the source)</label></li>
 <li><label><input type="checkbox"> Sample records (section 11)</label></li>
 <li><label><input type="checkbox"> Table definitions of current tables (section 11)</label></li>
+<li><label><input type="checkbox"> One sample file of each attachment type (section 12.1)</label></li>
+<li><label><input type="checkbox"> A sample of current rich text, for example a table from Word (section 12.3)</label></li>
 </ul>
 </section>
 </main>
