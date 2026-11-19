@@ -37,6 +37,7 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
         await RunScriptFileAsync(Path.Combine(release, "020-script-log.sql"));
         await RunScriptFileAsync(Path.Combine(release, "030-active-user-roles-view.sql"));
         await RunScriptFileAsync(Path.Combine(release, "040-ttdv2-app.sql"), ("<RUN_BY>", "test.runner"));
+        await RunScriptFileAsync(Path.Combine(release, "045-ttdv2-audit-reference-columns.sql"));
 
         await using SqlConnection connection = new(ConnectionString);
         await new AtlasColumnMetadataReader().LoadAsync(connection, Ttdv2Registry, ["TTDV2.General", "TTDV2.AuditLog"]);

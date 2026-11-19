@@ -167,6 +167,29 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
     }
 
     [Fact]
+    public async Task An_AuditTable_with_the_old_RefID_and_RefType_names_is_an_error()
+    {
+        string name = "OldAudit" + Guid.NewGuid().ToString("N")[..6];
+        await database.ScalarAsync($"CREATE TABLE TTDV2.{name} (ID int IDENTITY PRIMARY KEY, RefID int NULL, RefType varchar(50) NULL, CreatedBy nvarchar(50) NULL, CreatedDate datetime NULL, LogMessage nvarchar(max) NULL);");
+        try
+        {
+            CopyRealConfig();
+            string manifest = Path.Combine(_folder, "TTDV2.app.json");
+            File.WriteAllText(manifest, File.ReadAllText(manifest).Replace("\"TTDV2.AuditLog\"", $"\"TTDV2.{name}\"", StringComparison.Ordinal));
+
+            (int code, string report) = await CheckAsync(_folder);
+
+            Assert.Equal(1, code);
+            Assert.Contains($"AuditTable 'TTDV2.{name}' has no ReferenceID column. The table has the old names RefID and RefType", report, StringComparison.Ordinal);
+            Assert.Contains($"AuditTable 'TTDV2.{name}' has no ReferenceType column.", report, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await database.ScalarAsync($"DROP TABLE TTDV2.{name};");
+        }
+    }
+
+    [Fact]
     public async Task A_manifest_file_that_cannot_be_read_is_an_error_and_the_other_apps_are_still_checked()
     {
         CopyRealConfig();

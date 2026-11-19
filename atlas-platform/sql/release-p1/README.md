@@ -12,6 +12,7 @@ saved in TTD during the run: run it again.
 | 020 | `020-script-log.sql` | — |
 | 030 | `030-active-user-roles-view.sql` | — |
 | 040 | `040-ttdv2-app.sql` | `<RUN_BY>` |
+| 045 | `045-ttdv2-audit-reference-columns.sql` (renames `TTDV2.AuditLog.RefID`/`RefType` of an older `040` to `ReferenceID`/`ReferenceType`; changes nothing on a new database) | — |
 | 050 | `050-ttdv2-copy-from-ttd.sql` (change-over day only) | `<SERVER_TIME_ZONE>`, `<RUN_BY>` |
 | 090 | `090-ttdv2-rollback.sql` (rollback only, not in the run order) | `<RUN_BY>`, `<COPY_RUN_BY>` |
 

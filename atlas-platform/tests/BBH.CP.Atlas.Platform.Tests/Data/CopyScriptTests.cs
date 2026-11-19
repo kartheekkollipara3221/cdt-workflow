@@ -39,7 +39,7 @@ public sealed class CopyScriptTests : IAsyncLifetime
         Assert.Equal(true, await _db.ScalarAsync("SELECT IsDeleted FROM TTDV2.General WHERE ID = 10003"));
         // Eastern time to UTC: 2025-03-03 09:15 EST = 14:15 UTC.
         Assert.Equal(new DateTime(2025, 3, 3, 14, 15, 0), await _db.ScalarAsync("SELECT CreatedDate FROM TTDV2.General WHERE ID = 10001"));
-        Assert.Equal(3, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.AuditLog WHERE RefType = 'TTD'"));
+        Assert.Equal(3, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.AuditLog WHERE ReferenceType = 'TTD'"));
 
         Assert.Equal(0, await _db.ScalarAsync(RoleCount("TTD")));
         Assert.Equal(2, await _db.ScalarAsync(RoleCount("TTDV2")));
@@ -48,7 +48,7 @@ public sealed class CopyScriptTests : IAsyncLifetime
 
         await RunCopyAsync(); // safe to run again
         Assert.Equal(3, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.General WHERE ID IN (10001, 10002, 10003)"));
-        Assert.Equal(3, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.AuditLog WHERE RefType = 'TTD'"));
+        Assert.Equal(3, await _db.ScalarAsync("SELECT COUNT(*) FROM TTDV2.AuditLog WHERE ReferenceType = 'TTD'"));
         Assert.Equal(1, await _db.ScalarAsync(LogCount("12-ttdv2-copy-from-ttd.sql")));
     }
 

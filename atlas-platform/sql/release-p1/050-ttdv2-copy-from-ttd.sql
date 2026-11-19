@@ -5,7 +5,7 @@
 -- Rules:
 --   * TTD data tables are read only. The script does not change TTD.General or TTD.AuditLog.
 --   * Part 2d revokes all TTD roles (TTD stops at once, spec 12, question 4).
---   * Record IDs are kept (IDENTITY_INSERT), so links and audit RefIDs stay the same.
+--   * Record IDs are kept (IDENTITY_INSERT), so links and audit ReferenceIDs stay the same.
 --   * Text values are converted to the typed columns. Minutes: whole numbers 0-1440, empty = NULL.
 --     WeekEnding: 'yyyy-MM-dd'. TaxYear: a whole number.
 --   * People: a display name gives a LAN ID only if exactly one active dbo.CP_Atlas_User row has it.
@@ -191,17 +191,17 @@ BEGIN TRY
     WHERE NOT EXISTS (SELECT 1 FROM TTDV2.General AS g WHERE g.ID = s.ID);
     SET IDENTITY_INSERT TTDV2.General OFF;
 
-    -- 2e. Audit entries. RefType = 'TTD' marks a copied entry. The old LogMessage format
+    -- 2e. Audit entries. ReferenceType = 'TTD' marks a copied entry. The old LogMessage format
     --     (Name/Value) is kept; the History window reads it (spec 09, 4.2).
-    --     TTD.AuditLog names the record column ReferenceID (the target renamed RefID, 2026-11).
-    INSERT INTO TTDV2.AuditLog (RefID, RefType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
+    --     TTD.AuditLog and TTDV2.AuditLog name the record column ReferenceID (the target renamed RefID, 2026-11).
+    INSERT INTO TTDV2.AuditLog (ReferenceID, ReferenceType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
     SELECT a.ReferenceID, 'TTD', a.CreatedBy, m.LanId,
            CAST((CAST(a.CreatedDate AS datetime2) AT TIME ZONE @ServerTimeZone) AT TIME ZONE 'UTC' AS datetime),
            a.LogMessage
     FROM TTD.AuditLog AS a
     LEFT JOIN #NameMap AS m ON m.DisplayName = LTRIM(RTRIM(a.CreatedBy))
     WHERE a.ReferenceID IN (SELECT ID FROM TTDV2.General)
-      AND NOT EXISTS (SELECT 1 FROM TTDV2.AuditLog AS x WHERE x.RefID = a.ReferenceID AND x.RefType = 'TTD');
+      AND NOT EXISTS (SELECT 1 FROM TTDV2.AuditLog AS x WHERE x.ReferenceID = a.ReferenceID AND x.ReferenceType = 'TTD');
 
     -- Log this script in the same transaction: the log says "applied" only when the copy is committed.
     IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL
@@ -219,7 +219,7 @@ END CATCH;
 SELECT 'TTD.General' AS TableName, COUNT(*) AS Rows FROM TTD.General
 UNION ALL SELECT 'TTDV2.General', COUNT(*) FROM TTDV2.General
 UNION ALL SELECT 'TTD.AuditLog', COUNT(*) FROM TTD.AuditLog
-UNION ALL SELECT 'TTDV2.AuditLog (copied)', COUNT(*) FROM TTDV2.AuditLog WHERE RefType = 'TTD'
+UNION ALL SELECT 'TTDV2.AuditLog (copied)', COUNT(*) FROM TTDV2.AuditLog WHERE ReferenceType = 'TTD'
 UNION ALL SELECT 'TTD active user roles', COUNT(*) FROM dbo.CP_Atlas_UserEntitlement AS ue
     INNER JOIN dbo.CP_Atlas_Entitlement AS e ON e.ID = ue.CP_Atlas_EntitlementID
     INNER JOIN dbo.CP_Atlas_Application AS a ON a.ID = e.CP_Atlas_ApplicationID AND a.Code = 'TTD'

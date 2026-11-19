@@ -64,18 +64,18 @@ BEGIN TRY
     -- 3. Audit table (standard shape, spec 05, section 6.6).
     IF OBJECT_ID(QUOTENAME(@Schema) + N'.[AuditLog]', N'U') IS NULL
         EXEC(N'CREATE TABLE ' + N'[' + @Schema + N'].[AuditLog] (
-            [ID]          int IDENTITY(1,1) NOT NULL,
-            [RefID]       int            NULL,
-            [RefType]     varchar(50)    NULL,
-            [CreatedBy]   nvarchar(50)   NULL,
-            [CreatedDate] datetime       NULL,
-            [LogMessage]  nvarchar(max)  NULL,
+            [ID]            int IDENTITY(1,1) NOT NULL,
+            [ReferenceID]   int            NULL,
+            [ReferenceType] varchar(50)    NULL,
+            [CreatedBy]     nvarchar(50)   NULL,
+            [CreatedDate]   datetime       NULL,
+            [LogMessage]    nvarchar(max)  NULL,
             CONSTRAINT [PK_' + @Schema + N'_AuditLog] PRIMARY KEY CLUSTERED ([ID] ASC)
         );');
 
     IF NOT EXISTS (SELECT 1 FROM sys.indexes
-                   WHERE object_id = OBJECT_ID(QUOTENAME(@Schema) + N'.[AuditLog]') AND name = N'IX_AuditLog_RefID')
-        EXEC(N'CREATE INDEX [IX_AuditLog_RefID] ON [' + @Schema + N'].[AuditLog] ([RefID], [RefType]);');
+                   WHERE object_id = OBJECT_ID(QUOTENAME(@Schema) + N'.[AuditLog]') AND name = N'IX_AuditLog_ReferenceID')
+        EXEC(N'CREATE INDEX [IX_AuditLog_ReferenceID] ON [' + @Schema + N'].[AuditLog] ([ReferenceID], [ReferenceType]);');
 
     -- 3a. Attachment table (spec 08, section 4.2, question 1: one table for each app).
     --     Skip it if the app has no filepicker control. FileContent is GZip, as in dbo.CDT_Attachment.

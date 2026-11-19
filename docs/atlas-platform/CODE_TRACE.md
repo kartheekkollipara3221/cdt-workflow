@@ -119,7 +119,8 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckPermissions` | — | SV-02; Review 3 RV-05 | Reports a missing Permissions block or a missing Create, Edit or Delete key. |
 | `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckSoftDelete` | — | DA-04 | SoftDelete must name the IsDeleted bit column. |
 | `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckComputed` | — | SV-08; Review 3 RV-L02 | Uses the save function table; computed sources and targets must be number columns. |
-| `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckSharedAuditTables` | — | DA-03 | Warns when a shared AuditTable app does not limit History to its RefType values. |
+| `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckAuditColumns` | — | B85 | Refuses an AuditTable without ReferenceID or ReferenceType, and names 045 for the old RefID and RefType. |
+| `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckSharedAuditTables` | — | DA-03 | Warns when a shared AuditTable app does not limit History to its ReferenceType values. |
 | `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckDefaults` | — | DA-05 | Warns about NOT NULL value-type columns with a default that nothing sets. |
 | `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckDashboard` | spec 03 §4.7 | Review 3 | Reports a dashboard tab with a Procedure; only Source: Table tabs run. |
 | `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `CheckRoles` | spec 04 §4.7 | — | Warns about a role in rules or Permissions that is not a role of the app. |
@@ -206,7 +207,7 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Service/Platform/AtlasProblemException.cs` | `Config` | — | SV-11 | Returns 500 for an app config defect, logged as Atlas.ConfigError. |
 | `src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditMask.cs` | `AtlasAuditMask` | — | Review 3 RV-02 | Shows *** for old and new values of fields the rules hide from the reader. |
 | `src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditWriter.cs` | `AtlasAuditWriter` | spec 09 §4.1-4.5 | — | Writes the audit entry in the save transaction; LogMessage is a JSON list. |
-| `src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditWriter.cs` | `Read` | — | DA-03 | Filters a shared audit table by RefType so other apps' records are excluded. |
+| `src/BBH.CP.Atlas.Service/Platform/Audit/AtlasAuditWriter.cs` | `Read` | — | DA-03 | Filters a shared audit table by ReferenceType so other apps' records are excluded. |
 | `src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs` | `AtlasDashboardService` | spec 03 §4.1-4.7 | — | Checks View, applies tab rules before queries, loads rows, sets menus and add button. |
 | `src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs` | `Load` | spec 03 §4.2 | SV-05 | Gives a hidden tab no rows; another app's tab needs that app enabled and viewable. |
 | `src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasDashboardService.cs` | `LoadRows` | — | DA-09 | Gets the display names of all user columns with one query. |
@@ -221,8 +222,8 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Service/Platform/Options/AtlasOptionProviders.cs` | `WeekEndingsOptionProvider` | — | FABLE F03 | Gives the last and next week-end days as yyyy-MM-dd. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `AtlasAppManifest` | spec 07 §4.1 | — | Holds the app settings from <Code>.app.json, overridable per environment. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `FormType` | spec 12 question 5 | — | FORM selects the platform form component. |
-| `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `AuditRefTypes` | — | DA-03 | Sets the RefType values that History reads from a shared audit table. |
-| `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `AuditReadRefTypes` | — | DA-03 | Returns the RefType filter of the History read, or null. |
+| `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `AuditRefTypes` | — | DA-03 | Sets the ReferenceType values that History reads from a shared audit table. |
+| `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `AuditReadRefTypes` | — | DA-03 | Returns the ReferenceType filter of the History read, or null. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `Service` | spec 07 §4.1 | — | Names a custom service class; null uses ConfigSectionService. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `SystemTime` | — | DA-11 | Selects UTC or local time for system dates and wire date-times. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `RequireVersion` | — | DA-02 | Requires the rowversion Version on update to prevent lost updates. |

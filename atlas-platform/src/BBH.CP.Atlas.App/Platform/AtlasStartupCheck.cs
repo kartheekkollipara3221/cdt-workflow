@@ -2,6 +2,7 @@ using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Application;
+using BBH.CP.Atlas.Service.Platform.Audit;
 using BBH.CP.Atlas.Service.Platform.Dashboard;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
@@ -109,7 +110,9 @@ public static class AtlasStartupCheck
         CheckAppRow(appRows, manifest, error);
 
         AtlasTable? table = Table(manifest.Table, "Table", required: true, error, check.Tables);
-        Table(manifest.AuditTable, "AuditTable", required: manifest.AuditMode == AtlasAuditMode.Server, error, check.Tables);
+        AtlasTable? auditTable = Table(manifest.AuditTable, "AuditTable", required: manifest.AuditMode == AtlasAuditMode.Server, error, check.Tables);
+        if (auditTable != null)
+            CheckAuditColumns(auditTable, error);
 
         CPAtlasApplicationConfig? form = null;
         try
@@ -298,7 +301,7 @@ public static class AtlasStartupCheck
             || t == typeof(decimal) || t == typeof(double) || t == typeof(float));
 
     /// <summary>
-    /// Warns about each app that shares an AuditTable but does not limit its History to its own RefType values.
+    /// Warns about each app that shares an AuditTable but does not limit its History to its own ReferenceType values.
     /// </summary>
     private static void CheckSharedAuditTables(IReadOnlyList<AtlasAppManifest> manifests, List<AtlasCheckItem> items)
     {
@@ -398,6 +401,24 @@ public static class AtlasStartupCheck
 
         foreach (string role in roles.Distinct(StringComparer.OrdinalIgnoreCase).Where(x => !known.Contains(x) && !x.StartsWith('~')))
             warning($"the role '{role}' in the rules or Permissions is not a role of the app.");
+    }
+
+    /// <summary>
+    /// Reports an error when the AuditTable has no ReferenceID or ReferenceType column.
+    /// </summary>
+    /// <remarks>
+    /// The writer skips a column that the table does not have. Without this check, each entry has no record ID.
+    /// </remarks>
+    private static void CheckAuditColumns(AtlasTable table, Action<string> error)
+    {
+        foreach (string column in new[] { AtlasAuditWriter.ReferenceIdColumn, AtlasAuditWriter.ReferenceTypeColumn }
+                     .Where(x => !table.HasColumn(x)))
+        {
+            string hint = table.HasColumn("RefID")
+                ? " The table has the old names RefID and RefType: rename them to ReferenceID and ReferenceType (for TTDV2, run sql/release-p1/045-ttdv2-audit-reference-columns.sql)."
+                : "";
+            error($"AuditTable '{table.FullName}' has no {column} column.{hint}");
+        }
     }
 
     private static AtlasTable? Table(string? name, string setting, bool required, Action<string> error, AtlasTableRegistry tables)

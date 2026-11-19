@@ -246,6 +246,7 @@ services.AddAtlasModule&lt;ConfigSectionService&gt;("PBSP", configFile: "PBSP.js
 <li>An updated History window can show <code>Old → Value</code> when <code>Old</code> is present.</li>
 <li>If the audit write fails, the save fails. The platform writes an error log. This removes DM-05.</li>
 <li>The current tables stay. <code>TTD.AuditLog</code> and <code>dbo.CDT_AuditLog</code> have no <code>RefType</code>. The platform writes <code>RefType</code> only when the column exists. No DDL change is necessary (DM-06).</li>
+<li>Decision (owner, 2026-11-19): the platform follows the target audit shape of 2026-11-18. The record columns are <code>ReferenceID</code> and <code>ReferenceType</code> (in place of <code>RefID</code> and <code>RefType</code>), and the index is <code>IX_AuditLog_ReferenceID</code>. <code>040</code> and <code>sql/05-new-app-template.sql</code> make these names. <code>045</code> renames the columns of an older <code>TTDV2.AuditLog</code>. <code>--atlas-check</code> refuses an audit table without <code>ReferenceID</code> or <code>ReferenceType</code>. The response field <code>RefID</code> and the manifest key <code>AuditRefTypes</code> do not change (stable names). See <code>INTEGRATION.md</code> B85.</li>
 </ul>
 <h3>6.7 Option lists from the database</h3>
 <p>Add the option provider <code>StoredProcedure</code> (module 1, 10.2). Thus a new app can read option data with no C# code:</p>

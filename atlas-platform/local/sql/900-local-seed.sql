@@ -77,7 +77,7 @@ BEGIN
     ('100500 - Black River Partners', '100500', 'Black River Partners', YEAR(GETDATE()) - 2, 'STMT_N', 'Old record (week not in the list)', '2024-03-03',
         60, 0, 0, 0, 0, 0, 0, 60, N'ttd.prep', N'ttd.owner', DATEADD(day, -400, GETUTCDATE()), N'ttd.owner', DATEADD(day, -390, GETUTCDATE()), 0);
 
-    INSERT INTO TTDV2.AuditLog (RefID, RefType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
+    INSERT INTO TTDV2.AuditLog (ReferenceID, ReferenceType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
     SELECT g.ID, 'TTDV2', u.DisplayName, g.CreatedBy, g.CreatedDate, N'[{"Name":"_Event","Value":"Create"}]'
     FROM TTDV2.General AS g
     LEFT JOIN dbo.CP_Atlas_User AS u ON u.LanID = g.CreatedBy;

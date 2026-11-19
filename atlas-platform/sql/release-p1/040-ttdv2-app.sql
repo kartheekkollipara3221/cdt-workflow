@@ -105,12 +105,12 @@ BEGIN TRY
                    WHERE object_id = OBJECT_ID(N'TTDV2.General') AND name = N'IX_General_ModifiedBy')
         EXEC(N'CREATE INDEX [IX_General_ModifiedBy] ON [TTDV2].[General] ([ModifiedBy]) WHERE [IsDeleted] = 0;');
 
-    -- 3. Audit table in the standard shape, plus CreatedByLanId. Dates are UTC.
+    -- 3. Audit table in the target shape (ReferenceID, ReferenceType), plus CreatedByLanId. Dates are UTC.
     IF OBJECT_ID(N'TTDV2.AuditLog', N'U') IS NULL
         EXEC(N'CREATE TABLE [TTDV2].[AuditLog] (
             [ID]             int IDENTITY(1,1) NOT NULL,
-            [RefID]          int            NULL,
-            [RefType]        varchar(50)    NULL,
+            [ReferenceID]    int            NULL,
+            [ReferenceType]  varchar(50)    NULL,
             [CreatedBy]      nvarchar(50)   NULL,
             [CreatedByLanId] nvarchar(50)   NULL,
             [CreatedDate]    datetime       NULL,
@@ -118,9 +118,11 @@ BEGIN TRY
             CONSTRAINT [PK_TTDV2_AuditLog] PRIMARY KEY CLUSTERED ([ID] ASC)
         );');
 
-    IF NOT EXISTS (SELECT 1 FROM sys.indexes
-                   WHERE object_id = OBJECT_ID(N'TTDV2.AuditLog') AND name = N'IX_AuditLog_RefID')
-        EXEC(N'CREATE INDEX [IX_AuditLog_RefID] ON [TTDV2].[AuditLog] ([RefID], [RefType]);');
+    -- A table from an older 040 has RefID and RefType. 045 renames these columns and the index.
+    IF COL_LENGTH(N'TTDV2.AuditLog', N'ReferenceID') IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM sys.indexes
+                       WHERE object_id = OBJECT_ID(N'TTDV2.AuditLog') AND name = N'IX_AuditLog_ReferenceID')
+        EXEC(N'CREATE INDEX [IX_AuditLog_ReferenceID] ON [TTDV2].[AuditLog] ([ReferenceID], [ReferenceType]);');
 
     -- No attachment table: release P1 has no attachments.
 

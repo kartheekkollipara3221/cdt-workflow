@@ -34,6 +34,12 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
     /// <summary>The name of the LogMessage item that holds the audit event.</summary>
     public const string EventName = "_Event";
 
+    /// <summary>The audit column that holds the ID of the record.</summary>
+    public const string ReferenceIdColumn = "ReferenceID";
+
+    /// <summary>The audit column that holds the app code of the record.</summary>
+    public const string ReferenceTypeColumn = "ReferenceType";
+
     /// <summary>Adds the entry to the platform context. The caller saves the context.</summary>
     /// <returns>False when the event is an Update with no change. Then the method adds nothing.</returns>
     public bool Add(AtlasAppManifest manifest, int refId, string auditEvent, IReadOnlyList<AtlasAuditChange> changes)
@@ -54,8 +60,8 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
         }));
 
         Dictionary<string, object?> entry = table.NewRecord();
-        Set(entry, table, "RefID", refId);
-        Set(entry, table, "RefType", manifest.Code);
+        Set(entry, table, ReferenceIdColumn, refId);
+        Set(entry, table, ReferenceTypeColumn, manifest.Code);
         Set(entry, table, "CreatedBy", user.DisplayName);
         Set(entry, table, "CreatedByLanId", user.LanId);
         Set(entry, table, "CreatedDate", manifest.AuditTime == AtlasAuditTime.Utc
@@ -73,12 +79,12 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
         AtlasTable table = AuditTable(manifest);
 
         IQueryable<Dictionary<string, object?>> query = context.Records(table.FullName).AsNoTracking()
-            .Where(x => EF.Property<int?>(x, "RefID") == refId);
-        if (manifest.AuditReadRefTypes() is { } refTypes && table.HasColumn("RefType"))
+            .Where(x => EF.Property<int?>(x, ReferenceIdColumn) == refId);
+        if (manifest.AuditReadRefTypes() is { } refTypes && table.HasColumn(ReferenceTypeColumn))
         {
             // In a shared audit table, record 42 of another app is not this record.
             List<string> values = [.. refTypes];
-            query = query.Where(x => values.Contains(EF.Property<string>(x, "RefType")));
+            query = query.Where(x => values.Contains(EF.Property<string>(x, ReferenceTypeColumn)));
         }
 
         List<Dictionary<string, object?>> rows = [.. query

@@ -119,7 +119,7 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
         Assert.Equal("Create", entry.Event);
         Assert.Equal("2026-10-21T10:00:00Z", entry.CreatedDateUtc);
         Assert.Equal("User t.prep", entry.CreatedBy);
-        Assert.Equal(Prep, await database.ScalarAsync($"SELECT CreatedByLanId FROM TTDV2.AuditLog WHERE RefID = {result.ID}"));
+        Assert.Equal(Prep, await database.ScalarAsync($"SELECT CreatedByLanId FROM TTDV2.AuditLog WHERE ReferenceID = {result.ID}"));
     }
 
     [Theory]
@@ -390,10 +390,10 @@ public sealed class Ttdv2SectionTests(SqlServerDatabaseFixture database) : IAsyn
     [Fact]
     public async Task History_reads_only_the_AuditRefTypes_of_the_app()
     {
-        // Review DA-03: a shared audit table has entries of other apps with the same RefID.
+        // Review DA-03: a shared audit table has entries of other apps with the same ReferenceID.
         int id = await InsertAsync(createdBy: Owner, taxPreparer: Owner);
         await database.ScalarAsync($"""
-            INSERT INTO TTDV2.AuditLog (RefID, RefType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
+            INSERT INTO TTDV2.AuditLog (ReferenceID, ReferenceType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
             VALUES ({id}, 'TTD', 'Old', 'old', '2026-01-01', '[]'), ({id}, 'OTHERAPP', 'Other', 'other', '2026-01-02', '[]');
             """);
 

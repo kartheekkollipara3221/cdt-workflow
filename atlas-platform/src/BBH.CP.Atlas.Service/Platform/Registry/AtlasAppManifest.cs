@@ -53,15 +53,15 @@ public sealed class AtlasAppManifest
     public string? AttachmentTable { get; set; }
 
     /// <summary>
-    /// The RefType values that History reads from the AuditTable, for example ["TTDV2", "TTD"].
+    /// The ReferenceType values that History reads from the AuditTable, for example ["TTDV2", "TTD"].
     /// </summary>
     /// <remarks>
-    /// When this is null and Parent is set, History reads only RefType = Code (a shared family audit table).
+    /// When this is null and Parent is set, History reads only ReferenceType = Code (a shared family audit table).
     /// When this is null and Parent is not set, History reads all entries of the record.
     /// </remarks>
     public List<string>? AuditRefTypes { get; set; }
 
-    /// <summary>Returns the RefType filter of the History read, or null for no filter.</summary>
+    /// <summary>Returns the ReferenceType filter of the History read, or null for no filter.</summary>
     public IReadOnlyList<string>? AuditReadRefTypes() =>
         AuditRefTypes is { Count: > 0 } list ? list : Parent != null ? [Code] : null;
 

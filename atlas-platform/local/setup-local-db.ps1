@@ -33,8 +33,8 @@ if ($LASTEXITCODE -ne 0) { throw "Could not create $Database." }
 Write-Host "Core tables (local copy of the target dbo.CP_Atlas_* tables)"
 Invoke-Sql (Join-Path $local "000-cp-atlas-core-tables.sql") $Database
 
-Write-Host "Release P1 scripts 020-040"
-foreach ($name in @("020-script-log.sql", "030-active-user-roles-view.sql", "040-ttdv2-app.sql")) {
+Write-Host "Release P1 scripts 020-045"
+foreach ($name in @("020-script-log.sql", "030-active-user-roles-view.sql", "040-ttdv2-app.sql", "045-ttdv2-audit-reference-columns.sql")) {
     $source = Join-Path $release $name
     $temp = Join-Path ([IO.Path]::GetTempPath()) ("atlas-" + $name)
     (Get-Content -Raw $source).Replace("<RUN_BY>", $lanId) | Set-Content -Encoding utf8 $temp

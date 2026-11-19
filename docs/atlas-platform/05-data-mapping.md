@@ -190,6 +190,7 @@ Convert by the SQL column type, with `CultureInfo.InvariantCulture`. Use one wir
 - An updated History window can show `Old → Value` when `Old` is present.
 - If the audit write fails, the save fails. The platform writes an error log. This removes DM-05.
 - The current tables stay. `TTD.AuditLog` and `dbo.CDT_AuditLog` have no `RefType`. The platform writes `RefType` only when the column exists. No DDL change is necessary (DM-06).
+- Decision (owner, 2026-11-19): the platform follows the target audit shape of 2026-11-18. The record columns are `ReferenceID` and `ReferenceType` (in place of `RefID` and `RefType`), and the index is `IX_AuditLog_ReferenceID`. `040` and `sql/05-new-app-template.sql` make these names. `045` renames the columns of an older `TTDV2.AuditLog`. `--atlas-check` refuses an audit table without `ReferenceID` or `ReferenceType`. The response field `RefID` and the manifest key `AuditRefTypes` do not change (stable names). See `INTEGRATION.md` B85.
 
 ### 6.7 Option lists from the database
 
