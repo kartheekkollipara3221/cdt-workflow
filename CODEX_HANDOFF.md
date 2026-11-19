@@ -50,15 +50,16 @@ The dated history entries below are unchanged, newest first: platform and target
   are committed (c729452).
 
 ### Pending
-1 Module 8 decisions (asked 2026-11-17): reuse v1/Download with a platform line (needs F2 target change), removal at once
-  through v1/RemoveAttachment, IIS request limit.
+1 DONE 2026-11-18 (a6ed759): module 8 decisions in 08-attachments.md section 10: new platform controller
+  GET v1/Attachment/{appCode}/{id} (no target file change; F2 avoided), removal on save in the ManagePage transaction
+  (no remove route), IIS default kept + platform limit 25 MB of new files per save.
 2 F1: platform audit column names for new apps (RefID vs ReferenceID; options: keep RefID, or manifest column names
   with RefID default) and the 050 fix for the rename (stop-and-ask).
 3 P2 app name and the filled-in template.
 4 PENDING_DECISIONS.html: Q01 bug list, Q07/Q08 before 050/090 run anywhere, the rest as before (Q02-Q51).
 
 ### Next
-1. Ask the open points one at a time, in this order: module 8 decisions (with F2), then F1 (audit names, 050).
+1. Ask the open point F1 (audit column names for new apps, then the 050 fix); one question at a time.
 2. When the P2 template arrives: gap report, then code module 8 then module 10 (stop-and-ask) for section forms, plus
    the `richtext` control. Platform gates, package rebuild, INTEGRATION.md rows for the target changes.
 3. After P2: the architecture review page.
@@ -157,7 +158,7 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## Next-session prompt
 "Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
-section A Pending, one question at a time: module 8 decisions (with F2), then F1 (audit names, 050). Keep the broad
+section A Pending, one question at a time: F1 (audit names, 050). Keep the broad
 goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
 nothing breaks the existing system."
 
