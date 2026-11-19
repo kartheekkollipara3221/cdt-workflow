@@ -193,14 +193,15 @@ BEGIN TRY
 
     -- 2e. Audit entries. RefType = 'TTD' marks a copied entry. The old LogMessage format
     --     (Name/Value) is kept; the History window reads it (spec 09, 4.2).
+    --     TTD.AuditLog names the record column ReferenceID (the target renamed RefID, 2026-11).
     INSERT INTO TTDV2.AuditLog (RefID, RefType, CreatedBy, CreatedByLanId, CreatedDate, LogMessage)
-    SELECT a.RefID, 'TTD', a.CreatedBy, m.LanId,
+    SELECT a.ReferenceID, 'TTD', a.CreatedBy, m.LanId,
            CAST((CAST(a.CreatedDate AS datetime2) AT TIME ZONE @ServerTimeZone) AT TIME ZONE 'UTC' AS datetime),
            a.LogMessage
     FROM TTD.AuditLog AS a
     LEFT JOIN #NameMap AS m ON m.DisplayName = LTRIM(RTRIM(a.CreatedBy))
-    WHERE a.RefID IN (SELECT ID FROM TTDV2.General)
-      AND NOT EXISTS (SELECT 1 FROM TTDV2.AuditLog AS x WHERE x.RefID = a.RefID AND x.RefType = 'TTD');
+    WHERE a.ReferenceID IN (SELECT ID FROM TTDV2.General)
+      AND NOT EXISTS (SELECT 1 FROM TTDV2.AuditLog AS x WHERE x.RefID = a.ReferenceID AND x.RefType = 'TTD');
 
     -- Log this script in the same transaction: the log says "applied" only when the copy is committed.
     IF OBJECT_ID(N'dbo.CP_Atlas_ScriptLog', N'U') IS NOT NULL

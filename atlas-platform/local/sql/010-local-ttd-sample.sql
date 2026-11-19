@@ -1,5 +1,6 @@
 -- LOCAL ONLY: do not run at the target. The target database already has the TTD schema.
--- Makes TTD.General and TTD.AuditLog in the target shape (CP_Sharepoint.txt, 2026-10-06), the TTD app row and roles,
+-- Makes TTD.General and TTD.AuditLog in the target shape (TTD.General: CP_Sharepoint.txt, 2026-10-06; TTD.AuditLog:
+-- target schema of 2026-11-18, ReferenceID and ReferenceType in place of RefID), the TTD app row and roles,
 -- and sample rows in the TTD text format (display names, local dates). Used by the copy-script test (spec 12, 11.2 C10).
 SET NOCOUNT ON;
 SET ANSI_NULLS ON;
@@ -10,11 +11,19 @@ IF SCHEMA_ID(N'TTD') IS NULL EXEC(N'CREATE SCHEMA [TTD]');
 IF OBJECT_ID(N'TTD.AuditLog', N'U') IS NULL
 CREATE TABLE [TTD].[AuditLog](
     [ID] [int] IDENTITY(1,1) NOT NULL,
-    [RefID] [int] NULL,
+    [ReferenceID] [int] NULL,
     [CreatedBy] [nvarchar](50) NULL,
     [CreatedDate] [datetime] NULL,
     [LogMessage] [nvarchar](max) NULL,
+    [ReferenceType] [varchar](50) NULL,
     CONSTRAINT [PK_TTD_AuditLog] PRIMARY KEY CLUSTERED ([ID] ASC));
+
+-- A local database made before 2026-11-18 has the old column name: rename it as the target did.
+IF COL_LENGTH(N'TTD.AuditLog', N'RefID') IS NOT NULL AND COL_LENGTH(N'TTD.AuditLog', N'ReferenceID') IS NULL
+    EXEC sp_rename N'TTD.AuditLog.RefID', N'ReferenceID', N'COLUMN';
+IF COL_LENGTH(N'TTD.AuditLog', N'ReferenceType') IS NULL
+    ALTER TABLE [TTD].[AuditLog] ADD [ReferenceType] [varchar](50) NULL;
+GO
 
 IF OBJECT_ID(N'TTD.General', N'U') IS NULL
 CREATE TABLE [TTD].[General](
@@ -65,7 +74,7 @@ BEGIN
         '15', NULL, NULL, NULL, NULL, NULL, NULL, '15', 'Pat Preparer', 'system', '2024-12-30 12:00:00', NULL, NULL, 1);
     SET IDENTITY_INSERT TTD.General OFF;
 
-    INSERT INTO TTD.AuditLog (RefID, CreatedBy, CreatedDate, LogMessage) VALUES
+    INSERT INTO TTD.AuditLog (ReferenceID, CreatedBy, CreatedDate, LogMessage) VALUES
     (10001, 'Pat Preparer', '2025-03-03 09:15:00', N'[{"Name":"Category","Value":"TAX_N"}]'),
     (10002, 'Olive Owner', '2026-01-05 18:30:00', N'[{"Name":"Category","Value":"STMT_N"}]'),
     (10002, 'Pat Preparer', '2026-01-06 08:00:00', N'[{"Name":"WeeklyTotal","Value":"999"}]');
