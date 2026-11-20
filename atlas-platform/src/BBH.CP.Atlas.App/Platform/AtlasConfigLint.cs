@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Application;
+using BBH.CP.Atlas.Service.Platform.Attachments;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Sections;
 
@@ -178,6 +179,7 @@ public static partial class AtlasConfigLint
                 error($"the Pattern of '{control.Name}' is not a valid regular expression.");
             if (control.Validator?.Step is <= 0)
                 error($"the Step of '{control.Name}' must be more than 0.");
+            FilePickerLimits(control, error);
         }
     }
 
@@ -247,6 +249,18 @@ public static partial class AtlasConfigLint
             else if (!ClientActionTypes.Contains(type, StringComparer.OrdinalIgnoreCase))
                 warning($"the button '{button.Name}' has the action '{type}', which the platform form does not do yet (it closes the form).");
         }
+    }
+
+    /// <summary>Checks the file limits of a control: they can only be lower than the platform limits.</summary>
+    private static void FilePickerLimits(CPApplicationControl control, Action<string> error)
+    {
+        foreach (string item in control.Accept ?? [])
+            if (!AtlasAttachmentRules.DefaultAccept.Contains(AtlasAttachmentRules.Extension(item), StringComparer.OrdinalIgnoreCase))
+                error($"the Accept of '{control.Name}' has '{item}', which is not in the platform list ({string.Join(", ", AtlasAttachmentRules.DefaultAccept)}).");
+        if (control.MaxSizeMb is { } mb && (mb <= 0 || mb > AtlasAttachmentRules.MaxFileMb))
+            error($"the MaxSizeMb of '{control.Name}' must be 1 to {AtlasAttachmentRules.MaxFileMb}.");
+        if (control.MaxFiles is <= 0)
+            error($"the MaxFiles of '{control.Name}' must be more than 0.");
     }
 
     private static bool Compiles(string pattern)

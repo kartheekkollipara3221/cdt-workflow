@@ -17,6 +17,10 @@ public static class AtlasAuditEvents
     public const string Update = "Update";
     /// <summary>A removed record.</summary>
     public const string Delete = "Delete";
+    /// <summary>A new file of a record. The change names the file picker and gives the file name as Value.</summary>
+    public const string AttachmentAdd = "AttachmentAdd";
+    /// <summary>A removed file of a record. The change names the file picker and gives the file name as Old.</summary>
+    public const string AttachmentRemove = "AttachmentRemove";
 }
 
 /// <summary>One changed field. Old and Value are wire values; "***" for a field with Audit = false.</summary>

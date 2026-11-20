@@ -53,6 +53,11 @@ public sealed class AtlasAppManifest
     public string? AttachmentTable { get; set; }
 
     /// <summary>
+    /// The real column names of the attachment table, when they are not the platform names. Null = the platform names.
+    /// </summary>
+    public AtlasAttachmentColumns? AttachmentColumns { get; set; }
+
+    /// <summary>
     /// The tables that the Table option provider of this app can read ("Schema.Name").
     /// </summary>
     /// <remarks>The start-up reads their columns. The platform never writes to a lookup table.</remarks>

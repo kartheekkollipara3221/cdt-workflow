@@ -91,6 +91,11 @@ const components = {
   Footer: 'footer',
 };
 for (const [from, to] of Object.entries(components)) copyDir(src('Components', from), dest('components', to));
+// The file picker core is in Components/file-picker/file-picker; the library has it in file-picker/file-picker-core.
+copyDir(src('Components', 'file-picker', 'file-picker'), dest('components', 'file-picker', 'file-picker-core'));
+// The library build has no strict property check: isDisabled has no initializer.
+copyTxt(src('Components', 'file-picker', 'file-picker', 'file-picker-core.component.ts.txt'),
+  dest('components', 'file-picker', 'file-picker-core', 'file-picker-core.component.ts'), (t) => t.replace('isDisabled: boolean;', 'isDisabled!: boolean;'));
 // Transcription gaps: the template binds Date[] | undefined to a Date[] input; dialog.component.scss is missing.
 copyTxt(src('Components', 'data-picker', 'date-picker.component.html.txt'), dest('components', 'date-picker', 'date-picker.component.html'),
   (t) => t.replace('[disabledDates]="disabledDates"', '[disabledDates]="disabledDates ?? []"'));
@@ -217,6 +222,7 @@ export * from './src/components/checkbox/checkbox.component';
 export * from './src/components/control-errors/control-errors.component';
 export * from './src/components/date-picker/date-picker.component';
 export * from './src/components/dialog/dialog.component';
+export * from './src/components/file-picker/file-picker-core/file-picker-core.component';
 export * from './src/components/footer/footer.component';
 export * from './src/components/input/input.component';
 export * from './src/components/input/input-label/input-label.component';

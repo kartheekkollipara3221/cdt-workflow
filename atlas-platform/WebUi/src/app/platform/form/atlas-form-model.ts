@@ -4,6 +4,7 @@ import { FormControl, FormGroup, FormRecord } from '@angular/forms';
 import { CPApplicationControl, CPApplicationSection, CPPageOutput } from '../atlas-models';
 import { isNil, parseLocalDay } from '../atlas-dates';
 import { atlasValidators } from './atlas-validators';
+import { atlasFileValidator, emptyFiles, isFilePicker } from './atlas-files';
 
 /** The grid BindMode that binds one grid row to form fields. */
 export const SINGLE_ROW_FIELDS = 'SingleRowFields';
@@ -190,6 +191,12 @@ export function buildFormGroup(section: CPApplicationSection): AtlasFormRecord {
       group.addControl(control.Name, rowGroup);
     } else if (control.Grid) {
       continue; // Release P1 supports only SingleRowFields grids.
+    } else if (isFilePicker(control)) {
+      // The value holds the new files and the removed file IDs. The stored files are in control.Files.
+      group.addControl(
+        control.Name,
+        new FormControl<unknown>({ value: emptyFiles(), disabled: !!control.Disabled }, atlasFileValidator(control, !!control.Validator?.Required)),
+      );
     } else {
       group.addControl(
         control.Name,
@@ -208,6 +215,7 @@ export function buildFormGroup(section: CPApplicationSection): AtlasFormRecord {
  *
  * Contains only the visible and enabled fields. A SingleRowFields grid gives one output.
  * Its value is a JSON list of one row with the enabled cells, as the current client sends it.
+ * A file picker gives no output: its files go as file parts (see atlas-files.ts).
  */
 export function buildOutputs(section: CPApplicationSection, group: FormGroup, visible: (name: string) => boolean): CPPageOutput[] {
   const outputs: CPPageOutput[] = [];
@@ -216,7 +224,7 @@ export function buildOutputs(section: CPApplicationSection, group: FormGroup, vi
       continue;
     }
     const item = group.get(control.Name);
-    if (!item || item.disabled) {
+    if (!item || item.disabled || isFilePicker(control)) {
       continue;
     }
     if (item instanceof FormGroup) {

@@ -1,7 +1,7 @@
 {
   // ClientInflows manifest (module 25, 5.1). Environment overrides: AppSettings:Modules:CFPINFLOW:*.
   // LookupTables: the account list (Table option provider) reads AIN.AccountInventory. The platform never writes it.
-  // The attachment table comes with its build step.
+  // AttachmentTable: the files of the two file pickers. Type holds the control name, InflowId the record ID.
   "Code": "CFPINFLOW",
   "Name": "Client Flows Portal - Inflow",
   "FormType": "FORM",
@@ -10,7 +10,8 @@
   "Dashboard": "CFPINFLOW.Dashboard.json",
   "Table": "CFP.Inflow",
   "AuditTable": "CFP.AuditLog",
-  "AttachmentTable": null,
+  "AttachmentTable": "CFP.InflowAttachment",
+  "AttachmentColumns": { "RecordId": "InflowId", "ControlName": "Type" },
   "LookupTables": [ "AIN.AccountInventory" ],
   "Service": null,
   "AccessMode": "Enforce",

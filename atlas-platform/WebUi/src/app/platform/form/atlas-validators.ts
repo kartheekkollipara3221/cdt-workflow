@@ -152,6 +152,10 @@ export function errorCode(errors: ValidationErrors | null): string | null {
   const order: [string, string][] = [
     ['required', 'Required'],
     ['mustBeTrue', 'MustBeTrue'],
+    ['fileType', 'FileType'],
+    ['fileEmpty', 'FileEmpty'],
+    ['fileSize', 'FileSize'],
+    ['maxFiles', 'MaxFiles'],
     ['maxlength', 'MaxLength'],
     ['minlength', 'MinLength'],
     ['pattern', 'Pattern'],
@@ -184,6 +188,14 @@ export function errorText(errors: ValidationErrors | null, label: string, valida
       return `${label} is required.`;
     case 'MustBeTrue':
       return `Select ${label} before you submit.`;
+    case 'FileType':
+      return `${label}: the type of the file '${errors['fileType'].file}' is not permitted. Permitted types: ${errors['fileType'].accept.join(', ')}.`;
+    case 'FileEmpty':
+      return `${label}: the file '${errors['fileEmpty'].file}' is empty.`;
+    case 'FileSize':
+      return `${label}: the file '${errors['fileSize'].file}' is larger than ${errors['fileSize'].mb} MB.`;
+    case 'MaxFiles':
+      return errors['maxFiles'].max === 1 ? `${label} can have only one file.` : `${label} can have at most ${errors['maxFiles'].max} files.`;
     case 'MaxLength':
       return `${label} can have at most ${errors['maxlength'].requiredLength} characters.`;
     case 'MinLength':

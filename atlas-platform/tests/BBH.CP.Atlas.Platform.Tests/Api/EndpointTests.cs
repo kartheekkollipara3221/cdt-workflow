@@ -24,6 +24,7 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
     {
         await database.SeedUserAsync("api.owner", "Api Owner", "TTDV2", "Owner");
         await database.SeedUserAsync("api.read", "Api Reader", "TTDV2", "Read");
+        await database.SeedUserAsync("api.owner", "Api Owner", "CFPINFLOW", "Write");
         // A row of an app that is not registered: v1/Application hides it (spec 07, 4.6).
         await database.ScalarAsync("""
             IF NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_Application WHERE Code = 'ZZNOREG')
@@ -64,6 +65,38 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
         _client.Dispose();
         await _app.StopAsync();
         await _app.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task A_file_saved_with_ManagePage_downloads_as_an_attachment_with_nosniff()
+    {
+        byte[] pdf = "%PDF-1.7 endpoint test"u8.ToArray();
+        using MultipartFormDataContent form = new();
+        form.Add(new ByteArrayContent(pdf), "files", "FlowAttachments#$#client instruction.pdf");
+        form.Add(new StringContent("""
+            {"AppCode":"CFPINFLOW","ID":0,"Outputs":[{"Name":"AccountNumber","Value":"700100"},{"Name":"InvestmentType","Value":"Equity"},
+             {"Name":"Amount","Value":"10"},{"Name":"InflowDate","Value":"2026-10-20"},{"Name":"FlowConfirm","Value":"true"}]}
+            """), "input");
+        using HttpResponseMessage saved = await _client.PostAsync("v1/ManagePage", form);
+        saved.EnsureSuccessStatusCode();
+        int id = JsonDocument.Parse(await saved.Content.ReadAsStringAsync()).RootElement.GetProperty("ID").GetInt32();
+        Assert.True(id > 0, await saved.Content.ReadAsStringAsync());
+        int fileId = Convert.ToInt32(await database.ScalarAsync($"SELECT ID FROM CFP.InflowAttachment WHERE InflowId = {id}"),
+            System.Globalization.CultureInfo.InvariantCulture);
+
+        using HttpResponseMessage download = await _client.GetAsync($"v1/Attachment/CFPINFLOW/{fileId}");
+
+        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+        Assert.Equal("application/pdf", download.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("attachment", download.Content.Headers.ContentDisposition?.DispositionType);
+        Assert.Equal("client instruction.pdf", download.Content.Headers.ContentDisposition?.FileNameStar);
+        Assert.Equal("nosniff", string.Join(",", download.Headers.GetValues("X-Content-Type-Options")));
+        Assert.Equal(pdf, await download.Content.ReadAsByteArrayAsync());
+
+        using HttpResponseMessage missing = await _client.GetAsync($"v1/Attachment/CFPINFLOW/{fileId + 100000}");
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        using HttpResponseMessage notAnApp = await _client.GetAsync($"v1/Attachment/NOAPP/{fileId}");
+        Assert.Equal(HttpStatusCode.NotFound, notAnApp.StatusCode);
     }
 
     [Fact]

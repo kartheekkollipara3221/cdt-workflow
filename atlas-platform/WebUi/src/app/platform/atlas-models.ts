@@ -98,6 +98,26 @@ export interface CPApplicationControl {
   Grid?: CPGrid | null;
   ChildControls?: CPApplicationControl[] | null;
   Effects?: CPEffect[] | null;
+  /** The stored files of a file picker. */
+  Files?: CPAttachment[] | null;
+  /** The file types of a file picker, for example ['.pdf']. Null = the platform list. */
+  Accept?: string[] | null;
+  /** The largest file of a file picker in MB. Null = the platform limit. */
+  MaxSizeMb?: number | null;
+  /** The largest number of files of a file picker. Null = no limit. */
+  MaxFiles?: number | null;
+}
+
+/** A stored file of a file picker. The load gives no content and no URL. */
+export interface CPAttachment {
+  ID?: string | null;
+  Name?: string | null;
+  /** The control name of the file picker. */
+  Type?: string | null;
+  Disabled?: boolean;
+  SizeBytes?: number | null;
+  CreatedBy?: string | null;
+  CreatedDate?: string | null;
 }
 
 /** The action of a button. */
@@ -165,6 +185,8 @@ export interface CPAtlasPage {
   Version?: string | null;
   Outputs?: CPPageOutput[] | null;
   Errors?: CPPageError[] | null;
+  /** The IDs of the stored files that the save removes. */
+  RemovedAttachmentIds?: number[] | null;
 }
 
 /** A grid column of a dashboard tab. */

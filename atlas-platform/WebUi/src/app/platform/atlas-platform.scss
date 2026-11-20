@@ -254,6 +254,28 @@ atlas-dashboard {
     color: variables.$status-red;
   }
 
+  // The file list of a file picker, as the CDT step page (cp-atlas-steppage.scss).
+  .atlas-files {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    .link-button-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-active {
+      color: red;
+    }
+
+    .atlas-file-note {
+      font-style: italic;
+      color: variables.$status-red;
+    }
+  }
+
   .atlas-radio-group {
     display: flex;
     flex-wrap: wrap;

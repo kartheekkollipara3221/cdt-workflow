@@ -14,6 +14,7 @@ import { KeyValuePipe, NgClass, TitleCasePipe, UpperCasePipe } from '@angular/co
 import {
   Component,
   Directive,
+  ElementRef,
   EventEmitter,
   HostBinding,
   HostListener,
@@ -21,6 +22,7 @@ import {
   Input,
   OnInit,
   Output,
+  ViewChild,
   forwardRef,
   inject,
 } from '@angular/core';
@@ -430,6 +432,98 @@ export class LoaderComponent {
 
   @Input() set color(value: 'white' | 'black') {
     this._class = value === 'white' ? 'loader--white' : 'loader--black';
+  }
+}
+
+/**
+ * Real: src/components/file-picker/file-picker-core. The template, inputs and outputs of the real component.
+ *
+ * It is not a form control: the host keeps the files. It emits the selected or dropped files.
+ * The real component uses uuid for inputId; the stand-in uses newId.
+ */
+@Component({
+  selector: 'pbdev-file-picker-core',
+  imports: [NgClass, LoaderComponent, ControlErrorsComponent],
+  template: `<div class="left">
+    <div class="icon-text">
+      @if (uploading) {
+        <pbdev-loader variant="loader-1" [widthRem]="1.5" />
+        <span class="label label--file">Uploading {{ fileName }}...</span>
+      } @else {
+        @if (showError) {
+          <i class="pbdev_icon-upload"></i>
+          @if (errors) {
+            <pbdev-control-errors [errors]="errors" [customMessages]="errorMessages" />
+          }
+        } @else {
+          <i [class]="fileName ? 'pbdev_icon-attachment' : 'pbdev_icon-upload'"></i>
+          <span class="label" [title]="fileName ?? ''" [ngClass]="{ 'font-bold': fileName, 'label--file': fileName }">{{ fileName ?? label }}</span>
+        }
+      }
+    </div>
+    <div class="message"><ng-content /></div>
+  </div>
+  <div class="right">
+    <button class="btn" type="button" [disabled]="uploading || isDisabled"
+      [ngClass]="{ 'btn--primary': !fileName || showError, 'btn--outline': fileName && !showError }" (click)="openFilePicker()">
+      {{ fileName ? 'Replace' : buttonText }}
+    </button>
+  </div>
+  @if (isDraggingOver) {
+    <div class="dragging-overlay" (dragleave)="isDraggingOver = false">
+      <i class="pbdev_icon-upload"></i>
+      <span>Drop file here</span>
+    </div>
+  }
+  <input #inputSelect type="file" [hidden]="true" [disabled]="isDisabled" [id]="inputId" [accept]="accept" [multiple]="multiple"
+    (change)="onFileSelect($event)" (cancel)="touch()" />`,
+})
+export class FilePickerCoreComponent {
+  @ViewChild('inputSelect') inputRef!: ElementRef<HTMLInputElement>;
+  @Input() fileName?: string;
+  @Input({ transform: (value: string | undefined | null) => value ?? 'Choose a file or drag it here' }) label = 'Choose a file or drag it here';
+  @Input({ transform: (value: string | undefined | null) => value ?? 'Upload' }) buttonText = 'Upload';
+  @Input({ transform: (value: boolean | undefined | null) => !!value }) uploading = false;
+  @Input({ transform: (value: boolean | undefined | null) => !!value }) multiple = false;
+  @Input({ transform: (value: boolean | undefined | null) => !!value }) @HostBinding('class.error') showError = false;
+  @Input() errors?: ValidationErrors | null;
+  @Input() errorMessages?: Record<string, string>;
+  @Input() accept?: string;
+  @Input({ transform: (value: boolean | undefined) => !!value }) @HostBinding('class.disabled') isDisabled = false;
+  @HostBinding('class.dragging-overlay-showing') isDraggingOver = false;
+  @Output() filesDrop = new EventEmitter<File[]>();
+  @Output() filesSelect = new EventEmitter<File[]>();
+  @Output() touched = new EventEmitter<void>();
+  inputId: string = newId();
+
+  openFilePicker(): void {
+    this.inputRef?.nativeElement.click();
+  }
+
+  onFileSelect(event: Event): void {
+    const filesList = (event.target as HTMLInputElement).files;
+    if (!filesList?.length) return;
+    this.filesSelect.emit(Array.from(filesList));
+    this.inputRef.nativeElement.value = '';
+  }
+
+  touch(): void {
+    this.touched.emit();
+  }
+
+  @HostListener('dragover', ['$event'])
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    this.isDraggingOver = true;
+  }
+
+  @HostListener('drop', ['$event'])
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver = false;
+    if (!event.dataTransfer?.files.length) return;
+    this.filesDrop.emit(Array.from(event.dataTransfer.files));
   }
 }
 

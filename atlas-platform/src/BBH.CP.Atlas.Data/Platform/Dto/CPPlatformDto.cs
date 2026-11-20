@@ -60,6 +60,31 @@ namespace BBH.CP.Atlas.Data.DTO
 
         /// <summary>False: the audit writes "***" for this field. Null = audited.</summary>
         public bool? Audit { get; set; }
+
+        /// <summary>
+        /// The file extensions that a file picker accepts, for example [".pdf", ".msg"]. Null = the platform list.
+        /// </summary>
+        /// <remarks>The list can only be shorter than the platform list.</remarks>
+        public List<string>? Accept { get; set; }
+
+        /// <summary>The largest file in MB for a file picker. Null = the platform limit. It cannot be more.</summary>
+        public int? MaxSizeMb { get; set; }
+
+        /// <summary>The largest number of files of a file picker after a save. Null = no limit.</summary>
+        public int? MaxFiles { get; set; }
+    }
+
+    /// <summary>The platform data of a stored file of a file picker.</summary>
+    public partial class CPAttachment
+    {
+        /// <summary>The size of the file in bytes, before compression.</summary>
+        public long? SizeBytes { get; set; }
+
+        /// <summary>The display name of the person who added the file.</summary>
+        public string? CreatedBy { get; set; }
+
+        /// <summary>The time when the file was added, in the wire format of the app.</summary>
+        public string? CreatedDate { get; set; }
     }
 
     /// <summary>The platform checks of a control value.</summary>
@@ -166,6 +191,11 @@ namespace BBH.CP.Atlas.Data.DTO
 
         /// <summary>Save errors. On error, ID = 0 and the HTTP status stays 200.</summary>
         public List<CPPageError>? Errors { get; set; }
+
+        /// <summary>
+        /// The IDs of the stored files that the save removes. Each ID must be a file of this record.
+        /// </summary>
+        public List<int>? RemovedAttachmentIds { get; set; }
     }
 
     /// <summary>The platform data of an audit log row.</summary>

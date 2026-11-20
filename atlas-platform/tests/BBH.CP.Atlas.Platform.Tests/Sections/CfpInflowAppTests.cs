@@ -3,6 +3,7 @@ using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Platform.Tests.Data;
 using BBH.CP.Atlas.Service.Application;
 using BBH.CP.Atlas.Service.Platform;
+using BBH.CP.Atlas.Service.Platform.Attachments;
 using BBH.CP.Atlas.Service.Platform.Options;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
@@ -17,7 +18,7 @@ namespace BBH.CP.Atlas.Platform.Tests.Sections;
 /// The ClientInflows app (CFPINFLOW, module 25) with the real app files of the Config folder on the release P2 tables:
 /// the save, the dashboard menus and the Add button (build step 1); the AIN account list, the data-only target RMCC,
 /// the effects rule and the saved option rule (build step 2); the state in the rules, MustBeTrue and the one submit
-/// button with the steps by state (build step 3). Own database (the P2 scripts change tables).
+/// button with the steps by state (build step 3); the files of the two file pickers (build step 4). Own database (the P2 scripts change tables).
 /// </summary>
 /// <remarks>
 /// The engine writes WorkflowState from build step 6. Until then the tests set the state by SQL.
@@ -41,7 +42,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         await _db.SeedUserAsync(Reader, "Rob Reader", App, "Read");
         await _db.ScalarAsync("UPDATE AIN.AccountInventory SET RMCC = 'Casey Copy;Riley Manager' WHERE AccountNumber = '700100';");
         await using (SqlConnection connection = new(_db.ConnectionString))
-            await new AtlasColumnMetadataReader().LoadAsync(connection, _registry, ["CFP.Inflow", "CFP.AuditLog", "AIN.AccountInventory"]);
+            await new AtlasColumnMetadataReader().LoadAsync(connection, _registry, ["CFP.Inflow", "CFP.AuditLog", "CFP.InflowAttachment", "AIN.AccountInventory"]);
         _harness = new SectionHarness(_db);
     }
 
@@ -54,7 +55,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task A_Write_user_saves_a_new_record_with_the_default_and_the_account_values()
     {
-        CPAtlasPage result = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        CPAtlasPage result = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
 
         AssertSaved(result);
         Assert.Equal("700100|Equity|1250000.5000|2026-10-20|c.write|1|c.write|0", await _db.ScalarAsync($"""
@@ -62,7 +63,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
                              FlowSubmittedBy, CAST(FlowConfirm AS int), CreatedBy, CAST(ISNULL(IsDeleted, 0) AS int))
             FROM CFP.Inflow WHERE ID = {result.ID}
             """));
-        Assert.Equal(1, await _db.ScalarAsync($"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {result.ID}"));
+        Assert.Equal(2, await _db.ScalarAsync($"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {result.ID}")); // Create and AttachmentAdd
     }
 
     [Fact]
@@ -119,7 +120,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task A_Read_user_opens_a_record_read_only()
     {
-        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
         AssertSaved(saved);
 
         CPApplicationSection section = Svc(Reader, CfpRoles.Read).LoadPage(new CPAtlasPage { AppCode = App, ID = saved.ID });
@@ -155,7 +156,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         CPAtlasPage input = NewInput();
         input.Outputs!.Add(new CPPageOutput { Name = "AccountName", Value = "HACKED" }); // a server-set field: not used
 
-        CPAtlasPage result = Svc(Writer, CfpRoles.Write).SavePage(input, NoFiles);
+        CPAtlasPage result = Svc(Writer, CfpRoles.Write).SavePage(input, FlowFile());
 
         AssertSaved(result);
         Assert.Equal("Harbor Family Trust|S-700100|Riley Manager|Custodian One|Casey Copy;Riley Manager", await _db.ScalarAsync(
@@ -166,7 +167,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         // RMCC is not a field of the form, so a client value for it refuses the save.
         CPAtlasPage probe = NewInput();
         probe.Outputs!.Add(new CPPageOutput { Name = "RMCC", Value = "Mallory" });
-        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(probe, NoFiles);
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(probe, FlowFile());
         Assert.Equal(0, refused.ID);
         Assert.Contains(refused.Errors!, x => x.Field == "RMCC");
     }
@@ -174,7 +175,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task A_changed_AIN_row_changes_the_record_only_when_the_user_can_change_the_account()
     {
-        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
         AssertSaved(saved);
         await SetStateAsync(saved.ID, "Draft");
         await _db.ScalarAsync("UPDATE AIN.AccountInventory SET RelationshipManager = 'Bob Ray', RMCC = 'Bob Ray' WHERE AccountNumber = '700100';");
@@ -201,7 +202,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task A_user_who_cannot_change_the_account_gets_only_the_saved_option_with_no_Data()
     {
-        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
         AssertSaved(saved);
         await SetStateAsync(saved.ID, "Draft");
 
@@ -266,7 +267,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         input.Outputs!.RemoveAll(x => x.Name == "FlowConfirm");
         input.Outputs.Add(new CPPageOutput { Name = "FlowConfirm", Value = "false" });
 
-        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, NoFiles);
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, FlowFile());
 
         Assert.Equal(0, refused.ID);
         CPPageError error = Assert.Single(refused.Errors!);
@@ -274,7 +275,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Equal("Select I confirm that the information above is correct. before you submit.", error.Message);
 
         // FundsReceived and CashConfirm are hidden in Draft: their MustBeTrue does not stop the first submit.
-        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
         AssertSaved(saved);
         Assert.Equal("||", await _db.ScalarAsync(
             $"SELECT CONCAT_WS('|', ISNULL(CAST(FundsReceived AS varchar(1)), ''), ISNULL(CashSubmittedBy, ''), ISNULL(CONVERT(varchar(19), CashSubmittedDate, 126), '')) FROM CFP.Inflow WHERE ID = {saved.ID}"));
@@ -286,7 +287,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         CPAtlasPage input = NewInput();
         input.Outputs!.Add(new CPPageOutput { Name = "Comment", Value = "Too early" });
 
-        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, NoFiles);
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, FlowFile());
 
         Assert.Equal(0, refused.ID);
         Assert.Contains(refused.Errors!, x => x is { Field: "Comment", Code: "NotAllowed" });
@@ -330,7 +331,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         int id = await SubmittedRecordAsync();
         CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
 
-        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(EditInput(id, loaded.Version, ("Comment", "Received")), NoFiles);
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(EditInput(id, loaded.Version, ("Comment", "Received")), CashFile());
 
         Assert.Equal(0, refused.ID);
         Assert.Equal(["CashConfirm:MustBeTrue", "FundsReceived:MustBeTrue"],
@@ -345,7 +346,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
 
         CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(EditInput(id, loaded.Version,
             ("FundsReceived", "true"), ("Comment", "Received"), ("CashConfirm", "true"),
-            ("CashSubmittedBy", "m.allory")), NoFiles); // a server-set field: the client value is not used
+            ("CashSubmittedBy", "m.allory")), CashFile()); // a server-set field: the client value is not used
 
         AssertSaved(saved);
         Assert.Equal("1|Received|c.write|2026-10-21T10:00:00|1", await _db.ScalarAsync($"""
@@ -355,7 +356,8 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
             """));
         // CashSubmittedBy has a control, so it is in the History. CashSubmittedDate has no control.
         string? log = Convert.ToString(await _db.ScalarAsync(
-            $"SELECT TOP (1) LogMessage FROM CFP.AuditLog WHERE ReferenceID = {id} ORDER BY ID DESC"), System.Globalization.CultureInfo.InvariantCulture);
+            $"SELECT TOP (1) LogMessage FROM CFP.AuditLog WHERE ReferenceID = {id} AND LogMessage LIKE '%\"Update\"%' ORDER BY ID DESC"),
+            System.Globalization.CultureInfo.InvariantCulture);
         Assert.Contains("CashSubmittedBy", log, StringComparison.Ordinal);
         Assert.DoesNotContain("CashSubmittedDate", log, StringComparison.Ordinal);
     }
@@ -365,7 +367,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     [InlineData(null, "(none)")]
     public async Task A_state_with_no_step_hides_Submit_and_refuses_the_save(string? state, string label)
     {
-        CPAtlasPage first = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        CPAtlasPage first = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
         AssertSaved(first);
         await SetStateAsync(first.ID, state);
         string? before = Convert.ToString(await _db.ScalarAsync($"SELECT CONVERT(varchar(20), RowVersion, 1) FROM CFP.Inflow WHERE ID = {first.ID}"),
@@ -400,12 +402,270 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Equal("Submit", draft.Buttons!.Single(x => x.Name == "Submit").Label);
     }
 
+    // ---------- Build step 4 ----------
+
+    [Fact]
+    public async Task A_file_is_stored_compressed_with_its_control_and_the_load_lists_it_with_no_content()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), Files(("FlowAttachments#$#instruction.pdf", Pdf)));
+
+        AssertSaved(saved);
+        Assert.Equal($"{saved.ID}|FlowAttachments|instruction.pdf|application/pdf|{Pdf.Length}|c.write|User c.write|0", await _db.ScalarAsync($"""
+            SELECT CONCAT_WS('|', InflowId, [Type], FileName, ContentType, SizeBytes, CreatedByLanId, CreatedBy, CAST(IsDeleted AS int))
+            FROM CFP.InflowAttachment WHERE InflowId = {saved.ID}
+            """));
+        byte[] stored = (byte[])(await _db.ScalarAsync($"SELECT FileContent FROM CFP.InflowAttachment WHERE InflowId = {saved.ID}"))!;
+        Assert.NotEqual(Pdf, stored);
+        Assert.Equal(Pdf, AtlasAttachmentService.Decompress(stored));
+        Assert.Equal(1, await _db.ScalarAsync(
+            $"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {saved.ID} AND LogMessage LIKE '%AttachmentAdd%FlowAttachments%instruction.pdf%'"));
+
+        await SetStateAsync(saved.ID, "Draft");
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = saved.ID });
+        CPAttachment file = Assert.Single(Control(loaded, "FlowAttachments").Files!);
+        Assert.Equal(("instruction.pdf", "FlowAttachments", Pdf.Length, "User c.write", false), (file.Name, file.Type, (int)file.SizeBytes!, file.CreatedBy, file.Disabled));
+        Assert.Null(file.FileByte);
+        Assert.Null(file.URL);
+        Assert.Empty(Control(loaded, "CashAttachments").Files!); // part 2 is hidden in Draft
+    }
+
+    [Fact]
+    public async Task A_path_in_the_file_name_is_not_used()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), Files((@"FlowAttachments#$#..\..\bin/x.pdf", Pdf)));
+
+        AssertSaved(saved);
+        Assert.Equal("x.pdf", await _db.ScalarAsync($"SELECT FileName FROM CFP.InflowAttachment WHERE InflowId = {saved.ID}"));
+    }
+
+    [Theory]
+    [InlineData("FlowAttachments#$#run.exe", "pdf", "FlowAttachments", "FileType")]
+    [InlineData("FlowAttachments#$#fake.pdf", "text", "FlowAttachments", "FileSignature")]
+    [InlineData("FlowAttachments#$#empty.pdf", "empty", "FlowAttachments", "FileEmpty")]
+    [InlineData("FlowAttachments#$#big.pdf", "big", "FlowAttachments", "FileSize")]
+    [InlineData("CashAttachments#$#early.pdf", "pdf", "CashAttachments", "NotAllowed")]
+    [InlineData("NoSuchControl#$#a.pdf", "pdf", "NoSuchControl", "NotAllowed")]
+    [InlineData("Description#$#a.pdf", "pdf", "Description", "NotAllowed")]
+    [InlineData("no-separator.pdf", "pdf", "", "InvalidFile")]
+    public async Task A_refused_file_stops_the_save_and_nothing_is_written(string part, string kind, string field, string code)
+    {
+        byte[] content = kind switch
+        {
+            "text" => "not a pdf"u8.ToArray(),
+            "empty" => [],
+            "big" => [.. Pdf, .. new byte[10 * 1024 * 1024]],
+            _ => Pdf
+        };
+        object? before = await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.Inflow");
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), Files((part, content)));
+
+        Assert.Equal(0, refused.ID);
+        Assert.Contains(refused.Errors!, x => x.Field == field && x.Code == code);
+        Assert.Equal(before, await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.Inflow"));
+        Assert.Equal(0, await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.InflowAttachment"));
+    }
+
+    [Fact]
+    public void The_texts_of_the_file_errors_are_the_platform_texts()
+    {
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), Files(("FlowAttachments#$#run.exe", Pdf), ("FlowAttachments#$#big.pdf", [.. Pdf, .. new byte[10 * 1024 * 1024]])));
+
+        Assert.Equal(
+            ["Please attach email/signed instruction from the client.: the type of the file 'run.exe' is not permitted. Permitted types: .pdf, .docx, .xlsx, .csv, .txt, .msg, .png, .jpg.",
+             "Please attach email/signed instruction from the client.: the file 'big.pdf' is larger than 10 MB."],
+            refused.Errors!.Select(x => x.Message));
+    }
+
+    [Fact]
+    public void More_than_25_MB_of_new_files_in_one_save_is_refused()
+    {
+        byte[] large = [.. Pdf, .. new byte[9 * 1024 * 1024]];
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(NewInput(),
+            Files(("FlowAttachments#$#a.pdf", large), ("FlowAttachments#$#b.pdf", large), ("FlowAttachments#$#c.pdf", large)));
+
+        Assert.Equal(0, refused.ID);
+        CPPageError error = Assert.Single(refused.Errors!);
+        Assert.Equal(("", "SaveSize", "Save at most 25 MB at one time."), (error.Field, error.Code, error.Message));
+    }
+
+    [Fact]
+    public async Task The_first_submit_needs_a_file_of_FlowAttachments()
+    {
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        CPPageError error = Assert.Single(refused.Errors!);
+        Assert.Equal(("FlowAttachments", "Required", "Please attach email/signed instruction from the client. is required."), (error.Field, error.Code, error.Message));
+        Assert.Equal(0, await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.Inflow"));
+    }
+
+    [Fact]
+    public async Task A_save_removes_a_file_and_adds_a_file_in_one_transaction()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
+        AssertSaved(saved);
+        await SetStateAsync(saved.ID, "Draft");
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = saved.ID });
+        int oldId = int.Parse(Assert.Single(Control(loaded, "FlowAttachments").Files!).ID!, System.Globalization.CultureInfo.InvariantCulture);
+
+        CPAtlasPage edit = EditInput(saved.ID, loaded.Version);
+        edit.RemovedAttachmentIds = [oldId];
+        AssertSaved(Svc(Writer, CfpRoles.Write).SavePage(edit, Files(("FlowAttachments#$#second.pdf", Pdf))));
+
+        Assert.Equal("instruction.pdf:1:c.write|second.pdf:0:c.write", await _db.ScalarAsync($"""
+            SELECT STRING_AGG(CONCAT(FileName, ':', CAST(IsDeleted AS int), ':', ModifiedByLanId), '|') WITHIN GROUP (ORDER BY ID)
+            FROM CFP.InflowAttachment WHERE InflowId = {saved.ID}
+            """));
+        Assert.Equal(1, await _db.ScalarAsync(
+            $"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {saved.ID} AND LogMessage LIKE '%AttachmentRemove%instruction.pdf%'"));
+    }
+
+    [Fact]
+    public async Task The_last_file_of_a_required_file_picker_cannot_be_removed()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
+        AssertSaved(saved);
+        await SetStateAsync(saved.ID, "Draft");
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = saved.ID });
+
+        CPAtlasPage edit = EditInput(saved.ID, loaded.Version);
+        edit.RemovedAttachmentIds = [int.Parse(Control(loaded, "FlowAttachments").Files![0].ID!, System.Globalization.CultureInfo.InvariantCulture)];
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(edit, NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        Assert.Contains(refused.Errors!, x => x is { Field: "FlowAttachments", Code: "Required" });
+        Assert.Equal(0, await _db.ScalarAsync($"SELECT COUNT(*) FROM CFP.InflowAttachment WHERE InflowId = {saved.ID} AND IsDeleted = 1"));
+    }
+
+    [Fact]
+    public async Task A_file_of_another_record_or_of_a_read_only_file_picker_cannot_be_removed_or_added()
+    {
+        CPAtlasPage first = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
+        CPAtlasPage second = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
+        AssertSaved(first);
+        AssertSaved(second);
+        await SetStateAsync(second.ID, "Draft");
+        int fileOfFirst = Convert.ToInt32(await _db.ScalarAsync($"SELECT ID FROM CFP.InflowAttachment WHERE InflowId = {first.ID}"),
+            System.Globalization.CultureInfo.InvariantCulture);
+
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = second.ID });
+        CPAtlasPage other = EditInput(second.ID, loaded.Version);
+        other.RemovedAttachmentIds = [fileOfFirst];
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(other, NoFiles);
+        Assert.Equal(0, refused.ID);
+        Assert.Contains(refused.Errors!, x => x is { Field: "", Code: "NotAllowed" });
+
+        // In state Submitted, part 1 is read-only: its files cannot change.
+        await SetStateAsync(first.ID, "Submitted");
+        CPApplicationSection submitted = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = first.ID });
+        Assert.True(Assert.Single(Control(submitted, "FlowAttachments").Files!).Disabled);
+        CPAtlasPage late = EditInput(first.ID, submitted.Version, ("FundsReceived", "true"), ("CashConfirm", "true"));
+        late.RemovedAttachmentIds = [fileOfFirst];
+        CPAtlasPage lateRefused = Svc(Writer, CfpRoles.Write).SavePage(late, Files(("FlowAttachments#$#late.pdf", Pdf), ("CashAttachments#$#receipt.pdf", Pdf)));
+        Assert.Equal(0, lateRefused.ID);
+        Assert.Contains(lateRefused.Errors!, x => x is { Field: "FlowAttachments", Code: "NotAllowed" });
+        Assert.Contains(lateRefused.Errors!, x => x is { Field: "", Code: "NotAllowed" });
+
+        Assert.Equal(0, await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.InflowAttachment WHERE IsDeleted = 1"));
+        Assert.Equal(2, await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.InflowAttachment"));
+    }
+
+    [Fact]
+    public async Task The_second_submit_needs_and_stores_a_file_of_CashAttachments()
+    {
+        int id = await SubmittedRecordAsync();
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+        CPAtlasPage input = EditInput(id, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true"));
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, NoFiles);
+        Assert.Contains(refused.Errors!, x => x is { Field: "CashAttachments", Code: "Required" });
+
+        AssertSaved(Svc(Writer, CfpRoles.Write).SavePage(input, CashFile()));
+        Assert.Equal("FlowAttachments:instruction.pdf|CashAttachments:receipt.pdf", await _db.ScalarAsync(
+            $"SELECT STRING_AGG(CONCAT([Type], ':', FileName), '|') WITHIN GROUP (ORDER BY ID) FROM CFP.InflowAttachment WHERE InflowId = {id}"));
+    }
+
+    [Fact]
+    public async Task A_download_gives_the_same_bytes_with_the_type_of_the_file_name_after_the_access_check()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), Files(("FlowAttachments#$#Instruction.PDF", Pdf)));
+        AssertSaved(saved);
+        int fileId = Convert.ToInt32(await _db.ScalarAsync($"SELECT ID FROM CFP.InflowAttachment WHERE InflowId = {saved.ID}"),
+            System.Globalization.CultureInfo.InvariantCulture);
+
+        AtlasAttachmentContent file = Svc(Reader, CfpRoles.Read).OpenAttachment(fileId);
+
+        Assert.Equal(("Instruction.PDF", "application/pdf"), (file.FileName, file.ContentType));
+        Assert.Equal(Pdf, file.Content);
+        Assert.Equal(403, Assert.Throws<AtlasProblemException>(() => Svc("c.none").OpenAttachment(fileId)).StatusCode);
+        Assert.Equal(404, Assert.Throws<AtlasProblemException>(() => Svc(Reader, CfpRoles.Read).OpenAttachment(fileId + 1000)).StatusCode);
+
+        await _db.ScalarAsync($"UPDATE CFP.InflowAttachment SET IsDeleted = 1 WHERE ID = {fileId}; SELECT 1;");
+        Assert.Equal(404, Assert.Throws<AtlasProblemException>(() => Svc(Reader, CfpRoles.Read).OpenAttachment(fileId)).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_file_of_a_removed_record_or_of_a_hidden_file_picker_is_not_found()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
+        AssertSaved(saved);
+        await SetStateAsync(saved.ID, "Draft");
+        // A file of part 2 in state Draft: a rule hides part 2.
+        int hidden = Convert.ToInt32(await _db.ScalarAsync($"""
+            INSERT INTO CFP.InflowAttachment (InflowId, [Type], FileName, FileContent, IsDeleted)
+            VALUES ({saved.ID}, 'CashAttachments', 'early.pdf', 0x25504446, 0); SELECT CAST(SCOPE_IDENTITY() AS int);
+            """), System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(404, Assert.Throws<AtlasProblemException>(() => Svc(Writer, CfpRoles.Write).OpenAttachment(hidden)).StatusCode);
+
+        int fileId = Convert.ToInt32(await _db.ScalarAsync($"SELECT MIN(ID) FROM CFP.InflowAttachment WHERE InflowId = {saved.ID}"),
+            System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(Svc(Writer, CfpRoles.Write).OpenAttachment(fileId).Content, 0, 4));
+        await _db.ScalarAsync($"UPDATE CFP.Inflow SET IsDeleted = 1 WHERE ID = {saved.ID}; SELECT 1;");
+        Assert.Equal(404, Assert.Throws<AtlasProblemException>(() => Svc(Writer, CfpRoles.Write).OpenAttachment(fileId)).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_file_list_does_not_read_the_content()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
+        AssertSaved(saved);
+        // The metadata gets a content column that the database does not have. Only a query that reads the content fails.
+        AtlasTable real = _registry.Get("CFP.InflowAttachment");
+        AtlasTable ghost = new(real.Schema, real.Name, [.. real.Columns, new AtlasColumn("GhostContent", "varbinary", true, -1, 0, 0, false, false)]);
+        List<string> errors = [];
+        AtlasAttachmentTable table = AtlasAttachmentTable.Resolve(ghost,
+            new AtlasAttachmentColumns { RecordId = "InflowId", ControlName = "Type", FileContent = "GhostContent" }, errors)!;
+        Assert.Empty(errors);
+        IAtlasAttachmentService service = _harness.ModuleServices(_registry, Writer, [CfpRoles.Write], Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance).Attachments;
+
+        AtlasAttachmentInfo info = Assert.Single(service.List(table, saved.ID));
+
+        Assert.Equal("instruction.pdf", info.FileName);
+        Assert.ThrowsAny<SqlException>(() => service.ReadContent(table, info.Id));
+    }
+
+    private static readonly byte[] Pdf = "%PDF-1.7 a small test file"u8.ToArray();
+
+    private static IFormFileCollection Files(params (string Part, byte[] Content)[] files)
+    {
+        FormFileCollection collection = new();
+        foreach ((string part, byte[] content) in files)
+            collection.Add(new FormFile(new MemoryStream(content), 0, content.Length, "files", part));
+        return collection;
+    }
+
+    private static IFormFileCollection FlowFile() => Files(("FlowAttachments#$#instruction.pdf", Pdf));
+
+    private static IFormFileCollection CashFile() => Files(("CashAttachments#$#receipt.pdf", Pdf));
+
     private ConfigSectionService Svc(string lanId, params AtlasRole[] roles) => _harness.ServiceFor(App, _registry, lanId, roles);
 
     /// <summary>Saves a new record and sets its state to Submitted, as the first submit does from build step 6.</summary>
     private async Task<int> SubmittedRecordAsync()
     {
-        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile());
         AssertSaved(saved);
         await SetStateAsync(saved.ID, "Submitted");
         return saved.ID;

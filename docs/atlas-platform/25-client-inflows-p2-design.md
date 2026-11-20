@@ -1035,3 +1035,66 @@ Notes for later steps:
   sentences. `Validator.Message` can give a shorter text. The JSON keeps the design text.
 - A stored record with no state cannot be submitted. Records of the local database from build steps 1 to 3 have no
   state. A record that the target team moves from SharePoint needs a `WorkflowState` value.
+
+### 19.5 Step 4 (2026-11-20)
+
+- Data: `AtlasSqlTypes` maps `varbinary` and `binary` to `byte[]` (store type with its length or `max`). A form field
+  cannot write such a column from the client: the converter still refuses the type.
+- Manifest: the optional key `AttachmentColumns` (class `AtlasAttachmentColumns`). CFPINFLOW maps `RecordId` to
+  `InflowId` and `ControlName` to `Type`. `AtlasAttachmentTable` resolves the columns: `ID` (int identity),
+  `RecordId` (int), `ControlName` and `FileName` (text), `FileContent` (varbinary) and `IsDeleted` (bit) are
+  necessary; `ContentType`, `SizeBytes`, `CreatedBy`, `CreatedByLanId`, `CreatedDate`, `ModifiedBy`,
+  `ModifiedByLanId` and `ModifiedDate` are optional. A column that the map names must exist.
+- Service (`Service/Platform/Attachments/`): `IAtlasAttachmentService` with `List`, `Find`, `Add`, `Remove`
+  (soft delete) and `ReadContent`. The SQL uses the shared connection and the transaction of the record; the names
+  come from the metadata, the values are parameters. `List` and `Find` do not select `FileContent`. The content is
+  GZip, as the CDT files; content with no GZip header is returned as it is. `AtlasModuleServices` gets the service as
+  a new optional constructor parameter (the existing call sites do not change).
+- Rules (`AtlasAttachmentRules`, client `atlas-files.ts`, the same texts): the default type list; a control
+  `Accept` can only make it shorter; `MaxSizeMb` 1 to 10; `MaxFiles`; 25 MB of new files in one save; the file name is
+  the part after the last `/` or `\` (255 characters at most); the signature check for `.pdf`, `.docx`, `.xlsx`,
+  `.msg`, `.png` and `.jpg`; the content type comes from the extension of the stored name.
+- Save: `ReadFiles` runs after the allow list. A file part `<ControlName>#$#<FileName>` is accepted only for a file
+  picker that is visible and enabled after the rules. `RemovedAttachmentIds` (new optional request field) removes only
+  files of this record and of an enabled file picker. `Required`, `Multiple` (one file) and `MaxFiles` count the files
+  after the save. Each refused file is an error and the log event `Atlas.AttachmentRefused` (41029, Warning, the last
+  ID of the approved range 41025 to 41029). The removals and the new files are written after the record and before
+  the commit; one audit entry `AttachmentRemove` or `AttachmentAdd` for each file. A file that another save removed in
+  between gives the conflict error.
+- Load: each visible file picker gets its stored files in `Files` (ID, name, control, size, created by, created date;
+  no content, no URL). A file of a disabled file picker is disabled. A hidden file picker gets no files.
+- Download: `App/Platform/AtlasAttachmentController.cs`, `GET v1/Attachment/{appCode}/{id}`. The module checks
+  `View` on the record (403), and gives 404 for an unknown or removed file, a removed record, and a file of a file
+  picker that a rule hides. The response is `Content-Disposition: attachment` with `filename*`, and
+  `X-Content-Type-Options: nosniff`. The target `AddControllers()` finds the controller in the App project: no target
+  file change.
+- Start-up check: the attachment table columns; a file picker with no `AttachmentTable`; the `Accept`, `MaxSizeMb`
+  and `MaxFiles` limits; `filepicker` is a client type now.
+- Client: renderer `filepicker` (`form/renderers/atlas-file-renderer.ts`) with `pbdev-file-picker-core` of the
+  library. The library component `pbdev-file-picker` takes one file only; the core component takes more than one and
+  is in the public API of the library. The renderer lists the stored files (download link; remove button with the
+  question "Are you sure you want to delete the file?"; then "removed when you save") and the new files. The form
+  value holds the new files and the removed IDs; the save sends the files as parts and the IDs in
+  `RemovedAttachmentIds`; a file picker sends no output. The client checks the limits and the 25 MB total before it
+  sends. The download uses `HttpClient` as a blob, then gives the blob to the browser. The renderer base gets the
+  optional input `appCode`.
+- Stand-in and target look: the stand-in `pbdev-file-picker-core` follows the real source (template, inputs,
+  outputs). `make-target-look.mjs` copies the real component; one patch for the strict TypeScript check
+  (`isDisabled!: boolean`).
+- CDT at the target: the step page shows a stored file as a plain link (`<a [href]="file.URL">`, `v1/Download`). The
+  platform uses the blob download of the design. The blob goes through the same interceptors, so it works with each
+  of the two authentications.
+- CFPINFLOW: `AttachmentTable` and `AttachmentColumns` in the manifest; `FlowAttachments` (part 1) and
+  `CashAttachments` (part 2), `Multiple`, `Required`.
+- Proof (.NET, 401 tests): a file is stored compressed with its control, LAN ID and size, and loads with no content; a
+  path in the name is not used; 8 refusal cases write nothing (type, signature, empty, size, hidden file picker,
+  unknown control, a control that is not a file picker, no separator); the texts; 25 MB in one save; the first submit
+  needs a flow file; a save removes and adds in one transaction with the audit entries; the last required file cannot
+  be removed; a file of another record or of a read-only file picker cannot change; the second submit needs a cash
+  file; the download gives the same bytes and the type of the stored name, 403 with no role, 404 for the other cases;
+  the list does not read the content (a content column that the database does not have fails only the content query);
+  an HTTP test of `ManagePage` and the download headers; 6 start-up check cases. Angular (124 specs): the parts and
+  `RemovedAttachmentIds`, No keeps the file, Required and type errors, 25 MB, the blob download, a disabled file picker.
+- Test changes: the CFPINFLOW save tests now send a flow file (a file is required), and two of them count the
+  attachment audit entry. Two tests used `filepicker` as an example of a type with no renderer; they use
+  `signaturepad` now. All TTDV2 tests pass with no change to their expected results.

@@ -2,6 +2,7 @@ using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Application;
+using BBH.CP.Atlas.Service.Platform.Attachments;
 using BBH.CP.Atlas.Service.Platform.Audit;
 using BBH.CP.Atlas.Service.Platform.Dashboard;
 using BBH.CP.Atlas.Service.Platform.Registry;
@@ -118,6 +119,13 @@ public static class AtlasStartupCheck
             CheckAuditColumns(auditTable, error);
         foreach (string lookup in manifest.LookupTables ?? [])
             Table(lookup, "LookupTables", required: true, error, check.Tables);
+        AtlasTable? attachmentTable = Table(manifest.AttachmentTable, "AttachmentTable", required: false, error, check.Tables);
+        if (attachmentTable != null)
+        {
+            List<string> attachmentErrors = [];
+            AtlasAttachmentTable.Resolve(attachmentTable, manifest.AttachmentColumns, attachmentErrors);
+            attachmentErrors.ForEach(error);
+        }
 
         CPAtlasApplicationConfig? form = null;
         try
@@ -218,6 +226,12 @@ public static class AtlasStartupCheck
 
         CheckSoftDelete(form, table, error);
         CheckComputed(form, table, error);
+
+        // A file picker has no column of the main table. Its files need the attachment table of the app.
+        foreach (CPApplicationControl picker in (form.Section!.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []))
+            .Where(AtlasAttachmentRules.IsFilePicker))
+            if (string.IsNullOrWhiteSpace(manifest.AttachmentTable))
+                error($"the file picker '{picker.Name}' needs an AttachmentTable in the manifest.");
 
         foreach (string name in (IEnumerable<string>?)form.Defaults?.Keys ?? [])
             if (fields.Find(name) == null)
@@ -479,7 +493,7 @@ public static class AtlasStartupCheck
     private static readonly HashSet<string> ClientTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "section", "text", "currency", "percent", "select", "ngselect", "textarea", "datetimepicker", "date",
-        "checkbox", "check", "option", "user", "grid"
+        "checkbox", "check", "option", "user", "grid", AtlasAttachmentRules.FilePickerType
     };
 
     /// <summary>

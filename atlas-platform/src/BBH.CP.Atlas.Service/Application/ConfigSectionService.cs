@@ -205,6 +205,7 @@ namespace BBH.CP.Atlas.Service.Application
             ClearRuleHiddenValues(fields);
             KeepOnlySavedOptions(fields);
             AtlasWorkflowSteps.ApplyToSubmitButton(section, workflowState);
+            LoadAttachments(manifest, section, record == null ? 0 : page.ID);
 
             string name = section.HeaderName ?? form.Name ?? manifest.Name ?? manifest.Code;
             section.HeaderName = record != null && !string.IsNullOrWhiteSpace(form.HeaderNameWithId)
@@ -377,6 +378,7 @@ namespace BBH.CP.Atlas.Service.Application
                 return Failed(state.Result, state.Errors);
             ApplyRules(state);
             ReadAndFilter(state);
+            ReadFiles(state, files);
             ValidateFields(state);
             CheckVersion(state);
             MapRecord(state);
@@ -414,6 +416,9 @@ namespace BBH.CP.Atlas.Service.Application
 
             /// <summary>The names in the Set of the step (control names or column names). Only the server writes them.</summary>
             public HashSet<string> StepSet { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+            /// <summary>The new files and the removed files of the save.</summary>
+            public SaveFiles Files { get; } = new();
 
             /// <summary>The stored record, or null for a new record.</summary>
             public Dictionary<string, object?>? Stored { get; set; }
@@ -689,7 +694,8 @@ namespace BBH.CP.Atlas.Service.Application
 
             return SaveWithAudit(state.Manifest, table, state.Record, state.IsNew,
                 state.IsNew ? AtlasAuditEvents.Create : AtlasAuditEvents.Update,
-                () => Changes(state.Fields, table, state.Previous, state.Record, state.IsNew), state.Errors);
+                () => Changes(state.Fields, table, state.Previous, state.Record, state.IsNew), state.Errors,
+                id => WriteFiles(state, id));
         }
 
         /// <summary>Runs the OnAfterSave hook after the commit and returns the result (ID, Version, Outputs).</summary>
@@ -851,8 +857,15 @@ namespace BBH.CP.Atlas.Service.Application
             return changes;
         }
 
+        /// <summary>
+        /// Saves the record, the other writes of the save and the audit entries in one transaction.
+        /// </summary>
+        /// <param name="afterRecord">Runs after the record write with the record ID, in the transaction, and returns more
+        /// audit entries (for example the files). Null = no other write.</param>
+        /// <returns>False when the save fails; the errors tell why. Nothing is then written.</returns>
         private bool SaveWithAudit(AtlasAppManifest manifest, AtlasTable table, Dictionary<string, object?> record, bool isNew,
-            string auditEvent, Func<List<AtlasAuditChange>> changes, List<CPPageError> errors)
+            string auditEvent, Func<List<AtlasAuditChange>> changes, List<CPPageError> errors,
+            Func<int, List<(string Event, AtlasAuditChange Change)>>? afterRecord = null)
         {
             AtlasPlatformContext platform = Services.PlatformContext;
             using IDbContextTransaction transaction = platform.BeginSharedTransaction(Services.Context);
@@ -863,10 +876,14 @@ namespace BBH.CP.Atlas.Service.Application
                 List<AtlasAuditChange> list = changes();
                 platform.SaveChanges();
 
+                int id = (int)record[table.Key!.Name]!;
+                List<(string Event, AtlasAuditChange Change)> more = afterRecord?.Invoke(id) ?? [];
                 if (manifest.AuditMode == AtlasAuditMode.Server && !string.IsNullOrWhiteSpace(manifest.AuditTable))
                 {
-                    int id = (int)record[table.Key!.Name]!;
-                    if (Services.Audit.Add(manifest, id, auditEvent, list))
+                    bool added = Services.Audit.Add(manifest, id, auditEvent, list);
+                    foreach ((string moreEvent, AtlasAuditChange change) in more)
+                        added |= Services.Audit.Add(manifest, id, moreEvent, [change]);
+                    if (added)
                         platform.SaveChanges();
                 }
 
@@ -879,7 +896,7 @@ namespace BBH.CP.Atlas.Service.Application
                 errors.Add(Conflict());
                 return false;
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex) when (ex is DbUpdateException or System.Data.Common.DbException)
             {
                 transaction.Rollback();
                 AtlasLog.SaveFailed(Logger, ex, manifest.Code, Services.User.LanId);

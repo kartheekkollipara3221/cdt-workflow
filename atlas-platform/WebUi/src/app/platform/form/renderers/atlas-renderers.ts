@@ -32,6 +32,8 @@ export abstract class AtlasRendererBase {
   @Input({ required: true }) control!: CPApplicationControl;
   /** The form group of the section. */
   @Input({ required: true }) group!: FormGroup;
+  /** The app code of the form, for example for a file download. */
+  @Input() appCode = '';
 
   /** The form control of this control, found by its name. */
   get formControl(): FormControl {

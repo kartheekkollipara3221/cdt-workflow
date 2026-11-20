@@ -82,4 +82,9 @@ public static partial class AtlasLog
     [LoggerMessage(EventId = 41024, EventName = "Atlas.ConfigError", Level = LogLevel.Error,
         Message = "Atlas.ConfigError Path={Path} Detail={Detail}")]
     public static partial void ConfigError(ILogger logger, Exception exception, string path, string detail);
+
+    /// <summary>Logs a file of a save that the server refused, for example a wrong type or a control that is disabled.</summary>
+    [LoggerMessage(EventId = 41029, EventName = "Atlas.AttachmentRefused", Level = LogLevel.Warning,
+        Message = "Atlas.AttachmentRefused App={App} User={User} RecordId={RecordId} Control={Control} File={File} Reason={Reason}")]
+    public static partial void AttachmentRefused(ILogger logger, string app, string user, int recordId, string control, string file, string reason);
 }

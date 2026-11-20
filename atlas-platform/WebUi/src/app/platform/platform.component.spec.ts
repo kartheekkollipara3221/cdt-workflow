@@ -17,6 +17,8 @@ import { AtlasRendererRegistry } from './form/atlas-renderer-registry';
 import { provideAtlasGridComponents } from './form/atlas-grid-components';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { By } from '@angular/platform-browser';
+import { FilePickerCoreComponent } from './atlas-pbdev';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 
 // As the target main.ts (it registers AllEnterpriseModule): the grids use the registered modules.
@@ -679,5 +681,112 @@ describe('AtlasFormComponent, a form with steps', () => {
 
     expect(element(fixture, '#btn_Submit')).toBeNull();
     expect(element(fixture, '#btn_Close') === null).toBe(false);
+  });
+});
+
+describe('AtlasFormComponent file picker', () => {
+  function picker(extra: Partial<CPApplicationControl> = {}): CPApplicationControl {
+    return {
+      Name: 'Docs', Label: 'Documents', Type: 'filepicker', Visible: true, Multiple: true,
+      Files: [{ ID: '7', Name: 'old.pdf', Type: 'Docs' }],
+      ...extra,
+    };
+  }
+
+  function pickFiles(fixture: ComponentFixture<unknown>, files: File[]): void {
+    const core = fixture.debugElement.query(By.directive(FilePickerCoreComponent)).componentInstance as FilePickerCoreComponent;
+    core.filesSelect.emit(files);
+    fixture.detectChanges();
+  }
+
+  function pdf(name: string, size?: number): File {
+    const file = new File(['%PDF-1.7'], name, { type: 'application/pdf' });
+    if (size !== undefined) {
+      Object.defineProperty(file, 'size', { value: size });
+    }
+    return file;
+  }
+
+  it('sends a new file as a part and a removed file in RemovedAttachmentIds, with no output for the file picker', () => {
+    const { fixture, http } = setup(section([text('Name'), picker()]));
+
+    pickFiles(fixture, [pdf('new.pdf')]);
+    click(fixture, '#btn_RemoveFile_7');
+    click(fixture, '#btn_ConfirmRemoveFile_Docs');
+    expect(element(fixture, '#divA_7 .atlas-file-note')?.textContent?.trim()).toBe('removed when you save');
+    click(fixture, '#btn_Submit');
+
+    const request = http.expectOne((r) => r.url === 'ManagePage');
+    const body = request.request.body as FormData;
+    const page = JSON.parse(String(body.get('input'))) as { Outputs: { Name: string }[]; RemovedAttachmentIds?: number[] };
+    expect((body.getAll('files') as File[]).map((x) => x.name)).toEqual(['Docs#$#new.pdf']);
+    expect(page.RemovedAttachmentIds).toEqual([7]);
+    expect(page.Outputs.map((x) => x.Name)).toEqual(['Name']);
+    request.flush({ ID: 5, Errors: [] });
+  });
+
+  it('keeps the stored file when the user answers No', () => {
+    const { fixture, http } = setup(section([picker()]));
+
+    click(fixture, '#btn_RemoveFile_7');
+    click(fixture, '.modal-confirm-no-btn');
+    click(fixture, '#btn_Submit');
+
+    const body = http.expectOne((r) => r.url === 'ManagePage').request.body as FormData;
+    expect(JSON.parse(String(body.get('input'))).RemovedAttachmentIds).toBeUndefined();
+    expect(element(fixture, '#divA_7 .atlas-file-note')).toBeNull();
+  });
+
+  it('does not save a required file picker with no file, or a file of a type that is not permitted', () => {
+    const { fixture, http } = setup(section([picker({ Files: [], Validator: { Required: true } })]));
+
+    click(fixture, '#btn_Submit');
+    http.expectNone((r) => r.url === 'ManagePage');
+    expect(element(fixture, '#err_Docs')?.textContent?.trim()).toBe('Documents is required.');
+
+    pickFiles(fixture, [new File(['MZ'], 'run.exe')]);
+    expect(element(fixture, '#err_Docs')?.textContent?.trim()).toBe(
+      "Documents: the type of the file 'run.exe' is not permitted. Permitted types: .pdf, .docx, .xlsx, .csv, .txt, .msg, .png, .jpg.");
+  });
+
+  it('does not send more than 25 MB at one time', () => {
+    const { fixture, http } = setup(section([picker({ Files: [] })]));
+
+    pickFiles(fixture, [pdf('a.pdf', 9 * 1024 * 1024), pdf('b.pdf', 9 * 1024 * 1024), pdf('c.pdf', 9 * 1024 * 1024)]);
+    click(fixture, '#btn_Submit');
+
+    http.expectNone((r) => r.url === 'ManagePage');
+    expect(element(fixture, '.atlas-alert-error')?.textContent?.trim()).toBe('Save at most 25 MB at one time.');
+  });
+
+  it('downloads a stored file through the API as a blob, not with a link', () => {
+    const { fixture, http } = setup(section([picker()]));
+    const created: Blob[] = [];
+    const urls = URL as unknown as { createObjectURL: (b: Blob) => string; revokeObjectURL: (u: string) => void };
+    const original = { create: urls.createObjectURL, revoke: urls.revokeObjectURL };
+    urls.createObjectURL = (blob: Blob) => {
+      created.push(blob);
+      return 'blob:test';
+    };
+    urls.revokeObjectURL = () => undefined;
+    try {
+      click(fixture, '#divA_7 a');
+
+      const request = http.expectOne((r) => r.url === 'Attachment/TTDV2/7');
+      expect(request.request.responseType).toBe('blob');
+      request.flush(new Blob(['%PDF']));
+      expect(created.length).toBe(1);
+    } finally {
+      urls.createObjectURL = original.create;
+      urls.revokeObjectURL = original.revoke;
+    }
+  });
+
+  it('shows the files of a disabled file picker with the download action only', () => {
+    const { fixture } = setup(section([picker({ Disabled: true, Files: [{ ID: '7', Name: 'old.pdf', Type: 'Docs', Disabled: true }] })]));
+
+    expect(fixture.debugElement.query(By.directive(FilePickerCoreComponent))).toBeNull();
+    expect(element(fixture, '#btn_RemoveFile_7')).toBeNull();
+    expect(element(fixture, '#divA_7 a')?.textContent?.trim()).toBe('old.pdf');
   });
 });

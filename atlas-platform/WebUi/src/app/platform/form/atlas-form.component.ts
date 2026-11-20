@@ -17,6 +17,7 @@ import { AtlasFormRecord, buildFormGroup, buildOutputs, computeValue, containerO
 import { AtlasFieldA11yDirective } from './atlas-field-a11y.directive';
 import { AtlasRendererRegistry } from './atlas-renderer-registry';
 import { atlasValidators, errorText } from './atlas-validators';
+import { SAVE_SIZE_TEXT, atlasFileValidator, fileParts, isFilePicker, removedFileIds, tooLargeForOneSave } from './atlas-files';
 
 /** The template data of one control. The form finds it one time for each section, not at each change detection. */
 export interface AtlasFieldView {
@@ -186,7 +187,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     const item = this.form.get(name);
     const control = this.controlsByName.get(name);
     if (item && control) {
-      item.setValidators(atlasValidators(control.Validator, required));
+      item.setValidators(isFilePicker(control) ? atlasFileValidator(control, required) : atlasValidators(control.Validator, required));
       item.updateValueAndValidity({ emitEvent: false });
     }
     this.required.update((x) => ({ ...x, [name]: required }));
@@ -352,14 +353,26 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
       return;
     }
 
+    const shown = (name: string) => this.isShown(name);
+    const files = fileParts(section, this.form, shown);
+    if (tooLargeForOneSave(files)) {
+      this.pageErrors.set([{ Field: '', Code: 'SaveSize', Message: SAVE_SIZE_TEXT }]);
+      return;
+    }
+    const removed = removedFileIds(section, this.form, shown);
+
     this.saving.set(true);
     this.api
-      .save({
-        AppCode: this.code(),
-        ID: this.id(),
-        Version: section.Version ?? null,
-        Outputs: buildOutputs(section, this.form, (name) => this.isShown(name)),
-      })
+      .save(
+        {
+          AppCode: this.code(),
+          ID: this.id(),
+          Version: section.Version ?? null,
+          Outputs: buildOutputs(section, this.form, shown),
+          ...(removed.length ? { RemovedAttachmentIds: removed } : {}),
+        },
+        files,
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {

@@ -94,6 +94,33 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains("ERROR CFPINFLOW: " + message, report, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("CFPINFLOW.app.json", "\"RecordId\": \"InflowId\"", "\"RecordId\": \"Nope\"",
+        "the attachment table CFP.InflowAttachment has no column 'Nope' (RecordId).")]
+    [InlineData("CFPINFLOW.app.json", "\"ControlName\": \"Type\"", "\"ControlName\": \"SizeBytes\"",
+        "the column 'SizeBytes' (ControlName) of CFP.InflowAttachment must be a text column (it is bigint).")]
+    [InlineData("CFPINFLOW.app.json", "\"AttachmentTable\": \"CFP.InflowAttachment\",", "\"AttachmentTable\": null,",
+        "the file picker 'FlowAttachments' needs an AttachmentTable in the manifest.")]
+    [InlineData("CFPINFLOW.json", "\"Name\": \"FlowAttachments\",", "\"Name\": \"FlowAttachments\", \"Accept\": [ \".pdf\", \".exe\" ],",
+        "the Accept of 'FlowAttachments' has '.exe', which is not in the platform list")]
+    [InlineData("CFPINFLOW.json", "\"Name\": \"FlowAttachments\",", "\"Name\": \"FlowAttachments\", \"MaxSizeMb\": 20,",
+        "the MaxSizeMb of 'FlowAttachments' must be 1 to 10.")]
+    [InlineData("CFPINFLOW.json", "\"Name\": \"FlowAttachments\",", "\"Name\": \"FlowAttachments\", \"MaxFiles\": 0,",
+        "the MaxFiles of 'FlowAttachments' must be more than 0.")]
+    public async Task A_bad_attachment_table_or_file_picker_limit_is_an_error(string fileName, string oldText, string newText, string message)
+    {
+        CopyRealConfig();
+        string file = Path.Combine(_folder, fileName);
+        string text = File.ReadAllText(file);
+        Assert.Contains(oldText, text, StringComparison.Ordinal);
+        File.WriteAllText(file, text.Replace(oldText, newText, StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR CFPINFLOW: " + message, report, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_manifest_with_no_registration_line_gives_exit_code_1()
     {
@@ -268,12 +295,12 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
     {
         CopyRealConfig();
         string form = Path.Combine(_folder, "TTDV2.json");
-        File.WriteAllText(form, File.ReadAllText(form).Replace("\"Type\": \"textarea\"", "\"Type\": \"filepicker\"", StringComparison.Ordinal));
+        File.WriteAllText(form, File.ReadAllText(form).Replace("\"Type\": \"textarea\"", "\"Type\": \"signaturepad\"", StringComparison.Ordinal));
 
         (int code, string report) = await CheckAsync(_folder);
 
         Assert.True(code == 0, report);
-        Assert.Contains("WARNING TTDV2: the control 'WorkDescription' has the type 'filepicker'", report, StringComparison.Ordinal);
+        Assert.Contains("WARNING TTDV2: the control 'WorkDescription' has the type 'signaturepad'", report, StringComparison.Ordinal);
     }
 
     [Fact]

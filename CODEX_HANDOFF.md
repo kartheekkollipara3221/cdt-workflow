@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-3 done, next step 4; full hand-off in section A, Next 0)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-4 done, next step 5; full hand-off in section A, Next 0)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -127,16 +127,16 @@ The dated history entries below are unchanged, newest first: platform and target
    NO CODE AND NO SQL SCRIPT EXISTS FOR P2. The user has not yet said "start the build".
 
 ### Next
-0. P2 BUILD (ClientInflows, CFPINFLOW) - IN PROGRESS. Steps 0, 1, 2, 3 DONE; NEXT = STEP 4. Full hand-off below.
+0. P2 BUILD (ClientInflows, CFPINFLOW) - IN PROGRESS. Steps 0, 1, 2, 3, 4 DONE; NEXT = STEP 5. Full hand-off below.
 
    0.1 Where things are
    - Build specification: docs/atlas-platform/25-client-inflows-p2-design.md (draft 3, approved). Build order = section 13;
-     build record of each step = section 19 (19.1 step 0, 19.2 step 1, 19.3 step 2, 19.4 step 3). Read 19 before you code.
+     build record of each step = section 19 (19.1 step 0, 19.2 step 1, 19.3 step 2, 19.4 step 3, 19.5 step 4). Read 19 before you code.
    - Review answers: docs/atlas-platform/26-p2-design-review.md section 8. Requirements: docs/ClientInflows/
      ONBOARDING_ANSWERS.md (D1-D34), GAP_REPORT.md (Q1-Q9). Platform rules: AGENTS.md "Atlas platform" (one submit
      button rule added 2026-11-20).
    - Branch console-code-first-0518, 37 commits ahead of origin, NOTHING PUSHED (push only when the user asks).
-     Commits: ca194af step 0, 38ad2df step 1, 0455460 step 2, step 3 = the commit after 22a6269 (git log).
+     Commits: ca194af step 0, 38ad2df step 1, 0455460 step 2, 2ece3ad step 3, step 4 = the commit after 2ece3ad.
      Package NOT rebuilt (step 7 does it).
    - Working style for the build: the user says "continue" for each step. After each step: all platform gates, one
      commit, completion summary in the AGENTS.md format (+ "Package rebuilt:"), update this section, then wait.
@@ -161,11 +161,18 @@ The dated history entries below are unchanged, newest first: platform and target
      WorkflowSteps check (9 errors, AtlasCheckTests); MustBeTrue server + client + 8 shared cases; CFPINFLOW.json
      Workflow block + state rules on the 3 section containers + MustBeTrue on 3 checkboxes. A stored record with an
      EMPTY state = no state (read-only, no Submit, save refused). Tests: 374 .NET, 118 Angular.
-   - Step 4 NEXT: attachments (varbinary in AtlasSqlTypes, service, save, removal on save, limits, audit events
-     AttachmentAdd/AttachmentRemove, controller GET v1/Attachment/{appCode}/{id}, stand-in file picker from the target
-     source, filepicker renderer, HttpClient blob download, list query without FileContent; manifest AttachmentTable
-     CFP.InflowAttachment + AttachmentColumns {RecordId: InflowId, ControlName: Type}).
-   - Step 5 open: richtext (renderer with dynamic import, plugin imports from @ckeditor/ckeditor5-<plugin>, ResizeObserver
+   - Step 4 DONE: varbinary/binary in AtlasSqlTypes; manifest AttachmentColumns (Registry/AtlasAttachmentColumns.cs);
+     Service/Platform/Attachments/ (AtlasAttachmentTable, AtlasAttachmentRules, AtlasAttachmentService +
+     IAtlasAttachmentService, IAtlasAttachmentSource); Application/ConfigSectionService.Attachments.cs (load Files,
+     ReadFiles checks, WriteFiles in the record transaction, OpenAttachment); AtlasModuleServices optional parameter
+     attachments; CPPlatformDto: control Accept/MaxSizeMb/MaxFiles, CPAttachment SizeBytes/CreatedBy/CreatedDate,
+     CPAtlasPage RemovedAttachmentIds; audit events AttachmentAdd/AttachmentRemove; log Atlas.AttachmentRefused 41029;
+     App/Platform/AtlasAttachmentController.cs (GET v1/Attachment/{appCode}/{id}); start-up checks. Client:
+     form/atlas-files.ts, renderers/atlas-file-renderer.ts (pbdev-file-picker-core, the core takes many files; the
+     library pbdev-file-picker takes one), api save(page, files) + download blob, renderer base input appCode, stand-in
+     FilePickerCoreComponent, make-target-look.mjs copies the real core (+1 strict-TS patch). CFPINFLOW: manifest
+     AttachmentTable + AttachmentColumns; FlowAttachments (part 1), CashAttachments (part 2). Tests: 401 .NET, 124 Angular.
+   - Step 5 NEXT: richtext (renderer with dynamic import, plugin imports from @ckeditor/ckeditor5-<plugin>, ResizeObserver
      stub in specs, @use 'ckeditor5/ckeditor5.css' in atlas-platform.scss, HtmlSanitizer NuGet stable + AngleSharp
      stable, allowed tags of 9.2, plain text in History; Description and Comment become richtext).
    - Step 6 open: engine adapter (script 150, Workflow binding, EngineActions, recipients incl. EmailOfDisplayName,
@@ -240,6 +247,11 @@ The dated history entries below are unchanged, newest first: platform and target
      step 3 tests set WorkflowState by SQL.
    - From step 3: a stored record with an empty WorkflowState cannot be submitted. The local records of steps 1-3 have
      no state. Target integration note (step 7): records moved from SharePoint need a WorkflowState value.
+   - From step 4: log event IDs used so far of the approved range 41025-41029: 41029 Atlas.AttachmentRefused. Step 6
+     takes 41025 RecipientSkipped, 41026 WorkflowStepFailed, 41027 WorkflowSync, 41028 NotificationDispatchFailed.
+   - From step 4 (step 7 INTEGRATION.md): no target file change for attachments (AddControllers finds the platform
+     controller); FilePickerCoreComponent is in the public API of @pbdev/pbdev-core; the CDT download stays a plain
+     link, the platform uses the HttpClient blob.
    - From step 3: the default MustBeTrue text is long for the CFPINFLOW checkboxes (labels are sentences); a
      Validator.Message can shorten it. Not changed (design text kept); ask the user if the screens look wrong.
 

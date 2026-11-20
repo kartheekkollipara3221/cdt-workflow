@@ -13,6 +13,7 @@ import { cellDay, columnDefs, formatCurrency, formatDate, sumsRow } from './dash
 import { AtlasActionMenu } from './dashboard/atlas-action-menu';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
 import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
+import { AtlasFileRenderer } from './form/renderers/atlas-file-renderer';
 import { toSelectOptions } from './atlas-pbdev';
 import { problemText } from './atlas-errors';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -290,8 +291,9 @@ describe('control types (review NG-04)', () => {
     const registry = new AtlasRendererRegistry();
     expect(registry.resolve('check')).toBe(AtlasCheckboxRenderer);
     expect(registry.resolve('option')).toBe(AtlasRadioRenderer);
-    expect(registry.has('filepicker')).toBe(false);
-    expect(registry.resolve('filepicker')).toBe(AtlasUnsupportedRenderer);
+    expect(registry.resolve('filepicker')).toBe(AtlasFileRenderer);
+    expect(registry.has('signaturepad')).toBe(false);
+    expect(registry.resolve('signaturepad')).toBe(AtlasUnsupportedRenderer);
   });
 
   it('adds the renderers of an app with provideAtlasRenderers', () => {

@@ -47,7 +47,7 @@
                         <span class="required-indicator" aria-hidden="true">*</span>
                       }
                     </label>
-                    <ng-container *ngComponentOutlet="view.renderer; inputs: { control: child, group: form }" />
+                    <ng-container *ngComponentOutlet="view.renderer; inputs: { control: child, group: form, appCode: code() }" />
                     <span class="atlas-error" [class.atlas-sr-only]="view.ownMessages" [attr.id]="'err_' + child.Name" aria-live="polite">{{ error(child) ?? '' }}</span>
                   </div>
                 }
@@ -58,7 +58,7 @@
       } @else if (views().get(container.Name); as view) {
         <div [attr.id]="'div_' + container.Name" class="col-span-3 block mb-1">
           <div class="section-master col-span-12 border-b border-gray-200 pb-2 mt-2 text-sm font-semibold text-gray-700">{{ container.Label }}</div>
-          <ng-container *ngComponentOutlet="view.renderer; inputs: { control: container, group: form }" />
+          <ng-container *ngComponentOutlet="view.renderer; inputs: { control: container, group: form, appCode: code() }" />
         </div>
       }
     }

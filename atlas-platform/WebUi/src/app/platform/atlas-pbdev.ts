@@ -9,6 +9,7 @@ export {
   CheckboxComponent,
   DatePickerComponent,
   DialogComponent,
+  FilePickerCoreComponent,
   InputComponent,
   LoaderComponent,
   SectionComponent,
