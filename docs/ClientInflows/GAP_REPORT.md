@@ -116,3 +116,4 @@ One question at a time. The order is the order of effect on the design.
 | Q5 | A: approved. One idempotent script changes `CFP.Inflow.Description` and `CFP.Inflow.Comment` from `varchar(max)` to `nvarchar(max)`. The data stays. | 2026-11-20 |
 | Q6 | B: the NuGet package `HtmlSanitizer` (with its dependency `AngleSharp`). The user approved this new package. The target team must approve and add it; this is an integration step. The platform sets the allowed tags and attributes (no pictures). | 2026-11-20 |
 | Q7 | A: a new severity "Info" in `--atlas-check`. The check lists the AIN names with no user or with more than one user. Info lines are not counted; the summary and the exit code do not change. | 2026-11-20 |
+| Q8 | A: the values of T1. `CFP.Inflow.RelationshipManager` and a new nullable column `CFP.Inflow.RMCC` are filled from the account at T1. E3 uses these saved values. | 2026-11-20 |
