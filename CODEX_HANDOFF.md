@@ -74,7 +74,8 @@ The dated history entries below are unchanged, newest first: platform and target
 ### Next
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
-2. P2 requirements recorded (pending 3): next the gap report (metadata / generic platform code / engine-adapter) from
+2. P2 requirements recorded (pending 3). Gap report + design go to another model: start from
+   docs/ClientInflows/HANDOFF_GAP_REPORT_AND_DESIGN.md (prompt in its section 6). Next the gap report (metadata / generic platform code / engine-adapter) from
    ONBOARDING_ANSWERS.md, then design, then the CFP.Inflow script; then code module 8 then module 10 (stop-and-ask) for section forms, plus
    the `richtext` control. Platform gates, package rebuild, INTEGRATION.md rows for the target changes.
 3. After P2: the architecture review page.
