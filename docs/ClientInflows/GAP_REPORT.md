@@ -104,3 +104,9 @@ One question at a time. The order is the order of effect on the design.
 | Q7 | `--atlas-check` and the AIN name report. The gate demands 0 warnings. | A: new severity "Info": listed, not counted, exit 0. B: warnings, and the local sample data has only clean names. C: a switch `--atlas-check-data` for data reports. |
 | Q8 | RM and RMCC for E3 (T2 can be days after T1). | A: the values of T1: `RelationshipManager` and a new column `RMCC` in `CFP.Inflow`, filled from the account. B: read the AIN row again at T2. |
 | Q9 | Not blocking: export. No export code was found in the target dashboard copy. Which export does the target use? | A: the ag-grid CSV export, one button, generic. B: none in P2. |
+
+## 7. Answers
+
+| # | Answer | Date |
+|---|---|---|
+| Q1 | A: approved. Build the engine adapter (module 10) for section forms in P2. The engine code does not change. | 2026-11-19 |
