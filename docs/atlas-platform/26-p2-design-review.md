@@ -193,3 +193,11 @@ Most findings have one correction and need no decision. Four need an answer from
 | DR-18 | The short option list for a disabled control: in P2 or later |
 
 After the answers, the design becomes draft 3 with all corrections.
+
+## 8. Answers from the walkthrough
+
+The user and the reviewer go through the findings one at a time. This table records each answer.
+
+| # | Answer | Date | Result for draft 3 |
+|---|---|---|---|
+| DR-01 | Rejected | 2026-11-20 | No change to the effects. The server and the client run the effects as today. The account fields and `RMCC` follow the AIN row at each save. Section 10.6 of module 25 must say this: E3 goes to the RM and RMCC that AIN has at the second submit. This replaces the wording of answer Q8 ("of the first submit"). |

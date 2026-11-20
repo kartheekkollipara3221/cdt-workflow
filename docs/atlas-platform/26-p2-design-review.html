@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClientInflows (P2): design review</title>
+<title>Review of the ClientInflows (P2) design</title>
 <style>
 :root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
 *{box-sizing:border-box}
@@ -138,6 +138,13 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <tr><td>DR-18</td><td>The short option list for a disabled control: in P2 or later</td></tr>
 </tbody></table></div>
 <p>After the answers, the design becomes draft 3 with all corrections.</p>
+</section>
+<section>
+<h2>8. Answers from the walkthrough</h2>
+<p>The user and the reviewer go through the findings one at a time. This table records each answer.</p>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Answer</th><th>Date</th><th>Result for draft 3</th></tr></thead><tbody>
+<tr><td>DR-01</td><td>Rejected</td><td>2026-11-20</td><td>No change to the effects. The server and the client run the effects as today. The account fields and <code>RMCC</code> follow the AIN row at each save. Section 10.6 of module 25 must say this: E3 goes to the RM and RMCC that AIN has at the second submit. This replaces the wording of answer Q8 ("of the first submit").</td></tr>
+</tbody></table></div>
 </section>
 </main>
 </body>
