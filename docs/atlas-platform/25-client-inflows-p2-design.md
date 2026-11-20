@@ -114,7 +114,7 @@ when it moves the old SharePoint records (integration note).
 | `ContentType` | `varchar(200) NULL` |
 | `SizeBytes` | `bigint NULL` (size before compression) |
 | `CreatedByLanId`, `ModifiedByLanId` | `nvarchar(50) NULL`. `CreatedBy` and `ModifiedBy` keep the display name for the History window (module 8, 4.2). |
-| `FileName` | `varchar(1000)` to `nvarchar(1000)`. **Needs approval (section 14, item 2).** |
+| `FileName` | `varchar(1000)` to `nvarchar(1000)`, only if the type is `varchar`. Approved (section 14.1). |
 | Index | `IX_InflowAttachment_InflowId` on `InflowId` |
 
 `Type` (`varchar(500)`) holds the control name of the `filepicker` field. `FileContent` holds the GZip-compressed
@@ -626,6 +626,7 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 | # | Answer | Date |
 |---|---|---|
 | 1 | Approved: the three optional request fields and the new download route. | 2026-11-20 |
+| 2 | Approved: `CFP.InflowAttachment.FileName` changes to `nvarchar(1000)`. | 2026-11-20 |
 
 ## 15. Target integration steps (for `INTEGRATION.md`)
 
