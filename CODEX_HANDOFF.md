@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-18, target sync, template v2, P2 preparation)
+# CP Atlas hand-off - read this first (updated 2026-11-19, P2 gap report, questions Q1-Q2 answered)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -71,7 +71,22 @@ The dated history entries below are unchanged, newest first: platform and target
   here by local script, target team does the same; no/ambiguous match = skip + log warning, --atlas-check lists them. New reusable requirement: AIN account lookup that fills fields (4+ apps). Requirements only, no design.
 4 PENDING_DECISIONS.html: Q01 bug list, Q07/Q08 before 050/090 run anywhere, the rest as before (Q02-Q51).
 
+5 P2 gap report DONE 2026-11-19 (f05002e): docs/ClientInflows/GAP_REPORT.md. A = 17 metadata items, B = 12 new
+  generic platform code items (module 8 attachments, richtext, table option provider for the AIN lookup, record
+  state in the rules (RuleContext sends [] today), Action.Set, MustBeTrue validator, --atlas-check name report),
+  C = 8 engine/adapter items (module 10; engine has ONE route for each transition; no list selection by field value).
+  Questions Q1-Q9 in section 6, answers in section 7 (one at a time):
+  Q1 = A (3aa24e5): engine adapter (module 10) APPROVED for section forms in P2; engine code unchanged.
+  Q2 = A (63f9f1b): two engine actions for the Submit button (E1, then E2 with the state kept); no engine change;
+       a test must prove the engine accepts an action that keeps the state (no code refuses it; read only).
+  Q3 ASKED, NOT ANSWERED: Investment Type lists in the platform (binding map + app settings, recommended) or in the
+       engine (3 actions + 3 routes for each email). Q4-Q8 not asked yet (Q5 = stop-and-ask: varchar -> nvarchar).
+  Not yet read for the design: modules 01, 04-07, 09, 11, 12, INTEGRATION.md, CODE_TRACE.md (read before Task 2).
+
 ### Next
+0. P2: ask Q3 again, then Q4-Q8 (Q9 not blocking), record each answer in GAP_REPORT.md section 7 and commit. Then
+   write docs/atlas-platform/25-client-inflows-p2-design.md + .html, update the README index, stop for approval.
+   No code, no SQL scripts. Do not push.
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
 2. P2 requirements recorded (pending 3). Gap report + design go to another model: start from
@@ -174,7 +189,7 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## Next-session prompt
 "Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
-section A Pending, one question at a time (next: P2 app name and template). Keep the broad
+section A Pending 5 and Next 0, one question at a time (next: P2 gap report question Q3, then Q4-Q8, then the design document 25). Keep the broad
 goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
 nothing breaks the existing system."
 
