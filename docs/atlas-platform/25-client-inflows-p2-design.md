@@ -627,6 +627,7 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 |---|---|---|
 | 1 | Approved: the three optional request fields and the new download route. | 2026-11-20 |
 | 2 | Approved: `CFP.InflowAttachment.FileName` changes to `nvarchar(1000)`. | 2026-11-20 |
+| 3 | Approved: the target file changes (`program.cs`, `package.json`, the Service `.csproj`, `appsettings.json`, and `tailwind.config.js` only if necessary). | 2026-11-20 |
 
 ## 15. Target integration steps (for `INTEGRATION.md`)
 
