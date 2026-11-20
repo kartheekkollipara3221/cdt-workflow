@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD STARTED: step 0 done, next step 1)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0 and 1 done, next step 2)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -136,7 +136,12 @@ The dated history entries below are unchanged, newest first: platform and target
    step 5 (+289 kB styles, target budget 2 MB); Vitest needs a ResizeObserver stub. (c) local engine tables via
    dotnet ef migrations script --idempotent in setup-local-db.ps1 (step 1). SQL tests need
    WORKFLOW_ENGINE_TEST_CONNECTION_STRING="Server=DOLLY;Integrated Security=true;TrustServerCertificate=True;Encrypt=False".
-   NEXT: step 1 when the user says "continue". Then steps 2-7 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
+   STEP 1 DONE (module 25 section 19.2): sql/release-p2 100-140 + README, local 020 + 900 seed + setup
+   (engine tables via dotnet ef database update; the idempotent engine script fails on an empty DB, engine
+   migration 20260807032848, reported, not fixed), Config/CFPINFLOW.*.json (keys of today only; account control is
+   the TEMPORARY Account/PBAccounts control until step 2), stand-in registration, dashboard Menus + currency
+   formatter, tests Data/ReleaseP2ScriptTests.cs and Sections/CfpInflowAppTests.cs.
+   NEXT: step 2 when the user says "continue". Then steps 3-7 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
    then steps 1-7 of module 25 section 13, platform gates and one commit for each step. Do not push.
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).

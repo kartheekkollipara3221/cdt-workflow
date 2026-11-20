@@ -37,6 +37,7 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `WebUi/src/app/platform/dashboard/atlas-dashboard-columns.ts` | `cellDay` | — | Review 3 RV-16 | Gives the local day of a cell, so the date filter matches the shown day. |
 | `WebUi/src/app/platform/dashboard/atlas-dashboard-columns.ts` | `columnDef` | — | NG-08 | The edit link has href, so it takes the focus and opens with Enter. |
 | `WebUi/src/app/platform/dashboard/atlas-dashboard-columns.ts` | `sumsRow` | spec 03 §4.6 | — | Returns the totals row for the Sum columns, or null. |
+| `WebUi/src/app/platform/dashboard/atlas-dashboard-columns.ts` | `formatCurrency` | spec 25 §12 | DR-09 | Formats a currency cell as USD with a thousands separator and 2 decimals. |
 | `WebUi/src/app/platform/dashboard/atlas-dashboard.component.html` | `(file)` | — | review R5 | Layout and classes match the target cp-atlas-dashboard.html. |
 | `WebUi/src/app/platform/dashboard/atlas-dashboard.component.ts` | `AtlasDashboardComponent` | — | NG-11 | Uses OnPush change detection. |
 | `WebUi/src/app/platform/dashboard/atlas-dashboard.component.ts` | `historyRow` | spec 03 | NG-07 | The history row uses the tab Code as its app, not always the dashboard app. |

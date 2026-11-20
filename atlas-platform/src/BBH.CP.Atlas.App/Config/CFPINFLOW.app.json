@@ -1,0 +1,20 @@
+{
+  // ClientInflows manifest (module 25, 5.1). Environment overrides: AppSettings:Modules:CFPINFLOW:*.
+  // The attachment table and the lookup table come with their build steps (attachments, account list).
+  "Code": "CFPINFLOW",
+  "Name": "Client Flows Portal - Inflow",
+  "FormType": "FORM",
+  "Parent": null,
+  "Form": "CFPINFLOW.json",
+  "Dashboard": "CFPINFLOW.Dashboard.json",
+  "Table": "CFP.Inflow",
+  "AuditTable": "CFP.AuditLog",
+  "AttachmentTable": null,
+  "Service": null,
+  "AccessMode": "Enforce",
+  "AuditMode": "Server",
+  "AuditTime": "Utc",
+  "RuleMode": "MostPermissive",
+  "RuleDefault": "ReadOnly",
+  "Enabled": true
+}

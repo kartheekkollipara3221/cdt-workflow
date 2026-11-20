@@ -30,6 +30,44 @@ WHERE u.RoleName IS NOT NULL
                   WHERE x.CP_Atlas_UserID = cu.ID AND x.CP_Atlas_EntitlementID = e.ID);
 GO
 
+-- CFPINFLOW users (release P2). A035313 and A023456 are the mock test users of the requirements (Write, Read).
+-- The current Windows login gets Write. The RM users test the recipient name rules: "Riley Manager" has one user,
+-- "Sam Twin" has two users, "Nobody Known" has none.
+DECLARE @CfpUsers TABLE (LanId nvarchar(50) NOT NULL, DisplayName nvarchar(1000) NOT NULL, RoleName varchar(100) NULL);
+INSERT INTO @CfpUsers (LanId, DisplayName, RoleName) VALUES
+    (N'$(CurrentLanId)', N'$(CurrentDisplayName)', 'Write'),
+    (N'A035313',   N'Wendy Writer',  'Write'),
+    (N'A023456',   N'Rob Reader',    'Read'),
+    (N'cfp.rm1',   N'Riley Manager', NULL),
+    (N'cfp.twin1', N'Sam Twin',      NULL),
+    (N'cfp.twin2', N'Sam Twin',      NULL),
+    (N'cfp.cc1',   N'Casey Copy',    NULL);
+
+INSERT INTO dbo.CP_Atlas_User (LanID, DisplayName, FirstName, LastName, Email, CreatedBy, CreatedDate, IsDeleted)
+SELECT u.LanId, u.DisplayName, NULL, NULL, u.LanId + N'@example.local', N'local.setup', GETUTCDATE(), 0
+FROM (SELECT DISTINCT LanId, DisplayName FROM @CfpUsers) AS u
+WHERE NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_User AS x WHERE x.LanID = u.LanId);
+
+INSERT INTO dbo.CP_Atlas_UserEntitlement (CP_Atlas_UserID, CP_Atlas_EntitlementID, CreatedBy, CreatedDate, IsDeleted)
+SELECT cu.ID, e.ID, N'local.setup', GETUTCDATE(), 0
+FROM @CfpUsers AS u
+INNER JOIN dbo.CP_Atlas_User AS cu ON cu.LanID = u.LanId
+INNER JOIN dbo.CP_Atlas_Application AS a ON a.Code = 'CFPINFLOW'
+INNER JOIN dbo.CP_Atlas_Entitlement AS e ON e.CP_Atlas_ApplicationID = a.ID AND e.Name = u.RoleName
+WHERE u.RoleName IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_UserEntitlement AS x
+                  WHERE x.CP_Atlas_UserID = cu.ID AND x.CP_Atlas_EntitlementID = e.ID);
+GO
+
+-- RMCC of the sample AIN accounts (script 140 adds the column): two names, a name with no user, and no value.
+IF COL_LENGTH(N'AIN.AccountInventory', N'RMCC') IS NOT NULL
+    EXEC(N'UPDATE AIN.AccountInventory SET RMCC = CASE AccountNumber
+            WHEN ''700100'' THEN ''Casey Copy;Riley Manager''
+            WHEN ''700200'' THEN ''Nobody Known''
+            ELSE RMCC END
+        WHERE AccountNumber IN (''700100'', ''700200'') AND RMCC IS NULL;');
+GO
+
 -- Copy of the target procedure (CP_Sharepoint.txt, 2026-10-06). Used by v1/Application.
 CREATE OR ALTER PROCEDURE [dbo].[Get_Application]
     @LanID NVARCHAR(100)

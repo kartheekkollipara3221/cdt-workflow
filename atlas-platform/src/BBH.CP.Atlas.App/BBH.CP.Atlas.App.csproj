@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <!-- Local copy of the target project BBH.CP.Atlas.App (local demo host).
-       Copy to the target: Platform/ and Config/TTDV2.*.json. Do not copy StandIn/, appsettings*.json or this file. -->
+       Copy to the target: Platform/ and Config/TTDV2.*.json and Config/CFPINFLOW.*.json. Do not copy StandIn/, appsettings*.json or this file. -->
   <PropertyGroup>
     <RootNamespace>BBH.CP.Atlas.App</RootNamespace>
   </PropertyGroup>

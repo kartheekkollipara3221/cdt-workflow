@@ -6,7 +6,8 @@ namespace BBH.CP.Atlas.Platform.Tests.Data;
 
 /// <summary>
 /// Makes a throw-away database on the local SQL Server (Windows authentication, as the engine tests do), runs the
-/// local core tables script and the P1 scripts, and drops the database at the end.
+/// local core tables script, the P1 scripts and (unless <see cref="ReleaseP2"/> is false) the local CFP and AIN
+/// tables with the P2 scripts, and drops the database at the end.
 /// Server: environment variable ATLAS_TEST_SQLSERVER, default "localhost".
 /// </summary>
 public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
@@ -16,6 +17,9 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
     public string DatabaseName { get; } = "AtlasPlatformTest_" + Guid.NewGuid().ToString("N")[..12];
 
     public string ConnectionString => Build(DatabaseName);
+
+    /// <summary>False for a test of the P2 scripts that needs a database with no CFP and no AIN tables.</summary>
+    public bool ReleaseP2 { get; init; } = true;
 
     /// <summary>The columns of TTDV2.General and TTDV2.AuditLog, read one time after the scripts (before any test changes a table).</summary>
     public AtlasTableRegistry Ttdv2Registry { get; } = new();
@@ -38,6 +42,11 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
         await RunScriptFileAsync(Path.Combine(release, "030-active-user-roles-view.sql"));
         await RunScriptFileAsync(Path.Combine(release, "040-ttdv2-app.sql"), ("<RUN_BY>", "test.runner"));
         await RunScriptFileAsync(Path.Combine(release, "045-ttdv2-audit-reference-columns.sql"));
+        if (ReleaseP2)
+        {
+            await Data.ReleaseP2.MakeTargetTablesAsync(this);
+            await Data.ReleaseP2.RunScriptsAsync(this);
+        }
 
         await using SqlConnection connection = new(ConnectionString);
         await new AtlasColumnMetadataReader().LoadAsync(connection, Ttdv2Registry, ["TTDV2.General", "TTDV2.AuditLog"]);

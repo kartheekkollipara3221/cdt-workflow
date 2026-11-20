@@ -39,6 +39,7 @@ public static class StandInHost
         // Platform lines (the same lines go into the target program.cs).
         builder.Services.AddAtlasPlatform(configuration);
         builder.Services.AddAtlasModule<ConfigSectionService>("TTDV2");
+        builder.Services.AddAtlasModule<ConfigSectionService>("CFPINFLOW");
 
         // Authentication: "Fixed" (default) = the Windows login of the API process; "Negotiate" = Windows authentication.
         if (string.Equals(configuration["StandIn:Authentication"], "Negotiate", StringComparison.OrdinalIgnoreCase))

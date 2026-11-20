@@ -54,6 +54,10 @@ internal sealed class SectionHarness : IDisposable
     public ConfigSectionService Service(AtlasTableRegistry registry, string lanId, params AtlasRole[] roles) =>
         new(ModuleServices(registry, lanId, roles, NullLoggerFactory.Instance)) { AppCode = "TTDV2" };
 
+    /// <summary>The module service of another app of the real Config folder (for example CFPINFLOW).</summary>
+    public ConfigSectionService ServiceFor(string appCode, AtlasTableRegistry registry, string lanId, params AtlasRole[] roles) =>
+        new(ModuleServices(registry, lanId, roles, NullLoggerFactory.Instance)) { AppCode = appCode };
+
     /// <summary>The services of a module class, for a test subclass of a module (for example a hook that throws).</summary>
     public AtlasModuleServices ModuleServices(AtlasTableRegistry registry, string lanId, AtlasRole[] roles, ILoggerFactory loggerFactory)
     {

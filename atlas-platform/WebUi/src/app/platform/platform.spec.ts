@@ -9,7 +9,7 @@ import { buildFormGroup, buildOutputs, computeValue, containerOf, isShown, shown
 import { atlasValidators, errorCode, errorText } from './form/atlas-validators';
 import { ATLAS_VALIDATOR_CASES } from './form/atlas-validator-cases';
 import { ATLAS_COMPUTED_CASES, ATLAS_EFFECT_CASES } from './form/atlas-effect-cases';
-import { cellDay, columnDefs, formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
+import { cellDay, columnDefs, formatCurrency, formatDate, sumsRow } from './dashboard/atlas-dashboard-columns';
 import { AtlasActionMenu } from './dashboard/atlas-action-menu';
 import { AtlasRendererRegistry, provideAtlasRenderers } from './form/atlas-renderer-registry';
 import { AtlasCheckboxRenderer, AtlasRadioRenderer, AtlasTextRenderer, AtlasUnsupportedRenderer } from './form/renderers/atlas-renderers';
@@ -159,6 +159,27 @@ describe('dashboard columns', () => {
     expect(formatDate('2026-10-18')).toBe('18-Oct-2026');
     const total = sumsRow({ Columns: [{ Name: 'Account' }, { Name: 'Minutes', Sum: true }] }, [{ Minutes: 30 }, { Minutes: 15 }, { Minutes: null }]);
     expect(total).toEqual({ Account: 'Total', Minutes: 45 });
+  });
+});
+
+describe('dashboard currency column', () => {
+  it('formats USD with a thousands separator and 2 decimals', () => {
+    expect(formatCurrency(1250000)).toBe('$1,250,000.00');
+    expect(formatCurrency('1250000.5000')).toBe('$1,250,000.50');
+    expect(formatCurrency(-5)).toBe('-$5.00');
+    expect(formatCurrency(0)).toBe('$0.00');
+    expect(formatCurrency(null)).toBe('');
+    expect(formatCurrency('')).toBe('');
+    expect(formatCurrency('n/a')).toBe('n/a');
+  });
+
+  it('gives a currency column the formatter, the number filter and the right alignment', () => {
+    const actions = { edit: () => undefined, history: () => undefined, remove: () => undefined };
+    const [amount] = columnDefs({ Columns: [{ Name: 'Amount', Type: 'currency' }] }, actions);
+    expect(amount.type).toBe('numericColumn');
+    expect(amount.filter).toBe('agNumberColumnFilter');
+    const format = amount.valueFormatter as (p: { value: unknown }) => string;
+    expect(format({ value: 99.9 })).toBe('$99.90');
   });
 });
 

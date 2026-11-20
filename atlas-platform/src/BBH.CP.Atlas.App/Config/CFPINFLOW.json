@@ -1,0 +1,122 @@
+{
+  // ClientInflows form (module 25, 5.2). People are LAN IDs. Part 1 = the inflow, part 2 = the cash receipt.
+  // Build step 1: the controls of today. Later steps add the AIN account list, the state rules, MustBeTrue,
+  // the file pickers, rich text and the workflow binding.
+  "Name": "Client Flows Portal - Inflow",
+  "Type": "SECTION",
+  "Rules": [
+    { "Roles": [ "@Read" ], "Disabled": true },
+    { "Roles": [ "Write" ], "Disabled": false }
+  ],
+  "Permissions": {
+    "View": [ "@Read" ],
+    "Create": [ "Write" ],
+    "Edit": { "All": [ "Write" ] },
+    "Delete": [ "Write" ],
+    "History": [ "@Read" ]
+  },
+  "Defaults": {
+    "FlowSubmittedBy": "{User.LanID}"
+  },
+  "SoftDelete": { "Field": "IsDeleted" },
+  "HeaderNameWithId": "{Name} - {ID}",
+  "Section": {
+    "Name": "Client Flows Portal - Inflow",
+    "Description": "",
+    "HeaderName": "Client Flows Portal - Inflow",
+    "Controls": [
+      {
+        "Name": "InflowAccount",
+        "Label": "Account Details",
+        "Type": "section",
+        "PlaceHolder": "",
+        "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "ChildControls": [
+          {
+            "Name": "Account",
+            "Field": "Account",
+            "Label": "Account",
+            "Type": "ngselect",
+            "Multiple": false,
+            "PlaceHolder": "Account",
+            "OptionsSource": { "Provider": "PBAccounts" },
+            "KeepSavedValue": true,
+            "Effects": [
+              {
+                "When": { "HasValue": true },
+                "SetFromOption": { "AccountNumber": "AccountNumber", "AccountName": "AccountName", "RelationshipManager": "RelationshipManager" }
+              },
+              {
+                "When": { "HasValue": false },
+                "Clear": [ "AccountNumber", "AccountName", "RelationshipManager" ]
+              }
+            ],
+            "Validator": { "Required": true }
+          },
+          { "Name": "AccountNumber", "Field": "AccountNumber", "Label": "Account Number", "Type": "text", "PlaceHolder": "Account Number", "Disabled": true },
+          { "Name": "AccountName", "Field": "AccountName", "Label": "Account Name", "Type": "text", "PlaceHolder": "Account Name", "Disabled": true },
+          { "Name": "StarNumber", "Field": "StarNumber", "Label": "STAR Number", "Type": "text", "PlaceHolder": "STAR Number", "Disabled": true },
+          { "Name": "RelationshipManager", "Field": "RelationshipManager", "Label": "Relationship Manager", "Type": "text", "PlaceHolder": "Relationship Manager", "Disabled": true },
+          { "Name": "Custodian", "Field": "Custodian", "Label": "Custodian", "Type": "text", "PlaceHolder": "Custodian", "Disabled": true }
+        ]
+      },
+      {
+        "Name": "InflowDetails",
+        "Label": "Inflow Details",
+        "Type": "section",
+        "PlaceHolder": "",
+        "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "ChildControls": [
+          {
+            "Name": "InvestmentType",
+            "Field": "InvestmentType",
+            "Label": "Investment Type",
+            "Type": "select",
+            "PlaceHolder": "Investment Type",
+            "Options": [
+              { "Label": "Fixed Income", "Value": "Fixed Income" },
+              { "Label": "Equity", "Value": "Equity" },
+              { "Label": "Fixed Income & Equity", "Value": "Fixed Income & Equity" }
+            ],
+            "Validator": { "Required": true }
+          },
+          { "Name": "Amount", "Field": "Amount", "Label": "Amount (USD)", "Type": "currency", "PlaceHolder": "Amount", "Validator": { "Required": true, "Min": 0.01 } },
+          { "Name": "InflowDate", "Field": "InflowDate", "Label": "Inflow Date", "Type": "date", "PlaceHolder": "Inflow Date", "Validator": { "Required": true } },
+          { "Name": "Description", "Field": "Description", "Label": "Description", "Type": "textarea", "PlaceHolder": "Description", "DivClass": "grid-column-start-end-1-2" },
+          { "Name": "FlowSubmittedBy", "Field": "FlowSubmittedBy", "Label": "Submitted By", "Type": "user", "PlaceHolder": "Submitted By", "Disabled": true },
+          { "Name": "FlowConfirm", "Field": "FlowConfirm", "Label": "I confirm that the information above is correct.", "Type": "checkbox" }
+        ]
+      },
+      {
+        "Name": "CashReceipt",
+        "Label": "Cash Receipt Confirmation",
+        "Type": "section",
+        "PlaceHolder": "",
+        "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "ChildControls": [
+          { "Name": "FundsReceived", "Field": "FundsReceived", "Label": "Funds have been received", "Type": "checkbox" },
+          { "Name": "Comment", "Field": "Comment", "Label": "Comment", "Type": "textarea", "PlaceHolder": "Comment", "DivClass": "grid-column-start-end-1-2" },
+          { "Name": "CashSubmittedBy", "Field": "CashSubmittedBy", "Label": "Confirmed By", "Type": "user", "PlaceHolder": "Confirmed By", "Disabled": true },
+          { "Name": "CashConfirm", "Field": "CashConfirm", "Label": "I confirm that the funds have been received.", "Type": "checkbox" }
+        ]
+      }
+    ],
+    "Buttons": [
+      {
+        "Name": "Submit",
+        "Label": "Submit",
+        "Visible": true,
+        "Disabled": false,
+        "Action": { "Type": "Save" },
+        "Rules": [ { "Roles": [ "Write" ] } ]
+      },
+      {
+        "Name": "Close",
+        "Label": "Close",
+        "Visible": true,
+        "Disabled": false,
+        "Action": { "Type": "Close" }
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  // ClientInflows dashboard (module 25, 5.3). Tab data from the table (Source: Table). The platform always adds the
+  // not-deleted filter. Each tab has Menus, so a Read user also gets "Edit" (the form then opens read-only).
+  // The Add button has no rule: Permissions.Create of CFPINFLOW.json hides it for a user who cannot create.
+  "Name": "Client Flows Portal - Inflow",
+  "Tabs": [
+    {
+      "ID": "Inflows",
+      "Code": "CFPINFLOW",
+      "Label": "Inflows",
+      "Source": "Table",
+      "OrderBy": [ "CreatedDate DESC" ],
+      "Menus": [
+        { "Name": "Edit", "Label": "Edit" },
+        { "Name": "History", "Label": "History" },
+        { "Name": "Delete", "Label": "Delete", "Visible": false, "Rule": { "Roles": [ "Write" ] } }
+      ],
+      "Columns": [
+        { "Name": "ID", "Label": "ID", "Type": "number", "Link": "Edit" },
+        { "Name": "AccountNumber", "Label": "Account Number" },
+        { "Name": "AccountName", "Label": "Account Name" },
+        { "Name": "InvestmentType", "Label": "Investment Type" },
+        { "Name": "Amount", "Label": "Amount", "Type": "currency" },
+        { "Name": "InflowDate", "Label": "Inflow Date", "Type": "date" },
+        { "Name": "Status", "Label": "Status" },
+        { "Name": "FlowSubmittedBy", "Label": "Submitted By", "Type": "user" },
+        { "Name": "CreatedDate", "Label": "Created", "Type": "date" },
+        { "Name": "CashSubmittedBy", "Label": "Funds Confirmed By", "Type": "user" },
+        { "Name": "CashSubmittedDate", "Label": "Funds Confirmed Date", "Type": "date" },
+        { "Name": "DestructionDate", "Label": "Destruction Date", "Type": "date" }
+      ]
+    },
+    {
+      "ID": "InflowPipeline",
+      "Code": "CFPINFLOW",
+      "Label": "Inflow Pipeline",
+      "Source": "Table",
+      "Filter": [ { "Column": "WorkflowState", "Op": "Eq", "Value": "Submitted" } ],
+      "OrderBy": [ "CreatedDate DESC" ],
+      "Menus": [
+        { "Name": "Edit", "Label": "Edit" },
+        { "Name": "History", "Label": "History" },
+        { "Name": "Delete", "Label": "Delete", "Visible": false, "Rule": { "Roles": [ "Write" ] } }
+      ],
+      "Columns": [
+        { "Name": "ID", "Label": "ID", "Type": "number", "Link": "Edit" },
+        { "Name": "AccountNumber", "Label": "Account Number" },
+        { "Name": "AccountName", "Label": "Account Name" },
+        { "Name": "InvestmentType", "Label": "Investment Type" },
+        { "Name": "Amount", "Label": "Amount", "Type": "currency" },
+        { "Name": "InflowDate", "Label": "Inflow Date", "Type": "date" },
+        { "Name": "Status", "Label": "Status" },
+        { "Name": "FlowSubmittedBy", "Label": "Submitted By", "Type": "user" },
+        { "Name": "CreatedDate", "Label": "Created", "Type": "date" },
+        { "Name": "CashSubmittedBy", "Label": "Funds Confirmed By", "Type": "user" },
+        { "Name": "CashSubmittedDate", "Label": "Funds Confirmed Date", "Type": "date" },
+        { "Name": "DestructionDate", "Label": "Destruction Date", "Type": "date" }
+      ]
+    }
+  ],
+  "Buttons": [
+    {
+      "Name": "Add",
+      "Label": "Add New",
+      "Visible": true,
+      "Disabled": false,
+      "Target": { "AppCode": "CFPINFLOW", "Id": 0 }
+    }
+  ]
+}

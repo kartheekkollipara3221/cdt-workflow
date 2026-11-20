@@ -935,3 +935,31 @@ Conditions for the target (for `INTEGRATION.md`, build step 7):
   `WorkflowEngine.Console`), then runs the script with `sqlcmd`. The script is made at each setup, so it always
   follows the engine migrations. Checked: the script has the 21 engine tables and no sample data.
 - Not used: the console command `init-db`. It also loads the Portfolio Trade sample workflow.
+
+### 19.2 Step 1 (2026-11-20)
+
+- SQL: `atlas-platform/sql/release-p2/` with `README.md` and the scripts 100 to 140 (section 4). Error numbers 55100
+  to 55140. Each script runs two times with no change, keeps the data of the target tables, and stops (with no log
+  row) when its target table is not there.
+- Local: `local/sql/020-local-cfp-ain-tables.sql` (the three target tables in the exact target shape, and sample AIN
+  accounts); `900-local-seed.sql` (the CFPINFLOW users A035313 Write and A023456 Read, the current login as Write,
+  the RM sample users, RMCC values); `setup-local-db.ps1` runs them, the P2 scripts and the engine tables.
+- App files: `Config/CFPINFLOW.app.json`, `CFPINFLOW.json`, `CFPINFLOW.Dashboard.json`; one registration line in the
+  stand-in host. The files use only the keys of today, because an unknown key is a start-up warning. Each later step
+  adds its keys (`AttachmentTable`, `LookupTables`, `AttachmentColumns`, the workflow binding).
+- Temporary in step 1: the account control is `Account` with the provider `PBAccounts` (as in TTDV2). Step 2
+  replaces it with the control `AccountNumber` and the AIN Table provider (DR-07). `Description` and `Comment` are
+  `textarea` until step 5. The state rules (part 2 hidden in `Draft`) come in step 3.
+- Dashboard: the two tabs with `Menus` (DR-04) and the generic `currency` formatter (DR-09, also the number filter).
+- `InflowDate` is `datetime` in the target table (not `date`). The platform reads and writes the day; no change.
+- Engine tables in the local database (correction of 19.1 (c)): `setup-local-db.ps1` uses
+  `dotnet ef database update --connection ...`. The idempotent script (`dotnet ef migrations script --idempotent`)
+  fails on an empty database: the migration `20260807032848_AddApplicationAnchoredRecurringSla` adds
+  `SlaPolicy.CalculationMode` and updates it in the same batch, and SQL Server checks the batch before the column
+  exists. An engine migration change is necessary to correct the script; this is not in the P2 scope (engine code
+  does not change). Integration note: the P1 `README.md` step 010 uses this script; at the target it works only
+  when the database already has this migration.
+- Proof: the menu procedure `dbo.Get_Application` gives CFPINFLOW to A035313 (Write) and A023456 (Read); a `Write`
+  user saves a plain record (default `FlowSubmittedBy`, account values, audit row); a `Read` user cannot make a
+  record, opens a record read-only, and gets "Edit" and "History" in the row menu but no "Delete" and no "Add New";
+  the pipeline tab lists only the records in state `Submitted`.

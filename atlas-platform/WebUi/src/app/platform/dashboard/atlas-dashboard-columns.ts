@@ -28,6 +28,21 @@ export function formatDate(value: unknown): string {
   return day ? formatDay(day, 'dd-MMM-yyyy', 'en-US') : text;
 }
 
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Formats a currency cell as "$1,250,000.00".
+ *
+ * Accepts a number or a numeric text. Returns other text unchanged, and an empty string for no value.
+ */
+export function formatCurrency(value: unknown): string {
+  if (isNil(value) || value === '') {
+    return '';
+  }
+  const amount = typeof value === 'number' ? value : Number(String(value).trim());
+  return Number.isFinite(amount) ? usd.format(amount) : String(value);
+}
+
 /**
  * Returns the local day of a cell, the same day that formatDate shows.
  *
@@ -94,10 +109,13 @@ function columnDef(column: CPTabColumn, actions: AtlasRowActions): ColDef {
     flex: column.Width ? undefined : 1,
     minWidth: 110,
     sortable: true,
-    filter: type === 'number' ? 'agNumberColumnFilter' : type === 'date' ? 'agDateColumnFilter' : 'agTextColumnFilter',
+    filter: type === 'number' || type === 'currency' ? 'agNumberColumnFilter' : type === 'date' ? 'agDateColumnFilter' : 'agTextColumnFilter',
   };
   if (type === 'number' || type === 'currency') {
     def.type = 'numericColumn';
+  }
+  if (type === 'currency') {
+    def.valueFormatter = (p: ValueFormatterParams) => formatCurrency(p.value);
   }
   if (type === 'date') {
     def.valueFormatter = (p: ValueFormatterParams) => formatDate(p.value);

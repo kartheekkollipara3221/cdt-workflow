@@ -28,6 +28,13 @@ internal static class Ttdv2Roles
     public static AtlasRole Owner => new("TTDV2", "Owner", IsRead: true, IsWrite: true, IsAdmin: true);
 }
 
+/// <summary>The CFPINFLOW roles (sql/release-p2/130-cfpinflow-app.sql).</summary>
+internal static class CfpRoles
+{
+    public static AtlasRole Read => new("CFPINFLOW", "Read", IsRead: true, IsWrite: false, IsAdmin: false);
+    public static AtlasRole Write => new("CFPINFLOW", "Write", IsRead: true, IsWrite: true, IsAdmin: false);
+}
+
 /// <summary>Collects log entries for assertions.</summary>
 internal sealed class ListLogger<T> : ILogger<T>
 {
