@@ -19,6 +19,7 @@ export interface CPValidator {
   Min?: number | null;
   Max?: number | null;
   Step?: number | null;
+  MustBeTrue?: boolean;
 }
 
 /** The condition on the value of a control that starts an effect. */

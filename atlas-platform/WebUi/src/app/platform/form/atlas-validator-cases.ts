@@ -44,5 +44,13 @@ export const ATLAS_VALIDATOR_CASES: AtlasValidatorCase[] = [
   { "validator": { "Step": 0.1 }, "value": "0.3", "code": null, "message": null },
   { "validator": { "Step": 0.1 }, "value": "0.35", "code": "Step", "message": "Field must be a multiple of 0.1." },
   { "validator": { "Max": 1440, "Step": 5 }, "value": "1441", "code": "Max", "message": "Field must be 1440 or less." },
-  { "validator": { "Integer": true, "Step": 5, "Message": "Steps of 5." }, "value": "12", "code": "Step", "message": "Steps of 5." }
+  { "validator": { "Integer": true, "Step": 5, "Message": "Steps of 5." }, "value": "12", "code": "Step", "message": "Steps of 5." },
+  { "validator": { "MustBeTrue": true }, "value": "true", "code": null, "message": null },
+  { "validator": { "MustBeTrue": true }, "value": " Yes ", "code": null, "message": null },
+  { "validator": { "MustBeTrue": true }, "value": "1", "code": null, "message": null },
+  { "validator": { "MustBeTrue": true }, "value": "false", "code": "MustBeTrue", "message": "Select Field before you submit." },
+  { "validator": { "MustBeTrue": true }, "value": "", "code": "MustBeTrue", "message": "Select Field before you submit." },
+  { "validator": { "MustBeTrue": true }, "value": "no", "code": "MustBeTrue", "message": "Select Field before you submit." },
+  { "validator": { "MustBeTrue": true, "Message": "Confirm it." }, "value": "0", "code": "MustBeTrue", "message": "Confirm it." },
+  { "validator": { "Required": true, "MustBeTrue": true }, "value": " ", "code": "Required", "message": "Field is required." }
 ];

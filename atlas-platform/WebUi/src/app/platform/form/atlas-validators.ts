@@ -3,6 +3,7 @@
 // The client checks only help the user. Both sides use the same rules and texts.
 // The shared test cases are in atlas-validator-cases.ts. The rules:
 //  - A value of only spaces is empty. Required fails, and the other checks do not run.
+//  - MustBeTrue fails for each value that is not true, also for an empty value.
 //  - Pattern is anchored as Angular Validators.pattern does. It adds ^ and $ when they are not there.
 //  - The number checks run in this order: Integer, then "a number" (no exponent), then Min, Max and Step.
 //  - When Validator.Message is set, it is the text of each failure.
@@ -24,6 +25,13 @@ function text(control: AbstractControl): string {
 /** Fails with `required` when the value is empty or has only spaces. */
 export function atlasRequired(control: AbstractControl): ValidationErrors | null {
   return empty(control.value) ? { required: true } : null;
+}
+
+/** Fails with `mustBeTrue` when the value is not true: a boolean true, or the text true, yes or 1 (any case). */
+export function atlasMustBeTrue(control: AbstractControl): ValidationErrors | null {
+  const value = control.value;
+  const isTrue = value === true || ['true', 'yes', '1'].includes(String(value ?? '').trim().toLowerCase());
+  return isTrue ? null : { mustBeTrue: true };
 }
 
 /** Returns a validator that fails with `maxlength` when a value has more than max characters. */
@@ -100,6 +108,9 @@ export function atlasValidators(validator: CPValidator | null | undefined, requi
   if (!validator) {
     return list;
   }
+  if (validator.MustBeTrue) {
+    list.push(atlasMustBeTrue);
+  }
   if (!isNil(validator.MaxLength)) {
     list.push(atlasMaxLength(validator.MaxLength));
   }
@@ -140,6 +151,7 @@ export function errorCode(errors: ValidationErrors | null): string | null {
   }
   const order: [string, string][] = [
     ['required', 'Required'],
+    ['mustBeTrue', 'MustBeTrue'],
     ['maxlength', 'MaxLength'],
     ['minlength', 'MinLength'],
     ['pattern', 'Pattern'],
@@ -170,6 +182,8 @@ export function errorText(errors: ValidationErrors | null, label: string, valida
   switch (errorCode(errors)) {
     case 'Required':
       return `${label} is required.`;
+    case 'MustBeTrue':
+      return `Select ${label} before you submit.`;
     case 'MaxLength':
       return `${label} can have at most ${errors['maxlength'].requiredLength} characters.`;
     case 'MinLength':

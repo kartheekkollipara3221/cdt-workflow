@@ -1,7 +1,9 @@
 {
   // ClientInflows form (module 25, 5.2). People are LAN IDs. Part 1 = the inflow, part 2 = the cash receipt.
   // The account list comes from AIN.AccountInventory. The account fills 4 fields and RMCC (a column with no control).
-  // Later build steps add the state rules, MustBeTrue, the file pickers, rich text and the workflow binding.
+  // The state of the record (WorkflowState) drives the rules: part 2 is hidden in Draft, part 1 is read-only after
+  // Draft, and part 2 is read-only after Submitted. One submit button: the server takes the step of the stored state
+  // (Workflow.Steps). Later build steps add the file pickers, rich text and the engine actions of each step.
   "Name": "Client Flows Portal - Inflow",
   "Type": "SECTION",
   "Rules": [
@@ -24,6 +26,21 @@
     "Name": "Client Flows Portal - Inflow",
     "Description": "",
     "HeaderName": "Client Flows Portal - Inflow",
+    "Workflow": {
+      "Key": "ClientInflow",
+      "Roles": [],
+      "Actions": {},
+      "StateField": "WorkflowState",
+      "StatusField": "Status",
+      "InitialState": "Draft",
+      "StatusLabels": { "Draft": "Draft", "Submitted": "Submitted", "FundsReceived": "Funds Received" },
+      "Steps": {
+        "Draft": {},
+        "Submitted": {
+          "Set": { "CashSubmittedBy": "{User.LanID}", "CashSubmittedDate": "{Now}" }
+        }
+      }
+    },
     "Controls": [
       {
         "Name": "InflowAccount",
@@ -31,6 +48,7 @@
         "Type": "section",
         "PlaceHolder": "",
         "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "Rules": [ { "Roles": [ "Write" ], "States": [ "Draft" ], "Disabled": false } ],
         "ChildControls": [
           {
             "Name": "AccountNumber",
@@ -81,6 +99,7 @@
         "Type": "section",
         "PlaceHolder": "",
         "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "Rules": [ { "Roles": [ "Write" ], "States": [ "Draft" ], "Disabled": false } ],
         "ChildControls": [
           {
             "Name": "InvestmentType",
@@ -99,7 +118,7 @@
           { "Name": "InflowDate", "Field": "InflowDate", "Label": "Inflow Date", "Type": "date", "PlaceHolder": "Inflow Date", "Validator": { "Required": true } },
           { "Name": "Description", "Field": "Description", "Label": "Description", "Type": "textarea", "PlaceHolder": "Description", "DivClass": "grid-column-start-end-1-2" },
           { "Name": "FlowSubmittedBy", "Field": "FlowSubmittedBy", "Label": "Submitted By", "Type": "user", "PlaceHolder": "Submitted By", "Disabled": true },
-          { "Name": "FlowConfirm", "Field": "FlowConfirm", "Label": "I confirm that the information above is correct.", "Type": "checkbox" }
+          { "Name": "FlowConfirm", "Field": "FlowConfirm", "Label": "I confirm that the information above is correct.", "Type": "checkbox", "Validator": { "MustBeTrue": true } }
         ]
       },
       {
@@ -108,11 +127,15 @@
         "Type": "section",
         "PlaceHolder": "",
         "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
+        "Rules": [
+          { "States": [ "Draft" ], "Visible": false, "Disabled": true },
+          { "Roles": [ "Write" ], "States": [ "Submitted" ], "Disabled": false }
+        ],
         "ChildControls": [
-          { "Name": "FundsReceived", "Field": "FundsReceived", "Label": "Funds have been received", "Type": "checkbox" },
+          { "Name": "FundsReceived", "Field": "FundsReceived", "Label": "Funds have been received", "Type": "checkbox", "Validator": { "MustBeTrue": true } },
           { "Name": "Comment", "Field": "Comment", "Label": "Comment", "Type": "textarea", "PlaceHolder": "Comment", "DivClass": "grid-column-start-end-1-2" },
           { "Name": "CashSubmittedBy", "Field": "CashSubmittedBy", "Label": "Confirmed By", "Type": "user", "PlaceHolder": "Confirmed By", "Disabled": true },
-          { "Name": "CashConfirm", "Field": "CashConfirm", "Label": "I confirm that the funds have been received.", "Type": "checkbox" }
+          { "Name": "CashConfirm", "Field": "CashConfirm", "Label": "I confirm that the funds have been received.", "Type": "checkbox", "Validator": { "MustBeTrue": true } }
         ]
       }
     ],

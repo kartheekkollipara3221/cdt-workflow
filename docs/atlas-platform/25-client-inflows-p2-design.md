@@ -989,3 +989,49 @@ Conditions for the target (for `INTEGRATION.md`, build step 7):
   4 fields and `RMCC`; a changed AIN row does not change a record whose account control is read-only, and does when
   the control is enabled; a `Read` user gets one option with no `Data`; bad names in the parameters are refused;
   `--atlas-check` prints the Info lines with `0 error(s), 0 warning(s)`; all TTDV2 tests pass with no change.
+
+### 19.4 Step 3 (2026-11-20)
+
+- DTO (partial classes in `Data/Platform/Dto/CPPlatformDto.cs`): `CPValidator.MustBeTrue`; on `CPWorkflow` the
+  optional `StateField`, `StatusField`, `InitialState`, `StatusLabels` and `Steps`; the new class `CPWorkflowStep`
+  with `Label` and `Set`. `EngineActions` and the other engine keys come in build step 6, with the code that reads
+  them. The target class `CPWorkflow` is already `partial`.
+- State (6.1): `AtlasWorkflowSteps` (`Service/Platform/Sections/`) reads the `StateField` column of the stored record.
+  A new record has `InitialState`. A form with no binding has no state, as before. A stored record with an empty
+  state has no state: no rule with `States` matches it, the submit button is hidden and a save is refused. The History
+  of a deleted record also uses no state.
+- One submit button (6.4): each save of a form with `Steps` takes the step of the stored state before the rules run.
+  No step: the save stops with the page error `NotAllowed` "You cannot submit this record in the state '<label>'."
+  Nothing is written. On load, the server hides the submit button for such a state, and gives the button the `Label`
+  of the step when the step has one.
+- `Set` of a step: the names are server-set, so a client value is not used (log `Atlas.FieldIgnored`, reason
+  `ServerSet`, as for the other server-set fields). The values are written after the defaults. `{Now}` is the time
+  of the save with the `SystemTime` of the app, the same value as `ModifiedDate` (UTC for CFPINFLOW). The other tokens
+  are the default tokens. A `Set` name with a control is in the History; a column with no control is not.
+- Start-up check (form with `Steps`): `StateField` is necessary and must be a column; `StatusField` must be a column;
+  `InitialState` and each `Steps` key must be keys of `StatusLabels`; a `Set` name must be a control, a field or a
+  non-system column; a `Set` token must be `{Now}` or a default token; exactly one button with the action `Save`.
+- `MustBeTrue` (6.3): server `AtlasFieldValidator`, client `atlas-validators.ts`, 8 new shared cases in
+  `atlas-validator-cases.ts`. The order is Required, then MustBeTrue, then the other checks. An empty value fails.
+  The client draws the error text of a checkbox under the control.
+- `CFPINFLOW.json`: the `Workflow` block in `Section` (no engine keys yet), the state rules on the three section
+  containers (part 1 enabled for `Write` in `Draft`; part 2 hidden in `Draft` and enabled for `Write` in `Submitted`;
+  each other cell read-only by `RuleDefault`), and `MustBeTrue` on `FlowConfirm`, `FundsReceived` and `CashConfirm`.
+  The app-level rules stay as the default for a later section with no rules.
+- Proof (.NET, own database; the tests set `WorkflowState` by SQL): a new record is in `Draft` with part 2 hidden; the
+  first submit needs `FlowConfirm` and not the part 2 fields; a part 2 value at the first submit is refused; in
+  `Submitted` part 1 is read-only and part 2 is enabled (read-only for `Read`); the second submit cannot change part 1,
+  needs the two part 2 checkboxes, and sets `CashSubmittedBy` and `CashSubmittedDate` on the server; a state with no
+  step (`FundsReceived`, or empty) hides Submit and refuses the save with no write; the `Label` of a step is the
+  button text; nine start-up check errors. Two step 2 tests now set the state `Draft` first, because a record with no
+  state is read-only. All TTDV2 tests pass with no change. Angular: part 2 hidden and not sent, a `MustBeTrue` box
+  stops the save with the platform text, no submit button when the server hides it.
+- Not changed: the client. It already disables the buttons while a save runs and sends only the shown and enabled
+  fields.
+
+Notes for later steps:
+
+- The default text "Select <label> before you submit." is long for the three checkboxes, because their labels are full
+  sentences. `Validator.Message` can give a shorter text. The JSON keeps the design text.
+- A stored record with no state cannot be submitted. Records of the local database from build steps 1 to 3 have no
+  state. A record that the target team moves from SharePoint needs a `WorkflowState` value.

@@ -24,6 +24,11 @@ public static partial class AtlasDefaultTokens
     /// </summary>
     public const string TodayNext = "{Today.Next(Day)}";
 
+    /// <summary>
+    /// The date and time of the save, with the SystemTime of the app. Only the Set of a workflow step can use it.
+    /// </summary>
+    public const string Now = "{Now}";
+
     /// <summary>The fixed tokens, for messages. {Today.Next(Day)} and {Options[n]} are also known tokens.</summary>
     public static IReadOnlyList<string> Fixed { get; } = [UserLanId, UserDisplayName, Today];
 

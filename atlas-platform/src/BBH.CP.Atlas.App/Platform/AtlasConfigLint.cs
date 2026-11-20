@@ -67,6 +67,58 @@ public static partial class AtlasConfigLint
         RuleTargets(form, controls, names, error);
         Defaults(form, names, error);
         ButtonActions(form, error, warning);
+        WorkflowSteps(form, names, table, error);
+    }
+
+    /// <summary>
+    /// Checks the workflow binding of a form with steps: the state columns, the states, the Set of each step and the
+    /// one submit button.
+    /// </summary>
+    /// <remarks>A form with no Steps is not checked here.</remarks>
+    private static void WorkflowSteps(CPAtlasApplicationConfig form, HashSet<string> names, AtlasTable? table, Action<string> error)
+    {
+        CPWorkflow? workflow = form.Section?.Workflow;
+        if (workflow?.Steps is not { Count: > 0 } steps)
+            return;
+
+        Column(workflow.StateField, "StateField", table, error, required: true);
+        Column(workflow.StatusField, "StatusField", table, error, required: false);
+        HashSet<string> states = new((IEnumerable<string>?)workflow.StatusLabels?.Keys ?? [], StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(workflow.InitialState))
+            error("the Workflow has Steps but no InitialState.");
+        else if (!states.Contains(workflow.InitialState))
+            error($"the Workflow InitialState '{workflow.InitialState}' is not a key of StatusLabels.");
+
+        foreach ((string state, CPWorkflowStep step) in steps)
+        {
+            if (!states.Contains(state))
+                error($"the Workflow step '{state}' is not a key of StatusLabels.");
+            foreach ((string name, string token) in step?.Set ?? new Dictionary<string, string>())
+            {
+                string where = $"the Set of the Workflow step '{state}'";
+                if (!names.Contains(name) && table?.HasColumn(name) != true)
+                    error($"{where} names '{name}', which is not a control or field of the form, or a column of the table.");
+                else if (ConfigSectionService.SystemColumns.Contains(name))
+                    error($"{where} names the system column '{name}', which only the server writes.");
+                if (!string.Equals(token, AtlasDefaultTokens.Now, StringComparison.OrdinalIgnoreCase) && !AtlasDefaultTokens.IsValid(token))
+                    error($"{where} has the token '{token}' for '{name}', which is not known (known: {AtlasDefaultTokens.Now}, {string.Join(", ", AtlasDefaultTokens.Fixed)}).");
+            }
+        }
+
+        int saveButtons = AtlasWorkflowSteps.SaveButtons(form.Section).Count;
+        if (saveButtons != 1)
+            error($"the form has Workflow Steps and {saveButtons} buttons with the action Save; a form with steps has exactly one submit button.");
+    }
+
+    private static void Column(string? name, string key, AtlasTable? table, Action<string> error, bool required)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            if (required)
+                error($"the Workflow has Steps but no {key}.");
+        }
+        else if (table != null && !table.HasColumn(name))
+            error($"the Workflow {key} '{name}' is not a column of {table.FullName}.");
     }
 
     /// <summary>Reports a control name that occurs more than one time. Returns the names of the controls, grid columns and fields.</summary>

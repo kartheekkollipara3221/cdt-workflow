@@ -16,8 +16,12 @@ namespace BBH.CP.Atlas.Platform.Tests.Sections;
 /// <summary>
 /// The ClientInflows app (CFPINFLOW, module 25) with the real app files of the Config folder on the release P2 tables:
 /// the save, the dashboard menus and the Add button (build step 1); the AIN account list, the data-only target RMCC,
-/// the effects rule and the saved option rule (build step 2). Own database (the P2 scripts change tables).
+/// the effects rule and the saved option rule (build step 2); the state in the rules, MustBeTrue and the one submit
+/// button with the steps by state (build step 3). Own database (the P2 scripts change tables).
 /// </summary>
+/// <remarks>
+/// The engine writes WorkflowState from build step 6. Until then the tests set the state by SQL.
+/// </remarks>
 [Trait("Category", "SqlServer")]
 public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
 {
@@ -172,6 +176,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     {
         CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
         AssertSaved(saved);
+        await SetStateAsync(saved.ID, "Draft");
         await _db.ScalarAsync("UPDATE AIN.AccountInventory SET RelationshipManager = 'Bob Ray', RMCC = 'Bob Ray' WHERE AccountNumber = '700100';");
 
         // The account control is read-only: the second save keeps the values of the first save.
@@ -194,10 +199,11 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public void A_user_who_cannot_change_the_account_gets_only_the_saved_option_with_no_Data()
+    public async Task A_user_who_cannot_change_the_account_gets_only_the_saved_option_with_no_Data()
     {
         CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
         AssertSaved(saved);
+        await SetStateAsync(saved.ID, "Draft");
 
         CPApplicationSection read = Svc(Reader, CfpRoles.Read).LoadPage(new CPAtlasPage { AppCode = App, ID = saved.ID });
         CPKeyValue only = Assert.Single(Control(read, "AccountNumber").Options!);
@@ -238,7 +244,175 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Throws<AtlasProblemException>(() => provider.GetOptions(new AtlasOptionRequest(App, control, control.OptionsSource)));
     }
 
+    // ---------- Build step 3 ----------
+
+    [Fact]
+    public void A_new_record_is_in_state_Draft_part_2_is_hidden_and_part_1_and_Submit_are_enabled()
+    {
+        CPApplicationSection section = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = 0 });
+
+        Assert.False(Control(section, "CashReceipt").Visible);
+        Assert.False(Control(section, "InflowAccount").Disabled);
+        Assert.False(Control(section, "InflowDetails").Disabled);
+        CPButton submit = section.Buttons!.Single(x => x.Name == "Submit");
+        Assert.True(submit.Visible);
+        Assert.Equal("Submit", submit.Label);
+    }
+
+    [Fact]
+    public async Task The_first_submit_needs_FlowConfirm_and_not_the_part_2_fields()
+    {
+        CPAtlasPage input = NewInput();
+        input.Outputs!.RemoveAll(x => x.Name == "FlowConfirm");
+        input.Outputs.Add(new CPPageOutput { Name = "FlowConfirm", Value = "false" });
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        CPPageError error = Assert.Single(refused.Errors!);
+        Assert.Equal(("FlowConfirm", "MustBeTrue"), (error.Field, error.Code));
+        Assert.Equal("Select I confirm that the information above is correct. before you submit.", error.Message);
+
+        // FundsReceived and CashConfirm are hidden in Draft: their MustBeTrue does not stop the first submit.
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        AssertSaved(saved);
+        Assert.Equal("||", await _db.ScalarAsync(
+            $"SELECT CONCAT_WS('|', ISNULL(CAST(FundsReceived AS varchar(1)), ''), ISNULL(CashSubmittedBy, ''), ISNULL(CONVERT(varchar(19), CashSubmittedDate, 126), '')) FROM CFP.Inflow WHERE ID = {saved.ID}"));
+    }
+
+    [Fact]
+    public void A_part_2_value_at_the_first_submit_is_refused()
+    {
+        CPAtlasPage input = NewInput();
+        input.Outputs!.Add(new CPPageOutput { Name = "Comment", Value = "Too early" });
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        Assert.Contains(refused.Errors!, x => x is { Field: "Comment", Code: "NotAllowed" });
+    }
+
+    [Fact]
+    public async Task In_state_Submitted_part_1_is_read_only_and_part_2_is_enabled()
+    {
+        int id = await SubmittedRecordAsync();
+
+        CPApplicationSection write = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+        Assert.True(Control(write, "InflowAccount").Disabled);
+        Assert.True(Control(write, "Amount").Disabled);
+        Assert.True(Control(write, "CashReceipt").Visible);
+        Assert.False(Control(write, "FundsReceived").Disabled);
+        Assert.True(write.Buttons!.Single(x => x.Name == "Submit").Visible);
+
+        CPApplicationSection read = Svc(Reader, CfpRoles.Read).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+        Assert.True(Control(read, "CashReceipt").Visible);
+        Assert.True(Control(read, "FundsReceived").Disabled);
+        Assert.False(read.Buttons!.Single(x => x.Name == "Submit").Visible);
+    }
+
+    [Fact]
+    public async Task The_second_submit_cannot_change_part_1()
+    {
+        int id = await SubmittedRecordAsync();
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(
+            EditInput(id, loaded.Version, ("Amount", "5"), ("FundsReceived", "true"), ("CashConfirm", "true")), NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        Assert.Contains(refused.Errors!, x => x is { Field: "Amount", Code: "NotAllowed" });
+        Assert.Equal(1250000.5m, Convert.ToDecimal(await _db.ScalarAsync($"SELECT Amount FROM CFP.Inflow WHERE ID = {id}"), System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task The_second_submit_needs_the_two_part_2_checkboxes()
+    {
+        int id = await SubmittedRecordAsync();
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(EditInput(id, loaded.Version, ("Comment", "Received")), NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        Assert.Equal(["CashConfirm:MustBeTrue", "FundsReceived:MustBeTrue"],
+            refused.Errors!.Select(x => $"{x.Field}:{x.Code}").Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task The_second_submit_sets_CashSubmittedBy_and_CashSubmittedDate_on_the_server()
+    {
+        int id = await SubmittedRecordAsync();
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(EditInput(id, loaded.Version,
+            ("FundsReceived", "true"), ("Comment", "Received"), ("CashConfirm", "true"),
+            ("CashSubmittedBy", "m.allory")), NoFiles); // a server-set field: the client value is not used
+
+        AssertSaved(saved);
+        Assert.Equal("1|Received|c.write|2026-10-21T10:00:00|1", await _db.ScalarAsync($"""
+            SELECT CONCAT_WS('|', CAST(FundsReceived AS int), Comment, CashSubmittedBy, CONVERT(varchar(19), CashSubmittedDate, 126),
+                             CAST(CashConfirm AS int))
+            FROM CFP.Inflow WHERE ID = {id}
+            """));
+        // CashSubmittedBy has a control, so it is in the History. CashSubmittedDate has no control.
+        string? log = Convert.ToString(await _db.ScalarAsync(
+            $"SELECT TOP (1) LogMessage FROM CFP.AuditLog WHERE ReferenceID = {id} ORDER BY ID DESC"), System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Contains("CashSubmittedBy", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("CashSubmittedDate", log, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("FundsReceived", "Funds Received")]
+    [InlineData(null, "(none)")]
+    public async Task A_state_with_no_step_hides_Submit_and_refuses_the_save(string? state, string label)
+    {
+        CPAtlasPage first = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        AssertSaved(first);
+        await SetStateAsync(first.ID, state);
+        string? before = Convert.ToString(await _db.ScalarAsync($"SELECT CONVERT(varchar(20), RowVersion, 1) FROM CFP.Inflow WHERE ID = {first.ID}"),
+            System.Globalization.CultureInfo.InvariantCulture);
+
+        CPApplicationSection loaded = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = first.ID });
+        Assert.False(loaded.Buttons!.Single(x => x.Name == "Submit").Visible);
+        Assert.All(loaded.Controls!, x => Assert.True(x.Disabled, x.Name));
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(EditInput(first.ID, loaded.Version, ("Comment", "Late")), NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        CPPageError error = Assert.Single(refused.Errors!);
+        Assert.Equal(("", "NotAllowed"), (error.Field, error.Code));
+        Assert.Equal($"You cannot submit this record in the state '{label}'.", error.Message);
+        Assert.Equal(before, Convert.ToString(await _db.ScalarAsync($"SELECT CONVERT(varchar(20), RowVersion, 1) FROM CFP.Inflow WHERE ID = {first.ID}"),
+            System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task The_Label_of_a_step_is_the_text_of_the_submit_button()
+    {
+        int id = await SubmittedRecordAsync();
+        using ConfigCopy config = new ConfigCopy().Replace("CFPINFLOW.json",
+            "\"Submitted\": {\n", "\"Submitted\": {\n          \"Label\": \"Confirm receipt\",\n");
+        using SectionHarness harness = new(_db, AtlasAccessMode.Enforce, config.Folder);
+
+        CPApplicationSection submitted = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+        CPApplicationSection draft = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = 0 });
+
+        Assert.Equal("Confirm receipt", submitted.Buttons!.Single(x => x.Name == "Submit").Label);
+        Assert.Equal("Submit", draft.Buttons!.Single(x => x.Name == "Submit").Label);
+    }
+
     private ConfigSectionService Svc(string lanId, params AtlasRole[] roles) => _harness.ServiceFor(App, _registry, lanId, roles);
+
+    /// <summary>Saves a new record and sets its state to Submitted, as the first submit does from build step 6.</summary>
+    private async Task<int> SubmittedRecordAsync()
+    {
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(NewInput(), NoFiles);
+        AssertSaved(saved);
+        await SetStateAsync(saved.ID, "Submitted");
+        return saved.ID;
+    }
+
+    private Task<object?> SetStateAsync(int id, string? state) =>
+        _db.ScalarAsync($"UPDATE CFP.Inflow SET WorkflowState = {(state == null ? "NULL" : $"'{state}'")} WHERE ID = {id}; SELECT @@ROWCOUNT;");
 
     private static void AssertSaved(CPAtlasPage result) =>
         Assert.True(result.ID > 0 && result.Errors is null or { Count: 0 }, string.Join("; ", (result.Errors ?? []).Select(x => $"{x.Field}: {x.Message}")));

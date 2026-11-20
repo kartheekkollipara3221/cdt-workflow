@@ -65,6 +65,35 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         Assert.Contains(message, report, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("\"Action\": { \"Type\": \"Save\" },", "\"Action\": { \"Type\": \"Close\" },",
+        "the form has Workflow Steps and 0 buttons with the action Save; a form with steps has exactly one submit button.")]
+    [InlineData("\"Action\": { \"Type\": \"Close\" }", "\"Action\": { \"Type\": \"Save\" }",
+        "the form has Workflow Steps and 2 buttons with the action Save")]
+    [InlineData("\"Draft\": {},", "\"Drafted\": {},", "the Workflow step 'Drafted' is not a key of StatusLabels.")]
+    [InlineData("\"InitialState\": \"Draft\",", "\"InitialState\": \"New\",", "the Workflow InitialState 'New' is not a key of StatusLabels.")]
+    [InlineData("\"StateField\": \"WorkflowState\",", "\"StateField\": \"State\",", "the Workflow StateField 'State' is not a column of CFP.Inflow.")]
+    [InlineData("\"StateField\": \"WorkflowState\",", "", "the Workflow has Steps but no StateField.")]
+    [InlineData("\"CashSubmittedDate\": \"{Now}\"", "\"NoColumn\": \"{Now}\"",
+        "the Set of the Workflow step 'Submitted' names 'NoColumn', which is not a control or field of the form, or a column of the table.")]
+    [InlineData("\"CashSubmittedDate\": \"{Now}\"", "\"ModifiedDate\": \"{Now}\"",
+        "the Set of the Workflow step 'Submitted' names the system column 'ModifiedDate', which only the server writes.")]
+    [InlineData("\"CashSubmittedDate\": \"{Now}\"", "\"CashSubmittedDate\": \"{Later}\"",
+        "the Set of the Workflow step 'Submitted' has the token '{Later}' for 'CashSubmittedDate', which is not known")]
+    public async Task A_form_with_steps_and_a_bad_binding_or_not_one_submit_button_is_an_error(string oldText, string newText, string message)
+    {
+        CopyRealConfig();
+        string file = Path.Combine(_folder, "CFPINFLOW.json");
+        string text = File.ReadAllText(file);
+        Assert.Contains(oldText, text, StringComparison.Ordinal);
+        File.WriteAllText(file, text.Replace(oldText, newText, StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR CFPINFLOW: " + message, report, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_manifest_with_no_registration_line_gives_exit_code_1()
     {

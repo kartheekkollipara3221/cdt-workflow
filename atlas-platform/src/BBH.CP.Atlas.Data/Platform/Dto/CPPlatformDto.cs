@@ -76,6 +76,51 @@ namespace BBH.CP.Atlas.Data.DTO
 
         /// <summary>The number must be a multiple of this value. Null = each number is permitted.</summary>
         public decimal? Step { get; set; }
+
+        /// <summary>The value must be true, for example a confirmation checkbox. An empty value fails.</summary>
+        public bool MustBeTrue { get; set; }
+    }
+
+    /// <summary>The platform settings of the workflow binding of a section.</summary>
+    /// <remarks>
+    /// The platform does not read the target properties Roles and Actions.
+    /// </remarks>
+    public partial class CPWorkflow
+    {
+        /// <summary>The column that holds the state key of the record. The rules match their States against it.</summary>
+        public string? StateField { get; set; }
+
+        /// <summary>The column that holds the status text of the record, from <see cref="StatusLabels"/>.</summary>
+        public string? StatusField { get; set; }
+
+        /// <summary>The state of a new record.</summary>
+        public string? InitialState { get; set; }
+
+        /// <summary>The status text of each state key.</summary>
+        public Dictionary<string, string>? StatusLabels { get; set; }
+
+        /// <summary>
+        /// The submit step of each state: state key to step. A state with no entry has no submit.
+        /// </summary>
+        /// <remarks>
+        /// A form with steps has one submit button. Each save of such a form runs the step of the stored state.
+        /// </remarks>
+        public Dictionary<string, CPWorkflowStep>? Steps { get; set; }
+    }
+
+    /// <summary>One submit step of a form with steps.</summary>
+    public class CPWorkflowStep
+    {
+        /// <summary>The text of the submit button in this state. Null = the button keeps its text.</summary>
+        public string? Label { get; set; }
+
+        /// <summary>
+        /// The values that the server sets at this submit: control name or column name to token or text.
+        /// </summary>
+        /// <remarks>
+        /// The tokens are the default tokens and {Now}. A client value for such a field is not used.
+        /// </remarks>
+        public Dictionary<string, string>? Set { get; set; }
     }
 
     /// <summary>The platform data of an option.</summary>

@@ -199,10 +199,12 @@ namespace BBH.CP.Atlas.Service.Application
 
             OnLoad(new AtlasLoadContext { Manifest = manifest, Form = form, Section = section, Fields = fields, Record = record });
 
-            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
+            string? workflowState = AtlasWorkflowSteps.StateOf(section, table, record, isNew: record == null);
+            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record, workflowState), manifest.RuleMode, manifest.RuleDefault);
             fields.ApplyOutcome(outcome);
             ClearRuleHiddenValues(fields);
             KeepOnlySavedOptions(fields);
+            AtlasWorkflowSteps.ApplyToSubmitButton(section, workflowState);
 
             string name = section.HeaderName ?? form.Name ?? manifest.Name ?? manifest.Code;
             section.HeaderName = record != null && !string.IsNullOrWhiteSpace(form.HeaderNameWithId)
@@ -274,7 +276,9 @@ namespace BBH.CP.Atlas.Service.Application
             HashSet<string> hidden = new(StringComparer.OrdinalIgnoreCase);
             if (form.Section == null)
                 return hidden;
-            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(form.Section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
+            // A missing record here is a deleted record, not a new record.
+            string? workflowState = AtlasWorkflowSteps.StateOf(form.Section, MainTable(manifest), record, isNew: false);
+            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(form.Section, form.Rules, RuleContext(manifest, form, record, workflowState), manifest.RuleMode, manifest.RuleDefault);
             foreach (AtlasFormField field in AtlasFormFields.From(form.Section, outcome).All.Where(x => x.HiddenByRule))
             {
                 hidden.Add(field.Name);
@@ -364,10 +368,13 @@ namespace BBH.CP.Atlas.Service.Application
                 Manifest = manifest,
                 Form = Services.ConfigStore.GetForm(AppCode),
                 Table = table,
-                Result = new() { AppCode = manifest.Code, Code = input.Code, Step = input.Step, ID = 0, Outputs = [] }
+                Result = new() { AppCode = manifest.Code, Code = input.Code, Step = input.Step, ID = 0, Outputs = [] },
+                Now = SystemNow()
             };
 
             LoadStored(state);
+            if (!SelectStep(state))
+                return Failed(state.Result, state.Errors);
             ApplyRules(state);
             ReadAndFilter(state);
             ValidateFields(state);
@@ -395,6 +402,18 @@ namespace BBH.CP.Atlas.Service.Application
             public required AtlasTable Table { get; init; }
             public required CPAtlasPage Result { get; init; }
             public List<CPPageError> Errors { get; } = [];
+
+            /// <summary>The time of the save, with the SystemTime of the app.</summary>
+            public required DateTime Now { get; init; }
+
+            /// <summary>The state of the record before the save, or null when the form has no state.</summary>
+            public string? WorkflowState { get; set; }
+
+            /// <summary>The submit step of a form with steps, or null.</summary>
+            public CPWorkflowStep? WorkflowStep { get; set; }
+
+            /// <summary>The names in the Set of the step (control names or column names). Only the server writes them.</summary>
+            public HashSet<string> StepSet { get; } = new(StringComparer.OrdinalIgnoreCase);
 
             /// <summary>The stored record, or null for a new record.</summary>
             public Dictionary<string, object?>? Stored { get; set; }
@@ -442,6 +461,33 @@ namespace BBH.CP.Atlas.Service.Application
             state.Previous = Snapshot(state.Table, state.Stored);
         }
 
+        /// <summary>
+        /// Reads the state of the record and selects the submit step of a form with steps.
+        /// </summary>
+        /// <remarks>
+        /// Each save of a form with steps is a submit. A state with no step refuses the save.
+        /// </remarks>
+        /// <returns>False when the save is refused; the errors tell why.</returns>
+        private static bool SelectStep(SaveState state)
+        {
+            CPApplicationSection? section = state.Form.Section;
+            state.WorkflowState = AtlasWorkflowSteps.StateOf(section, state.Table, state.Stored, state.IsNew);
+            if (!AtlasWorkflowSteps.HasSteps(section))
+                return true;
+
+            state.WorkflowStep = AtlasWorkflowSteps.StepFor(section, state.WorkflowState);
+            if (state.WorkflowStep == null)
+            {
+                string label = AtlasWorkflowSteps.LabelOf(section, state.WorkflowState) ?? "(none)";
+                state.Errors.Add(Error("", "NotAllowed", $"You cannot submit this record in the state '{label}'."));
+                return false;
+            }
+
+            foreach (string name in (IEnumerable<string>?)state.WorkflowStep.Set?.Keys ?? [])
+                state.StepSet.Add(name);
+            return true;
+        }
+
         /// <summary>Applies the rules for this user and record to the section (save step 3).</summary>
         private void ApplyRules(SaveState state)
         {
@@ -449,7 +495,7 @@ namespace BBH.CP.Atlas.Service.Application
             state.Section = state.Form.Section
                 ?? throw AtlasProblemException.Config($"The form of {manifest.Code} has no Section.");
             AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(state.Section, state.Form.Rules,
-                RuleContext(manifest, state.Form, state.Stored), manifest.RuleMode, manifest.RuleDefault);
+                RuleContext(manifest, state.Form, state.Stored, state.WorkflowState), manifest.RuleMode, manifest.RuleDefault);
             state.Fields = AtlasFormFields.From(state.Section, outcome);
         }
 
@@ -476,9 +522,13 @@ namespace BBH.CP.Atlas.Service.Application
                 AtlasLog.FieldRefused(Logger, Services.User.LanId, state.Manifest.Code, state.Input.ID, refusal.Field ?? "", refusal.Code);
         }
 
-        /// <summary>Returns true for a field that only the server writes: a system column, a Computed column or a server effect target.</summary>
+        /// <summary>
+        /// Returns true for a field that only the server writes: a system column, a Computed column, a server effect target
+        /// or a name in the Set of the workflow step.
+        /// </summary>
         private static bool IsServerSet(SaveState state, AtlasFormField field) =>
-            SystemColumns.Contains(field.Field) || state.Computed.Contains(field.Field) || state.Derived.Contains(field.Name);
+            SystemColumns.Contains(field.Field) || state.Computed.Contains(field.Field) || state.Derived.Contains(field.Name)
+            || state.StepSet.Contains(field.Name) || state.StepSet.Contains(field.Field);
 
         /// <summary>
         /// Runs the validators and the Require effects on the visible and enabled fields (save step 6).
@@ -548,15 +598,38 @@ namespace BBH.CP.Atlas.Service.Application
                     else if (table.HasColumn(target) && !SystemColumns.Contains(target))
                         Map(table, record, target, target, value, errors);
 
-            if (!state.IsNew || state.Form.Defaults == null)
-                return;
+            if (state.IsNew && state.Form.Defaults != null)
+                foreach ((string name, string token) in state.Form.Defaults)
+                {
+                    if (fields.Find(name) is not { } field || state.Accepted.TryGetValue(field, out string? sent) && !string.IsNullOrEmpty(sent))
+                        continue;
+                    string? value = ResolveDefault(token, field.Control.OptionsSource == null ? field.Control.Options : OptionsOf(field.Control));
+                    Map(table, record, field.Name, field.Field, value, errors);
+                }
 
-            foreach ((string name, string token) in state.Form.Defaults)
+            MapStepSet(state);
+        }
+
+        /// <summary>
+        /// Maps the Set values of the workflow step to the record.
+        /// </summary>
+        /// <remarks>
+        /// A name is a control name or a column of the main table; the start-up check allows only these.
+        /// {Now} is the time of the save. The other tokens are the default tokens.
+        /// </remarks>
+        private void MapStepSet(SaveState state)
+        {
+            AtlasTable table = state.Table;
+            foreach ((string name, string token) in state.WorkflowStep?.Set ?? new Dictionary<string, string>())
             {
-                if (fields.Find(name) is not { } field || state.Accepted.TryGetValue(field, out string? sent) && !string.IsNullOrEmpty(sent))
+                AtlasFormField? field = state.Fields.Find(name);
+                if (table.Find(field?.Field ?? name) is not { } column || SystemColumns.Contains(column.Name))
                     continue;
-                string? value = ResolveDefault(token, field.Control.OptionsSource == null ? field.Control.Options : OptionsOf(field.Control));
-                Map(table, record, field.Name, field.Field, value, errors);
+
+                string? value = string.Equals(token, AtlasDefaultTokens.Now, StringComparison.OrdinalIgnoreCase)
+                    ? Wire(state.Now, column)
+                    : ResolveDefault(token, field == null ? null : OptionsOf(field.Control));
+                Map(table, state.Record, field?.Name ?? column.Name, column.Name, value, state.Errors);
             }
         }
 
@@ -574,7 +647,7 @@ namespace BBH.CP.Atlas.Service.Application
                 if (AtlasComputedFields.Compute(table, record, target, expression) is { } computeError)
                     state.Errors.Add(computeError);
 
-            DateTime now = SystemNow();
+            DateTime now = state.Now;
             if (state.IsNew)
             {
                 SetIfColumn(table, record, "CreatedBy", Services.User.LanId);
@@ -921,8 +994,10 @@ namespace BBH.CP.Atlas.Service.Application
                 ? control.Options ?? []
                 : control.Options ??= [.. Provider(control.OptionsSource.Provider).GetOptions(new AtlasOptionRequest(Manifest.Code, control, control.OptionsSource))];
 
-        private AtlasRuleContext RuleContext(AtlasAppManifest manifest, CPAtlasApplicationConfig form, IReadOnlyDictionary<string, object?>? record) =>
-            new(Services.User.RolesFor(manifest.Code).Tokens, [], Services.Access.IsOwner(form, record));
+        /// <summary>Returns the rule inputs: the roles of the user, the state of the record and the owner flag.</summary>
+        private AtlasRuleContext RuleContext(AtlasAppManifest manifest, CPAtlasApplicationConfig form, IReadOnlyDictionary<string, object?>? record,
+            string? workflowState) =>
+            new(Services.User.RolesFor(manifest.Code).Tokens, AtlasWorkflowSteps.States(workflowState), Services.Access.IsOwner(form, record));
 
         private Dictionary<string, string?> Snapshot(AtlasTable table, Dictionary<string, object?>? record)
         {

@@ -634,3 +634,50 @@ describe('review 3', () => {
     http.verify();
   });
 });
+
+describe('AtlasFormComponent, a form with steps', () => {
+  /** A form in state Draft, as the server sends it: the state rules hide part 2. */
+  function draft(confirm: string): CPApplicationSection {
+    return {
+      ...section([]),
+      Controls: [
+        { Name: 'Part1', Label: 'Part 1', Type: 'section', Visible: true, ChildControls: [
+          text('Amount'),
+          text('FlowConfirm', { Label: 'Confirm', Type: 'checkbox', Value: confirm, Validator: { MustBeTrue: true } }),
+        ] },
+        { Name: 'Part2', Label: 'Part 2', Type: 'section', Visible: false, ChildControls: [
+          text('CashConfirm', { Type: 'checkbox', Value: 'false', Validator: { MustBeTrue: true } }),
+        ] },
+      ],
+    };
+  }
+
+  it('does not show part 2, does not send it, and its MustBeTrue box does not stop the save', () => {
+    const { fixture, http } = setup(draft('true'));
+
+    expect(element(fixture, '#div_CashConfirm')).toBeNull();
+    click(fixture, '#btn_Submit');
+
+    expect(savedOutputs(http).map((x) => x.Name)).toEqual(['Amount', 'FlowConfirm']);
+  });
+
+  it('does not save when a shown MustBeTrue box is not selected, and shows the platform text', () => {
+    const { fixture, http } = setup(draft('false'));
+
+    click(fixture, '#btn_Submit');
+
+    http.expectNone((r) => r.url === 'ManagePage');
+    // A checkbox has no error text of its own: the form draws it.
+    expect(element(fixture, '#err_FlowConfirm')?.textContent?.trim()).toBe('Select Confirm before you submit.');
+  });
+
+  it('shows no submit button when the server hides it for the state', () => {
+    const page = draft('true');
+    page.Buttons = page.Buttons!.map((x) => (x.Name === 'Submit' ? { ...x, Visible: false } : x));
+
+    const { fixture } = setup(page);
+
+    expect(element(fixture, '#btn_Submit')).toBeNull();
+    expect(element(fixture, '#btn_Close') === null).toBe(false);
+  });
+});

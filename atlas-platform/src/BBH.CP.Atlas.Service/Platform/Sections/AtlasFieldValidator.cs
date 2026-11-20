@@ -11,7 +11,8 @@ namespace BBH.CP.Atlas.Service.Platform.Sections;
 /// The client (see atlas-validators.ts) uses the same rules and texts.
 /// Tests check the cases in atlas-validator-cases.ts on the two sides.
 /// A value of only spaces is empty. Pattern is anchored as Angular Validators.pattern does it.
-/// The checks run in this order: Integer, number (no exponent), Min and Max.
+/// The checks run in this order: Required, MustBeTrue, the length checks, Pattern, Integer, number (no exponent),
+/// Min, Max and Step.
 /// When Validator.Message is set, it is the text of each failure.
 /// </remarks>
 public static partial class AtlasFieldValidator
@@ -26,10 +27,11 @@ public static partial class AtlasFieldValidator
         string label = field.Label ?? field.Name;
         string Text(string defaultText) => validator?.Message ?? defaultText;
 
-        if (string.IsNullOrWhiteSpace(value))
-            return field.Required && !field.IsGridField ? Error(field.Name, "Required", Text($"{label} is required.")) : null;
-
-        if (validator == null)
+        if (string.IsNullOrWhiteSpace(value) && field.Required && !field.IsGridField)
+            return Error(field.Name, "Required", Text($"{label} is required."));
+        if (validator?.MustBeTrue == true && !IsTrue(value))
+            return Error(field.Name, "MustBeTrue", Text($"Select {label} before you submit."));
+        if (string.IsNullOrWhiteSpace(value) || validator == null)
             return null;
         if (validator.MaxLength is { } maxLength && value.Length > maxLength)
             return Error(field.Name, "MaxLength", Text($"{label} can have at most {maxLength} characters."));
@@ -79,6 +81,10 @@ public static partial class AtlasFieldValidator
             return false;
         }
     }
+
+    /// <summary>Returns true for the texts that a bit column reads as true: true, yes or 1 (any case).</summary>
+    private static bool IsTrue(string? value) =>
+        value?.Trim().ToLowerInvariant() is "true" or "yes" or "1";
 
     private static CPPageError Error(string field, string code, string message) => new() { Field = field, Code = code, Message = message };
 
