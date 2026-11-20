@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClientInflows (P2): implementation design</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas platform · module 25</div><h1>Module 25: ClientInflows (P2) implementation design</h1>
+<p>Status: Draft 1, 2026-11-20. Design only. No code and no SQL script exists yet. The user must approve this design before the build starts (section 14).</p>
+<section>
+<h2>1. Purpose</h2>
+<p>ClientInflows (app code <code>CFPINFLOW</code>) is release P2: the second platform app, and the first one with attachments, rich text and a workflow. This document tells how to build it. Most of the work is generic platform code that the next apps use again. The app itself is JSON and SQL.</p>
+<p>Inputs:</p>
+<ul><li>Requirements: <a href="../ClientInflows/ONBOARDING_ANSWERS.md">ONBOARDING_ANSWERS.md</a>, decisions D1 to D34.</li><li>Gaps and answers: <a href="../ClientInflows/GAP_REPORT.md">GAP_REPORT.md</a>, items A1 to A17, B1 to B12, C1 to C8, answers Q1 to Q9.</li><li>Module designs: <a href="08-attachments.html">08-attachments.md</a> (section 10), <a href="10-engine-adapter.html">10-engine-adapter.md</a>, <a href="07-registry.html">07-registry.md</a> (section 5), <a href="12-ttd-pilot-build.html">12-ttd-pilot-build.md</a> (the model).</li></ul>
+<p>Rules that stay in force:</p>
+<ul><li>No <code>CFPINFLOW</code>, <code>CFP</code>, <code>AIN</code> or <code>Inflow</code> name in C# or TypeScript. Tests and JSON can have them.</li><li>The workflow engine code (<code>src/</code>) does not change (Q1, Q2).</li><li>TTDV2 and the current target apps do not change. Each new JSON key and each new request field is optional.</li><li>Database changes are SQL scripts only: additive, idempotent, with a <code>CP_Atlas_ScriptLog</code> row.</li><li>The time comes from <code>TimeProvider</code>. No <code>DateTime.UtcNow</code>.</li></ul>
+</section>
+<section>
+<h2>2. Decisions that shape the design</h2>
+<div class="table-wrap"><table><thead><tr><th>Source</th><th>Decision</th></tr></thead><tbody>
+<tr><td>Q1</td><td>Build the engine adapter (module 10) for section forms. The engine code does not change.</td></tr>
+<tr><td>Q2</td><td>Two emails at the first submit: the adapter runs two engine actions. The second action keeps the state.</td></tr>
+<tr><td>Q3</td><td>The Investment Type lists are in the platform: a map in the form JSON, the addresses in the app settings.</td></tr>
+<tr><td>Q4</td><td>Keep <code>CFP.InflowAttachment</code>. <code>Type</code> holds the control name, so each file shows in its own section.</td></tr>
+<tr><td>Q5</td><td><code>Description</code> and <code>Comment</code> change to <code>nvarchar(max)</code>.</td></tr>
+<tr><td>Q6</td><td>Server HTML clean-up with the NuGet package <code>HtmlSanitizer</code>.</td></tr>
+<tr><td>Q7</td><td>New severity "Info" in <code>--atlas-check</code>. It is not counted.</td></tr>
+<tr><td>Q8</td><td>E3 uses the RM and RMCC of the first submit. New column <code>CFP.Inflow.RMCC</code>.</td></tr>
+<tr><td>Q9</td><td>Export = the Excel export that is built into the grid at the target.</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>3. Overview</h2>
+<pre><code>Browser (Angular, platform/)                    Server (platform)                         Other
+---------------------------                     -----------------                         -----
+form: richtext, filepicker,     v1/ManagePage   ConfigSectionService.SavePage
+      state rules, Execute  ------------------&gt;   1 validate (rules by state, MustBeTrue)
+      button                    + files           2 clean HTML (HtmlSanitizer)
+                                                  3 write record, audit, attachments
+                                                  4 engine adapter: Start / Execute  ----&gt;  workflow engine
+                                                  5 write state + status, commit             (own tables, outbox)
+                                                  6 follow-up engine action, dispatch ----&gt;  SMTP
+download link  ---------------&gt; v1/Attachment/{appCode}/{id}  (new platform controller)
+account list   &lt;--------------- Table option provider  &lt;------------------------------------ AIN.AccountInventory</code></pre>
+<p>New parts, all generic:</p>
+<div class="table-wrap"><table><thead><tr><th>Part</th><th>Section</th></tr></thead><tbody>
+<tr><td>SQL scripts for release P2</td><td>4</td></tr>
+<tr><td>App files: manifest, form, dashboard</td><td>5</td></tr>
+<tr><td>Rules by state, <code>MustBeTrue</code>, button <code>Execute</code>, <code>Action.Set</code></td><td>6</td></tr>
+<tr><td>Table option provider (account lookup)</td><td>7</td></tr>
+<tr><td>Attachments (module 8)</td><td>8</td></tr>
+<tr><td><code>richtext</code> control</td><td>9</td></tr>
+<tr><td>Engine adapter, recipients, template data</td><td>10</td></tr>
+<tr><td><code>--atlas-check</code>: Info severity and the name report</td><td>11</td></tr>
+<tr><td>Export, History text</td><td>12</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>4. SQL scripts</h2>
+<p>Folder: <code>atlas-platform/sql/release-p2/</code>, with a <code>README.md</code> as in <code>release-p1</code>. Each script follows the model <code>release-p1/040-ttdv2-app.sql</code>: <code>@RunBy</code>, one transaction, each object made only if it is not there, one <code>CP_Atlas_ScriptLog</code> row. Run in number order.</p>
+<div class="table-wrap"><table><thead><tr><th>Script</th><th>Database</th><th>Content</th></tr></thead><tbody>
+<tr><td><code>100-cfp-inflow-columns.sql</code></td><td>CP Atlas</td><td>Changes to <code>CFP.Inflow</code> (4.1)</td></tr>
+<tr><td><code>110-cfp-inflow-attachment-columns.sql</code></td><td>CP Atlas</td><td>Changes to <code>CFP.InflowAttachment</code> (4.2)</td></tr>
+<tr><td><code>120-cfp-audit-log.sql</code></td><td>CP Atlas</td><td>New table <code>CFP.AuditLog</code>, the same shape as <code>TTDV2.AuditLog</code> (<code>ReferenceID</code>, <code>ReferenceType</code>, <code>CreatedBy</code>, <code>CreatedByLanId</code>, <code>CreatedDate</code>, <code>LogMessage</code>) and the index on <code>ReferenceID</code>, <code>ReferenceType</code></td></tr>
+<tr><td><code>130-cfpinflow-app.sql</code></td><td>CP Atlas</td><td><code>CP_Atlas_Application</code> row (<code>CFPINFLOW</code>, "Client Flows Portal - Inflow", no parent); roles <code>Read</code> (IsRead) and <code>Write</code> (IsWrite, IsRead)</td></tr>
+<tr><td><code>140-ain-account-inventory-rmcc.sql</code></td><td>CP Atlas</td><td><code>ALTER TABLE AIN.AccountInventory ADD RMCC varchar(1000) NULL</code> (D32). The table belongs to the AIN app; the target team runs or copies this script</td></tr>
+<tr><td><code>150-cfpinflow-workflow.sql</code></td><td>Engine tables</td><td>Workflow metadata (4.3)</td></tr>
+</tbody></table></div>
+<p>Role grants use the template <code>docs/atlas-platform/sql/06-grant-revoke-role-template.sql</code>. No grant is in a release script.</p>
+<h3>4.1 <code>CFP.Inflow</code></h3>
+<p>The table exists at the target (D2). The script changes it in place. No column is removed or renamed.</p>
+<div class="table-wrap"><table><thead><tr><th>Change</th><th>Detail</th></tr></thead><tbody>
+<tr><td><code>Description</code>, <code>Comment</code></td><td><code>varchar(max)</code> to <code>nvarchar(max)</code>, only if the type is <code>varchar</code> (Q5). The data stays.</td></tr>
+<tr><td><code>RowVersion</code></td><td><code>rowversion NOT NULL</code>. The platform version check finds it by type.</td></tr>
+<tr><td><code>WorkflowState</code></td><td><code>varchar(100) NULL</code>. Engine state key: <code>Submitted</code>, <code>FundsReceived</code>.</td></tr>
+<tr><td><code>Status</code></td><td><code>varchar(100) NULL</code>. Label for the dashboard: "Submitted", "Funds Received".</td></tr>
+<tr><td><code>FundsReceived</code></td><td><code>bit NULL</code>. The check box "Funds have been received".</td></tr>
+<tr><td><code>CashSubmittedDate</code></td><td><code>datetime NULL</code>, UTC. "Funds confirmed date".</td></tr>
+<tr><td><code>RMCC</code></td><td><code>varchar(1000) NULL</code>. Display names, separated by <code>;</code> (Q8).</td></tr>
+<tr><td><code>DestructionDate</code></td><td>Computed: <code>AS DATEADD(year, 7, [CreatedDate])</code>. Read only.</td></tr>
+<tr><td>Index</td><td><code>IX_Inflow_WorkflowState</code> on <code>WorkflowState</code>, filtered <code>IsDeleted = 0</code>, for the "Inflow Pipeline" tab.</td></tr>
+</tbody></table></div>
+<p><code>IsDeleted</code> stays <code>bit NULL</code>; the platform reads NULL as "not deleted". The person columns (<code>CreatedBy</code>, <code>ModifiedBy</code>, <code>FlowSubmittedBy</code>, <code>CashSubmittedBy</code>) hold LAN IDs, and the dates are UTC. The target team must use the same values when it moves the old SharePoint records (integration note).</p>
+<h3>4.2 <code>CFP.InflowAttachment</code></h3>
+<div class="table-wrap"><table><thead><tr><th>Change</th><th>Detail</th></tr></thead><tbody>
+<tr><td><code>ContentType</code></td><td><code>varchar(200) NULL</code></td></tr>
+<tr><td><code>SizeBytes</code></td><td><code>bigint NULL</code> (size before compression)</td></tr>
+<tr><td><code>CreatedByLanId</code>, <code>ModifiedByLanId</code></td><td><code>nvarchar(50) NULL</code>. <code>CreatedBy</code> and <code>ModifiedBy</code> keep the display name for the History window (module 8, 4.2).</td></tr>
+<tr><td><code>FileName</code></td><td><code>varchar(1000)</code> to <code>nvarchar(1000)</code>. <strong>Needs approval (section 14, item 2).</strong></td></tr>
+<tr><td>Index</td><td><code>IX_InflowAttachment_InflowId</code> on <code>InflowId</code></td></tr>
+</tbody></table></div>
+<p><code>Type</code> (<code>varchar(500)</code>) holds the control name of the <code>filepicker</code> field. <code>FileContent</code> holds the GZip-compressed file, as in module 8.</p>
+<h3>4.3 Engine workflow metadata</h3>
+<p>One script for the engine tables, in the form of the current engine metadata scripts (<code>sql/sqms/</code>). It is additive: all keys are new.</p>
+<ul><li>Workflow key <code>ClientInflow</code>, version 1.</li><li>States: <code>Draft</code> (initial), <code>Submitted</code>, <code>FundsReceived</code> (end).</li><li>Engine role: <code>Write</code>.</li><li>No task and no SLA policy (D20).</li></ul>
+<div class="table-wrap"><table><thead><tr><th>Action key</th><th>From</th><th>To</th><th>Role</th><th>Route</th><th>Email</th></tr></thead><tbody>
+<tr><td><code>Submit</code></td><td><code>Draft</code></td><td><code>Submitted</code></td><td><code>Write</code></td><td><code>ClientInflow.ActionRequired</code></td><td>E1</td></tr>
+<tr><td><code>NotifyInformational</code></td><td><code>Submitted</code></td><td><code>Submitted</code></td><td><code>Write</code></td><td><code>ClientInflow.SubmittedInformational</code></td><td>E2</td></tr>
+<tr><td><code>ConfirmFunds</code></td><td><code>Submitted</code></td><td><code>FundsReceived</code></td><td><code>Write</code></td><td><code>ClientInflow.FundsReceived</code></td><td>E3</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Route</th><th>To</th><th>Cc</th></tr></thead><tbody>
+<tr><td>E1</td><td>Static: ICG list</td><td>none</td></tr>
+<tr><td>E2</td><td>Request input <code>investmentLists</code> (required); request input <code>relationshipManager</code> (not required)</td><td>none</td></tr>
+<tr><td>E3</td><td>Request input <code>investmentLists</code> (required); request input <code>relationshipManager</code> (not required); static: CS Team list</td><td>Request input <code>rmcc</code> (not required); static: IMRG list; static: Star FAS IFI Cash Team list</td></tr>
+</tbody></table></div>
+<ul><li>The subject and body text come from <code>email1.jpeg</code> to <code>email3.jpeg</code> (D19). Tokens: <code>{{accountName}}</code>, <code>{{accountNumber}}</code>, <code>{{amount}}</code>, <code>{{inflowDate}}</code>, <code>{{recordLink}}</code>.</li><li>The static addresses in the script are placeholders (<code>icg-inflow@example.com</code>, ...). The target team sets the real lists before the run. The four fixed lists stay in the engine metadata; only the Investment Type lists are in the app settings (Q3).</li><li><code>NotifyInformational</code> keeps the state. A test must prove that the engine accepts it (Q2). This test is the first build step (section 13).</li></ul>
+<h3>4.4 Local database</h3>
+<p><code>atlas-platform/local/sql/</code> gets two scripts, and <code>setup-local-db.ps1</code> runs them:</p>
+<ul><li><code>020-local-cfp-ain-tables.sql</code>: <code>CFP.Inflow</code>, <code>CFP.InflowAttachment</code> and <code>AIN.AccountInventory</code> in the exact target shape (from the target copy), so the release scripts are tested against the real start point. Sample accounts: clean names, one RM with no user, one RM name with two users, one RMCC with two names.</li><li><code>900-local-seed.sql</code> (extended): users A035313 (<code>Write</code>) and A023456 (<code>Read</code>), and placeholder addresses.</li></ul>
+<p>The local database also gets the engine tables. <code>setup-local-db.ps1</code> applies them with the tooling that the engine has today. The emails go to smtp4dev.</p>
+</section>
+<section>
+<h2>5. App files</h2>
+<p>Folder <code>atlas-platform/src/BBH.CP.Atlas.App/Config/</code>. Registration: one line, <code>AddAtlasModule&lt;ConfigSectionService&gt;(&quot;CFPINFLOW&quot;)</code>.</p>
+<h3>5.1 <code>CFPINFLOW.app.json</code></h3>
+<pre><code>{
+  &quot;Code&quot;: &quot;CFPINFLOW&quot;,
+  &quot;Name&quot;: &quot;Client Flows Portal - Inflow&quot;,
+  &quot;FormType&quot;: &quot;FORM&quot;,
+  &quot;Parent&quot;: null,
+  &quot;Form&quot;: &quot;CFPINFLOW.json&quot;,
+  &quot;Dashboard&quot;: &quot;CFPINFLOW.Dashboard.json&quot;,
+  &quot;Table&quot;: &quot;CFP.Inflow&quot;,
+  &quot;AuditTable&quot;: &quot;CFP.AuditLog&quot;,
+  &quot;AttachmentTable&quot;: &quot;CFP.InflowAttachment&quot;,
+  &quot;AttachmentColumns&quot;: { &quot;RecordId&quot;: &quot;InflowId&quot;, &quot;ControlName&quot;: &quot;Type&quot; },
+  &quot;LookupTables&quot;: [ &quot;AIN.AccountInventory&quot; ],
+  &quot;AccessMode&quot;: &quot;Enforce&quot;,
+  &quot;AuditMode&quot;: &quot;Server&quot;,
+  &quot;AuditTime&quot;: &quot;Utc&quot;,
+  &quot;RuleMode&quot;: &quot;MostPermissive&quot;,
+  &quot;RuleDefault&quot;: &quot;ReadOnly&quot;,
+  &quot;Enabled&quot;: true
+}</code></pre>
+<p>New optional manifest keys: <code>AttachmentColumns</code> (8.1) and <code>LookupTables</code> (7). <code>AccessMode</code> is <code>Enforce</code>, because the app is new and has no old users.</p>
+<h3>5.2 <code>CFPINFLOW.json</code> (form)</h3>
+<p>Top level:</p>
+<pre><code>{
+  &quot;Name&quot;: &quot;Client Flows Portal - Inflow&quot;,
+  &quot;Type&quot;: &quot;SECTION&quot;,
+  &quot;Permissions&quot;: {
+    &quot;View&quot;: [ &quot;@Read&quot; ],
+    &quot;Create&quot;: [ &quot;Write&quot; ],
+    &quot;Edit&quot;: { &quot;All&quot;: [ &quot;Write&quot; ] },
+    &quot;Delete&quot;: [ &quot;Write&quot; ],
+    &quot;History&quot;: [ &quot;@Read&quot; ],
+    &quot;Execute&quot;: { &quot;SubmitPart1&quot;: [ &quot;Write&quot; ], &quot;SubmitPart2&quot;: [ &quot;Write&quot; ] }
+  },
+  &quot;Defaults&quot;: { &quot;FlowSubmittedBy&quot;: &quot;{User.LanID}&quot; },
+  &quot;SoftDelete&quot;: { &quot;Field&quot;: &quot;IsDeleted&quot; },
+  &quot;HeaderNameWithId&quot;: &quot;{Name} - {ID}&quot;,
+  &quot;Workflow&quot;: { &quot;...&quot;: &quot;section 10.2&quot; },
+  &quot;Section&quot;: { &quot;Controls&quot;: [ &quot;...&quot; ], &quot;Buttons&quot;: [ &quot;...&quot; ] }
+}</code></pre>
+<p>Controls:</p>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Name</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+<tr><td>1</td><td><code>Account</code></td><td><code>ngselect</code></td><td><code>OptionsSource</code> = Table provider (7). <code>SetFromOption</code> fills <code>AccountNumber</code>, <code>AccountName</code>, <code>StarNumber</code>, <code>RelationshipManager</code>, <code>Custodian</code>, <code>RMCC</code>. Required.</td></tr>
+<tr><td>2 to 5</td><td><code>AccountName</code>, <code>StarNumber</code>, <code>RelationshipManager</code>, <code>Custodian</code></td><td><code>text</code></td><td><code>Disabled: true</code>. Set by the server from the option.</td></tr>
+<tr><td>6</td><td><code>InvestmentType</code></td><td><code>select</code></td><td>Options: Fixed Income, Equity, Fixed Income &amp; Equity. Required.</td></tr>
+<tr><td>7</td><td><code>Amount</code></td><td><code>currency</code></td><td><code>Validator: { Required: true, Min: 0.01 }</code></td></tr>
+<tr><td>8</td><td><code>InflowDate</code></td><td><code>date</code></td><td>Required</td></tr>
+<tr><td>9</td><td><code>Description</code></td><td><code>richtext</code></td><td>Not required</td></tr>
+<tr><td>10</td><td><code>FlowAttachments</code></td><td><code>filepicker</code></td><td><code>Multiple: true</code>, required, label "Please attach email/signed instruction from the client."</td></tr>
+<tr><td>11</td><td><code>FlowSubmittedBy</code></td><td><code>user</code></td><td><code>Disabled: true</code></td></tr>
+<tr><td>12</td><td><code>FlowConfirm</code></td><td><code>checkbox</code></td><td><code>Validator: { MustBeTrue: true }</code></td></tr>
+<tr><td>13</td><td><code>FundsReceived</code></td><td><code>checkbox</code></td><td><code>Validator: { MustBeTrue: true }</code></td></tr>
+<tr><td>14</td><td><code>Comment</code></td><td><code>richtext</code></td><td>Not required</td></tr>
+<tr><td>15</td><td><code>CashAttachments</code></td><td><code>filepicker</code></td><td><code>Multiple: true</code>, required, label "Please attach proof of custodian receipt."</td></tr>
+<tr><td>16</td><td><code>CashSubmittedBy</code></td><td><code>user</code></td><td><code>Disabled: true</code>. Set by the button (6.4).</td></tr>
+<tr><td>17</td><td><code>CashConfirm</code></td><td><code>checkbox</code></td><td><code>Validator: { MustBeTrue: true }</code></td></tr>
+</tbody></table></div>
+<p><code>RMCC</code> has a column and no control: it is a data-only target of the effect (7.3). The control names <code>FlowAttachments</code> and <code>CashAttachments</code> become the <code>Type</code> values; they are stable identifiers from the first save.</p>
+<p>Rules (intent; the exact JSON is fixed against the <code>AtlasRuleEngine</code> tests in build step 3):</p>
+<div class="table-wrap"><table><thead><tr><th>Part</th><th>State <code>Draft</code> (new)</th><th>State <code>Submitted</code></th><th>State <code>FundsReceived</code></th></tr></thead><tbody>
+<tr><td>Part 1 sections</td><td><code>Write</code>: enabled</td><td>read-only</td><td>read-only</td></tr>
+<tr><td>Part 2 sections</td><td>hidden</td><td><code>Write</code>: enabled</td><td>read-only</td></tr>
+<tr><td><code>Read</code> role</td><td>read-only</td><td>read-only</td><td>read-only</td></tr>
+</tbody></table></div>
+<p><code>RuleDefault: ReadOnly</code> gives the read-only cells. One rule for each enabled cell names the role and the state, for example <code>{ &quot;Roles&quot;: [ &quot;Write&quot; ], &quot;States&quot;: [ &quot;Draft&quot; ], &quot;Disabled&quot;: false }</code>. Part 2 has <code>{ &quot;States&quot;: [ &quot;Draft&quot; ], &quot;Visible&quot;: false }</code>.</p>
+<p>Buttons:</p>
+<pre><code>&quot;Buttons&quot;: [
+  { &quot;Name&quot;: &quot;SubmitPart1&quot;, &quot;Label&quot;: &quot;Submit&quot;,
+    &quot;Action&quot;: { &quot;Type&quot;: &quot;Execute&quot; },
+    &quot;Rules&quot;: [ { &quot;Roles&quot;: [ &quot;Write&quot; ], &quot;States&quot;: [ &quot;Draft&quot; ] } ] },
+  { &quot;Name&quot;: &quot;SubmitPart2&quot;, &quot;Label&quot;: &quot;Submit&quot;,
+    &quot;Action&quot;: { &quot;Type&quot;: &quot;Execute&quot;, &quot;Set&quot;: { &quot;CashSubmittedBy&quot;: &quot;{User.LanID}&quot;, &quot;CashSubmittedDate&quot;: &quot;{Now}&quot; } },
+    &quot;Rules&quot;: [ { &quot;Roles&quot;: [ &quot;Write&quot; ], &quot;States&quot;: [ &quot;Submitted&quot; ] } ] },
+  { &quot;Name&quot;: &quot;Close&quot;, &quot;Label&quot;: &quot;Close&quot;, &quot;Action&quot;: { &quot;Type&quot;: &quot;Close&quot; } }
+]</code></pre>
+<p>No Save button (D15: no draft save). No Delete button on the form: delete is in the row menu (D24).</p>
+<h3>5.3 <code>CFPINFLOW.Dashboard.json</code></h3>
+<ul><li>Tab <code>Inflows</code>: <code>Source: Table</code>, no filter, <code>OrderBy: [ &quot;CreatedDate DESC&quot; ]</code>.</li><li>Tab <code>InflowPipeline</code>: filter <code>{ &quot;Column&quot;: &quot;WorkflowState&quot;, &quot;Op&quot;: &quot;Eq&quot;, &quot;Value&quot;: &quot;Submitted&quot; }</code>, the same order. A record has "Funds have been received = No" exactly when its state is <code>Submitted</code>.</li><li>Columns on the two tabs (D23): <code>ID</code> (<code>Link: Edit</code>), <code>AccountNumber</code>, <code>AccountName</code>, <code>InvestmentType</code>, <code>Amount</code> (<code>currency</code>), <code>InflowDate</code> (<code>date</code>), <code>Status</code>, <code>FlowSubmittedBy</code> (<code>user</code>), <code>CreatedDate</code> (<code>date</code>), <code>CashSubmittedBy</code> (<code>user</code>), <code>CashSubmittedDate</code> (<code>date</code>), <code>DestructionDate</code> (<code>date</code>).</li><li>Button <code>Add</code> with <code>Target: { &quot;AppCode&quot;: &quot;CFPINFLOW&quot;, &quot;Id&quot;: 0 }</code>. The permissions hide it for a <code>Read</code> user.</li></ul>
+</section>
+<section>
+<h2>6. Form behaviour (generic)</h2>
+<h3>6.1 State in the rules (B4)</h3>
+<ul><li><code>ConfigSectionService.RuleContext</code> reads the value of the <code>Workflow.StateField</code> column of the record and gives it to the rule engine as the state list. Today the list is always empty.</li><li>A new record has the state <code>Workflow.InitialState</code> (<code>Draft</code>).</li><li>The state comes from the database row on load and on save. A state value from the client is never read.</li><li>A form with no <code>Workflow</code> binding has an empty state list, as today. TTDV2 does not change.</li></ul>
+<h3>6.2 Validation and state</h3>
+<p>The field validator and the allow list use the effective form of the user and the state. A hidden or disabled field is not validated and its value is not accepted. Thus the part 2 fields cannot stop the first submit, and the part 1 fields cannot change at the second submit. Build step 3 has tests for the two cases.</p>
+<h3>6.3 <code>MustBeTrue</code> (B5)</h3>
+<p>New optional validator key. The value must be <code>true</code>. It runs on the server (<code>AtlasFieldValidator</code>) and on the client (<code>atlas-validators.ts</code>), with the shared cases file. Message: "Select &lt;label&gt; before you submit."</p>
+<h3>6.4 Button <code>Execute</code> and <code>Action.Set</code> (B6, B7)</h3>
+<ul><li>New optional request field <code>Button</code> (the button name) on <code>v1/ManagePage</code>. With no <code>Button</code>, the save is a plain save, as today.</li><li>The server finds the button in the form JSON. It checks <code>Permissions.Execute[&lt;button&gt;]</code> and the button rules (roles and state) for the user. A refusal is HTTP 403 with the page error contract.</li><li><code>Action.Set</code> gives field values for this save: field name to token. Tokens: <code>{User.LanID}</code> and <code>{Now}</code> (UTC, from <code>TimeProvider</code>), with the token code of <code>AtlasDefaultTokens</code>. A field in <code>Set</code> is server-set: a client value for it is not accepted.</li><li>The client sends the button name, never an engine action key. The binding selects the engine actions (10.2).</li><li>The client disables the buttons while a save runs.</li></ul>
+</section>
+<section>
+<h2>7. Table option provider: the account lookup (B3)</h2>
+<p>A generic provider with the name <code>Table</code>, in <code>Service/Platform/Options/</code>. It reads the options from a table that the form JSON names.</p>
+<pre><code>&quot;OptionsSource&quot;: {
+  &quot;Provider&quot;: &quot;Table&quot;,
+  &quot;Parameters&quot;: {
+    &quot;Table&quot;: &quot;AIN.AccountInventory&quot;,
+    &quot;Value&quot;: &quot;AccountNumber&quot;,
+    &quot;Label&quot;: &quot;{AccountNumber} - {AccountName}&quot;,
+    &quot;Data&quot;: &quot;AccountName,StarAccountNumber,RelationshipManager,Custodian,RMCC&quot;,
+    &quot;OrderBy&quot;: &quot;AccountNumber&quot;,
+    &quot;UserNameColumns&quot;: &quot;RelationshipManager,RMCC&quot;
+  }
+}</code></pre>
+<h3>7.1 Rules</h3>
+<ul><li>The table must be in <code>LookupTables</code> of the manifest. The platform reads its column metadata at start-up, with the same reader as the app tables. A lookup table is read-only: the platform never writes to it.</li><li>The start-up check refuses a table, a column or a label token that is not in the metadata. The names go into the SQL text only after this check, in brackets. All values are parameters.</li><li>If the table has an <code>IsDeleted</code> column, the provider reads only the rows that are not deleted (D29).</li><li>The response has only the <code>Value</code>, the label and the <code>Data</code> columns. No other column leaves the server.</li><li>The provider sends all rows with the form load, as the TTDV2 account list does today. The option list of a table is cached for a short time (60 seconds) in memory, so many form loads do not read the table each time.</li><li><code>KeepSavedValue: true</code> on the control keeps a saved account in the list after the AIN row is deleted.</li></ul>
+<h3>7.2 Use in other apps</h3>
+<p>Another app uses the same provider with its own <code>Data</code> columns. It adds <code>AIN.AccountInventory</code> to its <code>LookupTables</code>. No code is necessary.</p>
+<h3>7.3 Data-only effect target</h3>
+<p><code>SetFromOption</code> can name a field that has a column and no control (here <code>RMCC</code>). The server effect sets the column from the option data. The client does not show it and does not send it. The start-up check accepts a target that is a control or a column of the app table, and refuses other names.</p>
+</section>
+<section>
+<h2>8. Attachments (B1, B11)</h2>
+<p>The design is module 8 with its section 10 decisions. This section gives only the parts that P2 adds or fixes.</p>
+<h3>8.1 Column map</h3>
+<p><code>AttachmentColumns</code> in the manifest maps the module 8 names to the real column names. Each key is optional; the default is the module 8 name.</p>
+<div class="table-wrap"><table><thead><tr><th>Module 8 name</th><th><code>CFP.InflowAttachment</code></th></tr></thead><tbody>
+<tr><td><code>RecordId</code></td><td><code>InflowId</code></td></tr>
+<tr><td><code>ControlName</code></td><td><code>Type</code></td></tr>
+<tr><td>all others</td><td>same name</td></tr>
+</tbody></table></div>
+<p>The start-up check refuses an attachment table that does not have each necessary column with a fitting type.</p>
+<h3>8.2 Server</h3>
+<ul><li><code>IAtlasAttachmentService</code> in <code>Service/Platform/Attachments/</code>: list, add, remove, open.</li><li><code>SavePage(input, files)</code> reads the files. A file is accepted only when its control is a <code>filepicker</code> that is visible and enabled in the effective form (the same check as the allow list).</li><li>Limits: 10 MB for each file, 25 MB for the new files of one save, the default type list, the file signature check (module 8, 4.3). The file name is <code>Path.GetFileName</code>, 255 characters at most.</li><li>New optional request field <code>RemovedAttachmentIds</code>. The server removes (soft delete) only the IDs that belong to this record and to an enabled <code>filepicker</code>.</li><li><code>Required</code> on a <code>filepicker</code>: after the save, the control has one file at least (files that stay + new files).</li><li>All of this is in the transaction of the record. Each added and each removed file gets one audit entry.</li><li>Load: the files of the record, grouped by control name. For each file: ID, name, size, created by, created date and the download URL.</li><li>New controller <code>App/Platform/AtlasAttachmentController.cs</code>: <code>GET v1/Attachment/{appCode}/{id}</code>. It checks <code>View</code> on the parent record, then streams the decompressed file with <code>Content-Disposition: attachment</code> and <code>X-Content-Type-Options: nosniff</code>. An unknown ID, a deleted file or a deleted record gives 404.</li></ul>
+<h3>8.3 Client</h3>
+<ul><li>New renderer <code>filepicker</code> in <code>form/renderers/</code>, registered in <code>atlas-renderer-registry.ts</code>. It uses the target file control of <code>@pbdev/pbdev-core</code> if the stand-in has it; the look follows the CDT step page.</li><li>The form sends the files as form parts <code>&lt;ControlName&gt;#$#&lt;FileName&gt;</code>, the format that the target uses today.</li><li>Remove: the question dialog, then the file shows as "removed when you save".</li><li>The client checks the size limits before it sends. The server checks again.</li><li>A disabled <code>filepicker</code> shows the list with download links only.</li></ul>
+</section>
+<section>
+<h2>9. Rich text (B2, B9)</h2>
+<h3>9.1 Client</h3>
+<ul><li>New renderer <code>richtext</code>. It loads CKEditor 5 with a dynamic <code>import()</code>, so the editor code is only loaded for a form that has a <code>richtext</code> control.</li><li>Packages: <code>ckeditor5</code> and <code>@ckeditor/ckeditor5-angular</code>, the latest versions at build time that support Angular 21, with fixed version numbers. <code>licenseKey: &#x27;GPL&#x27;</code>.</li><li>Plugins: paragraph, headings, bold, italic, underline, strikethrough, lists, link, table, block quote, undo, paste from Office. No picture plugin and no upload adapter (D12, D31). A pasted picture is dropped.</li><li>A disabled control shows the editor in read-only mode with no toolbar.</li></ul>
+<h3>9.2 Server</h3>
+<ul><li>On save, each <code>richtext</code> value goes through <code>HtmlSanitizer</code> before validation and before the write. The check is by control type, so each app gets it.</li><li>Allowed tags: <code>p</code>, <code>br</code>, <code>strong</code>, <code>b</code>, <code>em</code>, <code>i</code>, <code>u</code>, <code>s</code>, <code>h2</code>, <code>h3</code>, <code>h4</code>, <code>ul</code>, <code>ol</code>, <code>li</code>, <code>blockquote</code>, <code>a</code>, <code>figure</code>, <code>table</code>, <code>thead</code>, <code>tbody</code>, <code>tr</code>, <code>th</code>, <code>td</code>. Allowed attributes: <code>href</code> on <code>a</code>; <code>colspan</code> and <code>rowspan</code> on cells; <code>class</code> on <code>figure</code>. Allowed link schemes: <code>http</code>, <code>https</code>, <code>mailto</code>. No <code>style</code>, no <code>img</code>, no event attributes.</li><li>The list is one constant in the platform. It is not in the app JSON, so an app cannot make it weaker.</li><li>A value that is empty after the clean-up is saved as NULL.</li><li>Largest size: 200,000 characters after the clean-up; more gives a field error.</li><li>The audit entry holds the old and the new value as plain text (tags removed, entities decoded). The History window shows plain text.</li><li>The dashboard shows a <code>richtext</code> column as plain text, with the same converter. (P2 has no such column.)</li><li>Rich text is not in the emails of P2.</li></ul>
+</section>
+<section>
+<h2>10. Engine adapter (C1 to C8)</h2>
+<p>The design is module 10. This section gives the parts for a section form and the answers Q2, Q3 and Q8.</p>
+<h3>10.1 Parts</h3>
+<ul><li><code>IAtlasWorkflowAdapter</code> in <code>Service/Platform/Workflow/</code>: <code>Start</code>, <code>Execute</code>, <code>ReadContext</code>, <code>DispatchNotifications</code>. SLA synchronization and the history read are not in P2 (D20, D27).</li><li>The adapter uses the engine services from dependency injection, as the target services do (<code>IStartWorkflowService</code>, <code>IWorkflowExecutionService</code>, the dispatcher, the context reader, the registered normalizer and hasher).</li><li><code>BBH.CP.Atlas.Service.csproj</code> gets a reference to the engine application project. The target Service project has this reference already. An app with no <code>Workflow</code> binding makes no engine call.</li><li><code>SourceSystem</code> = <code>BBH.CP.Atlas.Platform</code>. Instance ID = <code>WF-</code> + <code>BusinessObjectPrefix</code> + record ID.</li></ul>
+<h3>10.2 Binding</h3>
+<p>Optional properties on the <code>Workflow</code> object of the form (partial class of the target <code>CPWorkflow</code>; <code>Key</code> and <code>Actions</code> are target properties and stay).</p>
+<pre><code>&quot;Workflow&quot;: {
+  &quot;Key&quot;: &quot;ClientInflow&quot;,
+  &quot;Actions&quot;: {},
+  &quot;BusinessObjectPrefix&quot;: &quot;CFP-INFLOW-&quot;,
+  &quot;ActorRoles&quot;: &quot;User&quot;,
+  &quot;StateField&quot;: &quot;WorkflowState&quot;,
+  &quot;StatusField&quot;: &quot;Status&quot;,
+  &quot;InitialState&quot;: &quot;Draft&quot;,
+  &quot;StatusLabels&quot;: { &quot;Draft&quot;: &quot;Draft&quot;, &quot;Submitted&quot;: &quot;Submitted&quot;, &quot;FundsReceived&quot;: &quot;Funds Received&quot; },
+  &quot;Steps&quot;: {
+    &quot;SubmitPart1&quot;: [
+      { &quot;Start&quot;: &quot;Submit&quot; },
+      { &quot;Execute&quot;: &quot;NotifyInformational&quot;, &quot;Recipients&quot;: [ &quot;investmentLists&quot;, &quot;relationshipManager&quot; ] }
+    ],
+    &quot;SubmitPart2&quot;: [
+      { &quot;Execute&quot;: &quot;ConfirmFunds&quot;, &quot;Recipients&quot;: [ &quot;investmentLists&quot;, &quot;relationshipManager&quot;, &quot;rmcc&quot; ] }
+    ]
+  },
+  &quot;Recipients&quot;: {
+    &quot;investmentLists&quot;: {
+      &quot;ListByField&quot;: &quot;InvestmentType&quot;,
+      &quot;Map&quot;: {
+        &quot;Fixed Income&quot;: [ &quot;FixedIncome&quot; ],
+        &quot;Equity&quot;: [ &quot;Equity&quot; ],
+        &quot;Fixed Income &amp; Equity&quot;: [ &quot;FixedIncome&quot;, &quot;Equity&quot; ]
+      }
+    },
+    &quot;relationshipManager&quot;: { &quot;FromNameField&quot;: &quot;RelationshipManager&quot;, &quot;Optional&quot;: true },
+    &quot;rmcc&quot;: { &quot;FromNameField&quot;: &quot;RMCC&quot;, &quot;Optional&quot;: true }
+  },
+  &quot;TemplateData&quot;: {
+    &quot;accountName&quot;: { &quot;Field&quot;: &quot;AccountName&quot; },
+    &quot;accountNumber&quot;: { &quot;Field&quot;: &quot;AccountNumber&quot; },
+    &quot;amount&quot;: { &quot;Field&quot;: &quot;Amount&quot;, &quot;Format&quot;: &quot;$#,##0.00&quot; },
+    &quot;inflowDate&quot;: { &quot;Field&quot;: &quot;InflowDate&quot;, &quot;Format&quot;: &quot;MM/dd/yyyy&quot; },
+    &quot;recordLink&quot;: { &quot;RecordLink&quot;: true }
+  }
+}</code></pre>
+<ul><li><code>Steps</code>: button name to a list of engine steps. The first step can change the state. Each later step must keep it.</li><li><code>Recipients</code> of a step: the recipient keys that the adapter sends with this step. The engine refuses a key that the route does not declare, so each step names its own keys.</li><li>The start-up check refuses: a <code>Steps</code> key that is not a button; a recipient key with no definition; a field name that is not a column; a <code>Map</code> value that is not an option of the field; a list key with no address in the settings.</li></ul>
+<h3>10.3 Save order</h3>
+<p>For a save with a <code>Button</code> that has steps:</p>
+<ol><li>Validate (rules, access, fields, files). No write.</li><li>Begin the transaction. Write the record, the audit entries and the attachments. <code>SaveChanges</code>, no commit.</li><li>Run the first step in the engine (<code>Start</code> with the initial action, or <code>Execute</code>).</li><li>Engine <code>Success</code> is false: roll back. Return the engine code and message as a page error. Nothing changed.</li><li>Engine <code>Success</code> is true: write <code>WorkflowState</code> (the engine state key) and <code>Status</code> (the label of <code>StatusLabels</code>). Commit.</li><li>After the commit, run each later step in order. Then dispatch the notifications of all steps.</li></ol>
+<p>Failures after the commit do not undo the save:</p>
+<ul><li>A later step fails (E2): the record stays saved. The adapter writes an error log with the instance ID and the action key. The response says "Saved. One notification was not sent." No automatic second try in P2.</li><li>A dispatch fails: warning log; the engine outbox sends the email again (module 10, 4.5).</li><li>The commit of step 5 fails after the engine committed: error log, and the state check on the next load corrects the record (10.4).</li></ul>
+<p>Double submit: new optional request field <code>RequestId</code> (a GUID from the client for each user action). The idempotency key of step n is <code>RequestId</code> + <code>:</code> + n. With no <code>RequestId</code>, the server makes a GUID.</p>
+<h3>10.4 Load</h3>
+<p>When a record with a binding loads, the adapter reads the engine context. If the engine state is not the <code>WorkflowState</code> of the record, the platform writes the engine state and the status label to the record, writes one audit entry (<code>WorkflowSync</code>) and a warning log. The engine is the source of truth for the state. A record with no engine instance (new) is not checked.</p>
+<h3>10.5 Actor roles</h3>
+<p><code>ActorRoles: &quot;User&quot;</code>: the adapter sends the names of the active roles of the user in the app, from the active roles view. The engine role <code>Write</code> has the same name as the app role.</p>
+<h3>10.6 Recipients</h3>
+<div class="table-wrap"><table><thead><tr><th>Source</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>ListByField</code> + <code>Map</code></td><td>The value of the field selects list keys. Each key has one or more addresses in <code>AppSettings:Modules:&lt;Code&gt;:Workflow:Lists:&lt;Key&gt;</code> (separated by <code>;</code>).</td></tr>
+<tr><td><code>FromNameField</code></td><td>The field holds display names, separated by <code>;</code>. Each name is found in <code>CP_Atlas_User</code>.</td></tr>
+<tr><td><code>FromUserField</code></td><td>The field holds a LAN ID (module 10, 4.6). Designed, not used in P2.</td></tr>
+</tbody></table></div>
+<p>Display name rules (D33, D34), in one service <code>IAtlasUserDirectory</code>:</p>
+<ul><li>The compare ignores case, and spaces at the start, at the end and doubled.</li><li>Exactly one active user (<code>IsDeleted</code> is not 1) with an email: use the email.</li><li>No user, a user with no email, or two or more users: leave the name out. Write the warning log event <code>Atlas.RecipientSkipped</code> with the app, the record ID, the recipient key and the name.</li><li><code>Optional: true</code>: the step continues with no address for this key. <code>Optional: false</code>: an empty result is a field error and the save stops (before the first engine call).</li><li>The adapter removes duplicate addresses.</li></ul>
+<p>The recipients are found before step 3 of 10.3, from the values of the saved record. Thus E3 uses the <code>RelationshipManager</code> and <code>RMCC</code> of the first submit (Q8).</p>
+<h3>10.7 Template data</h3>
+<ul><li><code>Field</code> + optional <code>Format</code>: the value of the record as text. <code>Format</code> is a .NET format text, used with the <code>en-US</code> culture. A date field is formatted as stored (no time zone change for a date with no time).</li><li><code>RecordLink</code>: <code>AppSettings:Atlas:WebBaseUrl</code> + <code>/form/&lt;Code&gt;/&lt;ID&gt;</code>. The start-up check gives an error when a binding uses <code>RecordLink</code> and the setting is empty.</li><li>The adapter sends the same template data with each step.</li></ul>
+<h3>10.8 Accepted limits</h3>
+<ul><li>A deleted record in state <code>Submitted</code> keeps its engine instance. No email goes out (no SLA). Accepted (gap N3).</li><li>E1 and E2 are two engine commits. A failure between them sends E1 and not E2. Accepted with Q2.</li></ul>
+</section>
+<section>
+<h2>11. <code>--atlas-check</code> (B8)</h2>
+<ul><li>New severity <code>Info</code> in <code>AtlasStartupCheck</code>. An Info line is printed and logged. It is not counted: the summary stays <code>0 error(s), 0 warning(s)</code> and the exit code does not change. Info lines are never a reason to disable an app.</li><li>Generic data report: for each Table provider with <code>UserNameColumns</code>, the check reads the not-deleted rows and lists each row where a name (split by <code>;</code>) does not match exactly one active user with an email. Format: <code>Info: AIN.AccountInventory AccountNumber 12345: RelationshipManager &quot;John Smith&quot;: no user</code>.</li><li>The report prints 200 lines at most for each table, then the count of the rest.</li><li>The report runs only with the <code>--atlas-check</code> switch, not at each start-up of the host.</li></ul>
+</section>
+<section>
+<h2>12. Export and History</h2>
+<ul><li>Export (Q9): the target registers <code>AllEnterpriseModule</code>, so each grid has the built-in menu with "Export" and "Excel Export". The platform dashboard columns give the displayed text to the export (dates, currency, user names). No platform button and no new package. The local stand-in has <code>ag-grid-community</code> only: the Excel export is tested at the target. <strong>See section 14, item 5.</strong></li><li>History (D27): the audit writer of today records each field. New: the entries for files (8.2), plain text for <code>richtext</code> (9.2), and <code>WorkflowSync</code> (10.4). No workflow history on the form.</li></ul>
+</section>
+<section>
+<h2>13. Build order</h2>
+<p>Each step ends with the platform gates and one commit. No push.</p>
+<div class="table-wrap"><table><thead><tr><th>Step</th><th>Content</th><th>Proof</th></tr></thead><tbody>
+<tr><td>0</td><td>Engine test: an action that keeps the state runs and makes its outbox row. Test only, no engine change.</td><td>If it fails: stop and ask (Q2 falls back to its option B or C).</td></tr>
+<tr><td>1</td><td><code>release-p2</code> scripts 100 to 140, local tables and seed, manifest, form with the controls of today, dashboard.</td><td>The app shows in the menu; a plain record saves; SQL tests for each script, run two times.</td></tr>
+<tr><td>2</td><td>Table provider, <code>LookupTables</code>, data-only effect target, <code>Info</code> severity, name report.</td><td>Account list fills 5 fields + <code>RMCC</code>; <code>--atlas-check</code> prints the Info lines and <code>0 error(s), 0 warning(s)</code>.</td></tr>
+<tr><td>3</td><td>State in the rules, <code>MustBeTrue</code>, request field <code>Button</code>, <code>Permissions.Execute</code>, <code>Action.Set</code>.</td><td>Part 2 hidden in <code>Draft</code>; refusals tested; TTDV2 tests pass with no change.</td></tr>
+<tr><td>4</td><td>Attachments: service, save, removal on save, limits, audit, controller, <code>filepicker</code> renderer.</td><td>Module 8 section 7 acceptance for a platform app.</td></tr>
+<tr><td>5</td><td><code>richtext</code>: packages, renderer, <code>HtmlSanitizer</code>, plain text in History.</td><td>Script and event attributes are removed (API test with raw HTML).</td></tr>
+<tr><td>6</td><td>Engine adapter: script 150, binding, steps, recipients, template data, state check, <code>RequestId</code>.</td><td>Module 10 section 8 acceptance; scenarios 1 and 2 with smtp4dev.</td></tr>
+<tr><td>7</td><td><code>INTEGRATION.md</code>, <code>CODE_TRACE.md</code>, <code>Config/README.md</code>, target package, onboarding template update.</td><td>Scenarios 1 to 6 of the requirements; all gates; package rebuilt.</td></tr>
+</tbody></table></div>
+<h3>13.1 Tests</h3>
+<ul><li>.NET (xUnit, SQL Server): each script is idempotent; provider SQL is safe for bad names; rule context by state; <code>MustBeTrue</code>; <code>Set</code> tokens; a client value for a server-set field is refused; attachment limits, signature, control check, removal of a file of another record refused; download access (403, 404); HTML clean-up cases; name match cases (case, spaces, none, two users, no email); list map; template formats; save order with a refused engine action (nothing changed); follow-up step failure (record saved, error log); state sync on load; double submit with one <code>RequestId</code>.</li><li>Angular (Vitest): <code>filepicker</code> and <code>richtext</code> renderers; <code>MustBeTrue</code> with the shared cases; <code>Execute</code> button sends <code>Button</code> and <code>RequestId</code>; state rules hide part 2.</li><li>Regression: all TTDV2 tests pass with no change to their expected results.</li><li><code>CodeCommentRulesTests</code> stays green: no D, Q, B or module number in a code comment.</li></ul>
+</section>
+<section>
+<h2>14. Items that need your approval</h2>
+<p>These are the stop-and-ask items of this design. The answers Q1 to Q9 already cover the engine adapter, the <code>nvarchar</code> change of <code>Description</code> and <code>Comment</code>, <code>HtmlSanitizer</code>, CKEditor and the <code>RMCC</code> columns.</p>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Item</th><th>Recommendation</th></tr></thead><tbody>
+<tr><td>1</td><td><code>v1/ManagePage</code> gets three optional request fields: <code>Button</code>, <code>RequestId</code>, <code>RemovedAttachmentIds</code>. New route <code>GET v1/Attachment/{appCode}/{id}</code> (decided in module 8). All additive.</td><td>Approve</td></tr>
+<tr><td>2</td><td><code>CFP.InflowAttachment.FileName</code> from <code>varchar(1000)</code> to <code>nvarchar(1000)</code>, so a file name keeps its characters. The table has no platform data yet.</td><td>Approve</td></tr>
+<tr><td>3</td><td>Target files that change (integration steps, the user does them): <code>program.cs</code> (one <code>AddAtlasModule</code> line), <code>package.json</code> (the two CKEditor packages replace the six 41.4.2 packages, after the target team checks its own use of them), the Service <code>.csproj</code> (<code>HtmlSanitizer</code>), <code>appsettings.json</code> (list addresses, <code>WebBaseUrl</code>), <code>tailwind.config.js</code> only if the form uses a new class.</td><td>Approve</td></tr>
+<tr><td>4</td><td>New log events 41025 to 41029: <code>Atlas.RecipientSkipped</code>, <code>Atlas.WorkflowStepFailed</code>, <code>Atlas.WorkflowSync</code>, <code>Atlas.NotificationDispatchFailed</code>, <code>Atlas.AttachmentRefused</code>. New identifiers, none changed.</td><td>Approve</td></tr>
+<tr><td>5</td><td>Export: the built-in grid menu, no new button. Tell me if you also want a visible "Export" button on the platform dashboard (generic, one dashboard JSON key).</td><td>Built-in menu only</td></tr>
+<tr><td>6</td><td>The four fixed lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team) stay as static addresses in the engine script. A change of such a list is an SQL change. The other choice is to put them in the app settings too, with the same list mechanism.</td><td>Keep in the engine script</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>15. Target integration steps (for <code>INTEGRATION.md</code>)</h2>
+<ol><li>Prerequisites: the engine migrations are current and the engine scheduled job with the outbox retry runs (module 10, 4.5; module 11).</li><li>Run <code>sql/release-p2/</code> 100 to 150 in number order. Set the real list addresses in <code>150</code> first. The AIN team gets <code>140</code>.</li><li>Copy the platform folders as for P1, plus <code>Config/CFPINFLOW.app.json</code>, <code>CFPINFLOW.json</code>, <code>CFPINFLOW.Dashboard.json</code>.</li><li>Do the target file changes of section 14, item 3.</li><li>Settings in each environment: <code>AppSettings:Modules:CFPINFLOW:Workflow:Lists:FixedIncome</code>, <code>...:Lists:Equity</code>, <code>AppSettings:Atlas:WebBaseUrl</code>.</li><li>Grant the roles <code>Read</code> and <code>Write</code> with the grant template.</li><li>Run <code>--atlas-check</code>. Read the Info lines: each line is an RM or RMCC name that gets no email. Correct the data in AIN or in <code>CP_Atlas_User</code>.</li><li>Restart the app pool.</li><li>Old data: the target team moves the SharePoint records with LAN IDs in the person columns, UTC dates, <code>WorkflowState</code> and <code>Status</code> filled. A moved record in state <code>Submitted</code> has no engine instance; the second submit of such a record needs a decision of the target team before the move (start an instance in the move script, or move only closed records).</li></ol>
+</section>
+<section>
+<h2>16. Backward compatibility</h2>
+<ul><li>No engine code change. No change to an existing engine key; <code>ClientInflow</code> and its keys are new.</li><li>TTDV2: no JSON change, no behaviour change. The new code paths run only for a form that has a <code>Workflow</code> binding, a <code>filepicker</code>, a <code>richtext</code> or a <code>Button</code> in the request.</li><li>TTD, CDT, SQMSO, SQMSB, AIN: no change. The platform does not write to <code>AIN.AccountInventory</code>.</li><li><code>v1/...</code>: additive only (section 14, item 1).</li><li><code>CFP.Inflow</code> and <code>CFP.InflowAttachment</code>: no column removed or renamed. <code>CFP.Outflow</code> and <code>CFP.OutflowAttachment</code> are not touched.</li><li>Rollback: set <code>AppSettings:Modules:CFPINFLOW:Enabled = false</code> and restart. The tables and the engine metadata stay.</li></ul>
+</section>
+<section>
+<h2>17. Open points for the build (no decision necessary now)</h2>
+<ul><li>The email text is typed from the screenshots in build step 6; the user checks the three emails in smtp4dev.</li><li>The CKEditor and <code>HtmlSanitizer</code> version numbers are fixed in build step 5 and written to <code>INTEGRATION.md</code>.</li><li>The way the local setup makes the engine tables is fixed in build step 0.</li></ul>
+</section>
+</main>
+</body>
+</html>
