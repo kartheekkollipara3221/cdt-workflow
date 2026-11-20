@@ -7,6 +7,8 @@
 // - The target Tailwind generates the Tailwind classes of the templates. For JSON-only classes, see
 //   atlas-tailwind-classes.ts.
 @use '@pbdev/pbdev-core/styles/variables';
+// The CKEditor 5 styles for the "richtext" control. This file is already in angular.json, so no angular.json change.
+@use 'ckeditor5/ckeditor5.css';
 
 // ---------- Form (cp-atlas-sectionmaster.scss) ----------
 atlas-form {
@@ -252,6 +254,15 @@ atlas-dashboard {
     border: 1px dashed variables.$status-red;
     border-radius: 4px;
     color: variables.$status-red;
+  }
+
+  // A read-only rich text control shows the text with no toolbar.
+  .atlas-richtext--readonly .ck-editor__top {
+    display: none;
+  }
+
+  .atlas-richtext .ck-editor__editable {
+    min-height: 8rem;
   }
 
   // The file list of a file picker, as the CDT step page (cp-atlas-steppage.scss).

@@ -7,6 +7,7 @@ using BBH.CP.Atlas.Service.Platform.Attachments;
 using BBH.CP.Atlas.Service.Platform.Options;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
+using BBH.CP.Atlas.Service.Platform.Sections;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
@@ -18,7 +19,7 @@ namespace BBH.CP.Atlas.Platform.Tests.Sections;
 /// The ClientInflows app (CFPINFLOW, module 25) with the real app files of the Config folder on the release P2 tables:
 /// the save, the dashboard menus and the Add button (build step 1); the AIN account list, the data-only target RMCC,
 /// the effects rule and the saved option rule (build step 2); the state in the rules, MustBeTrue and the one submit
-/// button with the steps by state (build step 3); the files of the two file pickers (build step 4). Own database (the P2 scripts change tables).
+/// button with the steps by state (build step 3); the files of the two file pickers (build step 4); the rich text clean-up (build step 5). Own database (the P2 scripts change tables).
 /// </summary>
 /// <remarks>
 /// The engine writes WorkflowState from build step 6. Until then the tests set the state by SQL.
@@ -659,6 +660,68 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     private static IFormFileCollection FlowFile() => Files(("FlowAttachments#$#instruction.pdf", Pdf));
 
     private static IFormFileCollection CashFile() => Files(("CashAttachments#$#receipt.pdf", Pdf));
+
+    // ---------- Build step 5 ----------
+
+    [Fact]
+    public async Task The_save_cleans_the_rich_text_and_the_History_gets_plain_text()
+    {
+        CPAtlasPage input = NewInput();
+        input.Outputs!.RemoveAll(x => x.Name == "Description");
+        input.Outputs.Add(new CPPageOutput
+        {
+            Name = "Description",
+            Value = "<p onclick=\"steal()\" style=\"color:red\">Wire &amp; <strong>cash</strong></p><script>alert(1)</script>"
+                + "<img src=x onerror=alert(2)><a href=\"javascript:alert(3)\">bad</a><a href=\"https://bbh.com\">ok</a>"
+        });
+
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(input, FlowFile());
+
+        AssertSaved(saved);
+        Assert.Equal("<p>Wire &amp; <strong>cash</strong></p><a rel=\"noopener noreferrer\">bad</a><a href=\"https://bbh.com\" rel=\"noopener noreferrer\">ok</a>",
+            await _db.ScalarAsync($"SELECT Description FROM CFP.Inflow WHERE ID = {saved.ID}"));
+        string log = Convert.ToString(await _db.ScalarAsync(
+            $"SELECT LogMessage FROM CFP.AuditLog WHERE ReferenceID = {saved.ID} AND LogMessage LIKE '%\"Create\"%'"), System.Globalization.CultureInfo.InvariantCulture)!;
+        Assert.Contains(@"""Value"":""Wire \u0026 cash\nbadok""", log, StringComparison.Ordinal); // JSON text of "Wire & cash", a new line, "badok"
+        Assert.DoesNotContain("<p>", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_rich_text_value_with_no_text_is_saved_as_NULL_and_a_very_long_value_is_refused()
+    {
+        CPAtlasPage empty = NewInput();
+        empty.Outputs!.RemoveAll(x => x.Name == "Description");
+        empty.Outputs.Add(new CPPageOutput { Name = "Description", Value = "<p>&nbsp;</p><script>x</script>" });
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(empty, FlowFile());
+        AssertSaved(saved);
+        Assert.Equal(DBNull.Value, await _db.ScalarAsync($"SELECT Description FROM CFP.Inflow WHERE ID = {saved.ID}"));
+
+        CPAtlasPage large = NewInput();
+        large.Outputs!.RemoveAll(x => x.Name == "Description");
+        large.Outputs.Add(new CPPageOutput { Name = "Description", Value = "<p>" + new string('a', AtlasRichText.MaxLength) + "</p>" });
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(large, FlowFile());
+        Assert.Equal(0, refused.ID);
+        CPPageError error = Assert.Single(refused.Errors!);
+        Assert.Equal(("Description", "MaxLength", "Description can have at most 200000 characters."), (error.Field, error.Code, error.Message));
+    }
+
+    [Fact]
+    public void A_rich_text_column_of_a_dashboard_shows_plain_text()
+    {
+        CPAtlasPage input = NewInput();
+        input.Outputs!.RemoveAll(x => x.Name == "Description");
+        input.Outputs.Add(new CPPageOutput { Name = "Description", Value = "<p>Wire</p><ul><li>one &amp; two</li></ul>" });
+        CPAtlasPage saved = Svc(Writer, CfpRoles.Write).SavePage(input, FlowFile());
+        AssertSaved(saved);
+        using ConfigCopy config = new ConfigCopy().Replace("CFPINFLOW.Dashboard.json",
+            "{ \"Name\": \"AccountName\", \"Label\": \"Account Name\" },", "{ \"Name\": \"AccountName\", \"Label\": \"Account Name\" }, { \"Name\": \"Description\", \"Type\": \"richtext\" },");
+        using SectionHarness harness = new(_db, AtlasAccessMode.Enforce, config.Folder);
+
+        CPAtlasDashboard dashboard = harness.ServiceFor(App, _registry, Reader, CfpRoles.Read).LoadDashboard();
+
+        Dictionary<string, object> row = dashboard.Tabs!.Single(x => x.ID == "Inflows").KeyValues!.Single(x => Convert.ToInt32(x["ID"]) == saved.ID);
+        Assert.Equal("Wire\none & two", row["Description"]);
+    }
 
     private ConfigSectionService Svc(string lanId, params AtlasRole[] roles) => _harness.ServiceFor(App, _registry, lanId, roles);
 

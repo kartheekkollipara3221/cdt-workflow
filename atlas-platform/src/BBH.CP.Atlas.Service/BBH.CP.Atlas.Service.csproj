@@ -11,4 +11,9 @@
   <ItemGroup>
     <ProjectReference Include="..\BBH.CP.Atlas.Data\BBH.CP.Atlas.Data.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Server clean-up of rich text. Approved package; the target team adds it. Its dependencies AngleSharp 1.10.0 and
+         AngleSharp.Css 1.4.0 are stable versions. -->
+    <PackageReference Include="HtmlSanitizer" Version="11.0.26" />
+  </ItemGroup>
 </Project>

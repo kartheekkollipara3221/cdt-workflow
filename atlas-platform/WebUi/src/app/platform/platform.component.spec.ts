@@ -19,6 +19,7 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { By } from '@angular/platform-browser';
 import { FilePickerCoreComponent } from './atlas-pbdev';
+import { loadRichTextEditor } from './form/renderers/atlas-richtext-renderer';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 
 // As the target main.ts (it registers AllEnterpriseModule): the grids use the registered modules.
@@ -788,5 +789,53 @@ describe('AtlasFormComponent file picker', () => {
     expect(fixture.debugElement.query(By.directive(FilePickerCoreComponent))).toBeNull();
     expect(element(fixture, '#btn_RemoveFile_7')).toBeNull();
     expect(element(fixture, '#divA_7 a')?.textContent?.trim()).toBe('old.pdf');
+  });
+});
+
+describe('AtlasFormComponent rich text', () => {
+  // CKEditor needs ResizeObserver. A browser has it; jsdom (the local runner) does not.
+  beforeAll(() => {
+    const scope = globalThis as unknown as { ResizeObserver?: unknown };
+    scope.ResizeObserver ??= class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
+  });
+
+  /** Waits until the editor shows its editable area (CKEditor starts with promises). */
+  async function editable(fixture: ComponentFixture<unknown>): Promise<HTMLElement> {
+    await loadRichTextEditor();
+    for (let i = 0; i < 100; i++) {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const area = element(fixture, '#ctl_Notes .ck-editor__editable');
+      if (area) {
+        return area;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error('The editor did not start.');
+  }
+
+  it('loads the editor with the stored HTML and sends the HTML of the form value', async () => {
+    const { fixture, http } = setup(section([text('Notes', { Type: 'richtext', Value: '<p>Hello <strong>world</strong></p>' })]));
+
+    const area = await editable(fixture);
+    expect(area.textContent).toContain('Hello world');
+    expect(element(fixture, '#ctl_Notes .ck-toolbar') === null).toBe(false);
+
+    fixture.componentInstance.form.get('Notes')?.setValue('<p>New text</p>');
+    click(fixture, '#btn_Submit');
+    expect(savedOutputs(http).find((x) => x.Name === 'Notes')?.Value).toBe('<p>New text</p>');
+  });
+
+  it('shows a disabled rich text control read-only with no toolbar', async () => {
+    const { fixture } = setup(section([text('Notes', { Type: 'richtext', Value: '<p>Read me</p>', Disabled: true })]));
+
+    const area = await editable(fixture);
+
+    expect(area.getAttribute('contenteditable')).toBe('false');
+    expect(element(fixture, '#ctl_Notes.atlas-richtext--readonly') === null).toBe(false);
   });
 });

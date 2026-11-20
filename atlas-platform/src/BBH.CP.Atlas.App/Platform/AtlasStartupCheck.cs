@@ -493,7 +493,7 @@ public static class AtlasStartupCheck
     private static readonly HashSet<string> ClientTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "section", "text", "currency", "percent", "select", "ngselect", "textarea", "datetimepicker", "date",
-        "checkbox", "check", "option", "user", "grid", AtlasAttachmentRules.FilePickerType
+        "checkbox", "check", "option", "user", "grid", AtlasAttachmentRules.FilePickerType, AtlasRichText.ControlType
     };
 
     /// <summary>

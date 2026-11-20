@@ -15,6 +15,7 @@ import {
 } from './renderers/atlas-renderers';
 import { AtlasGridRenderer } from './renderers/atlas-grid-renderer';
 import { AtlasFileRenderer } from './renderers/atlas-file-renderer';
+import { AtlasRichTextRenderer } from './renderers/atlas-richtext-renderer';
 
 /**
  * The renderer registry: it maps a control Type to a component.
@@ -38,12 +39,13 @@ export class AtlasRendererRegistry {
     ['user', AtlasUserRenderer],
     ['grid', AtlasGridRenderer],
     ['filepicker', AtlasFileRenderer],
+    ['richtext', AtlasRichTextRenderer],
   ]);
 
   /** Types that render no input with the id "ctl_" + Name, so the form label gets no "for" attribute. */
   // A checkbox has its own (empty) label inside the library control. A second label "for" it gives two labels,
   // so the form uses aria-labelledby for it.
-  private readonly noInput = new Set<string>(['user', 'grid', 'checkbox', 'check', 'filepicker']);
+  private readonly noInput = new Set<string>(['user', 'grid', 'checkbox', 'check', 'filepicker', 'richtext']);
 
   /** Types whose pbdev control draws its own error text (pbdev-input-messages). The form does not draw it again. */
   private readonly ownMessages = new Set<string>(['text', 'currency', 'percent', 'select', 'textarea', 'datetimepicker', 'date']);

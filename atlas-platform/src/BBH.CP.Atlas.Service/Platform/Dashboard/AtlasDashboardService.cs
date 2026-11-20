@@ -1,6 +1,7 @@
 using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
+using BBH.CP.Atlas.Service.Platform.Sections;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Rules;
 using BBH.CP.Atlas.Service.Platform.Security;
@@ -132,6 +133,9 @@ public sealed class AtlasDashboardService(
         HashSet<string> userColumns = new(
             tab.Columns!.Where(x => string.Equals(x.Type, "user", StringComparison.OrdinalIgnoreCase)).Select(x => x.Name),
             StringComparer.OrdinalIgnoreCase);
+        HashSet<string> richTextColumns = new(
+            tab.Columns!.Where(x => string.Equals(x.Type, AtlasRichText.ControlType, StringComparison.OrdinalIgnoreCase)).Select(x => x.Name),
+            StringComparer.OrdinalIgnoreCase);
 
         List<Dictionary<string, object>> rows = AtlasSql.Query(context, query.Sql, reader =>
         {
@@ -144,6 +148,8 @@ public sealed class AtlasDashboardService(
                 {
                     null => null!,
                     DateTime or bool or byte[] => AtlasValueConverter.ToWire(value, column, tabManifest.SystemTimeIsUtc)!,
+                    // A rich text column shows as plain text in the grid.
+                    string html when richTextColumns.Contains(column.Name) => AtlasRichText.ToPlainText(html) ?? "",
                     _ => value
                 };
             }

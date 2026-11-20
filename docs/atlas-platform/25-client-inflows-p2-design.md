@@ -1098,3 +1098,33 @@ Notes for later steps:
 - Test changes: the CFPINFLOW save tests now send a flow file (a file is required), and two of them count the
   attachment audit entry. Two tests used `filepicker` as an example of a type with no renderer; they use
   `signaturepad` now. All TTDV2 tests pass with no change to their expected results.
+
+### 19.6 Step 5 (2026-11-20)
+
+- Package: `HtmlSanitizer` 11.0.26 (NuGet, published 2026-11-09) in `BBH.CP.Atlas.Service.csproj`. Its dependencies
+  `AngleSharp` 1.10.0 and `AngleSharp.Css` 1.4.0 are stable versions. `dotnet list package --vulnerable
+  --include-transitive` reports no known vulnerability. 11.0.16 is unlisted; 11.0.26 is the latest stable version.
+  The target team adds the same line to its Service project (approval 3 of 14.1).
+- Server (`Service/Platform/Sections/AtlasRichText.cs`): one fixed allow list (9.2). The clean-up keeps the text of
+  a removed tag (for example `<span>`), but removes the content of `script`, `style`, `template`, `noscript`,
+  `iframe`, `object`, `embed`, `svg`, `math`, `textarea`, `select`, `title` and `head`. `class` stays only on `figure`
+  with the value `table`. Each link gets `rel="noopener noreferrer"`; a link with another scheme loses its `href`.
+  A value with no text and no table is NULL. A clean value gives the same value again.
+- Save: the clean-up runs on each submitted `richtext` value after the read of the outputs, before the allow list and
+  the validators. More than 200,000 characters after the clean-up is the field error `MaxLength`.
+- History: the audit entry of a `richtext` field holds plain text (no tags, entities decoded, each block on a line).
+- Dashboard: a tab column with `Type: "richtext"` shows plain text. P2 has no such column; a test proves it.
+- Start-up check: `richtext` is a client type now.
+- Client: `richtext` renderer (`form/renderers/atlas-richtext-renderer.ts`) loads the editor
+  (`atlas-richtext-editor.ts`) with `import()`. The editor chunk is 833 kB (184 kB transfer), the only chunk with
+  CKEditor code; the first bundle does not get it. Classic editor, `licenseKey: 'GPL'`, the plugins of 9.1 from their
+  own packages, headings h2 to h4, no picture plugin. The form control binds to the editor (value = HTML). A disabled
+  control is read-only with no toolbar. When the editor code cannot load, the control shows a message and the value
+  cannot change. `@use 'ckeditor5/ckeditor5.css'` in `atlas-platform.scss`; no `angular.json` change. `ng build`
+  (stand-in and target look) has 0 warnings.
+- CFPINFLOW: `Description` and `Comment` are `richtext`.
+- Proof: 19 clean-up cases (script, event attributes, style, picture, `javascript:` link, link schemes, `class`,
+  headings, removed tags, empty values, plain text, the same value again); a CFPINFLOW save with raw HTML stores the
+  clean HTML and the History gets plain text; an empty value is NULL; a very long value is refused; the dashboard
+  plain text. Angular (126 specs): the editor loads the stored HTML and the save sends the HTML; a disabled control is
+  read-only with no toolbar. .NET 423 tests.

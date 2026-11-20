@@ -4,7 +4,8 @@
   // The state of the record (WorkflowState) drives the rules: part 2 is hidden in Draft, part 1 is read-only after
   // Draft, and part 2 is read-only after Submitted. One submit button: the server takes the step of the stored state
   // (Workflow.Steps). The files of FlowAttachments and CashAttachments are in CFP.InflowAttachment (Type = control name).
-  // Later build steps add rich text and the engine actions of each step.
+  // Description and Comment are rich text: the server cleans the HTML, and the History shows plain text.
+  // Build step 6 adds the engine actions of each step.
   "Name": "Client Flows Portal - Inflow",
   "Type": "SECTION",
   "Rules": [
@@ -117,7 +118,7 @@
           },
           { "Name": "Amount", "Field": "Amount", "Label": "Amount (USD)", "Type": "currency", "PlaceHolder": "Amount", "Validator": { "Required": true, "Min": 0.01 } },
           { "Name": "InflowDate", "Field": "InflowDate", "Label": "Inflow Date", "Type": "date", "PlaceHolder": "Inflow Date", "Validator": { "Required": true } },
-          { "Name": "Description", "Field": "Description", "Label": "Description", "Type": "textarea", "PlaceHolder": "Description", "DivClass": "grid-column-start-end-1-2" },
+          { "Name": "Description", "Field": "Description", "Label": "Description", "Type": "richtext", "PlaceHolder": "Description", "DivClass": "grid-column-start-end-1-2" },
           {
             "Name": "FlowAttachments",
             "Label": "Please attach email/signed instruction from the client.",
@@ -142,7 +143,7 @@
         ],
         "ChildControls": [
           { "Name": "FundsReceived", "Field": "FundsReceived", "Label": "Funds have been received", "Type": "checkbox", "Validator": { "MustBeTrue": true } },
-          { "Name": "Comment", "Field": "Comment", "Label": "Comment", "Type": "textarea", "PlaceHolder": "Comment", "DivClass": "grid-column-start-end-1-2" },
+          { "Name": "Comment", "Field": "Comment", "Label": "Comment", "Type": "richtext", "PlaceHolder": "Comment", "DivClass": "grid-column-start-end-1-2" },
           {
             "Name": "CashAttachments",
             "Label": "Please attach proof of custodian receipt.",

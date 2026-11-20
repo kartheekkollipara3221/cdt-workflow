@@ -508,6 +508,7 @@ namespace BBH.CP.Atlas.Service.Application
         private void ReadAndFilter(SaveState state)
         {
             state.Submitted = ReadOutputs(state.Input, state.Fields, state.Errors);
+            CleanRichText(state);
 
             // Server part of Effects (Show, Hide, Require, Unrequire) and the SetFromOption targets.
             state.Derived = AtlasServerEffects.Apply(state.Fields, state.Current);
@@ -525,6 +526,28 @@ namespace BBH.CP.Atlas.Service.Application
             // Log a refused field as a warning. Thus the log shows a probe or a client defect.
             foreach (CPPageError refusal in state.Errors.Where(x => x.Code is "NotAllowed" or "NotInOptions" or "InvalidGrid"))
                 AtlasLog.FieldRefused(Logger, Services.User.LanId, state.Manifest.Code, state.Input.ID, refusal.Field ?? "", refusal.Code);
+        }
+
+        /// <summary>
+        /// Cleans each submitted rich text value before the checks and the write.
+        /// </summary>
+        /// <remarks>
+        /// The check is by control type, so each app gets it. A value with no text is null. A value that is longer
+        /// than the limit after the clean-up is a field error.
+        /// </remarks>
+        private static void CleanRichText(SaveState state)
+        {
+            foreach (AtlasFormField field in state.Fields.All.Where(x => !x.IsGridField && AtlasRichText.IsRichText(x.Control)))
+            {
+                if (!state.Submitted.TryGetValue(field.Name, out string? raw))
+                    continue;
+
+                string? clean = AtlasRichText.Sanitize(raw);
+                state.Submitted[field.Name] = clean;
+                if (clean?.Length > AtlasRichText.MaxLength)
+                    state.Errors.Add(Error(field.Name, "MaxLength",
+                        $"{field.Label ?? field.Name} can have at most {AtlasRichText.MaxLength.ToString(CultureInfo.InvariantCulture)} characters."));
+            }
         }
 
         /// <summary>
@@ -851,6 +874,12 @@ namespace BBH.CP.Atlas.Service.Application
                     continue;
 
                 bool hidden = field.Control.Audit == false;
+                if (AtlasRichText.IsRichText(field.Control))
+                {
+                    // The History shows text, not HTML.
+                    old = AtlasRichText.ToPlainText(old);
+                    value = AtlasRichText.ToPlainText(value);
+                }
                 changes.Add(new AtlasAuditChange(field.Field, field.Label, hidden ? "***" : old, hidden ? "***" : value));
             }
 

@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-4 done, next step 5; full hand-off in section A, Next 0)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-5 done, next step 6; full hand-off in section A, Next 0)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -127,16 +127,16 @@ The dated history entries below are unchanged, newest first: platform and target
    NO CODE AND NO SQL SCRIPT EXISTS FOR P2. The user has not yet said "start the build".
 
 ### Next
-0. P2 BUILD (ClientInflows, CFPINFLOW) - IN PROGRESS. Steps 0, 1, 2, 3, 4 DONE; NEXT = STEP 5. Full hand-off below.
+0. P2 BUILD (ClientInflows, CFPINFLOW) - IN PROGRESS. Steps 0, 1, 2, 3, 4, 5 DONE; NEXT = STEP 6. Full hand-off below.
 
    0.1 Where things are
    - Build specification: docs/atlas-platform/25-client-inflows-p2-design.md (draft 3, approved). Build order = section 13;
-     build record of each step = section 19 (19.1 step 0, 19.2 step 1, 19.3 step 2, 19.4 step 3, 19.5 step 4). Read 19 before you code.
+     build record of each step = section 19 (19.1 step 0, 19.2 step 1, 19.3 step 2, 19.4 step 3, 19.5 step 4, 19.6 step 5). Read 19 before you code.
    - Review answers: docs/atlas-platform/26-p2-design-review.md section 8. Requirements: docs/ClientInflows/
      ONBOARDING_ANSWERS.md (D1-D34), GAP_REPORT.md (Q1-Q9). Platform rules: AGENTS.md "Atlas platform" (one submit
      button rule added 2026-11-20).
    - Branch console-code-first-0518, 37 commits ahead of origin, NOTHING PUSHED (push only when the user asks).
-     Commits: ca194af step 0, 38ad2df step 1, 0455460 step 2, 2ece3ad step 3, step 4 = the commit after 2ece3ad.
+     Commits: ca194af step 0, 38ad2df step 1, 0455460 step 2, 2ece3ad step 3, 1724a1d step 4, step 5 = the commit after 1724a1d.
      Package NOT rebuilt (step 7 does it).
    - Working style for the build: the user says "continue" for each step. After each step: all platform gates, one
      commit, completion summary in the AGENTS.md format (+ "Package rebuilt:"), update this section, then wait.
@@ -172,10 +172,14 @@ The dated history entries below are unchanged, newest first: platform and target
      library pbdev-file-picker takes one), api save(page, files) + download blob, renderer base input appCode, stand-in
      FilePickerCoreComponent, make-target-look.mjs copies the real core (+1 strict-TS patch). CFPINFLOW: manifest
      AttachmentTable + AttachmentColumns; FlowAttachments (part 1), CashAttachments (part 2). Tests: 401 .NET, 124 Angular.
-   - Step 5 NEXT: richtext (renderer with dynamic import, plugin imports from @ckeditor/ckeditor5-<plugin>, ResizeObserver
-     stub in specs, @use 'ckeditor5/ckeditor5.css' in atlas-platform.scss, HtmlSanitizer NuGet stable + AngleSharp
-     stable, allowed tags of 9.2, plain text in History; Description and Comment become richtext).
-   - Step 6 open: engine adapter (script 150, Workflow binding, EngineActions, recipients incl. EmailOfDisplayName,
+   - Step 5 DONE: HtmlSanitizer 11.0.26 (AngleSharp 1.10.0, AngleSharp.Css 1.4.0, all stable, no known vulnerability)
+     in the Service csproj; Service/Platform/Sections/AtlasRichText.cs (fixed allow list, content of script/style/...
+     removed, class only figure.table, rel on links, empty = NULL, 200,000 limit, plain text); ConfigSectionService
+     CleanRichText before the allow list + plain text in the audit; dashboard column Type richtext = plain text;
+     client renderers/atlas-richtext-renderer.ts (import()) + atlas-richtext-editor.ts (CKEditor classic, GPL, plugin
+     packages); @use 'ckeditor5/ckeditor5.css' in atlas-platform.scss; CFPINFLOW Description/Comment richtext.
+     Tests: 423 .NET, 126 Angular.
+   - Step 6 NEXT: engine adapter (script 150, Workflow binding, EngineActions, recipients incl. EmailOfDisplayName,
      template data + empty value check, AppSettings:HostedClientURL link, state check on load, RequestId required,
      status line in History, log events 41025-41029).
    - Step 7 open: INTEGRATION.md, CODE_TRACE.md, Config/README.md, target package rebuild, onboarding template update.
