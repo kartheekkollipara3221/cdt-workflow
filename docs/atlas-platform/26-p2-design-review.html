@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClientInflows (P2): design review</title>
+<style>
+:root{color-scheme:light;--ink:#172b3a;--muted:#526474;--line:#d8e1e8;--navy:#103950;--red:#9f2424;--redbg:#fff1ef;--amber:#8a5a00;--amberbg:#fff7e6;--blue:#1d5f8a;--bluebg:#edf5fb;--green:#25643a;--greenbg:#edf7f0;--grey:#4b5a66;--greybg:#f1f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:#edf1f5;color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:32px auto;background:#fff;padding:48px;border-radius:12px;box-shadow:0 8px 28px #17334a12}
+h1,h2,h3{line-height:1.22}h1{font-size:2.2rem;margin:12px 0}h2{font-size:1.45rem;margin:0 0 16px}h3{font-size:1.06rem;margin:0 0 6px}
+section{border-top:1px solid var(--line);margin-top:34px;padding-top:28px}
+code{font:.86em ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#f4f6f8;padding:1px 5px;border-radius:4px}
+pre{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.84rem/1.5 ui-monospace,Consolas,monospace;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.eyebrow{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;font-weight:700}
+.lead{font-size:1.15rem}
+.note{padding:14px 18px;border-left:4px solid #38779a;background:var(--bluebg);margin:18px 0}
+.good{padding:14px 18px;border-left:4px solid var(--green);background:var(--greenbg);margin:18px 0}
+.small{font-size:.88rem;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:12px 0}
+th,td{padding:9px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#eff4f7;font-weight:650}
+a{color:#075889;text-underline-offset:3px}
+ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
+.issue{border:1px solid var(--line);border-left:5px solid var(--red);border-radius:8px;padding:14px 18px;margin:14px 0}
+.issue.med{border-left-color:#c58a1a}.issue.low{border-left-color:#38779a}
+.issue p{margin:5px 0}
+.issue dl{display:grid;grid-template-columns:130px 1fr;gap:3px 14px;margin:8px 0 0}
+.issue dt{font-weight:650;color:var(--muted);font-size:.88rem}
+.issue dd{margin:0}
+.design{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:8px;padding:14px 18px;margin:14px 0}
+.badge{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:20px;margin-right:6px;vertical-align:2px}
+.b-high{background:var(--redbg);color:var(--red)}.b-med{background:var(--amberbg);color:var(--amber)}.b-low{background:var(--bluebg);color:var(--blue)}.b-fix{background:var(--greenbg);color:var(--green)}
+.area{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:#eef2f5;color:var(--grey);margin-left:4px;vertical-align:2px}
+.confirm{display:inline-block;font-size:.74rem;font-weight:650;padding:1px 8px;border-radius:4px;background:var(--amberbg);color:var(--amber);margin-left:4px;vertical-align:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.6rem;color:var(--navy)}
+.kpi span{font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){main{margin:0;padding:24px 16px;border-radius:0}.issue dl{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">CP Atlas platform · module 26</div><h1>Module 26: review of the ClientInflows (P2) design</h1>
+<p>Status: 2026-11-20. Review of <a href="25-client-inflows-p2-design.html">25-client-inflows-p2-design.md</a>, draft 2. No code, no SQL and no design text is changed by this review. The user decides which findings change the design.</p>
+<section>
+<h2>1. Method</h2>
+<p>The review compares each statement of the design with:</p>
+<ul><li>the platform code of today (<code>atlas-platform/src/</code>, <code>atlas-platform/WebUi/</code>);</li><li>the workflow engine code (<code>src/</code>), read only;</li><li>the target copy of 2026-11-18 (<code>Program_cs.txt</code>, <code>CPAtlasController_cs.txt</code>, the interceptors, the settings key names; no key value or password was read out);</li><li>the earlier specs: module 1 (5.3, 5.9 to 5.13), module 8, module 9, module 10;</li><li>the requirements D1 to D34.</li></ul>
+<p>Paths: <code>Service/</code> = <code>atlas-platform/src/BBH.CP.Atlas.Service/</code>, <code>Data/</code> = <code>atlas-platform/src/BBH.CP.Atlas.Data/</code>, <code>App/</code> = <code>atlas-platform/src/BBH.CP.Atlas.App/</code>, <code>WebUi/</code> = <code>atlas-platform/WebUi/src/app/platform/</code>.</p>
+</section>
+<section>
+<h2>2. Result</h2>
+<p>The design is sound in its structure: the split into generic parts is correct, the engine does not need a change, and the save order follows module 10. But the design has 3 defects that make the app wrong or open as written, and 9 points that are not complete. All have a small correction. None needs an engine change or a new package.</p>
+<div class="table-wrap"><table><thead><tr><th>Severity</th><th>Count</th><th>Meaning</th></tr></thead><tbody>
+<tr><td>High</td><td>3</td><td>The app does not work as written, or an approved decision is broken</td></tr>
+<tr><td>Medium</td><td>9</td><td>A requirement is missed, or a part is not designed, or a risk is not controlled</td></tr>
+<tr><td>Low</td><td>9</td><td>Simpler solution, unclear text, or a detail for the build</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>3. High</h2>
+<h3>DR-01 The account fields and RMCC change again at the second submit</h3>
+<ul><li>Design: 5.2 (<code>SetFromOption</code>), 7.3, 10.6 ("E3 uses the <code>RelationshipManager</code> and <code>RMCC</code> of the first submit").</li><li>Code: the server runs the effects of each control at each save, with the stored value when the client sends none (<code>Service/Application/ConfigSectionService.cs</code>, <code>ReadAndFilter</code> and <code>MapRecord</code>; <code>Service/Platform/Sections/AtlasServerEffects.cs</code>, <code>Values</code>). The client also runs the effects when the form is built (<code>WebUi/form/atlas-form.component.ts</code>).</li><li>Effect: at the second submit, the server reads the AIN row again and writes <code>AccountName</code>, <code>StarNumber</code>, <code>RelationshipManager</code>, <code>Custodian</code> and <code>RMCC</code> again. If the RM changed in AIN after the first submit, E3 goes to the new RM, and History shows a change to part 1. This breaks answer Q8 and D16. Also, when a user opens the record, the read-only fields show the AIN values of today, not the saved values.</li><li>Correction: one generic rule, the same on the server and the client: an effect sets values (<code>Set</code>, <code>Clear</code>, <code>SetFromOption</code>) only when its source control is enabled for the user and the state. A source that a rule disables or hides sets nothing; the saved values stay.</li><li>TTDV2: no change for a user who can edit (the account control is enabled). A read-only user then sees the saved values. The TTDV2 tests must prove it.</li></ul>
+<h3>DR-02 A save with no button name goes past the workflow</h3>
+<ul><li>Design: 6.4 ("With no <code>Button</code>, the save is a plain save, as today").</li><li>Code: the save checks only the <code>Create</code> or <code>Edit</code> permission and the fields (<code>ConfigSectionService.SavePage</code>, <code>LoadStored</code>). It has no button check.</li><li>Effect: a <code>Write</code> user, or a client defect, can send a save with no <code>Button</code>. For a new record, this makes a record with no engine instance, no state and no email. In state <code>Submitted</code>, it writes part 2 ("Funds have been received", the files) with no second submit and no E3.</li><li>Correction: a generic rule. A save with no <code>Button</code> is the action of the <code>Save</code> button. If the form has no button with <code>Action.Type</code> = <code>Save</code>, the server refuses the save (<code>NotAllowed</code>). ClientInflows has no Save button, so each save must name <code>SubmitPart1</code> or <code>SubmitPart2</code>. TTDV2 has a Save button, so it does not change.</li></ul>
+<h3>DR-03 The form JSON of the design does not fit the DTO classes</h3>
+<p>Three points. Each one stops the app as written.</p>
+<div class="table-wrap"><table><thead><tr><th>Point</th><th>Design (5.2, 10.2)</th><th>Code</th><th>Correction</th></tr></thead><tbody>
+<tr><td>Place of <code>Workflow</code></td><td>Top level of the form</td><td>The property is on the section: <code>CPApplicationSection.Workflow</code> (<code>Data/StandIn/DTO/CPAtlasApplicationConfig.cs</code>; the target reads <code>Section.Workflow</code>)</td><td>Put the binding in <code>Section</code></td></tr>
+<tr><td><code>Roles</code> of the binding</td><td>Not there</td><td><code>CPWorkflow.Roles</code> is <code>required</code> in the target class</td><td>Add <code>&quot;Roles&quot;: []</code>; the adapter uses <code>ActorRoles</code></td></tr>
+<tr><td>Buttons</td><td>No <code>Visible</code> key</td><td><code>CPButton.Visible</code> is <code>false</code> by default</td><td>Add <code>&quot;Visible&quot;: true, &quot;Disabled&quot;: false</code> to each button, as in <code>TTDV2.json</code></td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>4. Medium</h2>
+<h3>DR-04 A <code>Read</code> user has no "Edit" item in the row menu (D24)</h3>
+<ul><li>Code: with no <code>Menus</code> in the dashboard JSON, the menu shows "Edit" only for a user with the <code>Edit</code> permission (<code>Service/Platform/Dashboard/AtlasDashboardService.cs</code>, <code>Menus</code>).</li><li>Effect: a <code>Read</code> user can open a record only with the link on the ID. D24 wants the "Edit" item for all users.</li><li>Correction: JSON only. Each tab gets <code>Menus</code> with a rule: <code>Edit</code> and <code>History</code> for <code>@Read</code>, <code>Delete</code> for <code>Write</code>.</li></ul>
+<h3>DR-05 The file download with a plain link can give 401 at the target</h3>
+<ul><li>Design: 8.2 and 8.3 ("download URL", "download links").</li><li>Target: the API uses JWT bearer authentication (<code>Program_cs.txt</code>). The client adds the credentials in HTTP interceptors (<code>winauthinterceptor.ts</code>, <code>apiinterceptor.ts</code>). The API has a different address than the client (<code>HostedURL</code>, <code>HostedClientURL</code>). A browser link does not go through the interceptors.</li><li>Correction: the client gets the file with <code>HttpClient</code> as a blob, through the same interceptors as each other call, and then gives the blob to the browser. The load response needs only the file ID. Check at the target how the CDT download works today.</li></ul>
+<h3>DR-06 The platform cannot read <code>varbinary</code></h3>
+<ul><li>Code: <code>Data/Platform/AtlasSqlTypes.cs</code> has no <code>varbinary</code>. The start-up already reads the columns of <code>AttachmentTable</code> into the table registry (<code>App/Platform/AtlasPlatformStartup.cs</code>).</li><li>Effect: the design does not say how the attachment service reads and writes <code>FileContent</code>.</li><li>Correction: add <code>varbinary</code> to the type map (generic). The list query of the attachments must not select <code>FileContent</code>; only the download reads it. If not, each form load reads all files of the record (up to 10 MB each).</li></ul>
+<h3>DR-07 The account control and its columns are not consistent</h3>
+<ul><li>Design 5.2: the control <code>Account</code> fills <code>AccountNumber</code> with <code>SetFromOption</code>. But <code>AccountNumber</code> has no control, and the <code>Data</code> list of the provider (7) does not have it.</li><li>Correction: the <code>ngselect</code> control writes the column <code>AccountNumber</code> (name <code>AccountNumber</code>, value = the account number). <code>SetFromOption</code> fills the 4 shown fields and <code>RMCC</code>. The column <code>CFP.Inflow.Account</code> is not used. This is an integration note for the target team.</li></ul>
+<h3>DR-08 Some values are not in History, and <code>Set</code> cannot write a column with no control</h3>
+<ul><li>Design 6.4: <code>Action.Set</code> sets <code>CashSubmittedDate</code>. This column has no control.</li><li>Code: the audit lists only the fields of the form (<code>ConfigSectionService.Changes</code>).</li><li>Effect: <code>Set</code> needs the same rule as 7.3 (a control or a column of the table). <code>Status</code>, <code>CashSubmittedDate</code> and <code>RMCC</code> do not show in History. A user who reads History does not see when the record became "Funds Received".</li><li>Correction: <code>Set</code> accepts a control name or a column name. The audit entry of a save with a workflow step gets one line for the status ("Status: Submitted to Funds Received"). Decide if the two other columns must show.</li></ul>
+<h3>DR-09 The dashboard does not format the Amount (D23)</h3>
+<ul><li>Gap report A10 says the column type <code>currency</code> exists. Code: the type only aligns the cell to the right (<code>WebUi/dashboard/atlas-dashboard-columns.ts</code>). <code>CPTabColumn.Format</code> is not read.</li><li>Effect: the Amount shows as a raw number with 4 decimals, not as USD.</li><li>Correction: a generic formatter for <code>currency</code> columns (2 decimals, thousands separator, <code>$</code>). Small client code. Check at the target that the Excel export gives the formatted or the numeric value, as the users want.</li></ul>
+<h3>DR-10 An empty template value stops the engine action with a technical message</h3>
+<ul><li>Engine: a template token with an empty value is a validation error; the action fails (<code>src/WorkflowEngine.Application/Notifications/NotificationTemplateRenderer.cs</code>).</li><li>Effect: <code>AccountName</code> comes from AIN and can be empty text. The user then gets "Template token 'accountName' requires ...".</li><li>Correction: before the first write, the adapter checks that each <code>TemplateData</code> value is not empty. An empty value is a page error that names the field.</li></ul>
+<h3>DR-11 The CKEditor risk is tested too late</h3>
+<ul><li>Design 13: the editor is build step 5. Not proved yet: <code>@ckeditor/ckeditor5-angular</code> with Angular 21; <code>ng build</code> with 0 warnings (bundle size limits); the editor style sheet with no change to <code>angular.json</code> (a target file that is not in the approved list).</li><li>Correction: a short test before step 1 (with step 0): add the two packages to the stand-in, show one editor, run <code>ng build</code> and <code>ng test</code>. If it fails, stop and ask (the earlier fallback was Jodit).</li></ul>
+<h3>DR-12 The state check on load does not correct two failure cases</h3>
+<ul><li>Design 10.3: "the state check on the next load corrects the record".</li><li>Case 1, first submit: the engine commits, then the Atlas commit fails. The record does not exist. The engine keeps an instance with no record, and E1 goes out later from the outbox with a link that opens nothing.</li><li>Case 2, second submit: the same failure. The check on load sets the record to "Funds Received", but the part 2 values and files are not saved. The record is then closed for good with an empty part 2, and E3 is sent.</li><li>The two cases need a lost database connection at the exact moment of the commit. They are rare.</li><li>Correction: text only. Add the two cases to "Accepted limits" (10.8) with the action for support: the error log <code>Atlas.WorkflowStepFailed</code> gives the instance ID; the target team corrects the data by script.</li></ul>
+</section>
+<section>
+<h2>5. Low</h2>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Finding</th><th>Correction</th></tr></thead><tbody>
+<tr><td>DR-13</td><td>New setting <code>AppSettings:Atlas:WebBaseUrl</code> (10.7). The target has <code>AppSettings:HostedClientURL</code> already, with no slash at the end, and uses it for the links in the CDT and SQMS emails.</td><td>Use <code>HostedClientURL</code>. One setting less.</td></tr>
+<tr><td>DR-14</td><td>Index <code>IX_Inflow_WorkflowState</code>, filtered <code>IsDeleted = 0</code> (4.1). <code>IsDeleted</code> is nullable, so the dashboard query uses <code>ISNULL([IsDeleted], 0) = 0</code> and cannot use this index. The table gets about 500 rows each year.</td><td>Remove the index from the plan.</td></tr>
+<tr><td>DR-15</td><td>Names that differ from the earlier specs: module 1 (5.3, 5.10) has <code>Action.Execute</code> on the button and <code>InitialAction</code> in the binding; module 9 has the audit events <code>AttachmentAdd</code> and <code>AttachmentRemove</code>. <code>IAtlasUserDirectory</code> exists already.</td><td>Say in the design that <code>Steps</code> replaces <code>InitialAction</code> and the button <code>Execute</code> key for platform apps (reason: more than one step). Use the module 9 event names. Add a method to the directory; do not make a new service.</td></tr>
+<tr><td>DR-16</td><td>Double submit of a new record (10.3). The engine idempotency key is global and compares the request hash (<code>WorkflowExecutionService.TryBuildIdempotencyReplay</code>). A second request with the same <code>RequestId</code> makes a second record ID, so the engine refuses it and the second record is rolled back. This is correct, but the message is technical. With no <code>RequestId</code>, the protection is lost.</td><td>Map the engine result to "This request was already processed." For a save with a <code>Button</code> that has steps, <code>RequestId</code> is necessary; refuse the save with no <code>RequestId</code>.</td></tr>
+<tr><td>DR-17</td><td>HTML clean-up details (9.2).</td><td><code>class</code> only on <code>figure</code> and only the value <code>table</code>. Add <code>rel=&quot;noopener noreferrer&quot;</code> to links. Select a stable <code>HtmlSanitizer</code> version whose dependencies (<code>AngleSharp</code>, <code>AngleSharp.Css</code>) are also stable versions; verify at build step 5. The download sets the content type from the file extension on the server, not from the client value.</td></tr>
+<tr><td>DR-18</td><td>The account list (7.1) goes to each user who opens a record, also to a <code>Read</code> user and after the first submit. The list has the RM, custodian and RMCC of all accounts.</td><td>When the control is disabled for the user, send only the saved option. Smaller response and less data for read-only users. Can be a later step.</td></tr>
+<tr><td>DR-19</td><td>A later step that changes the state is not found (10.2). A failed E2 has no second try.</td><td>After a later step, compare the engine state with the record; a difference is an error log. Say who acts on <code>Atlas.WorkflowStepFailed</code> (support sends the email by hand).</td></tr>
+<tr><td>DR-20</td><td>The <code>@pbdev</code> stand-in has no file picker. A <code>filepicker</code> control has no <code>Field</code>, so it is not in <code>AtlasFormFields</code>.</td><td>Build step 4: make the stand-in file picker from the real target source. The attachment check reads the state of the control itself. The start-up check must not report "no column" for a <code>filepicker</code>.</td></tr>
+<tr><td>DR-21</td><td>10.4: "A record with no engine instance (new) is not checked".</td><td>Say "each record with no engine instance", so a record that the target team moved from SharePoint loads with no error.</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>6. Checked and correct</h2>
+<div class="table-wrap"><table><thead><tr><th>Statement of the design</th><th>Proof</th></tr></thead><tbody>
+<tr><td>An engine action can keep the state</td><td>No engine code refuses it. The state update writes the same key (<code>WorkflowExecutionService</code>). Build step 0 stays as the proof by test.</td></tr>
+<tr><td>Recipient keys at the start go to the first action</td><td>With no participant definition, <code>WorkflowParticipantCaptureService</code> gives all keys to the initial action.</td></tr>
+<tr><td>Each step must name its own recipient keys</td><td>The resolver refuses a key that the route does not declare (<code>NotificationRecipientResolver</code>).</td></tr>
+<tr><td>A route with no To address stops the action before a change</td><td>The check is before the side effects (<code>WorkflowExecutionService</code>).</td></tr>
+<tr><td>The rule table of 5.2 works with <code>MostPermissive</code> and <code>RuleDefault: ReadOnly</code></td><td><code>AtlasRuleEngine.Evaluate</code>. The rules are on the section controls, not on each field. Part 2: <code>{ &quot;States&quot;: [&quot;Draft&quot;], &quot;Visible&quot;: false, &quot;Disabled&quot;: true }</code> and <code>{ &quot;Roles&quot;: [&quot;Write&quot;], &quot;States&quot;: [&quot;Submitted&quot;], &quot;Disabled&quot;: false }</code>.</td></tr>
+<tr><td>A hidden or disabled field is not validated and not accepted</td><td><code>ConfigSectionService.ValidateFields</code>, <code>AtlasAllowList.Check</code>.</td></tr>
+<tr><td>A nullable <code>IsDeleted</code> works; a new record gets <code>IsDeleted</code> = 0</td><td><code>AtlasDataExtensions.ActiveByKey</code>, <code>AtlasTabQueryBuilder</code>, <code>ComputeAndSystemFields</code>.</td></tr>
+<tr><td>A computed column is read and not written</td><td><code>AtlasColumn.IsDatabaseGenerated</code>.</td></tr>
+<tr><td><code>LookupTables</code> fits the start-up</td><td>The start-up already loads <code>Table</code>, <code>AuditTable</code> and <code>AttachmentTable</code> into the registry.</td></tr>
+<tr><td>No target controller change for the upload</td><td>The target <code>ManagePage</code> passes <code>files</code> to the service. The target registers the engine services (<code>AddWorkflowInfrastructure</code>).</td></tr>
+<tr><td>The link in the HTML email is safe</td><td>The engine HTML-encodes each template value.</td></tr>
+<tr><td>A <code>user</code> column exports the name</td><td>The server puts the display name into the row data.</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>7. Decisions</h2>
+<p>Most findings have one correction and need no decision. Four need an answer from the user:</p>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Question</th></tr></thead><tbody>
+<tr><td>DR-01</td><td>The rule for effects of a control that the user cannot change</td></tr>
+<tr><td>DR-02</td><td>The rule for a save with no button name</td></tr>
+<tr><td>DR-08</td><td>Which values of a workflow step show in History</td></tr>
+<tr><td>DR-18</td><td>The short option list for a disabled control: in P2 or later</td></tr>
+</tbody></table></div>
+<p>After the answers, the design becomes draft 3 with all corrections.</p>
+</section>
+</main>
+</body>
+</html>
