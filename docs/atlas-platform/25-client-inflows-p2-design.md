@@ -621,6 +621,12 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 | 5 | Export: the built-in grid menu, no new button. Tell me if you also want a visible "Export" button on the platform dashboard (generic, one dashboard JSON key). | Built-in menu only |
 | 6 | The four fixed lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team) stay as static addresses in the engine script. A change of such a list is an SQL change. The other choice is to put them in the app settings too, with the same list mechanism. | Keep in the engine script |
 
+### 14.1 Answers
+
+| # | Answer | Date |
+|---|---|---|
+| 1 | Approved: the three optional request fields and the new download route. | 2026-11-20 |
+
 ## 15. Target integration steps (for `INTEGRATION.md`)
 
 1. Prerequisites: the engine migrations are current and the engine scheduled job with the outbox retry runs
