@@ -34,6 +34,38 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
     }
 
     [Fact]
+    public async Task The_name_report_gives_Info_lines_that_are_not_counted()
+    {
+        // The test database has the local AIN sample accounts and no users with those names.
+        (int code, string report) = await CheckAsync(RealConfig);
+
+        Assert.True(code == 0, report);
+        Assert.Contains("0 error(s), 0 warning(s).", report, StringComparison.Ordinal);
+        Assert.Contains("INFO CFPINFLOW: AIN.AccountInventory AccountNumber 700100: RelationshipManager \"Riley Manager\": no user", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("700500", report, StringComparison.Ordinal); // a deleted AIN row is not checked
+    }
+
+    [Theory]
+    [InlineData("\"RMCC\": \"RMCC\"", "\"NoColumn\": \"RMCC\"", "names 'NoColumn', which is not a control or field of the form, or a column of the table.")]
+    [InlineData("\"RMCC\": \"RMCC\"", "\"CreatedBy\": \"RMCC\"", "names the system column 'CreatedBy'")]
+    [InlineData("\"LookupTables\": [ \"AIN.AccountInventory\" ]", "\"LookupTables\": [ ]", "is not in the LookupTables of the manifest.")]
+    [InlineData("\"Data\": \"AccountName,", "\"Data\": \"NoSuchColumn,AccountName,", "Data names 'NoSuchColumn', which is not a column of AIN.AccountInventory.")]
+    public async Task A_bad_data_only_target_or_options_source_is_an_error(string oldText, string newText, string message)
+    {
+        CopyRealConfig();
+        string file = Path.Combine(_folder, oldText.Contains("LookupTables", StringComparison.Ordinal) ? "CFPINFLOW.app.json" : "CFPINFLOW.json");
+        string text = File.ReadAllText(file);
+        Assert.Contains(oldText, text, StringComparison.Ordinal);
+        File.WriteAllText(file, text.Replace(oldText, newText, StringComparison.Ordinal));
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains("ERROR CFPINFLOW:", report, StringComparison.Ordinal);
+        Assert.Contains(message, report, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_manifest_with_no_registration_line_gives_exit_code_1()
     {
         CopyRealConfig();

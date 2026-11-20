@@ -46,6 +46,8 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `WebUi/src/app/platform/form/atlas-effect-cases.ts` | `(file)` | — | FABLE section 6.1 | Shared effect and Computed cases; client and server tests check the same list. |
 | `WebUi/src/app/platform/form/atlas-effects.ts` | `(file)` | spec 01 §5.1 | B35 | Client effects; the server applies them again and sets Set/Clear/SetFromOption values. |
 | `WebUi/src/app/platform/form/atlas-effects.ts` | `optionData` | spec 01 §5.2 | FABLE F14 | Returns Data of the selected option; the server also reads only Data. |
+| `WebUi/src/app/platform/form/atlas-effects.ts` | `applyEffects` | spec 25 §6.5 | DR-01 | A control that the user cannot change sets no values (Set, Clear, SetFromOption). |
+| `WebUi/src/app/platform/form/atlas-form.component.ts` | `canChange` | spec 25 §6.5 | DR-01 | The effects of a hidden, disabled or read-only control set no values. |
 | `WebUi/src/app/platform/form/atlas-field-a11y.directive.ts` | `AtlasFieldA11yDirective` | — | NG-08 | Sets the accessible name, state and error on the rendered input. |
 | `WebUi/src/app/platform/form/atlas-form-model.ts` | `AtlasValueKind` | — | review R2 | Date, bool and list values convert to the server text formats. |
 | `WebUi/src/app/platform/form/atlas-form-model.ts` | `isShown` | — | NG-03 | Hidden fields and fields of hidden sections do not stop the save and are not sent. |
@@ -217,6 +219,9 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasTabQueryBuilder.cs` | `Build` | — | DA-08 | Uses "= 0" on a NOT NULL IsDeleted column so filtered indexes can seek. |
 | `src/BBH.CP.Atlas.Service/Platform/Dashboard/AtlasTabQueryBuilder.cs` | `OrderBy` | — | DA-09 | Adds the key as the last order item so the order is stable. |
 | `src/BBH.CP.Atlas.Service/Platform/Options/AtlasOptionProviders.cs` | `IAtlasOptionProvider` | spec 01 §10.2 | — | Defines a named option source; apps add providers in their module class. |
+| `src/BBH.CP.Atlas.Service/Platform/Options/AtlasOptionProviders.cs` | `Check` | spec 25 §7.1 | — | Lets the start-up check report bad OptionsSource parameters of a provider. |
+| `src/BBH.CP.Atlas.Service/Platform/Options/AtlasTableOptionProvider.cs` | `(file)` | spec 25 §7 | B3 | Reads options from a lookup table; names checked against the metadata, values as parameters. |
+| `src/BBH.CP.Atlas.Service/Platform/Options/AtlasTableOptionProvider.cs` | `UserNameRows` | spec 25 §11 | B8 | Gives the display-name columns of the lookup rows for the name report. |
 | `src/BBH.CP.Atlas.Service/Platform/Options/AtlasOptionProviders.cs` | `PBAccountsOptionProvider` | spec 01 §10.1; spec 01 §5.2 | — | Gives PB accounts as "number - name" with data for SetFromOption. |
 | `src/BBH.CP.Atlas.Service/Platform/Options/AtlasOptionProviders.cs` | `UsersInRolesOptionProvider` | spec 06 §4.5 | — | Gives users with given app roles; value LAN ID, label display name. |
 | `src/BBH.CP.Atlas.Service/Platform/Options/AtlasOptionProviders.cs` | `YearsOptionProvider` | — | FABLE F03 | Gives years from this year + After down to this year - Before. |
@@ -226,6 +231,7 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `AuditRefTypes` | — | DA-03 | Sets the ReferenceType values that History reads from a shared audit table. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `AuditReadRefTypes` | — | DA-03 | Returns the ReferenceType filter of the History read, or null. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `Service` | spec 07 §4.1 | — | Names a custom service class; null uses ConfigSectionService. |
+| `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `LookupTables` | spec 25 §7.1 | — | Names the tables that the Table provider of the app can read. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `SystemTime` | — | DA-11 | Selects UTC or local time for system dates and wire date-times. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `RequireVersion` | — | DA-02 | Requires the rowversion Version on update to prevent lost updates. |
 | `src/BBH.CP.Atlas.Service/Platform/Registry/AtlasAppManifest.cs` | `SchemaVersion` | — | SV-07 | Fails start-up when the config contract version is higher than 1. |
@@ -275,3 +281,11 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Service/StandIn/CPAtlasService.cs` | `GetApplication` | spec 07 §4.6 | AR-02 | Adds menu data and hides unregistered apps; an error returns the rows unchanged. |
 | `src/BBH.CP.Atlas.Service/StandIn/CPAtlasService.cs` | `AuditLog` | spec 01 §5.12 | — | With AuditMode Server the client audit call does nothing. |
 | `src/BBH.CP.Atlas.Service/StandIn/CPAtlasService.cs` | `Legacy` | — | Review 3 RV-12 | ToLegacy gives 404 for a disabled platform app and 400 for no code. |
+| `src/BBH.CP.Atlas.Service/Platform/Sections/AtlasServerEffects.cs` | `CanChange` | spec 25 §6.5 | DR-01 | Only a visible and enabled source field gives effect values; saved values stay. |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs` | `KeepOnlySavedOptions` | spec 25 §7.1 | DR-18 | A field that the user cannot change gets only its saved option, with no Data. |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs` | `MapRecord` | spec 25 §7.3 | — | Writes a SetFromOption target that is a column with no control (data-only target). |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs` | `CheckOptionsSource` | spec 25 §7.1 | — | Returns the provider errors of a control for the start-up check. |
+| `src/BBH.CP.Atlas.Service/Platform/Security/AtlasUserContext.cs` | `EmailOfDisplayName` | spec 25 §10.6 | D33, D34 | Finds the email of the one active user with a display name, or the reason. |
+| `src/BBH.CP.Atlas.App/Platform/AtlasNameReport.cs` | `(file)` | spec 25 §11 | Q7 | Lists lookup names with no single user as Info lines (--atlas-check only). |
+| `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `AtlasCheckSeverity` | spec 25 §11 | Q7 | Info: a report line that is not counted and does not change the exit code. |
+| `src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs` | `CheckForm` | spec 25 §7.3 | — | A SetFromOption target can be a non-system column of the main table. |

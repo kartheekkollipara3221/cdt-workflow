@@ -3,6 +3,7 @@
 // Conditions: Equals, NotEquals, In, HasValue. Actions: Show, Hide, Require, Unrequire, Enable, Disable, Set, Clear,
 // SetFromOption. There is no expression language.
 // The server applies all the effects again on save. It sets the Set, Clear and SetFromOption values itself.
+// A control that the user cannot change sets no values, on the client and on the server.
 import { isNil } from '../atlas-dates';
 import { CPApplicationControl, CPEffectCondition, CPKeyValue } from '../atlas-models';
 
@@ -62,8 +63,10 @@ export function optionData(options: CPKeyValue[] | null | undefined, value: unkn
  * Runs the effects of one control for its current value.
  *
  * @param changed True when the user changed the value. An effect with On "Change" runs only then.
+ * @param setsValues False when the user cannot change the control (hidden or disabled). Then Set, Clear and
+ *     SetFromOption do nothing, and the other controls keep their saved values. The server uses the same rule.
  */
-export function applyEffects(control: CPApplicationControl, value: unknown, target: AtlasEffectTarget, changed = false): void {
+export function applyEffects(control: CPApplicationControl, value: unknown, target: AtlasEffectTarget, changed = false, setsValues = true): void {
   for (const effect of control.Effects ?? []) {
     if ((effect.On === 'Change' && !changed) || !matches(effect.When, value)) {
       continue;
@@ -74,6 +77,9 @@ export function applyEffects(control: CPApplicationControl, value: unknown, targ
     effect.Unrequire?.forEach((name) => target.setRequired(name, false));
     effect.Enable?.forEach((name) => target.setEnabled(name, true));
     effect.Disable?.forEach((name) => target.setEnabled(name, false));
+    if (!setsValues) {
+      continue;
+    }
     Object.entries(effect.Set ?? {}).forEach(([name, text]) => target.setValue(name, text));
     effect.Clear?.forEach((name) => target.setValue(name, null));
     if (effect.SetFromOption) {

@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0 and 1 done, next step 2)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-2 done, next step 3)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -141,7 +141,11 @@ The dated history entries below are unchanged, newest first: platform and target
    migration 20260807032848, reported, not fixed), Config/CFPINFLOW.*.json (keys of today only; account control is
    the TEMPORARY Account/PBAccounts control until step 2), stand-in registration, dashboard Menus + currency
    formatter, tests Data/ReleaseP2ScriptTests.cs and Sections/CfpInflowAppTests.cs.
-   NEXT: step 2 when the user says "continue". Then steps 3-7 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
+   STEP 2 DONE (module 25 section 19.3): AtlasTableOptionProvider + manifest LookupTables + IAtlasOptionProvider.Check
+   (default), data-only SetFromOption target (RMCC), effects rule server+client (CanChange / canChange incl. canSave),
+   saved-option rule on load (KeepOnlySavedOptions), Info severity + AtlasNameReport (--atlas-check only),
+   IAtlasUserDirectory.EmailOfDisplayName (default impl). Form uses AccountNumber + AIN list now.
+   NEXT: step 3 when the user says "continue". Then steps 4-7 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
    then steps 1-7 of module 25 section 13, platform gates and one commit for each step. Do not push.
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).

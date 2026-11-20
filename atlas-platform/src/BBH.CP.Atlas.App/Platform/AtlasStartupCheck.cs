@@ -12,8 +12,11 @@ using Microsoft.Extensions.Hosting;
 
 namespace BBH.CP.Atlas.App.Platform;
 
-/// <summary>The severity of a start-up check item. An error disables the app; a warning does not.</summary>
-public enum AtlasCheckSeverity { Warning, Error }
+/// <summary>
+/// The severity of a start-up check item. An error disables the app; a warning does not.
+/// </summary>
+/// <remarks>An Info item is a report line only. It is not counted, and it does not change the exit code.</remarks>
+public enum AtlasCheckSeverity { Warning, Error, Info }
 
 /// <summary>
 /// One result of the start-up check. App is the app code, or "*" for all apps.
@@ -113,6 +116,8 @@ public static class AtlasStartupCheck
         AtlasTable? auditTable = Table(manifest.AuditTable, "AuditTable", required: manifest.AuditMode == AtlasAuditMode.Server, error, check.Tables);
         if (auditTable != null)
             CheckAuditColumns(auditTable, error);
+        foreach (string lookup in manifest.LookupTables ?? [])
+            Table(lookup, "LookupTables", required: true, error, check.Tables);
 
         CPAtlasApplicationConfig? form = null;
         try
@@ -146,7 +151,7 @@ public static class AtlasStartupCheck
             warning("SystemTime is Local but AuditTime is Utc: the History shows times that differ from ModifiedDate by the UTC offset. Set \"AuditTime\": \"Local\" too, unless that is intended.");
 
         // Typing errors in property names are warnings. Typing errors in names, tokens, patterns and actions are errors.
-        CheckContract(check.ConfigStore, manifest, form, error, warning);
+        CheckContract(check.ConfigStore, manifest, form, table, error, warning);
     }
 
     /// <summary>Checks the settings of the manifest. Returns false when the app is disabled and is not checked further.</summary>
@@ -280,19 +285,22 @@ public static class AtlasStartupCheck
     /// <summary>Checks that each option provider of the form is a platform provider or a provider of the module class.</summary>
     private static void CheckProviders(IServiceProvider services, AtlasAppManifest manifest, AtlasFormFields fields, Action<string> error)
     {
-        HashSet<string> providers;
-        using (IServiceScope scope = services.CreateScope())
-        {
-            IAtlasModule module = scope.ServiceProvider.GetRequiredKeyedService<IAtlasModule>(manifest.Code);
-            providers = new(module is ConfigSectionService section
-                ? section.OptionProviderNames()
-                : scope.ServiceProvider.GetServices<BBH.CP.Atlas.Service.Platform.Options.IAtlasOptionProvider>().Select(x => x.Name),
-                StringComparer.OrdinalIgnoreCase);
-        }
+        using IServiceScope scope = services.CreateScope();
+        IAtlasModule module = scope.ServiceProvider.GetRequiredKeyedService<IAtlasModule>(manifest.Code);
+        ConfigSectionService? section = module as ConfigSectionService;
+        HashSet<string> providers = new(section != null
+            ? section.OptionProviderNames()
+            : scope.ServiceProvider.GetServices<BBH.CP.Atlas.Service.Platform.Options.IAtlasOptionProvider>().Select(x => x.Name),
+            StringComparer.OrdinalIgnoreCase);
 
         foreach (AtlasFormField field in fields.All.Where(x => x.Control.OptionsSource != null && !x.IsGridField))
+        {
             if (!providers.Contains(field.Control.OptionsSource!.Provider))
                 error($"control '{field.Name}' uses the option provider '{field.Control.OptionsSource.Provider}', which is not registered.");
+            else if (section != null)
+                foreach (string problem in section.CheckOptionsSource(manifest.Code, field.Control))
+                    error($"control '{field.Name}': {problem}");
+        }
     }
 
     private static bool IsNumeric(Type? type) =>
@@ -454,7 +462,8 @@ public static class AtlasStartupCheck
         return table;
     }
 
-    private static void CheckContract(IAtlasConfigStore configStore, AtlasAppManifest manifest, CPAtlasApplicationConfig? form, Action<string> error, Action<string> warning)
+    private static void CheckContract(IAtlasConfigStore configStore, AtlasAppManifest manifest, CPAtlasApplicationConfig? form, AtlasTable? table,
+        Action<string> error, Action<string> warning)
     {
         if (manifest.SourceFile != null)
             AtlasConfigLint.CheckUnknownProperties(manifest.SourceFile, typeof(AtlasAppManifest), warning);
@@ -463,7 +472,7 @@ public static class AtlasStartupCheck
         if (!string.IsNullOrWhiteSpace(manifest.Dashboard))
             AtlasConfigLint.CheckUnknownProperties(Path.Combine(configStore.ConfigFolder, manifest.Dashboard), typeof(CPAtlasDashboard), warning);
         if (form != null)
-            AtlasConfigLint.CheckForm(manifest, form, error, warning);
+            AtlasConfigLint.CheckForm(manifest, form, error, warning, table);
     }
 
     /// <summary>The control types that the platform client renders (see atlas-renderer-registry.ts).</summary>

@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using BBH.CP.Atlas.Data.DTO;
+using BBH.CP.Atlas.Data.Platform;
+using BBH.CP.Atlas.Service.Application;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Sections;
 
@@ -49,7 +51,9 @@ public static partial class AtlasConfigLint
     }
 
     /// <summary>Reports the errors in the names and values of a form, and the button actions that the form does not do.</summary>
-    public static void CheckForm(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Action<string> error, Action<string> warning)
+    /// <param name="table">The main table of the app. A SetFromOption target can be one of its columns (a data-only target).</param>
+    public static void CheckForm(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Action<string> error, Action<string> warning,
+        AtlasTable? table = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(form);
@@ -58,7 +62,7 @@ public static partial class AtlasConfigLint
 
         List<CPApplicationControl> controls = [.. (form.Section?.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []))];
         HashSet<string> names = DuplicateNames(controls, error);
-        EffectTargets(controls, names, error);
+        EffectTargets(controls, names, table, error);
         EffectCycles(controls, error);
         RuleTargets(form, controls, names, error);
         Defaults(form, names, error);
@@ -90,7 +94,7 @@ public static partial class AtlasConfigLint
     }
 
     /// <summary>Checks the targets of the effects, the HeaderFromDate controls and the Pattern of each control.</summary>
-    private static void EffectTargets(List<CPApplicationControl> controls, HashSet<string> names, Action<string> error)
+    private static void EffectTargets(List<CPApplicationControl> controls, HashSet<string> names, AtlasTable? table, Action<string> error)
     {
         foreach (CPApplicationControl control in controls)
         {
@@ -107,7 +111,11 @@ public static partial class AtlasConfigLint
                 Names(names, where, effect.Disable, error);
                 Names(names, where, effect.Clear, error);
                 Names(names, where, effect.Set?.Keys, error);
-                Names(names, where, effect.SetFromOption?.Keys, error);
+                foreach (string target in (IEnumerable<string>?)effect.SetFromOption?.Keys ?? [])
+                    if (!names.Contains(target) && table?.HasColumn(target) != true)
+                        error($"{where} names '{target}', which is not a control or field of the form, or a column of the table.");
+                    else if (!names.Contains(target) && ConfigSectionService.SystemColumns.Contains(target))
+                        error($"{where} names the system column '{target}', which only the server writes.");
             }
 
             foreach (CPGridColumn column in control.Grid?.Columns ?? [])

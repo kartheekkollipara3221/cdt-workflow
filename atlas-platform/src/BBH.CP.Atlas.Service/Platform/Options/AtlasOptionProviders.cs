@@ -14,7 +14,7 @@ public sealed record AtlasOptionRequest(string AppCode, CPApplicationControl Con
 /// </summary>
 /// <remarks>
 /// The JSON names the provider in <c>OptionsSource.Provider</c>.
-/// The platform supplies PBAccounts, UsersInRoles, Years and WeekEndings.
+/// The platform supplies PBAccounts, UsersInRoles, Years, WeekEndings and Table.
 /// An app adds its own providers in its module class (<c>ConfigSectionService.AppOptionProviders</c>).
 /// Thus program.cs keeps one line for each app.
 /// </remarks>
@@ -30,6 +30,12 @@ public interface IAtlasOptionProvider
     /// Returns the option for a saved value that is not in the list (KeepSavedValue). By default, the label is the value.
     /// </summary>
     CPKeyValue DescribeValue(AtlasOptionRequest request, string value) => new() { Label = value, Value = value };
+
+    /// <summary>
+    /// Returns the errors in the OptionsSource parameters of a control. The start-up check reports them.
+    /// By default, a provider has no parameter check.
+    /// </summary>
+    IEnumerable<string> Check(AtlasOptionRequest request) => [];
 }
 
 /// <summary>

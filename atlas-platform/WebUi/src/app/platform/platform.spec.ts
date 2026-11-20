@@ -98,6 +98,30 @@ describe('effects (spec 01, 5.1)', () => {
   });
 });
 
+describe('effects of a control that the user cannot change', () => {
+  it('runs Show and Hide but sets no value when setsValues is false', () => {
+    const calls: string[] = [];
+    const target = {
+      setVisible: (name: string, visible: boolean) => calls.push(`visible ${name} ${visible}`),
+      setRequired: () => undefined,
+      setEnabled: () => undefined,
+      setValue: (name: string, value: string | null) => calls.push(`value ${name} ${value}`),
+    };
+    const control = {
+      Name: 'AccountNumber', Label: 'Account', Type: 'ngselect',
+      Options: [{ Label: '700100 - Harbor', Value: '700100', Data: { AccountName: 'Harbor' } }],
+      Effects: [{ When: { HasValue: true }, Show: ['AccountName'], SetFromOption: { AccountName: 'AccountName' }, Set: { Note: 'x' } }],
+    };
+
+    applyEffects(control, '700100', target, false, false);
+    expect(calls).toEqual(['visible AccountName true']);
+
+    calls.length = 0;
+    applyEffects(control, '700100', target);
+    expect(calls).toEqual(['visible AccountName true', 'value Note x', 'value AccountName Harbor']);
+  });
+});
+
 describe('validators (spec 01, 10.3)', () => {
   for (const [value, key] of [
     ['1.5', 'integer'],

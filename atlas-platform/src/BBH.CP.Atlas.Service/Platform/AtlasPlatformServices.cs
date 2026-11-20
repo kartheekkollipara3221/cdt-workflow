@@ -30,6 +30,8 @@ public static class AtlasPlatformServices
         services.AddScoped<IAtlasOptionProvider, UsersInRolesOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, YearsOptionProvider>();
         services.AddScoped<IAtlasOptionProvider, WeekEndingsOptionProvider>();
+        services.AddScoped<AtlasTableOptionProvider>();
+        services.AddScoped<IAtlasOptionProvider>(provider => provider.GetRequiredService<AtlasTableOptionProvider>());
         services.AddScoped<AtlasDashboardService>();
         services.AddScoped<AtlasModuleServices>();
     }

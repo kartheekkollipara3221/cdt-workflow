@@ -74,7 +74,8 @@ internal sealed class SectionHarness : IDisposable
             new AtlasAuditWriter(platform, user, Time),
             new AtlasDashboardService(_configStore, context, registry, user, directory, access, new AtlasRuleEngine()),
             [new PBAccountsOptionProvider(_configuration, user), new UsersInRolesOptionProvider(directory),
-                new YearsOptionProvider(Time), new WeekEndingsOptionProvider(Time)],
+                new YearsOptionProvider(Time), new WeekEndingsOptionProvider(Time),
+                new AtlasTableOptionProvider(context, registry, _configStore, new MemoryCache(new MemoryCacheOptions()))],
             Time, _configuration, loggerFactory);
 
         return services;

@@ -53,6 +53,12 @@ public sealed class AtlasAppManifest
     public string? AttachmentTable { get; set; }
 
     /// <summary>
+    /// The tables that the Table option provider of this app can read ("Schema.Name").
+    /// </summary>
+    /// <remarks>The start-up reads their columns. The platform never writes to a lookup table.</remarks>
+    public List<string>? LookupTables { get; set; }
+
+    /// <summary>
     /// The ReferenceType values that History reads from the AuditTable, for example ["TTDV2", "TTD"].
     /// </summary>
     /// <remarks>

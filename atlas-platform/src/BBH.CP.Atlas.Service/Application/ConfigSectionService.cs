@@ -144,6 +144,20 @@ namespace BBH.CP.Atlas.Service.Application
 
         #endregion Hooks
 
+        /// <summary>
+        /// Returns the errors in the OptionsSource parameters of a control. The start-up check uses them.
+        /// </summary>
+        /// <remarks>A control with no OptionsSource has no errors. An unknown provider gives a configuration problem.</remarks>
+        /// <param name="appCode">The app of the form. The start-up check gets the module before a request sets its app.</param>
+        /// <param name="control">The control with the OptionsSource.</param>
+        public IEnumerable<string> CheckOptionsSource(string appCode, CPApplicationControl control)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+            if (control.OptionsSource == null)
+                return [];
+            return Provider(control.OptionsSource.Provider).Check(new AtlasOptionRequest(appCode, control, control.OptionsSource));
+        }
+
         /// <summary>Returns the names of all option providers of this app. The start-up check uses them.</summary>
         public IEnumerable<string> OptionProviderNames() =>
             Services.OptionProviders.Concat(AppOptionProviders).Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase);
@@ -188,6 +202,7 @@ namespace BBH.CP.Atlas.Service.Application
             AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record), manifest.RuleMode, manifest.RuleDefault);
             fields.ApplyOutcome(outcome);
             ClearRuleHiddenValues(fields);
+            KeepOnlySavedOptions(fields);
 
             string name = section.HeaderName ?? form.Name ?? manifest.Name ?? manifest.Code;
             section.HeaderName = record != null && !string.IsNullOrWhiteSpace(form.HeaderNameWithId)
@@ -223,6 +238,33 @@ namespace BBH.CP.Atlas.Service.Application
                 field.Control.Value = null;
                 field.Control.Options = [];
                 field.Control.OptionsSource = null;
+            }
+        }
+
+        /// <summary>
+        /// Replaces the options of each field that the user cannot change with the saved option only.
+        /// </summary>
+        /// <remarks>
+        /// The user cannot select another option, so the other options and the Data of the options are not sent.
+        /// The client does not run the value effects of such a field. Fields with options from the JSON keep them.
+        /// </remarks>
+        private void KeepOnlySavedOptions(AtlasFormFields fields)
+        {
+            foreach (AtlasFormField field in fields.All.Where(x => !x.IsGridField && !x.HiddenByRule && x.Control.OptionsSource != null
+                && (x.Disabled || x.DisabledByRule || x.Control.Disabled)))
+            {
+                CPApplicationControl control = field.Control;
+                if (string.Equals(control.Type, "user", StringComparison.OrdinalIgnoreCase))
+                    continue; // the load already gives the name of the saved person only
+
+                string[] values = string.IsNullOrEmpty(control.Value) ? []
+                    : control.Multiple ? control.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    : [control.Value];
+                AtlasOptionRequest request = new(Manifest.Code, control, control.OptionsSource!);
+                control.Options = [.. values.Select(value =>
+                    control.Options?.FirstOrDefault(x => string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase)) is { } option
+                        ? new CPKeyValue { Label = option.Label, Value = option.Value }
+                        : Provider(control.OptionsSource!.Provider).DescribeValue(request, value))];
             }
         }
 
@@ -498,10 +540,13 @@ namespace BBH.CP.Atlas.Service.Application
             foreach ((AtlasFormField field, string? value) in state.Accepted.Where(x => !invalid.Contains(x.Key.Name)))
                 Map(table, record, field.Name, field.Field, value, errors);
 
+            // A target with no control is a column of the table (a data-only target); the start-up check allows only that.
             if (state.Derived.Count > 0)
                 foreach ((string target, string? value) in AtlasServerEffects.Values(fields, state.Current, OptionsOf))
                     if (fields.Find(target) is { } field)
                         Map(table, record, field.Name, field.Field, value, errors);
+                    else if (table.HasColumn(target) && !SystemColumns.Contains(target))
+                        Map(table, record, target, target, value, errors);
 
             if (!state.IsNew || state.Form.Defaults == null)
                 return;

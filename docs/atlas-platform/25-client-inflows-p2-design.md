@@ -963,3 +963,29 @@ Conditions for the target (for `INTEGRATION.md`, build step 7):
   user saves a plain record (default `FlowSubmittedBy`, account values, audit row); a `Read` user cannot make a
   record, opens a record read-only, and gets "Edit" and "History" in the row menu but no "Delete" and no "Add New";
   the pipeline tab lists only the records in state `Submitted`.
+
+### 19.3 Step 2 (2026-11-20)
+
+- Table option provider `AtlasTableOptionProvider` (`Service/Platform/Options/`), registered with the other
+  providers. The manifest key `LookupTables`; the start-up reads the columns of these tables. Each name of the
+  parameters is checked against the metadata; a bad name is a start-up error of the app and a configuration problem
+  at run time. The list of one source is cached for 60 seconds.
+- New optional member `IAtlasOptionProvider.Check` (default: no errors), so the start-up check reports bad
+  parameters of any provider.
+- Data-only target: a `SetFromOption` target can be a non-system column of the main table (`RMCC`). The lint accepts
+  it; the save writes it; it is not in History. A client output for such a name is refused ("not a field of this
+  form"), as for each name that is not a field.
+- Effects rule (6.5): `AtlasServerEffects.Values` and the client `applyEffects` give values only for a source that
+  the user can change. On the client this also needs `canSave()`, because the form disables all controls for a user
+  who cannot save after the effects ran. Show, Hide, Require, Enable and Disable still run.
+- Saved option rule (7.1): on load, a field with an `OptionsSource` that the user cannot change gets only its saved
+  option, with no `Data`. The provider still reads the list (from the cache); only the response is smaller.
+- `--atlas-check`: severity `Info` (not counted, logged as Information) and the name report `AtlasNameReport`
+  (only with `--atlas-check`). The name match is the new `IAtlasUserDirectory.EmailOfDisplayName` (D33, D34); build
+  step 6 uses the same method for the recipients.
+- Form: the account control is now `AccountNumber` with the AIN list (the step 1 control `Account` is gone). It
+  fills `AccountName`, `StarNumber`, `RelationshipManager`, `Custodian` and `RMCC`.
+- Proof: the list has the 4 not-deleted sample accounts with the label and only the `Data` columns; a save fills the
+  4 fields and `RMCC`; a changed AIN row does not change a record whose account control is read-only, and does when
+  the control is enabled; a `Read` user gets one option with no `Data`; bad names in the parameters are refused;
+  `--atlas-check` prints the Info lines with `0 error(s), 0 warning(s)`; all TTDV2 tests pass with no change.

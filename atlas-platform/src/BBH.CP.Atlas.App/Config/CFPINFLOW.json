@@ -1,7 +1,7 @@
 {
   // ClientInflows form (module 25, 5.2). People are LAN IDs. Part 1 = the inflow, part 2 = the cash receipt.
-  // Build step 1: the controls of today. Later steps add the AIN account list, the state rules, MustBeTrue,
-  // the file pickers, rich text and the workflow binding.
+  // The account list comes from AIN.AccountInventory. The account fills 4 fields and RMCC (a column with no control).
+  // Later build steps add the state rules, MustBeTrue, the file pickers, rich text and the workflow binding.
   "Name": "Client Flows Portal - Inflow",
   "Type": "SECTION",
   "Rules": [
@@ -33,27 +33,42 @@
         "Class": "grid grid-cols-3 gap-6 items-start p-8 bg-white",
         "ChildControls": [
           {
-            "Name": "Account",
-            "Field": "Account",
+            "Name": "AccountNumber",
+            "Field": "AccountNumber",
             "Label": "Account",
             "Type": "ngselect",
             "Multiple": false,
             "PlaceHolder": "Account",
-            "OptionsSource": { "Provider": "PBAccounts" },
+            "OptionsSource": {
+              "Provider": "Table",
+              "Parameters": {
+                "Table": "AIN.AccountInventory",
+                "Value": "AccountNumber",
+                "Label": "{AccountNumber} - {AccountName}",
+                "Data": "AccountName,StarAccountNumber,RelationshipManager,Custodian,RMCC",
+                "OrderBy": "AccountNumber",
+                "UserNameColumns": "RelationshipManager,RMCC"
+              }
+            },
             "KeepSavedValue": true,
             "Effects": [
               {
                 "When": { "HasValue": true },
-                "SetFromOption": { "AccountNumber": "AccountNumber", "AccountName": "AccountName", "RelationshipManager": "RelationshipManager" }
+                "SetFromOption": {
+                  "AccountName": "AccountName",
+                  "StarNumber": "StarAccountNumber",
+                  "RelationshipManager": "RelationshipManager",
+                  "Custodian": "Custodian",
+                  "RMCC": "RMCC"
+                }
               },
               {
                 "When": { "HasValue": false },
-                "Clear": [ "AccountNumber", "AccountName", "RelationshipManager" ]
+                "Clear": [ "AccountName", "StarNumber", "RelationshipManager", "Custodian" ]
               }
             ],
             "Validator": { "Required": true }
           },
-          { "Name": "AccountNumber", "Field": "AccountNumber", "Label": "Account Number", "Type": "text", "PlaceHolder": "Account Number", "Disabled": true },
           { "Name": "AccountName", "Field": "AccountName", "Label": "Account Name", "Type": "text", "PlaceHolder": "Account Name", "Disabled": true },
           { "Name": "StarNumber", "Field": "StarNumber", "Label": "STAR Number", "Type": "text", "PlaceHolder": "STAR Number", "Disabled": true },
           { "Name": "RelationshipManager", "Field": "RelationshipManager", "Label": "Relationship Manager", "Type": "text", "PlaceHolder": "Relationship Manager", "Disabled": true },

@@ -45,6 +45,25 @@ public interface IAtlasUserDirectory
 
     /// <summary>Returns the active users that have one of the roles in the app, ordered by display name.</summary>
     IReadOnlyList<(string LanId, string DisplayName)> UsersInRoles(string appCode, IEnumerable<string> roles);
+
+    /// <summary>
+    /// Finds the email of the one active user with this display name.
+    /// </summary>
+    /// <remarks>
+    /// The compare ignores case, and the spaces at the start, at the end and doubled. No user, a user with no email,
+    /// or two or more users give no email and the reason. By default, a directory cannot find users by name.
+    /// </remarks>
+    AtlasNameMatch EmailOfDisplayName(string? displayName) => new(null, "the user directory cannot find users by name");
+}
+
+/// <summary>The result of a search for a user by display name.</summary>
+/// <param name="Email">The email of the one matching user, or null.</param>
+/// <param name="Problem">Why there is no email ("no user", "no email", "2 users"), or null.</param>
+public sealed record AtlasNameMatch(string? Email, string? Problem)
+{
+    /// <summary>Returns the name with no spaces at the start and at the end, and one space between the words.</summary>
+    public static string Normalize(string? name) =>
+        string.Join(' ', (name ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 }
 
 /// <summary>The user context of one request. It reads the roles from dbo.vw_CP_Atlas_ActiveUserRole.</summary>
@@ -156,6 +175,39 @@ public sealed class AtlasUserDirectory(CPSharepointContext context, IMemoryCache
         }
 
         return names;
+    }
+
+    /// <remarks>All active users with a display name are read in one query and cached for 5 minutes.</remarks>
+    public AtlasNameMatch EmailOfDisplayName(string? displayName)
+    {
+        string name = AtlasNameMatch.Normalize(displayName);
+        if (name.Length == 0)
+            return new(null, "no name");
+
+        Dictionary<string, List<string?>> byName = cache.GetOrCreate("atlas:users:byname", entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+            entry.Size = 1;
+            Dictionary<string, List<string?>> users = new(StringComparer.OrdinalIgnoreCase);
+            foreach ((string? userName, string? email) in AtlasSql.Query(context,
+                "SELECT DisplayName, Email FROM dbo.CP_Atlas_User WHERE ISNULL(IsDeleted, 0) = 0 AND DisplayName IS NOT NULL;",
+                reader => (reader.NullableString(0), reader.NullableString(1))))
+            {
+                string key = AtlasNameMatch.Normalize(userName);
+                if (key.Length == 0)
+                    continue;
+                if (!users.TryGetValue(key, out List<string?>? emails))
+                    users[key] = emails = [];
+                emails.Add(string.IsNullOrWhiteSpace(email) ? null : email.Trim());
+            }
+            return users;
+        })!;
+
+        if (!byName.TryGetValue(name, out List<string?>? found))
+            return new(null, "no user");
+        if (found.Count > 1)
+            return new(null, $"{found.Count} users");
+        return found[0] is { } address ? new(address, null) : new(null, "no email");
     }
 
     public IReadOnlyList<(string LanId, string DisplayName)> UsersInRoles(string appCode, IEnumerable<string> roles)

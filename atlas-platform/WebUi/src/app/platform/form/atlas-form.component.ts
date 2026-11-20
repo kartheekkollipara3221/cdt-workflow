@@ -145,7 +145,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     for (const control of sources) {
       const value = toOutputValue(control, this.form.get(control.Name)?.value);
       this.effectValues.set(control.Name, value);
-      applyEffects(control, value, this);
+      applyEffects(control, value, this, false, this.canChange(control.Name));
     }
   }
 
@@ -227,7 +227,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
       // Angular also sends valueChanges for the same value, for example when a response sets the form again.
       const changed = String(output ?? '') !== String(this.effectValues.get(control.Name) ?? '');
       this.effectValues.set(control.Name, output);
-      applyEffects(control, output, this, changed);
+      applyEffects(control, output, this, changed, this.canChange(control.Name));
     } finally {
       this.effectsRunning.delete(control.Name);
     }
@@ -242,6 +242,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   // ---------- Template helpers ----------
 
   isSection = isSection;
+
+  /** Returns true when the user can change the control: the user can save, and the control is shown and enabled. */
+  canChange(name: string): boolean {
+    return this.canSave() && this.isShown(name) && this.form.get(name)?.enabled === true;
+  }
 
   /** Returns true when the control is visible. A control with no flag is visible. */
   isVisible(name: string): boolean {

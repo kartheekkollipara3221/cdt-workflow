@@ -55,6 +55,8 @@ public static class AtlasServerEffects
     /// <remarks>
     /// SetFromOption takes the value from the Data of the selected option.
     /// A matching effect also gives its Set and Clear values. A later effect wins, as on the client.
+    /// Only a source field that the user can change (visible and enabled) gives values. When the source field is
+    /// hidden or disabled, its targets keep their saved values.
     /// </remarks>
     /// <param name="optionsOf">Returns the options of a control.</param>
     public static IEnumerable<(string Target, string? Value)> Values(AtlasFormFields fields, Func<AtlasFormField, string?> current,
@@ -63,7 +65,7 @@ public static class AtlasServerEffects
         ArgumentNullException.ThrowIfNull(fields);
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(optionsOf);
-        foreach (AtlasFormField source in Sources(fields))
+        foreach (AtlasFormField source in Sources(fields).Where(CanChange))
         {
             string? value = current(source);
             foreach (CPEffect effect in ServerEffects(source))
@@ -110,6 +112,13 @@ public static class AtlasServerEffects
         if (when.In != null && !when.In.Contains(value ?? "", StringComparer.OrdinalIgnoreCase))
             return false;
         return true;
+    }
+
+    /// <summary>Returns true when the user can change the field: it is visible and enabled after the rules and effects.</summary>
+    public static bool CanChange(AtlasFormField field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        return field.Visible && !field.Disabled && !field.HiddenByRule && !field.DisabledByRule;
     }
 
     /// <summary>Returns true when the effect runs only on a user change (On "Change"). The server does not apply it.</summary>

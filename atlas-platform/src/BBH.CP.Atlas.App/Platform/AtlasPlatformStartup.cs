@@ -146,6 +146,16 @@ public static class AtlasPlatformStartup
         if (OnStartupError(services).Error is { } settingError)
             items = [.. items, new(AtlasCheckSeverity.Error, "*", settingError)];
 
+        // The name report reads the lookup tables, so only --atlas-check runs it, not each start-up.
+        try
+        {
+            items = [.. items, .. AtlasNameReport.Run(services)];
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            items = [.. items, new(AtlasCheckSeverity.Warning, "*", "the name report stopped with an error: " + ex.Message)];
+        }
+
         string environment = services.GetRequiredService<IHostEnvironment>().EnvironmentName;
         await output.WriteLineAsync($"Atlas check ({environment}): {items.Count(x => x.Severity == AtlasCheckSeverity.Error)} error(s), "
             + $"{items.Count(x => x.Severity == AtlasCheckSeverity.Warning)} warning(s).");
@@ -168,9 +178,10 @@ public static class AtlasPlatformStartup
         // Load the tables of all registered manifests, also disabled ones. An app that is enabled later then finds its tables.
         string[] tables = [.. configStore.GetManifests()
             .Where(x => registered.Contains(x.Code))
-            .SelectMany(x => new[] { x.Table, x.AuditTable, x.AttachmentTable })
+            .SelectMany(x => new[] { x.Table, x.AuditTable, x.AttachmentTable }.Concat(x.LookupTables ?? []))
             .Where(x => AtlasTable.IsValidFullName(x)) // a bad name is a check error of its app only
-            .Select(x => x!)];
+            .Select(x => x!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
 
         CPSharepointContext context = provider.GetRequiredService<CPSharepointContext>();
         await using (SqlConnection connection = new(context.Database.GetConnectionString()))
@@ -182,7 +193,12 @@ public static class AtlasPlatformStartup
         IReadOnlyList<AtlasCheckItem> items = AtlasStartupCheck.Run(provider);
         foreach (AtlasCheckItem item in items)
         {
-            AtlasLog.StartupCheckItem(logger, item.Severity == AtlasCheckSeverity.Error ? LogLevel.Error : LogLevel.Warning, item.ToString());
+            AtlasLog.StartupCheckItem(logger, item.Severity switch
+            {
+                AtlasCheckSeverity.Error => LogLevel.Error,
+                AtlasCheckSeverity.Info => LogLevel.Information,
+                _ => LogLevel.Warning
+            }, item.ToString());
         }
 
         AtlasLog.Started(logger, provider.GetRequiredService<IHostEnvironment>().EnvironmentName, string.Join(",", registered), tables.Length,
