@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 design reviewed: 21 findings, 4 decisions open)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 design draft 3 done: all 21 review findings answered; waits for "start the build")
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -113,12 +113,21 @@ The dated history entries below are unchanged, newest first: platform and target
    DR-10 empty template value fails the engine action, DR-11 CKEditor + Angular 21 test before step 1,
    DR-12 two failure cases the load check cannot correct. Low DR-13..DR-21 (use AppSettings:HostedClientURL, drop
    the index, spec names, RequestId required, sanitizer details, short option list, stand-in file picker).
-   4 findings need the user's decision: DR-01, DR-02, DR-08, DR-18. DR-01 is asked, not answered.
+   ALL 21 FINDINGS ANSWERED (module 26 section 8, 2026-11-20): DR-01 accepted A (an effect sets values only when
+   the user can change the source control; AIN is read only at the first submit; Q8 stays). DR-02 accepted WITH A
+   CHANGE = new platform rule, also in AGENTS.md: a section form with a workflow has ONE submit button, the server
+   selects the step from the record state, each save of such a form runs the step (no SubmitPart1/SubmitPart2, no
+   request field Button, no Permissions.Execute). DR-08 A (status line only in History). DR-18 A (in P2: a disabled
+   dropdown gets only the saved option). All others accepted as written. User note: no "Add New" for a read-only
+   user (the code does this today; stated and tested).
+8. P2 DESIGN DRAFT 3 (2026-11-20): module 25 .md + .html rewritten with all corrections; section 2.1 = the four
+   platform rules, 6.4 one submit button, 6.5 effects rule, 10.2 Steps BY STATE ({state: {Set, Label,
+   EngineActions[]}}), 14.2 = what draft 3 changes in the approved items (Button field not built, no WebBaseUrl
+   setting: AppSettings:HostedClientURL, no WorkflowState index), section 18 = change list by finding.
+   NO CODE AND NO SQL SCRIPT EXISTS FOR P2. The user has not yet said "start the build".
 
 ### Next
-0. P2: get the user's answers to DR-01, DR-02, DR-08, DR-18 (one at a time, module 26 section 7). Then write
-   draft 3 of module 25 with ALL corrections of module 26 (.md, make the .html again), commit. Then wait for
-   "start the build": step 0 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
+0. P2: wait for the user to say "start the build" (the user can first read draft 3 of module 25). Then step 0 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
    then steps 1-7 of module 25 section 13, platform gates and one commit for each step. Do not push.
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
@@ -222,7 +231,7 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## Next-session prompt
 "Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
-section A Pending 5 and Next 0, one question at a time (next: the decisions DR-01, DR-02, DR-08, DR-18 of module 26, then draft 3 of module 25). Keep the broad
+section A Pending 5 and Next 0, one question at a time (P2 design draft 3 is done; next: the user reads it and says "start the build", then step 0 of module 25 section 13). Keep the broad
 goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
 nothing breaks the existing system."
 

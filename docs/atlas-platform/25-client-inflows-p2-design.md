@@ -1,7 +1,9 @@
 # Module 25: ClientInflows (P2) implementation design
 
-Status: Draft 2, 2026-11-20. Approved by the user: all six items of section 14 have an answer (14.1). Design only.
-No code and no SQL script exists yet. The build starts with step 0 of section 13 when the user says so.
+Status: Draft 3, 2026-11-20. Draft 2 was approved by the user (14.1). Draft 3 has the corrections of the design
+review ([26-p2-design-review.md](26-p2-design-review.md), findings DR-01 to DR-21, answers in its section 8).
+Section 18 lists what changed. Design only. No code and no SQL script exists yet. The build starts with step 0 of
+section 13 when the user says so.
 
 ## 1. Purpose
 
@@ -14,6 +16,7 @@ Inputs:
 - Requirements: [ONBOARDING_ANSWERS.md](../ClientInflows/ONBOARDING_ANSWERS.md), decisions D1 to D34.
 - Gaps and answers: [GAP_REPORT.md](../ClientInflows/GAP_REPORT.md), items A1 to A17, B1 to B12, C1 to C8, answers
   Q1 to Q9.
+- Review: [26-p2-design-review.md](26-p2-design-review.md), findings DR-01 to DR-21 and the answers.
 - Module designs: [08-attachments.md](08-attachments.md) (section 10), [10-engine-adapter.md](10-engine-adapter.md),
   [07-registry.md](07-registry.md) (section 5), [12-ttd-pilot-build.md](12-ttd-pilot-build.md) (the model).
 
@@ -21,7 +24,8 @@ Rules that stay in force:
 
 - No `CFPINFLOW`, `CFP`, `AIN` or `Inflow` name in C# or TypeScript. Tests and JSON can have them.
 - The workflow engine code (`src/`) does not change (Q1, Q2).
-- TTDV2 and the current target apps do not change. Each new JSON key and each new request field is optional.
+- The current target apps do not change. Each new JSON key and each new request field is optional. Section 16 gives
+  the two small changes for TTDV2 users who cannot edit.
 - Database changes are SQL scripts only: additive, idempotent, with a `CP_Atlas_ScriptLog` row.
 - The time comes from `TimeProvider`. No `DateTime.UtcNow`.
 
@@ -39,19 +43,30 @@ Rules that stay in force:
 | Q8 | E3 uses the RM and RMCC of the first submit. New column `CFP.Inflow.RMCC`. |
 | Q9 | Export = the Excel export that is built into the grid at the target. |
 
+### 2.1 Platform rules from the review
+
+These rules are generic. They are for each platform app, not only for ClientInflows.
+
+| Rule | Source | Section |
+|---|---|---|
+| **One submit button.** A section form with a workflow has one submit button, not one button for each part. The server selects the workflow step from the state of the record. Each save of such a form runs the step for the current state; no save goes past the workflow. This rule is also in `AGENTS.md`. | DR-02 | 6.4, 10.2 |
+| **Saved values stay.** An effect of a control sets values only when the user can change that control. A lookup table is read when the user selects a value, not again at each later save or load. | DR-01 | 6.5 |
+| **Saved option only.** When the user cannot change a dropdown, the server sends only the saved option, not the full list. | DR-18 | 7.1 |
+| **No "Add New" for a read-only user.** The dashboard hides the `Add` button for a user who has no `Create` permission. The platform code does this today. | User, 2026-11-20 | 5.3 |
+
 ## 3. Overview
 
 ```text
 Browser (Angular, platform/)                    Server (platform)                         Other
 ---------------------------                     -----------------                         -----
 form: richtext, filepicker,     v1/ManagePage   ConfigSectionService.SavePage
-      state rules, Execute  ------------------>   1 validate (rules by state, MustBeTrue)
-      button                    + files           2 clean HTML (HtmlSanitizer)
+      state rules, one      ------------------>   1 validate (rules by state, MustBeTrue)
+      Submit button             + files           2 clean HTML (HtmlSanitizer)
                                                   3 write record, audit, attachments
                                                   4 engine adapter: Start / Execute  ---->  workflow engine
                                                   5 write state + status, commit             (own tables, outbox)
                                                   6 follow-up engine action, dispatch ---->  SMTP
-download link  ---------------> v1/Attachment/{appCode}/{id}  (new platform controller)
+file download (HttpClient) ---> v1/Attachment/{appCode}/{id}  (new platform controller)
 account list   <--------------- Table option provider  <------------------------------------ AIN.AccountInventory
 ```
 
@@ -61,13 +76,13 @@ New parts, all generic:
 |---|---|
 | SQL scripts for release P2 | 4 |
 | App files: manifest, form, dashboard | 5 |
-| Rules by state, `MustBeTrue`, button `Execute`, `Action.Set` | 6 |
+| Rules by state, `MustBeTrue`, one submit button, effects rule | 6 |
 | Table option provider (account lookup) | 7 |
 | Attachments (module 8) | 8 |
 | `richtext` control | 9 |
-| Engine adapter, recipients, template data | 10 |
+| Engine adapter, steps by state, recipients, template data | 10 |
 | `--atlas-check`: Info severity and the name report | 11 |
-| Export, History text | 12 |
+| Export, currency format, History text | 12 |
 
 ## 4. SQL scripts
 
@@ -101,11 +116,14 @@ The table exists at the target (D2). The script changes it in place. No column i
 | `CashSubmittedDate` | `datetime NULL`, UTC. "Funds confirmed date". |
 | `RMCC` | `varchar(1000) NULL`. Display names, separated by `;` (Q8). |
 | `DestructionDate` | Computed: `AS DATEADD(year, 7, [CreatedDate])`. Read only. |
-| Index | `IX_Inflow_WorkflowState` on `WorkflowState`, filtered `IsDeleted = 0`, for the "Inflow Pipeline" tab. |
 
-`IsDeleted` stays `bit NULL`; the platform reads NULL as "not deleted". The person columns (`CreatedBy`, `ModifiedBy`,
-`FlowSubmittedBy`, `CashSubmittedBy`) hold LAN IDs, and the dates are UTC. The target team must use the same values
-when it moves the old SharePoint records (integration note).
+- No new index (DR-14). The dashboard query uses `ISNULL([IsDeleted], 0) = 0`, so it cannot use a filtered index, and
+  the table gets about 500 rows each year.
+- `IsDeleted` stays `bit NULL`; the platform reads NULL as "not deleted".
+- The account control writes the column `AccountNumber`. The column `Account` of the table is not used by the
+  platform app (DR-07). This is an integration note for the target team.
+- The person columns (`CreatedBy`, `ModifiedBy`, `FlowSubmittedBy`, `CashSubmittedBy`) hold LAN IDs, and the dates are
+  UTC. The target team must use the same values when it moves the old SharePoint records (integration note).
 
 ### 4.2 `CFP.InflowAttachment`
 
@@ -159,7 +177,7 @@ email address.
 
 - `020-local-cfp-ain-tables.sql`: `CFP.Inflow`, `CFP.InflowAttachment` and `AIN.AccountInventory` in the exact target
   shape (from the target copy), so the release scripts are tested against the real start point. Sample accounts: clean
-  names, one RM with no user, one RM name with two users, one RMCC with two names.
+  names, one RM with no user, one RM name with two users, one RMCC with two names, one account with an empty name.
 - `900-local-seed.sql` (extended): users A035313 (`Write`) and A023456 (`Read`), and placeholder addresses.
 
 The local database also gets the engine tables. `setup-local-db.ps1` applies them with the tooling that the engine has
@@ -199,7 +217,8 @@ app is new and has no old users.
 
 ### 5.2 `CFPINFLOW.json` (form)
 
-Top level:
+Top level. The `Workflow` object is in the `Section`, because the target class `CPApplicationSection` holds it
+(DR-03).
 
 ```json
 {
@@ -210,14 +229,16 @@ Top level:
     "Create": [ "Write" ],
     "Edit": { "All": [ "Write" ] },
     "Delete": [ "Write" ],
-    "History": [ "@Read" ],
-    "Execute": { "SubmitPart1": [ "Write" ], "SubmitPart2": [ "Write" ] }
+    "History": [ "@Read" ]
   },
   "Defaults": { "FlowSubmittedBy": "{User.LanID}" },
   "SoftDelete": { "Field": "IsDeleted" },
   "HeaderNameWithId": "{Name} - {ID}",
-  "Workflow": { "...": "section 10.2" },
-  "Section": { "Controls": [ "..." ], "Buttons": [ "..." ] }
+  "Section": {
+    "Workflow": { "...": "section 10.2" },
+    "Controls": [ "..." ],
+    "Buttons": [ "..." ]
+  }
 }
 ```
 
@@ -225,7 +246,7 @@ Controls:
 
 | # | Name | Type | Notes |
 |---|---|---|---|
-| 1 | `Account` | `ngselect` | `OptionsSource` = Table provider (7). `SetFromOption` fills `AccountNumber`, `AccountName`, `StarNumber`, `RelationshipManager`, `Custodian`, `RMCC`. Required. |
+| 1 | `AccountNumber` | `ngselect` | Label "Account". `OptionsSource` = Table provider (7). The value is the account number, and the control writes the column `AccountNumber` (DR-07). `SetFromOption` fills `AccountName`, `StarNumber`, `RelationshipManager`, `Custodian` and `RMCC`. Required. |
 | 2 to 5 | `AccountName`, `StarNumber`, `RelationshipManager`, `Custodian` | `text` | `Disabled: true`. Set by the server from the option. |
 | 6 | `InvestmentType` | `select` | Options: Fixed Income, Equity, Fixed Income & Equity. Required. |
 | 7 | `Amount` | `currency` | `Validator: { Required: true, Min: 0.01 }` |
@@ -237,39 +258,43 @@ Controls:
 | 13 | `FundsReceived` | `checkbox` | `Validator: { MustBeTrue: true }` |
 | 14 | `Comment` | `richtext` | Not required |
 | 15 | `CashAttachments` | `filepicker` | `Multiple: true`, required, label "Please attach proof of custodian receipt." |
-| 16 | `CashSubmittedBy` | `user` | `Disabled: true`. Set by the button (6.4). |
+| 16 | `CashSubmittedBy` | `user` | `Disabled: true`. Set by the step of state `Submitted` (6.4). |
 | 17 | `CashConfirm` | `checkbox` | `Validator: { MustBeTrue: true }` |
 
 `RMCC` has a column and no control: it is a data-only target of the effect (7.3). The control names
 `FlowAttachments` and `CashAttachments` become the `Type` values; they are stable identifiers from the first save.
 
-Rules (intent; the exact JSON is fixed against the `AtlasRuleEngine` tests in build step 3):
+Rules (intent; the exact JSON is fixed against the `AtlasRuleEngine` tests in build step 3). Part 1 is the inflow
+part (controls 1 to 12). Part 2 is the cash receipt part (controls 13 to 17).
 
 | Part | State `Draft` (new) | State `Submitted` | State `FundsReceived` |
 |---|---|---|---|
-| Part 1 sections | `Write`: enabled | read-only | read-only |
-| Part 2 sections | hidden | `Write`: enabled | read-only |
+| Part 1 | `Write`: enabled | read-only | read-only |
+| Part 2 | hidden | `Write`: enabled | read-only |
 | `Read` role | read-only | read-only | read-only |
+| Submit button | `Write`: shown | `Write`: shown | hidden |
 
 `RuleDefault: ReadOnly` gives the read-only cells. One rule for each enabled cell names the role and the state, for
 example `{ "Roles": [ "Write" ], "States": [ "Draft" ], "Disabled": false }`. Part 2 has
 `{ "States": [ "Draft" ], "Visible": false }`.
 
-Buttons:
+Buttons. The form has one submit button (rule of 2.1). Each button has `Visible` and `Disabled`, because the default
+of `Visible` in the target class is `false` (DR-03).
 
 ```json
 "Buttons": [
-  { "Name": "SubmitPart1", "Label": "Submit",
-    "Action": { "Type": "Execute" },
-    "Rules": [ { "Roles": [ "Write" ], "States": [ "Draft" ] } ] },
-  { "Name": "SubmitPart2", "Label": "Submit",
-    "Action": { "Type": "Execute", "Set": { "CashSubmittedBy": "{User.LanID}", "CashSubmittedDate": "{Now}" } },
-    "Rules": [ { "Roles": [ "Write" ], "States": [ "Submitted" ] } ] },
-  { "Name": "Close", "Label": "Close", "Action": { "Type": "Close" } }
+  { "Name": "Submit", "Label": "Submit", "Visible": true, "Disabled": false,
+    "Action": { "Type": "Save" },
+    "Rules": [ { "Roles": [ "Write" ] } ] },
+  { "Name": "Close", "Label": "Close", "Visible": true, "Disabled": false,
+    "Action": { "Type": "Close" } }
 ]
 ```
 
-No Save button (D15: no draft save). No Delete button on the form: delete is in the row menu (D24).
+- The Submit button does the first submit in state `Draft` and the second submit in state `Submitted`. The server
+  selects the step (6.4). In state `FundsReceived`, the server hides the button.
+- No draft save (D15): each click on Submit is a workflow step.
+- No Delete button on the form: delete is in the row menu (D24).
 
 ### 5.3 `CFPINFLOW.Dashboard.json`
 
@@ -277,9 +302,24 @@ No Save button (D15: no draft save). No Delete button on the form: delete is in 
 - Tab `InflowPipeline`: filter `{ "Column": "WorkflowState", "Op": "Eq", "Value": "Submitted" }`, the same order.
   A record has "Funds have been received = No" exactly when its state is `Submitted`.
 - Columns on the two tabs (D23): `ID` (`Link: Edit`), `AccountNumber`, `AccountName`, `InvestmentType`, `Amount`
-  (`currency`), `InflowDate` (`date`), `Status`, `FlowSubmittedBy` (`user`), `CreatedDate` (`date`),
-  `CashSubmittedBy` (`user`), `CashSubmittedDate` (`date`), `DestructionDate` (`date`).
-- Button `Add` with `Target: { "AppCode": "CFPINFLOW", "Id": 0 }`. The permissions hide it for a `Read` user.
+  (`currency`, formatted as in 12), `InflowDate` (`date`), `Status`, `FlowSubmittedBy` (`user`), `CreatedDate`
+  (`date`), `CashSubmittedBy` (`user`), `CashSubmittedDate` (`date`), `DestructionDate` (`date`).
+- Row menu (D24, DR-04). Each tab has `Menus`, so a `Read` user also gets "Edit" (the form opens read-only). With no
+  `Menus`, the platform shows "Edit" only to a user with the `Edit` permission. The exact JSON is fixed against the
+  dashboard tests in build step 1.
+
+```json
+"Menus": [
+  { "Name": "Edit", "Label": "Edit" },
+  { "Name": "History", "Label": "History" },
+  { "Name": "Delete", "Label": "Delete", "Visible": false, "Rule": { "Roles": [ "Write" ] } }
+]
+```
+
+- Button `Add` with `"Visible": true, "Disabled": false` and `Target: { "AppCode": "CFPINFLOW", "Id": 0 }`. The
+  button has no rule, so the dashboard service uses `Permissions.Create`: a user with no `Create` permission (the
+  `Read` role) does not get the button (rule of 2.1). The server also refuses a new record from such a user. Build
+  step 1 has a test for the two checks.
 
 ## 6. Form behaviour (generic)
 
@@ -302,17 +342,59 @@ fields cannot change at the second submit. Build step 3 has tests for the two ca
 New optional validator key. The value must be `true`. It runs on the server (`AtlasFieldValidator`) and on the client
 (`atlas-validators.ts`), with the shared cases file. Message: "Select <label> before you submit."
 
-### 6.4 Button `Execute` and `Action.Set` (B6, B7)
+### 6.4 One submit button (B6, B7, DR-02)
 
-- New optional request field `Button` (the button name) on `v1/ManagePage`. With no `Button`, the save is a plain
-  save, as today.
-- The server finds the button in the form JSON. It checks `Permissions.Execute[<button>]` and the button rules
-  (roles and state) for the user. A refusal is HTTP 403 with the page error contract.
-- `Action.Set` gives field values for this save: field name to token. Tokens: `{User.LanID}` and `{Now}` (UTC, from
+The rule: a section form with a workflow has one submit button. The server selects the workflow step from the state
+of the record.
+
+- A form is a "form with steps" when its `Workflow` binding has `Steps` (10.2). `Steps` has one entry for each state
+  in which a submit is possible.
+- A form with steps has exactly one button with `Action.Type` = `Save`. This is the submit button. The start-up check
+  gives an error for no such button or for two or more.
+- Each save of a form with steps is a submit. The server reads the state of the record from the database (a new
+  record has `InitialState`) and takes the entry of `Steps` for this state. The request has no state, no engine
+  action key and no button name.
+- When `Steps` has no entry for the state, the server refuses the save (code `NotAllowed`). On load, the server then
+  hides the submit button. Thus the button rules need only the roles.
+- Optional `Label` in a step: the text of the submit button in this state. With no `Label`, the button keeps its
+  text. ClientInflows does not use it (the text is "Submit" in the two states).
+- Optional `Set` in a step: field values for this save, name to token. A name is a control name or a column name of
+  the app table (DR-08); the start-up check refuses other names. Tokens: `{User.LanID}` and `{Now}` (UTC, from
   `TimeProvider`), with the token code of `AtlasDefaultTokens`. A field in `Set` is server-set: a client value for it
   is not accepted.
-- The client sends the button name, never an engine action key. The binding selects the engine actions (10.2).
+- Access: the save needs `Create` (new record) or `Edit` (existing record), as each save today. The engine checks the
+  role of the action again.
+- A submit needs a `RequestId` (10.3).
 - The client disables the buttons while a save runs.
+- A form with no `Steps` saves as today. TTDV2 does not change.
+
+Not built: the request field `Button` and `Permissions.Execute` of draft 2. With one submit button they are not
+necessary. `Permissions.Execute`, the button action type `Execute` and `CPButtonAction.Set` stay reserved, as in
+release P1.
+
+### 6.5 Effects only from a control that the user can change (DR-01)
+
+Today the server runs the effects of each control at each save, with the stored value when the client sends none.
+The client runs the effects each time the form opens. For a form with two submits, this reads the lookup table again
+at the second submit and changes the values of part 1.
+
+The rule, the same on the server (`AtlasServerEffects`) and on the client (`atlas-effects.ts`):
+
+- An effect (`Set`, `Clear`, `SetFromOption`) sets values only when its source control is visible and enabled for the
+  user and the state (the effective form).
+- When the source control is disabled or hidden, the effect sets nothing. The saved values stay in the record and
+  show on the form.
+
+Result for ClientInflows:
+
+- First submit: the account control is enabled. The server reads the AIN row and saves `AccountName`, `StarNumber`,
+  `RelationshipManager`, `Custodian` and `RMCC`.
+- After the first submit: the account control is read-only. AIN is not read again. A later change in AIN does not
+  change the record, the form or the recipients of E3 (Q8, D16).
+
+TTDV2: no change for a user who can edit, because the source control is then enabled. A user who cannot edit sees
+the saved values. Build step 2 runs all TTDV2 tests. If a TTDV2 effect has a source control that is disabled for a
+user who can save, stop and ask.
 
 ## 7. Table option provider: the account lookup (B3)
 
@@ -341,8 +423,13 @@ form JSON names.
   SQL text only after this check, in brackets. All values are parameters.
 - If the table has an `IsDeleted` column, the provider reads only the rows that are not deleted (D29).
 - The response has only the `Value`, the label and the `Data` columns. No other column leaves the server.
-- The provider sends all rows with the form load, as the TTDV2 account list does today. The option list of a table is
-  cached for a short time (60 seconds) in memory, so many form loads do not read the table each time.
+- When the user can change the control, the provider sends all rows with the form load, as the TTDV2 account list
+  does today. The option list of a table is cached for a short time (60 seconds) in memory, so many form loads do not
+  read the table each time.
+- When the user cannot change the control (disabled or read-only in the effective form), the server sends only the
+  saved option: the value and its label, with no `Data` (DR-18). This is a rule for each dropdown with an options
+  source, not only for the Table provider. A `Read` user and each user after the first submit thus do not get the RM,
+  the custodian and the RMCC of all accounts.
 - `KeepSavedValue: true` on the control keeps a saved account in the list after the AIN row is deleted.
 
 ### 7.2 Use in other apps
@@ -354,7 +441,7 @@ No code is necessary.
 
 `SetFromOption` can name a field that has a column and no control (here `RMCC`). The server effect sets the column
 from the option data. The client does not show it and does not send it. The start-up check accepts a target that is a
-control or a column of the app table, and refuses other names.
+control or a column of the app table, and refuses other names. The rule of 6.5 also applies to a data-only target.
 
 ## 8. Attachments (B1, B11)
 
@@ -376,28 +463,39 @@ The start-up check refuses an attachment table that does not have each necessary
 ### 8.2 Server
 
 - `IAtlasAttachmentService` in `Service/Platform/Attachments/`: list, add, remove, open.
+- `AtlasSqlTypes` gets the type `varbinary`, so the platform can read and write `FileContent` (DR-06). This is
+  generic.
 - `SavePage(input, files)` reads the files. A file is accepted only when its control is a `filepicker` that is
-  visible and enabled in the effective form (the same check as the allow list).
+  visible and enabled in the effective form. A `filepicker` control has no `Field` and no column, so the check reads
+  the state of the control itself, not the field allow list (DR-20). The start-up check does not report "no column"
+  for a `filepicker`.
 - Limits: 10 MB for each file, 25 MB for the new files of one save, the default type list, the file signature check
   (module 8, 4.3). The file name is `Path.GetFileName`, 255 characters at most.
 - New optional request field `RemovedAttachmentIds`. The server removes (soft delete) only the IDs that belong to this
   record and to an enabled `filepicker`.
 - `Required` on a `filepicker`: after the save, the control has one file at least (files that stay + new files).
-- All of this is in the transaction of the record. Each added and each removed file gets one audit entry.
-- Load: the files of the record, grouped by control name. For each file: ID, name, size, created by, created date
-  and the download URL.
+- All of this is in the transaction of the record. Each added file gets one audit entry with the event
+  `AttachmentAdd`, and each removed file one with `AttachmentRemove`. These are the event names of module 9 (DR-15).
+- Load: the files of the record, grouped by control name. For each file: ID, name, size, created by and created
+  date. No download URL (DR-05). The list query does not select `FileContent`; only the download reads it (DR-06).
 - New controller `App/Platform/AtlasAttachmentController.cs`: `GET v1/Attachment/{appCode}/{id}`. It checks `View` on
   the parent record, then streams the decompressed file with `Content-Disposition: attachment` and
-  `X-Content-Type-Options: nosniff`. An unknown ID, a deleted file or a deleted record gives 404.
+  `X-Content-Type-Options: nosniff`. The server sets the content type from the file extension, not from the value
+  that the client sent with the upload (DR-17). An unknown ID, a deleted file or a deleted record gives 404.
 
 ### 8.3 Client
 
 - New renderer `filepicker` in `form/renderers/`, registered in `atlas-renderer-registry.ts`. It uses the target file
-  control of `@pbdev/pbdev-core` if the stand-in has it; the look follows the CDT step page.
+  control of `@pbdev/pbdev-core`; the look follows the CDT step page. The stand-in has no file picker today: build
+  step 4 makes the stand-in file picker from the real target source (DR-20).
 - The form sends the files as form parts `<ControlName>#$#<FileName>`, the format that the target uses today.
 - Remove: the question dialog, then the file shows as "removed when you save".
 - The client checks the size limits before it sends. The server checks again.
-- A disabled `filepicker` shows the list with download links only.
+- Download (DR-05): the client gets the file with `HttpClient` as a blob and then gives the blob to the browser. A
+  plain browser link is not used: the target API uses JWT bearer authentication and has a different address than the
+  client, and only an `HttpClient` call goes through the target interceptors. Build step 4 checks how the CDT
+  download works at the target and follows it.
+- A disabled `filepicker` shows the list with the download action only.
 
 ## 9. Rich text (B2, B9)
 
@@ -410,15 +508,20 @@ The start-up check refuses an attachment table that does not have each necessary
 - Plugins: paragraph, headings, bold, italic, underline, strikethrough, lists, link, table, block quote, undo, paste
   from Office. No picture plugin and no upload adapter (D12, D31). A pasted picture is dropped.
 - A disabled control shows the editor in read-only mode with no toolbar.
+- The risk is tested first (DR-11): build step 0 adds the two packages to the stand-in, shows one editor, and runs
+  `ng build` (0 warnings, bundle size limits) and `ng test`. The editor style sheet must load with no change to
+  `angular.json`, because this target file is not in the approved list. If the test fails, stop and ask (the
+  fallback is Jodit).
 
 ### 9.2 Server
 
 - On save, each `richtext` value goes through `HtmlSanitizer` before validation and before the write. The check is by
   control type, so each app gets it.
 - Allowed tags: `p`, `br`, `strong`, `b`, `em`, `i`, `u`, `s`, `h2`, `h3`, `h4`, `ul`, `ol`, `li`, `blockquote`, `a`,
-  `figure`, `table`, `thead`, `tbody`, `tr`, `th`, `td`. Allowed attributes: `href` on `a`; `colspan` and `rowspan` on
-  cells; `class` on `figure`. Allowed link schemes: `http`, `https`, `mailto`. No `style`, no `img`, no event
-  attributes.
+  `figure`, `table`, `thead`, `tbody`, `tr`, `th`, `td`.
+- Allowed attributes: `href` on `a`; `colspan` and `rowspan` on cells; `class` only on `figure` and only with the
+  value `table` (DR-17). No `style`, no `img`, no event attributes.
+- Allowed link schemes: `http`, `https`, `mailto`. The server adds `rel="noopener noreferrer"` to each link.
 - The list is one constant in the platform. It is not in the app JSON, so an app cannot make it weaker.
 - A value that is empty after the clean-up is saved as NULL.
 - Largest size: 200,000 characters after the clean-up; more gives a field error.
@@ -426,6 +529,8 @@ The start-up check refuses an attachment table that does not have each necessary
   shows plain text.
 - The dashboard shows a `richtext` column as plain text, with the same converter. (P2 has no such column.)
 - Rich text is not in the emails of P2.
+- Package version: a stable `HtmlSanitizer` version whose dependencies (`AngleSharp`, `AngleSharp.Css`) are also
+  stable versions. Build step 5 verifies this (DR-17).
 
 ## 10. Engine adapter (C1 to C8)
 
@@ -444,12 +549,14 @@ The design is module 10. This section gives the parts for a section form and the
 
 ### 10.2 Binding
 
-Optional properties on the `Workflow` object of the form (partial class of the target `CPWorkflow`; `Key` and
-`Actions` are target properties and stay).
+Optional properties on the `Workflow` object of the section (partial class of the target `CPWorkflow`). `Key`,
+`Roles` and `Actions` are necessary target properties and stay; the platform does not read `Roles` and `Actions`
+(DR-03).
 
 ```json
 "Workflow": {
   "Key": "ClientInflow",
+  "Roles": [],
   "Actions": {},
   "BusinessObjectPrefix": "CFP-INFLOW-",
   "ActorRoles": "User",
@@ -458,14 +565,19 @@ Optional properties on the `Workflow` object of the form (partial class of the t
   "InitialState": "Draft",
   "StatusLabels": { "Draft": "Draft", "Submitted": "Submitted", "FundsReceived": "Funds Received" },
   "Steps": {
-    "SubmitPart1": [
-      { "Start": "Submit", "Recipients": [ "icg" ] },
-      { "Execute": "NotifyInformational", "Recipients": [ "investmentLists", "relationshipManager" ] }
-    ],
-    "SubmitPart2": [
-      { "Execute": "ConfirmFunds",
-        "Recipients": [ "investmentLists", "relationshipManager", "csTeam", "rmcc", "imrg", "starFasIfiCash" ] }
-    ]
+    "Draft": {
+      "EngineActions": [
+        { "Start": "Submit", "Recipients": [ "icg" ] },
+        { "Execute": "NotifyInformational", "Recipients": [ "investmentLists", "relationshipManager" ] }
+      ]
+    },
+    "Submitted": {
+      "Set": { "CashSubmittedBy": "{User.LanID}", "CashSubmittedDate": "{Now}" },
+      "EngineActions": [
+        { "Execute": "ConfirmFunds",
+          "Recipients": [ "investmentLists", "relationshipManager", "csTeam", "rmcc", "imrg", "starFasIfiCash" ] }
+      ]
+    }
   },
   "Recipients": {
     "icg": { "List": "Icg" },
@@ -493,41 +605,64 @@ Optional properties on the `Workflow` object of the form (partial class of the t
 }
 ```
 
-- `Steps`: button name to a list of engine steps. The first step can change the state. Each later step must keep it.
-- `Recipients` of a step: the recipient keys that the adapter sends with this step. The engine refuses a key that
-  the route does not declare, so each step names its own keys.
-- The start-up check refuses: a `Steps` key that is not a button; a recipient key with no definition; a field name
-  that is not a column; a `Map` value that is not an option of the field; a list key with no address in the settings.
+- `Steps`: state key to one step. The key is the state of the record before the submit. A state with no entry has no
+  submit (6.4).
+- A step has `EngineActions` (necessary, one or more), and the optional keys `Set` and `Label` (6.4).
+- `EngineActions`: the engine actions that the adapter runs for one submit, in order. `Start` starts the engine
+  instance with this initial action; `Execute` runs an action on the instance. The first action can change the
+  state. Each later action must keep it.
+- `Recipients` of an engine action: the recipient keys that the adapter sends with this action. The engine refuses a
+  key that the route does not declare, so each action names its own keys.
+- Names against the earlier specs (DR-15): for a platform app, `Steps` replaces the key `InitialAction` of the
+  binding and the key `Execute` of a button (module 1, sections 5.3 and 5.10). The reason: one submit can run more
+  than one engine action, and the server selects the step from the state.
+- The start-up check refuses: a `Steps` key that is not a key of `StatusLabels`; a step with no engine action; a
+  `Start` in a step that is not the step of `InitialState`; a recipient key with no definition; a field name that is
+  not a column; a `Map` value that is not an option of the field; a list key with no address in the settings.
 
 ### 10.3 Save order
 
-For a save with a `Button` that has steps:
+For a save of a form with steps (each such save is a submit, 6.4):
 
-1. Validate (rules, access, fields, files). No write.
-2. Begin the transaction. Write the record, the audit entries and the attachments. `SaveChanges`, no commit.
-3. Run the first step in the engine (`Start` with the initial action, or `Execute`).
-4. Engine `Success` is false: roll back. Return the engine code and message as a page error. Nothing changed.
-5. Engine `Success` is true: write `WorkflowState` (the engine state key) and `Status` (the label of
-   `StatusLabels`). Commit.
-6. After the commit, run each later step in order. Then dispatch the notifications of all steps.
+1. The request has no `RequestId`: refuse the save (page error). The state has no step: refuse the save
+   (`NotAllowed`).
+2. Validate (rules, access, fields, files). Find the recipients (10.6) and the template data (10.7). No write.
+3. Begin the transaction. Write the record with the `Set` values, the audit entries and the attachments.
+   `SaveChanges`, no commit.
+4. Run the first engine action (`Start` with the initial action, or `Execute`).
+5. Engine `Success` is false: roll back. Return the engine code and message as a page error. Nothing changed.
+6. Engine `Success` is true: write `WorkflowState` (the engine state key) and `Status` (the label of
+   `StatusLabels`). Add one status line to the audit entry of this save (12). Commit.
+7. After the commit, run each later engine action in order. After each one, compare the engine state with the
+   `WorkflowState` of the record; a difference is an error log (DR-19). Then dispatch the notifications of all
+   actions.
 
 Failures after the commit do not undo the save:
 
-- A later step fails (E2): the record stays saved. The adapter writes an error log with the instance ID and the
-  action key. The response says "Saved. One notification was not sent." No automatic second try in P2.
+- A later action fails (E2): the record stays saved. The adapter writes the error log `Atlas.WorkflowStepFailed` with
+  the instance ID and the action key. The response says "Saved. One notification was not sent." No automatic second
+  try in P2. The target support team acts on this log event: it sends the email by hand (DR-19).
 - A dispatch fails: warning log; the engine outbox sends the email again (module 10, 4.5).
-- The commit of step 5 fails after the engine committed: error log, and the state check on the next load corrects the
-  record (10.4).
+- The commit of step 6 fails after the engine committed: error log. Section 10.8 gives the two cases and the action.
 
-Double submit: new optional request field `RequestId` (a GUID from the client for each user action). The
-idempotency key of step n is `RequestId` + `:` + n. With no `RequestId`, the server makes a GUID.
+Double submit (DR-16):
+
+- Request field `RequestId`: a GUID that the client makes for each user action. It is optional in the `v1/ManagePage`
+  contract, but a submit of a form with steps needs it (step 1). With no `RequestId`, the protection is lost, so the
+  server does not make one itself.
+- The idempotency key of engine action n is `RequestId` + `:` + n.
+- The engine key is global and the engine compares the request hash. A second request with the same `RequestId` for
+  a new record gets a second record ID, so the engine refuses it and the second record is rolled back. The adapter
+  maps this engine result to the page error "This request was already processed."
 
 ### 10.4 Load
 
 When a record with a binding loads, the adapter reads the engine context. If the engine state is not the
 `WorkflowState` of the record, the platform writes the engine state and the status label to the record, writes one
-audit entry (`WorkflowSync`) and a warning log. The engine is the source of truth for the state. A record with no
-engine instance (new) is not checked.
+audit entry (`WorkflowSync`) and a warning log. The engine is the source of truth for the state.
+
+Each record with no engine instance is not checked (DR-21). This is a new record, and also a record that the target
+team moved from SharePoint; such a record loads with no error.
 
 ### 10.5 Actor roles
 
@@ -543,7 +678,8 @@ view. The engine role `Write` has the same name as the app role.
 | `FromNameField` | The field holds display names, separated by `;`. Each name is found in `CP_Atlas_User`. |
 | `FromUserField` | The field holds a LAN ID (module 10, 4.6). Designed, not used in P2. |
 
-Display name rules (D33, D34), in one service `IAtlasUserDirectory`:
+Display name rules (D33, D34). The service `IAtlasUserDirectory` exists already; it gets one new method that finds
+the email of a display name. No new service (DR-15).
 
 - The compare ignores case, and spaces at the start, at the end and doubled.
 - Exactly one active user (`IsDeleted` is not 1) with an email: use the email.
@@ -553,21 +689,33 @@ Display name rules (D33, D34), in one service `IAtlasUserDirectory`:
   error and the save stops (before the first engine call).
 - The adapter removes duplicate addresses.
 
-The recipients are found before step 3 of 10.3, from the values of the saved record. Thus E3 uses the
-`RelationshipManager` and `RMCC` of the first submit (Q8).
+The recipients are found in step 2 of 10.3, from the values of the record. At the second submit, part 1 is read-only
+and the effects do not run again (6.5), so these are the saved values. Thus E3 uses the `RelationshipManager` and
+`RMCC` of the first submit (Q8).
 
 ### 10.7 Template data
 
 - `Field` + optional `Format`: the value of the record as text. `Format` is a .NET format text, used with the
   `en-US` culture. A date field is formatted as stored (no time zone change for a date with no time).
-- `RecordLink`: `AppSettings:Atlas:WebBaseUrl` + `/form/<Code>/<ID>`. The start-up check gives an error when a binding
-  uses `RecordLink` and the setting is empty.
-- The adapter sends the same template data with each step.
+- `RecordLink`: `AppSettings:HostedClientURL` + `/form/<Code>/<ID>` (DR-13). The target has this setting already,
+  with no slash at the end, and uses it for the links in the CDT and SQMS emails. No new setting. The start-up check
+  gives an error when a binding uses `RecordLink` and the setting is empty.
+- The adapter sends the same template data with each engine action.
+- Empty value (DR-10): the engine refuses a template token with an empty value, with a technical message. So the
+  adapter checks in step 2 of 10.3 that each `TemplateData` value is not empty. An empty value is a page error that
+  names the field, for example "Account Name is necessary for the notification." Nothing is written.
 
 ### 10.8 Accepted limits
 
 - A deleted record in state `Submitted` keeps its engine instance. No email goes out (no SLA). Accepted (gap N3).
 - E1 and E2 are two engine commits. A failure between them sends E1 and not E2. Accepted with Q2.
+- The engine commits and then the Atlas commit fails (DR-12). This needs a lost database connection at the exact
+  moment of the commit; it is rare. The state check on load (10.4) cannot correct the two cases below. The error log
+  `Atlas.WorkflowStepFailed` gives the instance ID, and the target team corrects the data by script.
+  - First submit: the record does not exist. The engine keeps an instance with no record, and E1 goes out with a
+    link that opens nothing.
+  - Second submit: the check on load sets the record to "Funds Received", but the part 2 values and files are not
+    saved. The record is closed with an empty part 2, and E3 is sent.
 
 ## 11. `--atlas-check` (B8)
 
@@ -579,14 +727,24 @@ The recipients are found before step 3 of 10.3, from the values of the saved rec
 - The report prints 200 lines at most for each table, then the count of the rest.
 - The report runs only with the `--atlas-check` switch, not at each start-up of the host.
 
-## 12. Export and History
+## 12. Export, currency format and History
 
 - Export (Q9): the target registers `AllEnterpriseModule`, so each grid has the built-in menu with "Export" and
-  "Excel Export". The platform dashboard columns give the displayed text to the export (dates, currency, user names).
-  No platform button and no new package. The local stand-in has `ag-grid-community` only: the Excel export is tested
-  at the target. **See section 14, item 5.**
-- History (D27): the audit writer of today records each field. New: the entries for files (8.2), plain text for
-  `richtext` (9.2), and `WorkflowSync` (10.4). No workflow history on the form.
+  "Excel Export". No platform button and no new package (14.1, answer 5). The local stand-in has
+  `ag-grid-community` only: the Excel export is tested at the target.
+- Currency format (D23, DR-09): today the column type `currency` only aligns the cell to the right. New: a generic
+  formatter for `currency` columns in `dashboard/atlas-dashboard-columns.ts`: `$`, thousands separator, 2 decimals
+  (`$1,250,000.00`). TTDV2 has no `currency` column, so it does not change. Build step 7 checks at the target if
+  the Excel export gives the formatted text or the number, and the users select what they want.
+- History (D27): the audit writer of today records each field of the form. New:
+  - the entries for files, `AttachmentAdd` and `AttachmentRemove` (8.2);
+  - plain text for `richtext` (9.2);
+  - `WorkflowSync` (10.4);
+  - one status line in the audit entry of each submit, for example "Status: Submitted to Funds Received" (DR-08). A
+    new record gets "Status: Submitted".
+- `CashSubmittedDate` and `RMCC` do not show in History (DR-08, answer A). The date of the History entry is the cash
+  submitted date, and `RMCC` is not on the form.
+- No workflow history on the form.
 
 ## 13. Build order
 
@@ -594,31 +752,40 @@ Each step ends with the platform gates and one commit. No push.
 
 | Step | Content | Proof |
 |---|---|---|
-| 0 | Engine test: an action that keeps the state runs and makes its outbox row. Test only, no engine change. | If it fails: stop and ask (Q2 falls back to its option B or C). |
-| 1 | `release-p2` scripts 100 to 140, local tables and seed, manifest, form with the controls of today, dashboard. | The app shows in the menu; a plain record saves; SQL tests for each script, run two times. |
-| 2 | Table provider, `LookupTables`, data-only effect target, `Info` severity, name report. | Account list fills 5 fields + `RMCC`; `--atlas-check` prints the Info lines and `0 error(s), 0 warning(s)`. |
-| 3 | State in the rules, `MustBeTrue`, request field `Button`, `Permissions.Execute`, `Action.Set`. | Part 2 hidden in `Draft`; refusals tested; TTDV2 tests pass with no change. |
-| 4 | Attachments: service, save, removal on save, limits, audit, controller, `filepicker` renderer. | Module 8 section 7 acceptance for a platform app. |
-| 5 | `richtext`: packages, renderer, `HtmlSanitizer`, plain text in History. | Script and event attributes are removed (API test with raw HTML). |
-| 6 | Engine adapter: script 150, binding, steps, recipients, template data, state check, `RequestId`. | Module 10 section 8 acceptance; scenarios 1 and 2 with smtp4dev. |
+| 0 | Two tests, no product code. (a) Engine: an action that keeps the state runs and makes its outbox row; no engine change. (b) CKEditor 5 with Angular 21 in the stand-in: one editor, `ng build` with 0 warnings, `ng test`, no `angular.json` change. | (a) fails: stop and ask (Q2 falls back to its option B or C). (b) fails: stop and ask (fallback Jodit). |
+| 1 | `release-p2` scripts 100 to 140, local tables and seed, manifest, form with the controls of today, dashboard with `Menus` and the `currency` formatter. | The app shows in the menu; a plain record saves; SQL tests for each script, run two times; a `Read` user gets "Edit" in the row menu and no "Add New" button. |
+| 2 | Table provider, `LookupTables`, data-only effect target, the effects rule (6.5), the saved option rule (7.1), `Info` severity, name report. | Account list fills 4 fields + `RMCC`; a changed lookup row does not change a record whose control is read-only; a read-only user gets one option; `--atlas-check` prints the Info lines and `0 error(s), 0 warning(s)`; TTDV2 tests pass. |
+| 3 | State in the rules, `MustBeTrue`, one submit button, `Steps` by state with `Set` and `Label` (no engine call yet). | Part 2 hidden in `Draft`; a save in a state with no step is refused; refusals tested; TTDV2 tests pass with no change. |
+| 4 | Attachments: `varbinary` type, service, save, removal on save, limits, audit, controller, stand-in file picker from the target source, `filepicker` renderer, blob download. | Module 8 section 7 acceptance for a platform app; the list query has no `FileContent`. |
+| 5 | `richtext`: packages, renderer, `HtmlSanitizer`, plain text in History. | Script and event attributes are removed (API test with raw HTML); stable package versions. |
+| 6 | Engine adapter: script 150, binding, engine actions, recipients, template data with the empty value check, state check, `RequestId`, status line in History. | Module 10 section 8 acceptance; scenarios 1 and 2 with smtp4dev. |
 | 7 | `INTEGRATION.md`, `CODE_TRACE.md`, `Config/README.md`, target package, onboarding template update. | Scenarios 1 to 6 of the requirements; all gates; package rebuilt. |
 
 ### 13.1 Tests
 
 - .NET (xUnit, SQL Server): each script is idempotent; provider SQL is safe for bad names; rule context by state;
-  `MustBeTrue`; `Set` tokens; a client value for a server-set field is refused; attachment limits, signature, control
-  check, removal of a file of another record refused; download access (403, 404); HTML clean-up cases; name match
-  cases (case, spaces, none, two users, no email); list map; template formats; save order with a refused engine
-  action (nothing changed); follow-up step failure (record saved, error log); state sync on load; double submit with
-  one `RequestId`.
-- Angular (Vitest): `filepicker` and `richtext` renderers; `MustBeTrue` with the shared cases; `Execute` button sends
-  `Button` and `RequestId`; state rules hide part 2.
+  `MustBeTrue`; `Set` tokens, with a control name and with a column name; a client value for a server-set field is
+  refused; attachment limits, signature, control check, removal of a file of another record refused; download access
+  (403, 404) and content type; HTML clean-up cases; name match cases (case, spaces, none, two users, no email); list
+  map; template formats; an empty template value is a page error with no write.
+- .NET, the review rules: an effect of a disabled source control sets nothing (lookup row changed after the first
+  submit; the record, the form and the E3 recipients keep the saved values); a disabled dropdown gets only the saved
+  option; a form with steps and no `Save` button, or two, fails the start-up check; a save in a state with no step
+  is refused; a submit with no `RequestId` is refused; the `Add` button is hidden for a `Read` user and the server
+  refuses their new record.
+- .NET, the adapter: save order with a refused engine action (nothing changed); follow-up action failure (record
+  saved, error log); state difference after a later action (error log); state sync on load; a record with no engine
+  instance loads; double submit with one `RequestId` gives "This request was already processed."; the status line
+  in the audit entry.
+- Angular (Vitest): `filepicker` and `richtext` renderers; `MustBeTrue` with the shared cases; the submit sends a
+  `RequestId`; state rules hide part 2; effects do not run for a disabled source control; the `currency` formatter;
+  the blob download.
 - Regression: all TTDV2 tests pass with no change to their expected results.
-- `CodeCommentRulesTests` stays green: no D, Q, B or module number in a code comment.
+- `CodeCommentRulesTests` stays green: no D, Q, B, DR or module number in a code comment.
 
-## 14. Items that need your approval
+## 14. Items that needed your approval
 
-These are the stop-and-ask items of this design. The answers Q1 to Q9 already cover the engine adapter, the
+These were the stop-and-ask items of draft 2. The answers Q1 to Q9 already cover the engine adapter, the
 `nvarchar` change of `Description` and `Comment`, `HtmlSanitizer`, CKEditor and the `RMCC` columns.
 
 | # | Item | Recommendation |
@@ -627,7 +794,7 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 | 2 | `CFP.InflowAttachment.FileName` from `varchar(1000)` to `nvarchar(1000)`, so a file name keeps its characters. The table has no platform data yet. | Approve |
 | 3 | Target files that change (integration steps, the user does them): `program.cs` (one `AddAtlasModule` line), `package.json` (the two CKEditor packages replace the six 41.4.2 packages, after the target team checks its own use of them), the Service `.csproj` (`HtmlSanitizer`), `appsettings.json` (the six list addresses, `WebBaseUrl`), `tailwind.config.js` only if the form uses a new class. | Approve |
 | 4 | New log events 41025 to 41029: `Atlas.RecipientSkipped`, `Atlas.WorkflowStepFailed`, `Atlas.WorkflowSync`, `Atlas.NotificationDispatchFailed`, `Atlas.AttachmentRefused`. New identifiers, none changed. | Approve |
-| 5 | Export: the built-in grid menu, no new button. Tell me if you also want a visible "Export" button on the platform dashboard (generic, one dashboard JSON key). | Built-in menu only |
+| 5 | Export: the built-in grid menu, no new button. | Built-in menu only |
 | 6 | Where the four fixed lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team) live: static addresses in the engine script, or the app settings with the two Investment Type lists. | See the answer |
 
 ### 14.1 Answers
@@ -641,6 +808,17 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 | 5 | The built-in grid menu only. No export button. | 2026-11-20 |
 | 6 | All six lists are in the app settings. The engine script has no email address; each recipient rule is a request input. | 2026-11-20 |
 
+### 14.2 What draft 3 changes in the approved items
+
+Each change makes an approved item smaller. Draft 3 has no new stop-and-ask item.
+
+| Item | Change | Reason |
+|---|---|---|
+| 1 | The request field `Button` is not built. `v1/ManagePage` gets two optional fields: `RequestId` and `RemovedAttachmentIds`. | One submit button (DR-02): the server selects the step from the state. |
+| 1 | `RequestId` stays optional in the contract. Only a submit of a form with steps needs it. No current caller has such a form. | DR-16 |
+| 3 | `appsettings.json` gets only the six list addresses. The setting `WebBaseUrl` is not added. | The target setting `AppSettings:HostedClientURL` exists (DR-13). |
+| 4.1 | The index `IX_Inflow_WorkflowState` is not made. | DR-14 |
+
 ## 15. Target integration steps (for `INTEGRATION.md`)
 
 1. Prerequisites: the engine migrations are current and the engine scheduled job with the outbox retry runs
@@ -648,26 +826,32 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 2. Run `sql/release-p2/` 100 to 150 in number order. The AIN team gets `140`.
 3. Copy the platform folders as for P1, plus `Config/CFPINFLOW.app.json`, `CFPINFLOW.json`,
    `CFPINFLOW.Dashboard.json`.
-4. Do the target file changes of section 14, item 3.
+4. Do the target file changes of section 14, item 3, with the change of 14.2.
 5. Settings in each environment: `AppSettings:Modules:CFPINFLOW:Workflow:Lists:<Key>` for the six keys `Icg`,
-   `CsTeam`, `Imrg`, `StarFasIfiCash`, `FixedIncome`, `Equity`, and `AppSettings:Atlas:WebBaseUrl`. A missing address
-   is a start-up check error.
+   `CsTeam`, `Imrg`, `StarFasIfiCash`, `FixedIncome`, `Equity`. A missing address is a start-up check error. Make
+   sure that `AppSettings:HostedClientURL` has the address of the client, with no slash at the end.
 6. Grant the roles `Read` and `Write` with the grant template.
 7. Run `--atlas-check`. Read the Info lines: each line is an RM or RMCC name that gets no email. Correct the data in
    AIN or in `CP_Atlas_User`.
 8. Restart the app pool.
-9. Old data: the target team moves the SharePoint records with LAN IDs in the person columns, UTC dates,
-   `WorkflowState` and `Status` filled. A moved record in state `Submitted` has no engine instance; the second submit
-   of such a record needs a decision of the target team before the move (start an instance in the move script, or
-   move only closed records).
+9. Support: the log event `Atlas.WorkflowStepFailed` needs an action. For a failed notification, send the email by
+   hand. For a failed commit (10.8), correct the data by script.
+10. The platform app writes `CFP.Inflow.AccountNumber` and does not use the column `Account`.
+11. Old data: the target team moves the SharePoint records with LAN IDs in the person columns, UTC dates,
+    `WorkflowState` and `Status` filled. A moved record has no engine instance and loads with no error (10.4). A
+    moved record in state `Submitted` cannot do the second submit with no instance; this needs a decision of the
+    target team before the move (start an instance in the move script, or move only closed records).
 
 ## 16. Backward compatibility
 
 - No engine code change. No change to an existing engine key; `ClientInflow` and its keys are new.
-- TTDV2: no JSON change, no behaviour change. The new code paths run only for a form that has a `Workflow` binding,
-  a `filepicker`, a `richtext` or a `Button` in the request.
+- TTDV2: no JSON change. No change for a user who can edit. Two generic rules change what a user gets who cannot
+  change a control: the form shows the saved values, not the values of the lookup row of today (6.5), and a disabled
+  dropdown gets only the saved option (7.1). The TTDV2 tests must pass with no change to their expected results.
+- The other new code paths run only for a form that has `Steps`, a `filepicker` or a `richtext`, or for a dashboard
+  with a `currency` column.
 - TTD, CDT, SQMSO, SQMSB, AIN: no change. The platform does not write to `AIN.AccountInventory`.
-- `v1/...`: additive only (section 14, item 1).
+- `v1/...`: additive only (14.2).
 - `CFP.Inflow` and `CFP.InflowAttachment`: no column removed or renamed. `CFP.Outflow` and `CFP.OutflowAttachment`
   are not touched.
 - Rollback: set `AppSettings:Modules:CFPINFLOW:Enabled = false` and restart. The tables and the engine metadata stay.
@@ -675,5 +859,36 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 ## 17. Open points for the build (no decision necessary now)
 
 - The email text is typed from the screenshots in build step 6; the user checks the three emails in smtp4dev.
-- The CKEditor and `HtmlSanitizer` version numbers are fixed in build step 5 and written to `INTEGRATION.md`.
+- The CKEditor version numbers are fixed in build step 0, and the `HtmlSanitizer` version in build step 5. They are
+  written to `INTEGRATION.md`.
 - The way the local setup makes the engine tables is fixed in build step 0.
+- The exact JSON of the rules (5.2) and of the `Menus` (5.3) is fixed against the tests in build steps 1 and 3.
+
+## 18. Changes from draft 2
+
+Each row is one finding of the review (module 26) with its answer.
+
+| Finding | Answer | Change in this document |
+|---|---|---|
+| DR-01 | Accepted, A | New rule 6.5: an effect sets values only when the user can change the source control. 2.1, 7.3, 10.6. |
+| DR-02 | Accepted with a change | One submit button, steps by state: 2.1, 5.2 (buttons), 6.4, 10.2, 10.3. `SubmitPart1`, `SubmitPart2`, the request field `Button` and `Permissions.Execute` are gone. |
+| DR-03 | Accepted | 5.2 and 10.2: `Workflow` in the `Section`, `"Roles": []`, `Visible` and `Disabled` on each button. |
+| DR-04 | Accepted | 5.3: `Menus` on each tab. |
+| DR-05 | Accepted | 8.2, 8.3: download with `HttpClient` as a blob; the load response has no URL. |
+| DR-06 | Accepted | 8.2: `varbinary` in the type map; the list query has no `FileContent`. |
+| DR-07 | Accepted | 4.1, 5.2: the control `AccountNumber` writes the column `AccountNumber`; the column `Account` is not used. |
+| DR-08 | Accepted, A | 6.4: `Set` accepts a column name. 12: one status line in History; no line for `CashSubmittedDate` and `RMCC`. |
+| DR-09 | Accepted | 12: generic `currency` formatter. |
+| DR-10 | Accepted | 10.7: empty template value is a page error before the first write. |
+| DR-11 | Accepted | 9.1, 13: the CKEditor test is in build step 0. |
+| DR-12 | Accepted | 10.8: two failure cases with the support action. |
+| DR-13 | Accepted | 10.7, 14.2, 15: `AppSettings:HostedClientURL`; no new setting. |
+| DR-14 | Accepted | 4.1: no index on `WorkflowState`. |
+| DR-15 | Accepted | 10.2: `Steps` replaces `InitialAction` and the button `Execute` key. 8.2: event names of module 9. 10.6: one new method on `IAtlasUserDirectory`. |
+| DR-16 | Accepted | 10.3: a submit needs a `RequestId`; message "This request was already processed." |
+| DR-17 | Accepted | 9.2: `class` rule, `rel`, stable versions. 8.2: content type from the extension. |
+| DR-18 | Accepted, A (in P2) | 2.1, 7.1: a disabled dropdown gets only the saved option. |
+| DR-19 | Accepted | 10.3: state compare after a later action; who acts on `Atlas.WorkflowStepFailed`. |
+| DR-20 | Accepted | 8.2, 8.3: stand-in file picker from the target source; the control check for a `filepicker`. |
+| DR-21 | Accepted | 10.4: each record with no engine instance is not checked. |
+| User note | 2026-11-20 | 2.1, 5.3: no "Add New" button for a read-only user (in the code today; stated and tested). |
