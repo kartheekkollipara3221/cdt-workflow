@@ -63,13 +63,18 @@ The dated history entries below are unchanged, newest first: platform and target
   050 writes ReferenceID/ReferenceType='TTD'; --atlas-check errors on an audit table without them. Stable names kept:
   CPAuditLog.RefID, GetAuditLog refID, CPAtlasPage.RefID, AuditRefTypes. Local DB: 045 run. TARGET ACTION: stop app
   pool, run 045, copy the files of the B85 row, start, --atlas-check 0 errors.
-3 P2 app name and the filled-in template.
+3 P2 requirements DONE 2026-11-19 (first pass): app ClientInflows, code CFPINFLOW (CFPOUTFLOW = later app), menu
+  "Client Flows Portal - Inflow", table CFP.Inflow (+ CFP.InflowAttachment, target-made, we may change them). Answers
+  D1-D30 in docs/ClientInflows/ONBOARDING_ANSWERS.md (template v2 sections; screenshots in the same folder). Still
+  open there: owner/contact/user count/dev date, Comment pictures (assumed none), DL addresses, AIN RM LAN ID + RMCC
+  (target team). New reusable requirement: AIN account lookup that fills fields (4+ apps). Requirements only, no design.
 4 PENDING_DECISIONS.html: Q01 bug list, Q07/Q08 before 050/090 run anywhere, the rest as before (Q02-Q51).
 
 ### Next
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
-2. When the P2 template arrives: gap report, then code module 8 then module 10 (stop-and-ask) for section forms, plus
+2. P2 requirements recorded (pending 3): next the gap report (metadata / generic platform code / engine-adapter) from
+   ONBOARDING_ANSWERS.md, then design, then the CFP.Inflow script; then code module 8 then module 10 (stop-and-ask) for section forms, plus
    the `richtext` control. Platform gates, package rebuild, INTEGRATION.md rows for the target changes.
 3. After P2: the architecture review page.
 
