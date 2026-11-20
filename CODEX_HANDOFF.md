@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-2 done, next step 3)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-2 done, next step 3; full hand-off in section A, Next 0)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -8,7 +8,7 @@ The dated history entries below are unchanged, newest first: platform and target
 
 ## A. Atlas platform (atlas-platform/) - ACTIVE
 
-### State (2026-11-19)
+### State (2026-11-19; P2 build state is in Next item 0, 2026-11-20)
 - PUSHED 2026-11-19 (origin/console-code-first-0518 = a3d0b70, includes a6ed759..a3d0b70). Last target package: built
   from 8aa11e3 (B85, audit ReferenceID/ReferenceType + 045), commit c79593d, 93 files; previous 93446aa (B84). Local
   app runs with `npm run start:target-look` + API StandIn; user tested B85 locally on 2026-11-19: "code is working as
@@ -127,32 +127,110 @@ The dated history entries below are unchanged, newest first: platform and target
    NO CODE AND NO SQL SCRIPT EXISTS FOR P2. The user has not yet said "start the build".
 
 ### Next
-0. P2 BUILD (user said "start the build" 2026-11-20, model Opus 5.5). STEP 0 DONE: module 25 section 19.1.
-   (a) engine test tests/WorkflowEngine.Tests/WorkflowStateKeepingActionTests.cs passes, no engine change; NOTE for
-   step 6: Execute renders templates from envelope.Workflow.NotificationContext, so the adapter copies TemplateData
-   there (as SqmsWorkflowService). (b) ckeditor5 49.1.0 + @ckeditor/ckeditor5-angular 12.0.0 (exact) in the
-   stand-in package.json; import plugins from @ckeditor/ckeditor5-<plugin> (the ckeditor5 root import gives 2
-   CommonJS warnings); lazy chunk 823 kB; global @use 'ckeditor5/ckeditor5.css' in atlas-platform.scss is added in
-   step 5 (+289 kB styles, target budget 2 MB); Vitest needs a ResizeObserver stub. (c) local engine tables via
-   dotnet ef migrations script --idempotent in setup-local-db.ps1 (step 1). SQL tests need
-   WORKFLOW_ENGINE_TEST_CONNECTION_STRING="Server=DOLLY;Integrated Security=true;TrustServerCertificate=True;Encrypt=False".
-   STEP 1 DONE (module 25 section 19.2): sql/release-p2 100-140 + README, local 020 + 900 seed + setup
-   (engine tables via dotnet ef database update; the idempotent engine script fails on an empty DB, engine
-   migration 20260807032848, reported, not fixed), Config/CFPINFLOW.*.json (keys of today only; account control is
-   the TEMPORARY Account/PBAccounts control until step 2), stand-in registration, dashboard Menus + currency
-   formatter, tests Data/ReleaseP2ScriptTests.cs and Sections/CfpInflowAppTests.cs.
-   STEP 2 DONE (module 25 section 19.3): AtlasTableOptionProvider + manifest LookupTables + IAtlasOptionProvider.Check
-   (default), data-only SetFromOption target (RMCC), effects rule server+client (CanChange / canChange incl. canSave),
-   saved-option rule on load (KeepOnlySavedOptions), Info severity + AtlasNameReport (--atlas-check only),
-   IAtlasUserDirectory.EmailOfDisplayName (default impl). Form uses AccountNumber + AIN list now.
-   NEXT: step 3 when the user says "continue". Then steps 4-7 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
-   then steps 1-7 of module 25 section 13, platform gates and one commit for each step. Do not push.
+0. P2 BUILD (ClientInflows, CFPINFLOW) - IN PROGRESS. Steps 0, 1, 2 DONE; NEXT = STEP 3. Full hand-off below.
+
+   0.1 Where things are
+   - Build specification: docs/atlas-platform/25-client-inflows-p2-design.md (draft 3, approved). Build order = section 13;
+     build record of each step = section 19 (19.1 step 0, 19.2 step 1, 19.3 step 2). Read 19 before you code.
+   - Review answers: docs/atlas-platform/26-p2-design-review.md section 8. Requirements: docs/ClientInflows/
+     ONBOARDING_ANSWERS.md (D1-D34), GAP_REPORT.md (Q1-Q9). Platform rules: AGENTS.md "Atlas platform" (one submit
+     button rule added 2026-11-20).
+   - Branch console-code-first-0518, 37 commits ahead of origin, NOTHING PUSHED (push only when the user asks).
+     Commits: ca194af step 0, 38ad2df step 1, 0455460 step 2. Package NOT rebuilt (step 7 does it).
+   - Working style for the build: the user says "continue" for each step. After each step: all platform gates, one
+     commit, completion summary in the AGENTS.md format (+ "Package rebuilt:"), update this section, then wait.
+
+   0.2 Steps and status (module 25 section 13)
+   - Step 0 DONE (ca194af): engine test of the state-keeping action
+     (tests/WorkflowEngine.Tests/WorkflowStateKeepingActionTests.cs); CKEditor probe (removed); ckeditor5 49.1.0 and
+     @ckeditor/ckeditor5-angular 12.0.0 (exact) in atlas-platform/WebUi/package.json.
+   - Step 1 DONE (38ad2df): sql/release-p2 100-140 + README; local/sql/020-local-cfp-ain-tables.sql, 900 seed,
+     setup-local-db.ps1; Config/CFPINFLOW.app.json, CFPINFLOW.json, CFPINFLOW.Dashboard.json; stand-in registration
+     line (StandIn/StandInHost.cs); dashboard Menus + currency formatter (atlas-dashboard-columns.ts formatCurrency).
+   - Step 2 DONE (0455460): AtlasTableOptionProvider (Service/Platform/Options) + manifest LookupTables;
+     IAtlasOptionProvider.Check (default none); data-only SetFromOption target (RMCC); effects rule (server
+     AtlasServerEffects.CanChange, client applyEffects setsValues + form canChange); saved-option rule
+     (ConfigSectionService.KeepOnlySavedOptions); Info severity + App/Platform/AtlasNameReport.cs (--atlas-check only);
+     IAtlasUserDirectory.EmailOfDisplayName (default implementation). Form account control = AccountNumber + AIN list.
+   - Step 3 NEXT: state in the rules, MustBeTrue, ONE submit button, Steps by state with Set and Label (no engine call).
+   - Step 4 open: attachments (varbinary in AtlasSqlTypes, service, save, removal on save, limits, audit events
+     AttachmentAdd/AttachmentRemove, controller GET v1/Attachment/{appCode}/{id}, stand-in file picker from the target
+     source, filepicker renderer, HttpClient blob download, list query without FileContent; manifest AttachmentTable
+     CFP.InflowAttachment + AttachmentColumns {RecordId: InflowId, ControlName: Type}).
+   - Step 5 open: richtext (renderer with dynamic import, plugin imports from @ckeditor/ckeditor5-<plugin>, ResizeObserver
+     stub in specs, @use 'ckeditor5/ckeditor5.css' in atlas-platform.scss, HtmlSanitizer NuGet stable + AngleSharp
+     stable, allowed tags of 9.2, plain text in History; Description and Comment become richtext).
+   - Step 6 open: engine adapter (script 150, Workflow binding, EngineActions, recipients incl. EmailOfDisplayName,
+     template data + empty value check, AppSettings:HostedClientURL link, state check on load, RequestId required,
+     status line in History, log events 41025-41029).
+   - Step 7 open: INTEGRATION.md, CODE_TRACE.md, Config/README.md, target package rebuild, onboarding template update.
+     The COPY list of atlas-platform/local/make-target-package.py has only the TTDV2 files and sql/release-p1/: add
+     Config/CFPINFLOW.app.json, CFPINFLOW.json, CFPINFLOW.Dashboard.json and sql/release-p2/ (local/ is never packaged).
+
+   0.3 What step 3 must do (design sections 6.1-6.4, 10.2, 13 row 3, 13.1)
+   - 6.1 RuleContext: today ConfigSectionService.RuleContext passes [] as the states. Read the value of
+     Workflow.StateField of the stored record; a new record has Workflow.InitialState ("Draft"). Never read a state from
+     the client. A form with no Workflow binding keeps [] (TTDV2 unchanged).
+   - The Workflow object is form.Section.Workflow (target class CPWorkflow with required Key, Roles, Actions, in
+     src/BBH.CP.Atlas.Data/StandIn/DTO/CPAtlasApplicationConfig.cs). New optional properties go in a PARTIAL class in
+     src/BBH.CP.Atlas.Data/Platform/Dto/CPPlatformDto.cs (pattern of the other partials): StateField, StatusField,
+     InitialState, StatusLabels, Steps ({state: {Set, Label, EngineActions[]}}); step 6 adds BusinessObjectPrefix,
+     ActorRoles, Recipients, TemplateData, EngineActions use. AtlasConfigLint warns on unknown JSON keys, so add a
+     property before the JSON uses it.
+   - 6.2 The validator and allow list already use the effective form (rules + effects). Test: part 2 fields do not
+     stop the first submit; part 1 fields cannot change at the second submit.
+   - 6.3 MustBeTrue: new optional CPValidator key; server AtlasFieldValidator; client atlas-validators.ts; shared cases
+     (atlas-validator-cases.ts + ValidatorParityTests). Message "Select <label> before you submit."
+   - 6.4 One submit button: a form with Steps has exactly one button with Action.Type "Save" (start-up error for 0 or
+     2 or more). Each save of such a form reads the state from the DB and takes Steps[state]. No entry: refuse (code
+     NotAllowed), and on load hide the submit button. Label of the step = button text. Set of the step = server-set
+     values (a control name OR a column name; tokens {User.LanID} and {Now} via TimeProvider/AtlasDefaultTokens; a
+     client value for a Set field is not accepted). RequestId becomes required in step 6, not step 3. The request field
+     Button and Permissions.Execute are NOT built (CPButtonAction.Set and the Execute type stay reserved).
+   - CFPINFLOW.json then gets: the Workflow block in Section (Key ClientInflow, Roles [], Actions {}, StateField
+     WorkflowState, StatusField Status, InitialState Draft, StatusLabels, Steps: Draft {} and Submitted {Set:
+     CashSubmittedBy {User.LanID}, CashSubmittedDate {Now}}); the state rules of 5.2 (part 2 hidden in Draft; part 1
+     read-only after Draft; part 2 Write-enabled only in Submitted; Submit hidden in FundsReceived); MustBeTrue on
+     FlowConfirm, FundsReceived, CashConfirm. WorkflowState and Status are written in step 6 (engine); the step 3 tests
+     set WorkflowState by SQL to test each state.
+   - Proof (13 row 3): part 2 hidden in Draft; a save in a state with no step is refused; refusals tested; ALL TTDV2
+     tests pass with no change to their expected results. Angular specs: state rules hide part 2, MustBeTrue cases.
+
+   0.4 How to run things (learned in steps 0-2)
+   - Platform gates: AGENTS.md list. Stop the local API first. --atlas-check must print "0 error(s), 0 warning(s)"
+     (Info lines are allowed; today 3 Info lines for the AIN sample names). Last run: 347 .NET tests, 107 Angular specs.
+   - Engine tests need WORKFLOW_ENGINE_TEST_CONNECTION_STRING="Server=DOLLY;Integrated Security=true;TrustServerCertificate=True;Encrypt=False".
+     Last full run (step 0): 567 passed, 5 SMTP skipped. Platform SQL tests use localhost (ATLAS_TEST_SQLSERVER).
+   - Local DB CPAtlasPlatformDev: powershell -ExecutionPolicy Bypass -File atlas-platform/local/setup-local-db.ps1
+     (safe to run again; -SkipEngine leaves out the engine tables; -Recreate drops the DB first).
+   - The test fixture SqlServerDatabaseFixture also runs local 020 + P2 scripts 100-140 (property ReleaseP2, default
+     true). Sections/CfpInflowAppTests.cs = the CFPINFLOW tests (own DB); SectionHarness.ServiceFor(appCode, ...).
+   - Tool notes: long bash heredocs with quotes failed two times; write files with the Write tool or a small python
+     script file in the scratchpad. Keep the line ends of each file (many are LF in the working copy).
+   - HTML of a module: from docs/atlas-platform run
+     python -I ../../atlas-platform/local/md2html.py 25-client-inflows-p2-design.md 10-engine-adapter.html
+     25-client-inflows-p2-design.html "ClientInflows (P2): implementation design"  (module 26: add the eyebrow
+     "CP Atlas platform · module 26"). Make the .html again after each change of the .md.
+
+   0.5 Behaviour that changed for all apps (in step 2)
+   - Effects set values only from a control the user can change. A field with an OptionsSource that the user cannot
+     change gets only its saved option, with no Data. All TTDV2 tests pass unchanged.
+   - A client output for a name that is not a field (for example RMCC) refuses the save (existing behaviour).
+
+   0.6 Open issues and risks
+   - ENGINE: dotnet ef migrations script --idempotent fails on an EMPTY database (migration
+     20260807032848_AddApplicationAnchoredRecurringSla adds SlaPolicy.CalculationMode and updates it in one batch).
+     Not fixed (engine change). The P1 README step 010 uses that script; at the target it works only when the DB has
+     that migration. The local setup uses dotnet ef database update. Asked the user whether to record it for the engine
+     work; NO ANSWER YET.
+   - CKEditor at the target: the six 41.4.2 packages and ckeditor5-angular 7.0.1 must be removed when the new packages
+     come; the global styles grow by 289 kB, the target warns at 2 MB for the first bundle (target team checks).
+   - Step 6: Execute renders the templates from envelope.Workflow.NotificationContext; copy TemplateData there.
+
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
-2. P2 requirements recorded (pending 3). Gap report + design go to another model: start from
-   docs/ClientInflows/HANDOFF_GAP_REPORT_AND_DESIGN.md (prompt in its section 6). Next the gap report (metadata / generic platform code / engine-adapter) from
-   ONBOARDING_ANSWERS.md, then design, then the CFP.Inflow script; then code module 8 then module 10 (stop-and-ask) for section forms, plus
-   the `richtext` control. Platform gates, package rebuild, INTEGRATION.md rows for the target changes.
+2. DONE: P2 requirements, gap report, design (draft 3) and design review (Pending 3, 5-8). The rest of P2 is the
+   build in item 0 (module 8 = step 4, richtext = step 5, module 10 = step 6, package + INTEGRATION.md = step 7).
 3. After P2: the architecture review page.
 
 ## B. Workflow engine (src/, workflow-api/) - PAUSED until the platform work is stable
@@ -248,10 +326,12 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 - Commit/push only when asked. Commit trailer: Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> (or the trailer the session reminder gives).
 
 ## Next-session prompt
-"Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
-section A Pending 5 and Next 0, one question at a time (P2 design draft 3 is done; next: the user reads it and says "start the build", then step 0 of module 25 section 13). Keep the broad
-goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
-nothing breaks the existing system."
+"Resume the P2 build (ClientInflows, CFPINFLOW). Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
+(the full build hand-off), then docs/atlas-platform/25-client-inflows-p2-design.md sections 2.1, 6, 10.2, 13 and 19.
+Steps 0-2 are done; do build STEP 3 (hand-off 0.3). After the step: all platform gates, one commit, the AGENTS.md
+completion summary, update CODEX_HANDOFF.md section A, then wait for my 'continue'. Do not push. Stop and ask on each
+AGENTS.md stop-and-ask item that the design does not already cover. Keep the platform generic (no CFPINFLOW, CFP,
+AIN or Inflow names in C# or TypeScript). Talk in short ASD-STE100 sentences, one question at a time."
 
 ---
 
