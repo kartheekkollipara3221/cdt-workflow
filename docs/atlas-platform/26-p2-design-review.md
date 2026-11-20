@@ -200,4 +200,4 @@ The user and the reviewer go through the findings one at a time. This table reco
 
 | # | Answer | Date | Result for draft 3 |
 |---|---|---|---|
-| DR-01 | Rejected | 2026-11-20 | No change to the effects. The server and the client run the effects as today. The account fields and `RMCC` follow the AIN row at each save. Section 10.6 of module 25 must say this: E3 goes to the RM and RMCC that AIN has at the second submit. This replaces the wording of answer Q8 ("of the first submit"). |
+| DR-01 | Accepted, correction A (first answer "rejected" was changed after discussion) | 2026-11-20 | Generic rule, the same on the server and the client: an effect sets values only when the user can change its source control. AIN is read only at the submit of section 1. After that, the saved values stay. Answer Q8 stays: E3 uses the RM and RMCC of the first submit. The TTDV2 tests must prove no change for a user who can edit. |
