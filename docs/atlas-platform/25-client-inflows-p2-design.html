@@ -487,6 +487,26 @@ account list   &lt;--------------- Table option provider  &lt;------------------
 <tr><td>User note</td><td>2026-11-20</td><td>2.1, 5.3: no "Add New" button for a read-only user (in the code today; stated and tested).</td></tr>
 </tbody></table></div>
 </section>
+<section>
+<h2>19. Build record</h2>
+<h3>19.1 Step 0 (2026-11-20)</h3>
+<p>(a) Engine test, <code>tests/WorkflowEngine.Tests/WorkflowStateKeepingActionTests.cs</code>. No engine code change.</p>
+<ul><li>An action whose transition keeps the state runs. The state stays, the instance version goes up by one, and the action queues its outbox row with the request-input recipients and the rendered template.</li><li>The same request again is a replay: no second outbox row, no version change.</li><li>After the state-keeping action, the next action changes the state and completes the instance.</li><li>Result: answer Q2 (option A) works as designed. All engine tests pass (567 passed, 5 SMTP tests skipped with no smtp4dev).</li><li>Note for build step 6: for an <code>Execute</code> call, the engine renders the templates from <code>envelope.Workflow.NotificationContext</code>. <code>NotificationInput.TemplateData</code> is used only by <code>Start</code> and the request hash. The adapter copies the template data into <code>NotificationContext</code> for each <code>Execute</code>, as the SQMS service does.</li></ul>
+<p>(b) CKEditor 5 with Angular 21, in the stand-in (a probe page, removed after the test).</p>
+<div class="table-wrap"><table><thead><tr><th>Item</th><th>Result</th></tr></thead><tbody>
+<tr><td>Versions</td><td><code>ckeditor5</code> 49.1.0 and <code>@ckeditor/ckeditor5-angular</code> 12.0.0, fixed versions. Wrapper 13.0.0 needs Angular 21.2.25 or later; the target <code>package.json</code> allows 21.1.1, so 12.0.0 (Angular 20.3.25 or later) is the safe choice.</td></tr>
+<tr><td>Other packages</td><td>The install adds only CKEditor and its own dependencies. No version of an existing package changed.</td></tr>
+<tr><td>Imports</td><td>The renderer imports the plugins from their own packages (<code>@ckeditor/ckeditor5-basic-styles</code>, ...), not from <code>ckeditor5</code>. An import from <code>ckeditor5</code> gives two CommonJS warnings (emoji and Markdown dependencies), and only an <code>angular.json</code> change can stop them. The plugin packages come with <code>ckeditor5</code>, at the same version; <code>package.json</code> gets no other package.</td></tr>
+<tr><td>Lazy chunk</td><td>823 kB (181 kB transfer), loaded only for a form with a <code>richtext</code> control. The first bundle does not change.</td></tr>
+<tr><td>Style sheet</td><td><code>@use &#x27;ckeditor5/ckeditor5.css&#x27;</code> in <code>atlas-platform.scss</code>, which the target already lists in <code>angular.json</code>. No <code>angular.json</code> change. It adds 289 kB (34 kB transfer) to the global styles. The import is added in build step 5 with the renderer.</td></tr>
+<tr><td><code>ng build</code></td><td>0 warnings with the plugin imports.</td></tr>
+<tr><td><code>ng test</code></td><td>The editor runs in Vitest (jsdom) with a <code>ResizeObserver</code> stub in the spec. It removes a <code>&lt;script&gt;</code> tag.</td></tr>
+</tbody></table></div>
+<p>Conditions for the target (for <code>INTEGRATION.md</code>, build step 7):</p>
+<ul><li>The six 41.4.2 packages and <code>@ckeditor/ckeditor5-angular</code> 7.0.1 must go when the two new packages come (approval 3). If an old <code>@ckeditor/ckeditor5-*</code> package stays, the plugin imports find the wrong version.</li><li>The target build budget warns at 2 MB for the first bundle (the stand-in at 4 MB). The style sheet adds 289 kB. The target team checks its first bundle size at integration.</li></ul>
+<p>(c) Engine tables in the local database.</p>
+<ul><li><code>setup-local-db.ps1</code> (build step 1) makes the engine tables with the engine tooling of today: <code>dotnet ef migrations script --idempotent</code> (project <code>WorkflowEngine.Infrastructure</code>, start-up project <code>WorkflowEngine.Console</code>), then runs the script with <code>sqlcmd</code>. The script is made at each setup, so it always follows the engine migrations. Checked: the script has the 21 engine tables and no sample data.</li><li>Not used: the console command <code>init-db</code>. It also loads the Portfolio Trade sample workflow.</li></ul>
+</section>
 </main>
 </body>
 </html>

@@ -892,3 +892,46 @@ Each row is one finding of the review (module 26) with its answer.
 | DR-20 | Accepted | 8.2, 8.3: stand-in file picker from the target source; the control check for a `filepicker`. |
 | DR-21 | Accepted | 10.4: each record with no engine instance is not checked. |
 | User note | 2026-11-20 | 2.1, 5.3: no "Add New" button for a read-only user (in the code today; stated and tested). |
+
+## 19. Build record
+
+### 19.1 Step 0 (2026-11-20)
+
+(a) Engine test, `tests/WorkflowEngine.Tests/WorkflowStateKeepingActionTests.cs`. No engine code change.
+
+- An action whose transition keeps the state runs. The state stays, the instance version goes up by one, and the
+  action queues its outbox row with the request-input recipients and the rendered template.
+- The same request again is a replay: no second outbox row, no version change.
+- After the state-keeping action, the next action changes the state and completes the instance.
+- Result: answer Q2 (option A) works as designed. All engine tests pass (567 passed, 5 SMTP tests skipped with no
+  smtp4dev).
+- Note for build step 6: for an `Execute` call, the engine renders the templates from
+  `envelope.Workflow.NotificationContext`. `NotificationInput.TemplateData` is used only by `Start` and the request
+  hash. The adapter copies the template data into `NotificationContext` for each `Execute`, as the SQMS service does.
+
+(b) CKEditor 5 with Angular 21, in the stand-in (a probe page, removed after the test).
+
+| Item | Result |
+|---|---|
+| Versions | `ckeditor5` 49.1.0 and `@ckeditor/ckeditor5-angular` 12.0.0, fixed versions. Wrapper 13.0.0 needs Angular 21.2.25 or later; the target `package.json` allows 21.1.1, so 12.0.0 (Angular 20.3.25 or later) is the safe choice. |
+| Other packages | The install adds only CKEditor and its own dependencies. No version of an existing package changed. |
+| Imports | The renderer imports the plugins from their own packages (`@ckeditor/ckeditor5-basic-styles`, ...), not from `ckeditor5`. An import from `ckeditor5` gives two CommonJS warnings (emoji and Markdown dependencies), and only an `angular.json` change can stop them. The plugin packages come with `ckeditor5`, at the same version; `package.json` gets no other package. |
+| Lazy chunk | 823 kB (181 kB transfer), loaded only for a form with a `richtext` control. The first bundle does not change. |
+| Style sheet | `@use 'ckeditor5/ckeditor5.css'` in `atlas-platform.scss`, which the target already lists in `angular.json`. No `angular.json` change. It adds 289 kB (34 kB transfer) to the global styles. The import is added in build step 5 with the renderer. |
+| `ng build` | 0 warnings with the plugin imports. |
+| `ng test` | The editor runs in Vitest (jsdom) with a `ResizeObserver` stub in the spec. It removes a `<script>` tag. |
+
+Conditions for the target (for `INTEGRATION.md`, build step 7):
+
+- The six 41.4.2 packages and `@ckeditor/ckeditor5-angular` 7.0.1 must go when the two new packages come (approval
+  3). If an old `@ckeditor/ckeditor5-*` package stays, the plugin imports find the wrong version.
+- The target build budget warns at 2 MB for the first bundle (the stand-in at 4 MB). The style sheet adds 289 kB.
+  The target team checks its first bundle size at integration.
+
+(c) Engine tables in the local database.
+
+- `setup-local-db.ps1` (build step 1) makes the engine tables with the engine tooling of today:
+  `dotnet ef migrations script --idempotent` (project `WorkflowEngine.Infrastructure`, start-up project
+  `WorkflowEngine.Console`), then runs the script with `sqlcmd`. The script is made at each setup, so it always
+  follows the engine migrations. Checked: the script has the 21 engine tables and no sample data.
+- Not used: the console command `init-db`. It also loads the Portfolio Trade sample workflow.

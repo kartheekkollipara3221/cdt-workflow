@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 design draft 3 done: all 21 review findings answered; waits for "start the build")
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD STARTED: step 0 done, next step 1)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -127,7 +127,16 @@ The dated history entries below are unchanged, newest first: platform and target
    NO CODE AND NO SQL SCRIPT EXISTS FOR P2. The user has not yet said "start the build".
 
 ### Next
-0. P2: wait for the user to say "start the build" (the user can first read draft 3 of module 25). Then step 0 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
+0. P2 BUILD (user said "start the build" 2026-11-20, model Opus 5.5). STEP 0 DONE: module 25 section 19.1.
+   (a) engine test tests/WorkflowEngine.Tests/WorkflowStateKeepingActionTests.cs passes, no engine change; NOTE for
+   step 6: Execute renders templates from envelope.Workflow.NotificationContext, so the adapter copies TemplateData
+   there (as SqmsWorkflowService). (b) ckeditor5 49.1.0 + @ckeditor/ckeditor5-angular 12.0.0 (exact) in the
+   stand-in package.json; import plugins from @ckeditor/ckeditor5-<plugin> (the ckeditor5 root import gives 2
+   CommonJS warnings); lazy chunk 823 kB; global @use 'ckeditor5/ckeditor5.css' in atlas-platform.scss is added in
+   step 5 (+289 kB styles, target budget 2 MB); Vitest needs a ResizeObserver stub. (c) local engine tables via
+   dotnet ef migrations script --idempotent in setup-local-db.ps1 (step 1). SQL tests need
+   WORKFLOW_ENGINE_TEST_CONNECTION_STRING="Server=DOLLY;Integrated Security=true;TrustServerCertificate=True;Encrypt=False".
+   NEXT: step 1 when the user says "continue". Then steps 2-7 (engine test for the state-keeping action + the CKEditor/Angular 21 test of DR-11),
    then steps 1-7 of module 25 section 13, platform gates and one commit for each step. Do not push.
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
