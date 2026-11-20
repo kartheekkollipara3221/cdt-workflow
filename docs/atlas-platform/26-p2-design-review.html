@@ -144,6 +144,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <p>The user and the reviewer go through the findings one at a time. This table records each answer.</p>
 <div class="table-wrap"><table><thead><tr><th>#</th><th>Answer</th><th>Date</th><th>Result for draft 3</th></tr></thead><tbody>
 <tr><td>DR-01</td><td>Accepted, correction A (first answer "rejected" was changed after discussion)</td><td>2026-11-20</td><td>Generic rule, the same on the server and the client: an effect sets values only when the user can change its source control. AIN is read only at the submit of section 1. After that, the saved values stay. Answer Q8 stays: E3 uses the RM and RMCC of the first submit. The TTDV2 tests must prove no change for a user who can edit.</td></tr>
+<tr><td>DR-02</td><td>Accepted with a change</td><td>2026-11-20</td><td>Platform rule (also in <code>AGENTS.md</code>): a section form with a workflow has one submit button. The server selects the workflow step from the state of the record; the form metadata lists the steps by state. Each save of such a form runs the step for the current state, with or without a button name, so no save goes past the workflow. ClientInflows: buttons <code>Submit</code> and <code>Close</code>; <code>SubmitPart1</code> and <code>SubmitPart2</code> go away. New record: section 1, E1 and E2. State <code>Submitted</code>: section 2, E3. State <code>FundsReceived</code>: no submit button. TTDV2 has no workflow and does not change.</td></tr>
 </tbody></table></div>
 </section>
 </main>
