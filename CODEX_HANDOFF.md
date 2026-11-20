@@ -9,8 +9,10 @@ The dated history entries below are unchanged, newest first: platform and target
 ## A. Atlas platform (atlas-platform/) - ACTIVE
 
 ### State (2026-11-19)
-- HEAD c79593d, NOT PUSHED (origin = c362aa7; 7 local commits 93446aa..c79593d). Last target package: built from
-  8aa11e3 (B85, audit ReferenceID/ReferenceType + 045); previous 93446aa (B84). Local app runs with `npm run start:target-look` + API StandIn; user tested it on 2026-11-18: "working fine".
+- PUSHED 2026-11-19 (origin/console-code-first-0518 = a3d0b70, includes a6ed759..a3d0b70). Last target package: built
+  from 8aa11e3 (B85, audit ReferenceID/ReferenceType + 045), commit c79593d, 93 files; previous 93446aa (B84). Local
+  app runs with `npm run start:target-look` + API StandIn; user tested B85 locally on 2026-11-19: "code is working as
+  expected". Servers stopped (a node process can keep port 4200: stop it by PID).
 - Target dev integration of TTDV2 (package bcb4b2b, steps 0-6) DONE. Target dev test bugs fixed 2026-11-12 to 11-18,
   each row in atlas-platform/INTEGRATION.md: B78 UseIdentityColumn (Oracle provider ambiguity), B79 grid Tab order /
   sticky viewport / clear minutes on new week (effect "On": "Change"), B80 live Weekly Total, cell redraw,
@@ -65,7 +67,8 @@ The dated history entries below are unchanged, newest first: platform and target
 4 PENDING_DECISIONS.html: Q01 bug list, Q07/Q08 before 050/090 run anywhere, the rest as before (Q02-Q51).
 
 ### Next
-1. User: copy the package (B85 row order) to the target dev region; push when asked.
+1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
+   6 files, start, --atlas-check 0 errors).
 2. When the P2 template arrives: gap report, then code module 8 then module 10 (stop-and-ask) for section forms, plus
    the `richtext` control. Platform gates, package rebuild, INTEGRATION.md rows for the target changes.
 3. After P2: the architecture review page.
@@ -177,6 +180,16 @@ nothing breaks the existing system."
 # DONE - 2026-11-19. B85 audit columns ReferenceID/ReferenceType (8aa11e3, package c79593d).
 - Gates: build 0 warnings; 321 .NET tests; --atlas-check 0/0 (after 045 on the local DB); ng build clean; 104 specs;
   target-flags clean. New tests: AuditReferenceColumnsScriptTests (4), An_AuditTable_with_the_old_RefID_and_RefType_names_is_an_error.
+- Owner decision: follow the target design; TTDV2 has dev test data only, so the TTDV2.AuditLog rename is approved.
+- Code: AtlasAuditWriter (constants ReferenceIdColumn/ReferenceTypeColumn, write + History read), AtlasStartupCheck
+  (new CheckAuditColumns: error when the AuditTable has no ReferenceID/ReferenceType, names 045 for old names),
+  AtlasAppManifest (comments only). SQL: 040 + docs 05-new-app-template make the new names and IX_AuditLog_ReferenceID;
+  NEW 045 renames an older TTDV2.AuditLog (sp_rename, idempotent, 55021 if both names, ScriptLog row); 050 writes
+  ReferenceID/ReferenceType='TTD'. Local: setup-local-db.ps1 runs 045, 900 seed new names, 045 run on the local DB.
+  Docs: INTEGRATION.md B85, 05-data-mapping.md/.html decision, release README row 045, CODE_TRACE.md.
+- Stable names kept: CPAuditLog.RefID, GetAuditLog refID, CPAtlasPage.RefID, manifest key AuditRefTypes.
+- Not done: no script to undo the rename (dev data; rollback = old files + sp_rename back, in the B85 row).
+- Local test by the user: History works ("code is working as expected"). All 8 commits pushed (a6ed759..a3d0b70).
 
 ---
 
