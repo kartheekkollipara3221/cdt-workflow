@@ -171,6 +171,15 @@ describe('AtlasFormComponent (review NG-09)', () => {
     expect(element(fixture, '.atlas-unsupported') === null).toBe(true);
   });
 
+  it('sends a new RequestId with each save', () => {
+    const { fixture, http } = setup(section([text('Name')]));
+
+    click(fixture, '#btn_Submit');
+
+    const body = http.expectOne((r) => r.url === 'ManagePage').request.body as FormData;
+    expect(String(JSON.parse(String(body.get('input'))).RequestId)).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
   it('saves when a required field is hidden, and does not send the hidden field', () => {
     const { fixture, http, navigated } = setup(section([text('Name'), text('Secret', { Visible: false, Validator: { Required: true } })]));
 

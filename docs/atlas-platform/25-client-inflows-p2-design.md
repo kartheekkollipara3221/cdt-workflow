@@ -1128,3 +1128,92 @@ Notes for later steps:
   clean HTML and the History gets plain text; an empty value is NULL; a very long value is refused; the dashboard
   plain text. Angular (126 specs): the editor loads the stored HTML and the save sends the HTML; a disabled control is
   read-only with no toolbar. .NET 423 tests.
+
+### 19.7 Step 6 (2026-11-20)
+
+Two decisions of the owner (2026-11-20):
+
+1. Email send: the platform calls `IWorkflowActionNotificationDispatcher` with the target namespace
+   `WorkflowEngine.Application.WorkflowNotification`. The stand-in has a copy of the interface and of its
+   implementation (from `workflow-api`, with the namespaces of the target engine copy) in `Service/StandIn/Engine/`.
+   These two files are never copied to the target; the target registers its own implementation. Build step 7 asks for
+   the live target file of this interface, to make sure that the signature is the same.
+2. A later engine action that fails (E2) is log only: the error log `Atlas.WorkflowStepFailed` (41026). The record
+   stays saved. No new response field and no text "One notification was not sent." (this replaces the response text
+   of 10.3).
+
+What step 6 adds:
+
+- Project: `BBH.CP.Atlas.Service.csproj` references the engine projects `WorkflowEngine.Application`, `.Domain` and
+  `.Infrastructure`. The target Service project has these references already. The engine code does not change.
+- DTO (partial classes): on `CPWorkflow` the optional `BusinessObjectPrefix`, `ActorRoles`, `Recipients` and
+  `TemplateData`; on `CPWorkflowStep` the list `EngineActions`; the new classes `CPWorkflowEngineAction`,
+  `CPWorkflowRecipient` and `CPWorkflowTemplateValue`; on `CPAtlasPage` the optional request field `RequestId`.
+- Adapter (`Service/Platform/Workflow/`): `IAtlasWorkflowAdapter` and `AtlasWorkflowAdapter` (`Start` and `Execute`,
+  the read of the engine state, the dispatch of the notifications). The adapter gets the engine services from the
+  service provider only when it runs an action, so an app with no binding needs no engine service.
+  `AtlasWorkflowInputs` finds the recipients (`List`, `ListByField` + `Map` from
+  `AppSettings:Modules:<Code>:Workflow:Lists:<Key>`, `FromNameField` with `IAtlasUserDirectory.EmailOfDisplayName`
+  and the log `Atlas.RecipientSkipped`) and the template data (`en-US` formats; `RecordLink` =
+  `AppSettings:HostedClientURL` + `/form/<Code>/<ID>`; an empty value is a field error). For `Execute`, the template
+  data goes into `NotificationContext` (19.1).
+- Save (`Application/ConfigSectionService.Workflow.cs`), in the order of 10.3: no `RequestId` is the page error
+  `RequestIdRequired`; the recipients and the template data are found before the write; the first engine action runs
+  in the record transaction, after the files. An engine refusal rolls back all of the save and gives the engine
+  message as a page error. The engine result `IdempotencyConflict` gives "This request was already processed." On
+  success the save writes `WorkflowState` and `Status` and one status line in the audit entry, then commits. The later
+  actions and the dispatch run after the commit; a failure is a log entry only.
+- Load (10.4): a record with an engine instance and another state gets the engine state and its label, one audit
+  entry `WorkflowSync` and the warning log `Atlas.WorkflowSync`. A record with no instance is not checked.
+- Log events: 41025 `Atlas.RecipientSkipped`, 41026 `Atlas.WorkflowStepFailed`, 41027 `Atlas.WorkflowSync`, 41028
+  `Atlas.NotificationDispatchFailed`. With 41029 of step 4, the approved range 41025 to 41029 is now full.
+- Registration: `AtlasModuleServices` gets the adapter as a new optional constructor parameter (the existing call
+  sites do not change). `AtlasPlatformServices.Add` registers `IAtlasWorkflowAdapter`.
+- Start-up check: `AtlasConfigLint` checks the engine binding (10.2): `BusinessObjectPrefix` and `ActorRoles`, one or
+  more engine actions in each step, `Start` only as the first action of the step of `InitialState`, each recipient key
+  has a definition with exactly one source, each `Map` key is an option of the field, each template field is a column.
+  `AtlasStartupCheck` gives an error for a list key with no address and for `RecordLink` with an empty
+  `AppSettings:HostedClientURL`.
+- SQL: `sql/release-p2/150-cfpinflow-workflow.sql` (engine database). Workflow `ClientInflow` version 1, states
+  `Draft`, `Submitted`, `FundsReceived`; actions `Submit`, `NotifyInformational` (keeps the state) and
+  `ConfirmFunds`; role `Write`; the routes of E1, E2 and E3 with their texts; each recipient rule is a request input,
+  so the script has no address. Error 55150 when the engine tables are not in the database; a `CP_Atlas_ScriptLog`
+  row when the table is there. Run two times on the local database with no change.
+- App files: `CFPINFLOW.json` has the full binding of 10.2. `appsettings.Development.json` (local only): the engine
+  connection, the SMTP sender to smtp4dev, placeholder list addresses. The stand-in host registers the engine as the
+  target `program.cs` does, and the stand-in dispatcher.
+- Client: each save makes a new `RequestId` (`crypto.randomUUID`, with a `getRandomValues` fallback).
+
+Proof:
+
+- Real engine with script 150 (`Sections/CfpInflowWorkflowTests.cs`, 6 tests, NoOp sender): the first submit moves the
+  record to `Submitted` and sends E1 (ICG list) and E2 (the Equity list with two addresses, not the Fixed Income list);
+  the amount `$1,250,000.50`, the date `10/20/2026` and the record link are in the text; an RM with no user is skipped
+  with the log; the History has the status line. The second submit moves the record to `Funds Received` and sends E3
+  to the lists of the step. A refused engine action writes nothing (no part 2 value, no file). A double submit with
+  one `RequestId` makes one record and gives "This request was already processed.". A failed E2 keeps the save and
+  writes `Atlas.WorkflowStepFailed`. The load writes the engine state to a record with another state. An empty
+  template value and a save with no `RequestId` write nothing.
+- Fake adapter (`Sections/CfpInflowAppTests.cs`, 47 tests): all step 1 to 5 cases pass with a `RequestId`.
+- Start-up check: 7 new binding cases in `AtlasCheckTests`. HTTP: `EndpointTests` saves a record with a file through
+  `v1/ManagePage` and the real engine.
+- Gates: build 0 warnings; 435 .NET tests pass; `--atlas-check` prints `0 error(s), 0 warning(s)` (3 Info lines) and
+  exits 0; `ng build` (stand-in and target look) 0 warnings; 127 Angular specs pass; the target-flags check is clean.
+  All TTDV2 tests pass with no change to their expected results.
+- Not done: the run of scenarios 1 and 2 with smtp4dev. smtp4dev is not installed on the build computer. The real
+  engine tests prove the outbox rows and their texts; the SMTP send itself is the engine sender of today.
+
+Found and corrected in the gates:
+
+- `EndpointTests` gave the stand-in host only `DBConnection`. The host took `DefaultConnection` from
+  `appsettings.Development.json`, so the engine of this test wrote to the local database `CPAtlasPlatformDev`. The
+  second run failed (the instance of record 10000 was there). The test now sets `DefaultConnection` to the test
+  database. The first run left one engine instance `WF-CFP-INFLOW-10000` with no record in the local database.
+
+Notes for step 7:
+
+- `INTEGRATION.md`: the target registers its own `IWorkflowActionNotificationDispatcher`; the files in
+  `Service/StandIn/Engine/` are not copied. Run script 150 in the engine database. Set the six list keys and
+  `AppSettings:HostedClientURL` in each environment.
+- Records moved from SharePoint need a `WorkflowState` value (19.4); they have no engine instance, so the load does
+  not check them.

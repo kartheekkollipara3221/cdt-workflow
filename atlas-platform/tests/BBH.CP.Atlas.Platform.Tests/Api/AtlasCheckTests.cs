@@ -70,7 +70,18 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         "the form has Workflow Steps and 0 buttons with the action Save; a form with steps has exactly one submit button.")]
     [InlineData("\"Action\": { \"Type\": \"Close\" }", "\"Action\": { \"Type\": \"Save\" }",
         "the form has Workflow Steps and 2 buttons with the action Save")]
-    [InlineData("\"Draft\": {},", "\"Drafted\": {},", "the Workflow step 'Drafted' is not a key of StatusLabels.")]
+    [InlineData("\"Draft\": {", "\"Drafted\": {", "the Workflow step 'Drafted' is not a key of StatusLabels.")]
+    [InlineData("\"BusinessObjectPrefix\": \"CFP-INFLOW-\",", "", "the Workflow has Steps but no BusinessObjectPrefix.")]
+    [InlineData("{ \"Start\": \"Submit\",", "{ \"Execute\": \"Submit\",",
+        "the Workflow step 'Draft': engine action 1 must be a Start (the first action of the InitialState step).")]
+    [InlineData("\"Recipients\": [ \"icg\" ]", "\"Recipients\": [ \"nobody\" ]",
+        "the Workflow step 'Draft': the recipient key 'nobody' has no definition in Workflow.Recipients.")]
+    [InlineData("\"Equity\": [ \"Equity\" ],", "\"Bonds\": [ \"Equity\" ],",
+        "the Workflow recipient 'investmentLists': the Map value 'Bonds' is not an option of 'InvestmentType'.")]
+    [InlineData("\"amount\": { \"Field\": \"Amount\",", "\"amount\": { \"Field\": \"Amt\",",
+        "the Workflow template value 'amount' names the field 'Amt', which is not a field of the form or a column of the table.")]
+    [InlineData("\"imrg\": { \"List\": \"Imrg\" },", "\"imrg\": { \"List\": \"NoSuchList\" },",
+        "the Workflow list 'NoSuchList' has no address: set AppSettings:Modules:CFPINFLOW:Workflow:Lists:NoSuchList.")]
     [InlineData("\"InitialState\": \"Draft\",", "\"InitialState\": \"New\",", "the Workflow InitialState 'New' is not a key of StatusLabels.")]
     [InlineData("\"StateField\": \"WorkflowState\",", "\"StateField\": \"State\",", "the Workflow StateField 'State' is not a column of CFP.Inflow.")]
     [InlineData("\"StateField\": \"WorkflowState\",", "", "the Workflow has Steps but no StateField.")]

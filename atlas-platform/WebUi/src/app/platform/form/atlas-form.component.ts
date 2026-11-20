@@ -369,6 +369,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
           ID: this.id(),
           Version: section.Version ?? null,
           Outputs: buildOutputs(section, this.form, shown),
+          RequestId: newRequestId(),
           ...(removed.length ? { RemovedAttachmentIds: removed } : {}),
         },
         files,
@@ -430,6 +431,23 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     }
     this.pageErrors.set(page.length ? page : [{ Field: '', Code: 'Invalid', Message: 'Correct the marked fields.' }]);
   }
+}
+
+/**
+ * Returns a new request ID (a version 4 GUID) for one user action.
+ *
+ * crypto.randomUUID works only on a secure page (https or localhost). getRandomValues works on each page.
+ */
+function newRequestId(): string {
+  const crypto = globalThis.crypto;
+  if (typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function actionOf(button: CPButton): string {

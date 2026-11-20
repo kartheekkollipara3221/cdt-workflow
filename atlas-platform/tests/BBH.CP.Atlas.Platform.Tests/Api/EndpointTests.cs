@@ -46,12 +46,17 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DBConnection"] = database.ConnectionString,
+                // The engine tables are in the test database too; the development settings name the local database.
+                ["ConnectionStrings:DefaultConnection"] = database.ConnectionString,
                 ["AppSettings:ConfigFolder"] = configFolder,
                 ["AppSettings:Modules:TTDV2:AccessMode"] = "Enforce",
                 ["StandIn:Authentication"] = "Fixed",
                 ["StandIn:FixedUser"] = "LOCAL\\api.owner",
                 ["StandIn:ActAs:Enabled"] = "true",
-                ["StandIn:Users:api.read:DisplayName"] = "Api Reader"
+                ["StandIn:Users:api.read:DisplayName"] = "Api Reader",
+                ["Notifications:Sender"] = "NoOp",
+                ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:Icg"] = "icg@test.local",
+                ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:Equity"] = "eq@test.local"
             }));
         await _app.Services.StartAtlasPlatformAsync();
         await _app.StartAsync();
@@ -74,7 +79,7 @@ public sealed class EndpointTests(SqlServerDatabaseFixture database) : IAsyncLif
         using MultipartFormDataContent form = new();
         form.Add(new ByteArrayContent(pdf), "files", "FlowAttachments#$#client instruction.pdf");
         form.Add(new StringContent("""
-            {"AppCode":"CFPINFLOW","ID":0,"Outputs":[{"Name":"AccountNumber","Value":"700100"},{"Name":"InvestmentType","Value":"Equity"},
+            {"AppCode":"CFPINFLOW","ID":0,"RequestId":"6f1c9a40-0000-4000-8000-000000000001","Outputs":[{"Name":"AccountNumber","Value":"700100"},{"Name":"InvestmentType","Value":"Equity"},
              {"Name":"Amount","Value":"10"},{"Name":"InflowDate","Value":"2026-10-20"},{"Name":"FlowConfirm","Value":"true"}]}
             """), "input");
         using HttpResponseMessage saved = await _client.PostAsync("v1/ManagePage", form);

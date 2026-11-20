@@ -131,6 +131,65 @@ namespace BBH.CP.Atlas.Data.DTO
         /// A form with steps has one submit button. Each save of such a form runs the step of the stored state.
         /// </remarks>
         public Dictionary<string, CPWorkflowStep>? Steps { get; set; }
+
+        /// <summary>The text before the record ID in the engine business object ID, for example "APP-REC-".</summary>
+        /// <remarks>The engine instance ID is "WF-" + prefix + record ID.</remarks>
+        public string? BusinessObjectPrefix { get; set; }
+
+        /// <summary>The roles that the engine gets for the user. "User" = the active roles of the user in the app.</summary>
+        public string? ActorRoles { get; set; }
+
+        /// <summary>The recipient sources by recipient key. An engine action sends the keys that it names.</summary>
+        public Dictionary<string, CPWorkflowRecipient>? Recipients { get; set; }
+
+        /// <summary>The values of the email templates by token name.</summary>
+        public Dictionary<string, CPWorkflowTemplateValue>? TemplateData { get; set; }
+    }
+
+    /// <summary>One engine action of a submit step.</summary>
+    /// <remarks>Exactly one of Start and Execute is set.</remarks>
+    public class CPWorkflowEngineAction
+    {
+        /// <summary>Starts the engine instance with this initial action key.</summary>
+        public string? Start { get; set; }
+
+        /// <summary>Runs this action key on the engine instance.</summary>
+        public string? Execute { get; set; }
+
+        /// <summary>The recipient keys that the action sends. The engine route declares the same keys.</summary>
+        public List<string>? Recipients { get; set; }
+    }
+
+    /// <summary>The source of the addresses of one recipient key.</summary>
+    public class CPWorkflowRecipient
+    {
+        /// <summary>A list key. The addresses are in AppSettings:Modules:&lt;Code&gt;:Workflow:Lists:&lt;Key&gt;, separated by ';'.</summary>
+        public string? List { get; set; }
+
+        /// <summary>A field whose value selects list keys through <see cref="Map"/>.</summary>
+        public string? ListByField { get; set; }
+
+        /// <summary>Field value to list keys.</summary>
+        public Dictionary<string, List<string>>? Map { get; set; }
+
+        /// <summary>A field with display names separated by ';'. Each name is found in the user directory.</summary>
+        public string? FromNameField { get; set; }
+
+        /// <summary>True when the step can continue with no address for this key.</summary>
+        public bool Optional { get; set; }
+    }
+
+    /// <summary>The value of one email template token.</summary>
+    public class CPWorkflowTemplateValue
+    {
+        /// <summary>The field (column) of the record.</summary>
+        public string? Field { get; set; }
+
+        /// <summary>A .NET format text, used with the en-US culture, for example "$#,##0.00" or "MM/dd/yyyy".</summary>
+        public string? Format { get; set; }
+
+        /// <summary>True: the link to the record, AppSettings:HostedClientURL + "/form/&lt;Code&gt;/&lt;ID&gt;".</summary>
+        public bool RecordLink { get; set; }
     }
 
     /// <summary>One submit step of a form with steps.</summary>
@@ -146,6 +205,9 @@ namespace BBH.CP.Atlas.Data.DTO
         /// The tokens are the default tokens and {Now}. A client value for such a field is not used.
         /// </remarks>
         public Dictionary<string, string>? Set { get; set; }
+
+        /// <summary>The engine actions of the submit, in order. The first one can change the state; each later one keeps it.</summary>
+        public List<CPWorkflowEngineAction>? EngineActions { get; set; }
     }
 
     /// <summary>The platform data of an option.</summary>
@@ -196,6 +258,12 @@ namespace BBH.CP.Atlas.Data.DTO
         /// The IDs of the stored files that the save removes. Each ID must be a file of this record.
         /// </summary>
         public List<int>? RemovedAttachmentIds { get; set; }
+
+        /// <summary>
+        /// A new ID (GUID) for each user action, the same when the browser sends the request again.
+        /// </summary>
+        /// <remarks>A submit of a form with a workflow needs it, so that the engine runs each action one time.</remarks>
+        public string? RequestId { get; set; }
     }
 
     /// <summary>The platform data of an audit log row.</summary>

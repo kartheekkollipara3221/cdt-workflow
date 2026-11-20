@@ -5,7 +5,8 @@
   // Draft, and part 2 is read-only after Submitted. One submit button: the server takes the step of the stored state
   // (Workflow.Steps). The files of FlowAttachments and CashAttachments are in CFP.InflowAttachment (Type = control name).
   // Description and Comment are rich text: the server cleans the HTML, and the History shows plain text.
-  // Build step 6 adds the engine actions of each step.
+  // Each submit runs the engine actions of the step (workflow ClientInflow, script 150). The list addresses are in
+  // AppSettings:Modules:CFPINFLOW:Workflow:Lists of each environment.
   "Name": "Client Flows Portal - Inflow",
   "Type": "SECTION",
   "Rules": [
@@ -36,11 +37,44 @@
       "StatusField": "Status",
       "InitialState": "Draft",
       "StatusLabels": { "Draft": "Draft", "Submitted": "Submitted", "FundsReceived": "Funds Received" },
+      "BusinessObjectPrefix": "CFP-INFLOW-",
+      "ActorRoles": "User",
       "Steps": {
-        "Draft": {},
+        "Draft": {
+          "EngineActions": [
+            { "Start": "Submit", "Recipients": [ "icg" ] },
+            { "Execute": "NotifyInformational", "Recipients": [ "investmentLists", "relationshipManager" ] }
+          ]
+        },
         "Submitted": {
-          "Set": { "CashSubmittedBy": "{User.LanID}", "CashSubmittedDate": "{Now}" }
+          "Set": { "CashSubmittedBy": "{User.LanID}", "CashSubmittedDate": "{Now}" },
+          "EngineActions": [
+            { "Execute": "ConfirmFunds", "Recipients": [ "investmentLists", "relationshipManager", "csTeam", "rmcc", "imrg", "starFasIfiCash" ] }
+          ]
         }
+      },
+      "Recipients": {
+        "icg": { "List": "Icg" },
+        "csTeam": { "List": "CsTeam" },
+        "imrg": { "List": "Imrg" },
+        "starFasIfiCash": { "List": "StarFasIfiCash" },
+        "investmentLists": {
+          "ListByField": "InvestmentType",
+          "Map": {
+            "Fixed Income": [ "FixedIncome" ],
+            "Equity": [ "Equity" ],
+            "Fixed Income & Equity": [ "FixedIncome", "Equity" ]
+          }
+        },
+        "relationshipManager": { "FromNameField": "RelationshipManager", "Optional": true },
+        "rmcc": { "FromNameField": "RMCC", "Optional": true }
+      },
+      "TemplateData": {
+        "accountName": { "Field": "AccountName" },
+        "accountNumber": { "Field": "AccountNumber" },
+        "amount": { "Field": "Amount", "Format": "$#,##0.00" },
+        "inflowDate": { "Field": "InflowDate", "Format": "MM/dd/yyyy" },
+        "recordLink": { "RecordLink": true }
       }
     },
     "Controls": [

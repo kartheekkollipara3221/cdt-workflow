@@ -184,6 +184,7 @@ namespace BBH.CP.Atlas.Service.Application
                 record = Services.PlatformContext.FindActive(table.FullName, page.ID, tracking: false)
                     ?? throw AtlasProblemException.NotFound($"Record {page.ID} of {manifest.Code} was not found.");
                 Services.Access.Demand(manifest, form, AtlasOperation.View, record, page.ID);
+                record = SyncWorkflowState(manifest, form, table, page.ID, record) ?? record;
             }
             else
             {
@@ -390,6 +391,10 @@ namespace BBH.CP.Atlas.Service.Application
             if (state.Errors.Count > 0)
                 return Failed(state.Result, state.Errors);
 
+            PrepareEngine(state);
+            if (state.Errors.Count > 0)
+                return Failed(state.Result, state.Errors);
+
             if (!Persist(state))
                 return Failed(state.Result, state.Errors);
             return Complete(state);
@@ -419,6 +424,9 @@ namespace BBH.CP.Atlas.Service.Application
 
             /// <summary>The new files and the removed files of the save.</summary>
             public SaveFiles Files { get; } = new();
+
+            /// <summary>The engine part of a submit, or null for a save with no engine action.</summary>
+            public SaveEngine? Engine { get; set; }
 
             /// <summary>The stored record, or null for a new record.</summary>
             public Dictionary<string, object?>? Stored { get; set; }
@@ -485,6 +493,13 @@ namespace BBH.CP.Atlas.Service.Application
             {
                 string label = AtlasWorkflowSteps.LabelOf(section, state.WorkflowState) ?? "(none)";
                 state.Errors.Add(Error("", "NotAllowed", $"You cannot submit this record in the state '{label}'."));
+                return false;
+            }
+
+            // With no RequestId, a repeated request would run the engine actions again.
+            if (string.IsNullOrWhiteSpace(state.Input.RequestId))
+            {
+                state.Errors.Add(Error("", "RequestIdRequired", "The request has no RequestId. Open the record again and repeat your change."));
                 return false;
             }
 
@@ -715,10 +730,18 @@ namespace BBH.CP.Atlas.Service.Application
                     Convert.FromBase64String(state.Input.Version);
             }
 
-            return SaveWithAudit(state.Manifest, table, state.Record, state.IsNew,
+            bool saved = SaveWithAudit(state.Manifest, table, state.Record, state.IsNew,
                 state.IsNew ? AtlasAuditEvents.Create : AtlasAuditEvents.Update,
                 () => Changes(state.Fields, table, state.Previous, state.Record, state.IsNew), state.Errors,
-                id => WriteFiles(state, id));
+                (id, mainChanges) =>
+                {
+                    List<(string Event, AtlasAuditChange Change)> entries = WriteFiles(state, id);
+                    RunFirstEngineAction(state, id, mainChanges); // the engine call is the last write before the commit
+                    return entries;
+                });
+            if (!saved)
+                LogEngineWithoutSave(state);
+            return saved;
         }
 
         /// <summary>Runs the OnAfterSave hook after the commit and returns the result (ID, Version, Outputs).</summary>
@@ -735,6 +758,8 @@ namespace BBH.CP.Atlas.Service.Application
                 // The record is saved. A 500 here would make the user save again with ID = 0 and create a duplicate.
                 AtlasLog.AfterSaveFailed(Logger, ex, state.Manifest.Code, record[table.Key!.Name], Services.User.LanId);
             }
+
+            RunLaterEngineActions(state, (int)record[table.Key!.Name]!);
 
             CPAtlasPage result = state.Result;
             result.ID = (int)record[table.Key!.Name]!;
@@ -889,12 +914,12 @@ namespace BBH.CP.Atlas.Service.Application
         /// <summary>
         /// Saves the record, the other writes of the save and the audit entries in one transaction.
         /// </summary>
-        /// <param name="afterRecord">Runs after the record write with the record ID, in the transaction, and returns more
-        /// audit entries (for example the files). Null = no other write.</param>
+        /// <param name="afterRecord">Runs after the record write with the record ID and the changes of the audit entry, in the
+        /// transaction. It can add changes, and returns more audit entries (for example the files). Null = no other write.</param>
         /// <returns>False when the save fails; the errors tell why. Nothing is then written.</returns>
         private bool SaveWithAudit(AtlasAppManifest manifest, AtlasTable table, Dictionary<string, object?> record, bool isNew,
             string auditEvent, Func<List<AtlasAuditChange>> changes, List<CPPageError> errors,
-            Func<int, List<(string Event, AtlasAuditChange Change)>>? afterRecord = null)
+            Func<int, List<AtlasAuditChange>, List<(string Event, AtlasAuditChange Change)>>? afterRecord = null)
         {
             AtlasPlatformContext platform = Services.PlatformContext;
             using IDbContextTransaction transaction = platform.BeginSharedTransaction(Services.Context);
@@ -906,7 +931,7 @@ namespace BBH.CP.Atlas.Service.Application
                 platform.SaveChanges();
 
                 int id = (int)record[table.Key!.Name]!;
-                List<(string Event, AtlasAuditChange Change)> more = afterRecord?.Invoke(id) ?? [];
+                List<(string Event, AtlasAuditChange Change)> more = afterRecord?.Invoke(id, list) ?? [];
                 if (manifest.AuditMode == AtlasAuditMode.Server && !string.IsNullOrWhiteSpace(manifest.AuditTable))
                 {
                     bool added = Services.Audit.Add(manifest, id, auditEvent, list);
@@ -923,6 +948,12 @@ namespace BBH.CP.Atlas.Service.Application
             {
                 transaction.Rollback();
                 errors.Add(Conflict());
+                return false;
+            }
+            catch (WorkflowRefusedException refused)
+            {
+                transaction.Rollback();
+                errors.Add(refused.Error);
                 return false;
             }
             catch (Exception ex) when (ex is DbUpdateException or System.Data.Common.DbException)

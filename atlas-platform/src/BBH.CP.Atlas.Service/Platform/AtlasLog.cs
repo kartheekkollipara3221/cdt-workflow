@@ -83,6 +83,26 @@ public static partial class AtlasLog
         Message = "Atlas.ConfigError Path={Path} Detail={Detail}")]
     public static partial void ConfigError(ILogger logger, Exception exception, string path, string detail);
 
+    /// <summary>Logs a name of a recipient field that does not match exactly one user with an email. The email goes to the others.</summary>
+    [LoggerMessage(EventId = 41025, EventName = "Atlas.RecipientSkipped", Level = LogLevel.Warning,
+        Message = "Atlas.RecipientSkipped App={App} RecordId={RecordId} Key={Key} Name={Name} Reason={Reason}")]
+    public static partial void RecipientSkipped(ILogger logger, string app, int recordId, string key, string name, string reason);
+
+    /// <summary>Logs an engine action that failed, or a state difference. The support team acts on it.</summary>
+    [LoggerMessage(EventId = 41026, EventName = "Atlas.WorkflowStepFailed", Level = LogLevel.Error,
+        Message = "Atlas.WorkflowStepFailed App={App} RecordId={RecordId} Instance={Instance} Action={Action} Reason={Reason}")]
+    public static partial void WorkflowStepFailed(ILogger logger, Exception? exception, string app, int recordId, string instance, string action, string reason);
+
+    /// <summary>Logs the state check on load: the engine state was written to the record, or the check failed.</summary>
+    [LoggerMessage(EventId = 41027, EventName = "Atlas.WorkflowSync", Level = LogLevel.Warning,
+        Message = "Atlas.WorkflowSync App={App} RecordId={RecordId} Instance={Instance} RecordState={RecordState} EngineState={EngineState} Outcome={Outcome}")]
+    public static partial void WorkflowSync(ILogger logger, Exception? exception, string app, int recordId, string instance, string recordState, string engineState, string outcome);
+
+    /// <summary>Logs an email that was not sent after a submit. The engine outbox sends it again.</summary>
+    [LoggerMessage(EventId = 41028, EventName = "Atlas.NotificationDispatchFailed", Level = LogLevel.Warning,
+        Message = "Atlas.NotificationDispatchFailed App={App} RecordId={RecordId} Instance={Instance} Reason={Reason}")]
+    public static partial void NotificationDispatchFailed(ILogger logger, Exception? exception, string app, int recordId, string instance, string reason);
+
     /// <summary>Logs a file of a save that the server refused, for example a wrong type or a control that is disabled.</summary>
     [LoggerMessage(EventId = 41029, EventName = "Atlas.AttachmentRefused", Level = LogLevel.Warning,
         Message = "Atlas.AttachmentRefused App={App} User={User} RecordId={RecordId} Control={Control} File={File} Reason={Reason}")]

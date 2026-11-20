@@ -32,7 +32,7 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     private const string Reader = "c.read";
     private static readonly IFormFileCollection NoFiles = new FormFileCollection();
 
-    private readonly SqlServerDatabaseFixture _db = new();
+    private readonly SqlServerDatabaseFixture _db = new() { WorkflowEngine = false };
     private readonly AtlasTableRegistry _registry = new();
     private SectionHarness _harness = null!;
 
@@ -193,7 +193,9 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Equal("Riley Manager|Casey Copy;Riley Manager|Second save", await _db.ScalarAsync(
             $"SELECT CONCAT_WS('|', RelationshipManager, RMCC, Description) FROM CFP.Inflow WHERE ID = {saved.ID}"));
 
-        // The account control is enabled: the save reads the AIN row again, as before.
+        // The account control is enabled: the save reads the AIN row again, as before. The submit moved the record to
+        // Submitted, so the test sets Draft again.
+        await SetStateAsync(saved.ID, "Draft");
         CPApplicationSection again = Svc(Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = saved.ID });
         AssertSaved(Svc(Writer, CfpRoles.Write).SavePage(EditInput(saved.ID, again.Version, ("Description", "Third save")), NoFiles));
         Assert.Equal("Bob Ray|Bob Ray", await _db.ScalarAsync(
@@ -749,12 +751,17 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         [.. dashboard.Tabs!.Single(x => x.ID == tab).KeyValues!.Select(x => Convert.ToInt32(x["ID"]))];
 
     private static CPAtlasPage EditInput(int id, string? version, params (string Name, string? Value)[] values) =>
-        new() { AppCode = App, ID = id, Version = version, Outputs = [.. values.Select(x => new CPPageOutput { Name = x.Name, Value = x.Value })] };
+        new()
+        {
+            AppCode = App, ID = id, Version = version, RequestId = Guid.NewGuid().ToString(),
+            Outputs = [.. values.Select(x => new CPPageOutput { Name = x.Name, Value = x.Value })]
+        };
 
     private static CPAtlasPage NewInput() => new()
     {
         AppCode = App,
         ID = 0,
+        RequestId = Guid.NewGuid().ToString(),
         Outputs =
         [
             new() { Name = "AccountNumber", Value = "700100" },

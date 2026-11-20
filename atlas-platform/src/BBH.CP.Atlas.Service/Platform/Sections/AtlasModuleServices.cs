@@ -1,6 +1,7 @@
 using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Platform.Attachments;
+using BBH.CP.Atlas.Service.Platform.Workflow;
 using BBH.CP.Atlas.Service.Platform.Audit;
 using BBH.CP.Atlas.Service.Platform.Dashboard;
 using BBH.CP.Atlas.Service.Platform.Options;
@@ -37,7 +38,8 @@ public sealed class AtlasModuleServices(
     TimeProvider time,
     IConfiguration configuration,
     ILoggerFactory loggerFactory,
-    IAtlasAttachmentService? attachments = null)
+    IAtlasAttachmentService? attachments = null,
+    IAtlasWorkflowAdapter? workflow = null)
 {
     public IAtlasConfigStore ConfigStore { get; } = configStore;
     public CPSharepointContext Context { get; } = context;
@@ -55,4 +57,7 @@ public sealed class AtlasModuleServices(
 
     /// <summary>The stored files of the records. With no service, the default service on <see cref="Context"/>.</summary>
     public IAtlasAttachmentService Attachments { get; } = attachments ?? new AtlasAttachmentService(context, user);
+
+    /// <summary>The workflow engine adapter, or null when the host has none. Only a form with engine actions needs it.</summary>
+    public IAtlasWorkflowAdapter? Workflow { get; } = workflow;
 }

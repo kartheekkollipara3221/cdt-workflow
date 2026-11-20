@@ -9,7 +9,7 @@ namespace BBH.CP.Atlas.Platform.Tests.Data;
 [Trait("Category", "SqlServer")]
 public sealed class Ttdv2AppScriptTests : IAsyncLifetime
 {
-    private readonly SqlServerDatabaseFixture _db = new();
+    private readonly SqlServerDatabaseFixture _db = new() { WorkflowEngine = false };
     private static readonly string Script = Path.Combine(TestPaths.AtlasPlatformRoot(), "sql", "release-p1", "040-ttdv2-app.sql");
 
     private const string IsNullable =

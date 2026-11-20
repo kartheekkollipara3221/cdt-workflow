@@ -21,6 +21,8 @@ public static class AtlasAuditEvents
     public const string AttachmentAdd = "AttachmentAdd";
     /// <summary>A removed file of a record. The change names the file picker and gives the file name as Old.</summary>
     public const string AttachmentRemove = "AttachmentRemove";
+    /// <summary>The state check on load wrote the engine state to the record.</summary>
+    public const string WorkflowSync = "WorkflowSync";
 }
 
 /// <summary>One changed field. Old and Value are wire values; "***" for a field with Audit = false.</summary>

@@ -9,7 +9,7 @@ namespace BBH.CP.Atlas.Platform.Tests.Data;
 [Trait("Category", "SqlServer")]
 public sealed class ReleaseP2ScriptTests : IAsyncLifetime
 {
-    private readonly SqlServerDatabaseFixture _db = new() { ReleaseP2 = false };
+    private readonly SqlServerDatabaseFixture _db = new() { ReleaseP2 = false, WorkflowEngine = false };
 
     public Task InitializeAsync() => _db.InitializeAsync();
 

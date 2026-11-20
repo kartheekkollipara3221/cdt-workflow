@@ -1,4 +1,5 @@
 using BBH.CP.Atlas.Service.Platform.Attachments;
+using BBH.CP.Atlas.Service.Platform.Workflow;
 using BBH.CP.Atlas.Service.Platform.Audit;
 using BBH.CP.Atlas.Service.Platform.Dashboard;
 using BBH.CP.Atlas.Service.Platform.Options;
@@ -35,6 +36,7 @@ public static class AtlasPlatformServices
         services.AddScoped<IAtlasOptionProvider>(provider => provider.GetRequiredService<AtlasTableOptionProvider>());
         services.AddScoped<AtlasDashboardService>();
         services.AddScoped<IAtlasAttachmentService, AtlasAttachmentService>();
+        services.AddScoped<IAtlasWorkflowAdapter, AtlasWorkflowAdapter>();
         services.AddScoped<AtlasModuleServices>();
     }
 }

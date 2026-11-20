@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-5 done, next step 6; full hand-off in section A, Next 0)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-6 done and committed, step 7 next after the user's "continue"; full hand-off in section A, Next 0)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -127,16 +127,18 @@ The dated history entries below are unchanged, newest first: platform and target
    NO CODE AND NO SQL SCRIPT EXISTS FOR P2. The user has not yet said "start the build".
 
 ### Next
-0. P2 BUILD (ClientInflows, CFPINFLOW) - IN PROGRESS. Steps 0, 1, 2, 3, 4, 5 DONE; NEXT = STEP 6. Full hand-off below.
+0. P2 BUILD (ClientInflows, CFPINFLOW) - IN PROGRESS. Steps 0-6 DONE; NEXT = STEP 7 (wait for "continue"). Full hand-off below.
 
    0.1 Where things are
    - Build specification: docs/atlas-platform/25-client-inflows-p2-design.md (draft 3, approved). Build order = section 13;
-     build record of each step = section 19 (19.1 step 0, 19.2 step 1, 19.3 step 2, 19.4 step 3, 19.5 step 4, 19.6 step 5). Read 19 before you code.
+     build record of each step = section 19 (19.1 step 0, 19.2 step 1, 19.3 step 2, 19.4 step 3, 19.5 step 4, 19.6 step 5,
+     19.7 step 6). Read 19 before you code.
    - Review answers: docs/atlas-platform/26-p2-design-review.md section 8. Requirements: docs/ClientInflows/
      ONBOARDING_ANSWERS.md (D1-D34), GAP_REPORT.md (Q1-Q9). Platform rules: AGENTS.md "Atlas platform" (one submit
      button rule added 2026-11-20).
    - Branch console-code-first-0518, 37 commits ahead of origin, NOTHING PUSHED (push only when the user asks).
-     Commits: ca194af step 0, 38ad2df step 1, 0455460 step 2, 2ece3ad step 3, 1724a1d step 4, step 5 = the commit after 1724a1d.
+     Commits: ca194af step 0, 38ad2df step 1, 0455460 step 2, 2ece3ad step 3, 1724a1d step 4, b84dff5 step 5,
+     step 6 = the commit after b84dff5 ("P2 step 6").
      Package NOT rebuilt (step 7 does it).
    - Working style for the build: the user says "continue" for each step. After each step: all platform gates, one
      commit, completion summary in the AGENTS.md format (+ "Package rebuilt:"), update this section, then wait.
@@ -179,10 +181,55 @@ The dated history entries below are unchanged, newest first: platform and target
      client renderers/atlas-richtext-renderer.ts (import()) + atlas-richtext-editor.ts (CKEditor classic, GPL, plugin
      packages); @use 'ckeditor5/ckeditor5.css' in atlas-platform.scss; CFPINFLOW Description/Comment richtext.
      Tests: 423 .NET, 126 Angular.
-   - Step 6 NEXT: engine adapter (script 150, Workflow binding, EngineActions, recipients incl. EmailOfDisplayName,
-     template data + empty value check, AppSettings:HostedClientURL link, state check on load, RequestId required,
-     status line in History, log events 41025-41029).
-   - Step 7 open: INTEGRATION.md, CODE_TRACE.md, Config/README.md, target package rebuild, onboarding template update.
+   - Step 6 DONE (commit "P2 step 6", after b84dff5). Build record = module 25 section 19.7 (.md + .html).
+     Gates 2026-11-20: build 0 warnings; 435 .NET tests; --atlas-check 0/0 (3 Info), exit 0; ng build stand-in and
+     target look 0 warnings; 127 Angular specs; target-flags clean. NOT DONE: smtp4dev run of scenarios 1-2
+     (smtp4dev is not installed on this computer); the real-engine tests prove the outbox rows.
+     Gate fix: EndpointTests set only DBConnection, so the engine took DefaultConnection of appsettings.Development.json
+     and wrote to the local DB CPAtlasPlatformDev (2nd run failed: instance of record 10000 existed). The test now
+     sets DefaultConnection too. Left over in CPAtlasPlatformDev: engine instance WF-CFP-INFLOW-10000 with no record
+     (the first local record will get ID 10000 and its submit will fail) -> asked the user how to clean it.
+     Comment example "CFP-INFLOW-" in CPPlatformDto changed to "APP-REC-" (no app names in C#/TS).
+     User decisions 2026-11-20 (recorded in module 25 section 19.7):
+     (1) Email send = option A: the platform calls IWorkflowActionNotificationDispatcher with the TARGET namespace
+         WorkflowEngine.Application.WorkflowNotification; a stand-in copy (from workflow-api, namespaces changed) is in
+         Service/StandIn/Engine/ (never copied). Step 7: ask the user for the live target file of that interface.
+     (2) A later engine action failure (E2) = LOG ONLY (Atlas.WorkflowStepFailed 41026). No new response field.
+     Done (all build; last test runs: CfpInflowAppTests 47/47 with a fake adapter, CfpInflowWorkflowTests 6/6 with the
+     real engine, AtlasCheckTests 60/60, Angular 127/127):
+     - Service csproj references the engine projects (../../../src/WorkflowEngine.Application/Domain/Infrastructure).
+     - DTOs: CPWorkflow BusinessObjectPrefix, ActorRoles, Recipients, TemplateData; CPWorkflowStep.EngineActions;
+       new CPWorkflowEngineAction, CPWorkflowRecipient, CPWorkflowTemplateValue; CPAtlasPage.RequestId (optional).
+     - Service/Platform/Workflow/AtlasWorkflowAdapter.cs (IAtlasWorkflowAdapter: Run Start/Execute, ReadState,
+       DispatchNotifications; engine services resolved lazily from IServiceProvider) and AtlasWorkflowInputs.cs
+       (recipients: List / ListByField+Map from AppSettings:Modules:<Code>:Workflow:Lists:<Key>, FromNameField via
+       EmailOfDisplayName + Atlas.RecipientSkipped; template data with en-US formats, RecordLink =
+       AppSettings:HostedClientURL/form/<Code>/<ID>, empty value = page error).
+     - Application/ConfigSectionService.Workflow.cs: PrepareEngine before the write; RunFirstEngineAction inside the
+       record transaction (after files) -> refusal rolls back (IdempotencyConflict = "This request was already
+       processed."), success writes WorkflowState + Status + one status line in the audit entry; RunLaterEngineActions
+       + dispatch after the commit (log only); LogEngineWithoutSave; SyncWorkflowState on load (audit WorkflowSync,
+       log 41027). Main file: RequestId required in SelectStep (code RequestIdRequired), SaveState.Engine, the
+       afterRecord callback gets the main change list, catch WorkflowRefusedException.
+     - AtlasLog 41025 RecipientSkipped, 41026 WorkflowStepFailed, 41027 WorkflowSync, 41028 NotificationDispatchFailed
+       (41029 AttachmentRefused from step 4). AtlasAuditEvents.WorkflowSync. AtlasModuleServices optional param
+       workflow; DI AddScoped<IAtlasWorkflowAdapter, AtlasWorkflowAdapter>.
+     - Start-up check: AtlasConfigLint.EngineBinding (prefix, ActorRoles, engine actions per step, Start only first
+       action of InitialState step, recipient keys, one source each, Map values = options, template fields);
+       AtlasStartupCheck.CheckWorkflowSettings (list address per key, HostedClientURL for RecordLink).
+     - sql/release-p2/150-cfpinflow-workflow.sql (MERGE style, error 55150, run 2x on local DB OK) + README row.
+     - CFPINFLOW.json full binding; appsettings.Development.json: DefaultConnection, Notifications:Sender Smtp,
+       Smtp Host/Port/From (smtp4dev), placeholder lists; StandInHost registers the engine (as target program.cs) +
+       stand-in dispatcher, DefaultConnection falls back to DBConnection.
+     - Tests: fixture property WorkflowEngine (default true: Migrate + script 150; per-test fixtures set false);
+       SectionHarness FakeWorkflowAdapter by default + list settings; CfpInflowAppTests inputs have RequestId;
+       new Sections/CfpInflowWorkflowTests.cs (real engine, NoOp sender); EndpointTests RequestId + lists;
+       AtlasCheckTests 7 binding cases. Client: RequestId per save (randomUUID, getRandomValues fallback) + spec.
+   - Step 7 NEXT (after the user's "continue"): INTEGRATION.md, CODE_TRACE.md, Config/README.md, target package rebuild,
+     onboarding template update. Also: ask the user for the live target file of IWorkflowActionNotificationDispatcher
+     (decision 1); INTEGRATION.md notes of 19.7 (own dispatcher at the target, run 150 in the engine DB, six list keys
+     + HostedClientURL per environment, WorkflowState for records moved from SharePoint); smtp4dev scenarios 1-2 if
+     the user installs smtp4dev.
      The COPY list of atlas-platform/local/make-target-package.py has only the TTDV2 files and sql/release-p1/: add
      Config/CFPINFLOW.app.json, CFPINFLOW.json, CFPINFLOW.Dashboard.json and sql/release-p2/ (local/ is never packaged).
 
@@ -244,11 +291,8 @@ The dated history entries below are unchanged, newest first: platform and target
      work; NO ANSWER YET.
    - CKEditor at the target: the six 41.4.2 packages and ckeditor5-angular 7.0.1 must be removed when the new packages
      come; the global styles grow by 289 kB, the target warns at 2 MB for the first bundle (target team checks).
-   - Step 6: Execute renders the templates from envelope.Workflow.NotificationContext; copy TemplateData there.
-   - Step 6: add EngineActions (and BusinessObjectPrefix, ActorRoles, Recipients, TemplateData) to CPWorkflow /
-     CPWorkflowStep before the JSON uses them (the lint warns on unknown keys); add the lint errors of 10.2 (no engine
-     action, Start only in the InitialState step, ...). The engine writes WorkflowState and Status; until then the
-     step 3 tests set WorkflowState by SQL.
+   - Done in step 6: NotificationContext copy for Execute; engine keys in the DTOs; lint errors of 10.2; the engine
+     writes WorkflowState and Status.
    - From step 3: a stored record with an empty WorkflowState cannot be submitted. The local records of steps 1-3 have
      no state. Target integration note (step 7): records moved from SharePoint need a WorkflowState value.
    - From step 4: log event IDs used so far of the approved range 41025-41029: 41029 Atlas.AttachmentRefused. Step 6
@@ -358,12 +402,14 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 - Commit/push only when asked. Commit trailer: Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> (or the trailer the session reminder gives).
 
 ## Next-session prompt
-"Resume the P2 build (ClientInflows, CFPINFLOW). Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
-(the full build hand-off), then docs/atlas-platform/25-client-inflows-p2-design.md sections 2.1, 6, 10.2, 13 and 19.
-Steps 0-2 are done; do build STEP 3 (hand-off 0.3). After the step: all platform gates, one commit, the AGENTS.md
-completion summary, update CODEX_HANDOFF.md section A, then wait for my 'continue'. Do not push. Stop and ask on each
-AGENTS.md stop-and-ask item that the design does not already cover. Keep the platform generic (no CFPINFLOW, CFP,
-AIN or Inflow names in C# or TypeScript). Talk in short ASD-STE100 sentences, one question at a time."
+"Resume the P2 build (ClientInflows, CFPINFLOW) at step 7. Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
+(steps 0-6 are done and committed; item 'Step 7 NEXT' lists the work), then docs/atlas-platform/
+25-client-inflows-p2-design.md sections 13, 15 and 19. Step 7: INTEGRATION.md, CODE_TRACE.md, Config/README.md,
+onboarding template update, target package rebuild (add the CFPINFLOW config files and sql/release-p2/ to the copy
+list). First ask me for the live target file of IWorkflowActionNotificationDispatcher. Run all platform gates, one
+commit, the AGENTS.md completion summary, update CODEX_HANDOFF.md section A. Do not push. Stop and ask on each
+AGENTS.md stop-and-ask item that the design does not cover. Keep the platform generic (no CFPINFLOW, CFP, AIN or
+Inflow names in C# or TypeScript). Talk in short ASD-STE100 sentences, one question at a time."
 
 ---
 

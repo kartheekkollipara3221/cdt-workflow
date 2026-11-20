@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using WorkflowEngine.Infrastructure.Persistence;
 using System.Text.RegularExpressions;
 using BBH.CP.Atlas.Data.Platform;
 using Microsoft.Data.SqlClient;
@@ -20,6 +22,12 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
 
     /// <summary>False for a test of the P2 scripts that needs a database with no CFP and no AIN tables.</summary>
     public bool ReleaseP2 { get; init; } = true;
+
+    /// <summary>
+    /// True (default): the database also gets the workflow engine tables (the engine migrations) and the engine metadata
+    /// of script 150. A test of one database for each test sets false, because the migrations take time.
+    /// </summary>
+    public bool WorkflowEngine { get; init; } = true;
 
     /// <summary>The columns of TTDV2.General and TTDV2.AuditLog, read one time after the scripts (before any test changes a table).</summary>
     public AtlasTableRegistry Ttdv2Registry { get; } = new();
@@ -46,6 +54,15 @@ public sealed partial class SqlServerDatabaseFixture : IAsyncLifetime
         {
             await Data.ReleaseP2.MakeTargetTablesAsync(this);
             await Data.ReleaseP2.RunScriptsAsync(this);
+        }
+
+        if (WorkflowEngine)
+        {
+            DbContextOptions<WorkflowDbContext> options = new DbContextOptionsBuilder<WorkflowDbContext>()
+                .UseSqlServer(ConnectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory", WorkflowDbContext.DefaultSchema)).Options;
+            await using (WorkflowDbContext engine = new(options))
+                await engine.Database.MigrateAsync();
+            await RunScriptFileAsync(Path.Combine(atlasRoot, "sql", "release-p2", "150-cfpinflow-workflow.sql"));
         }
 
         await using SqlConnection connection = new(ConnectionString);

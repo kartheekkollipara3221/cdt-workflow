@@ -12,7 +12,7 @@ view).
 | 120 | `120-cfp-audit-log.sql`: new table `CFP.AuditLog` | CP Atlas | — |
 | 130 | `130-cfpinflow-app.sql`: app row `CFPINFLOW` and the roles `Read` and `Write` | CP Atlas | `<RUN_BY>` |
 | 140 | `140-ain-account-inventory-rmcc.sql`: new column `AIN.AccountInventory.RMCC`. The AIN team runs it or copies it. | CP Atlas | — |
-| 150 | Engine workflow metadata (build step 6). Not in this folder yet. | Engine tables | — |
+| 150 | `150-cfpinflow-workflow.sql`: engine metadata of the workflow `ClientInflow` (states, actions, role `Write`, routes E1 to E3 with their texts, request-input recipient rules; no address) | Engine database (`ConnectionStrings:DefaultConnection`) | — |
 
 `CFP.Inflow` and `CFP.InflowAttachment` are target tables. The scripts change them in place and stop (error 55100 or
 55110) when a table is not there. No script removes or renames a column.

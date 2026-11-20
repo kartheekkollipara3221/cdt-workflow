@@ -187,6 +187,8 @@ export interface CPAtlasPage {
   Errors?: CPPageError[] | null;
   /** The IDs of the stored files that the save removes. */
   RemovedAttachmentIds?: number[] | null;
+  /** A new ID for each user action, so the server runs the workflow actions of a submit one time. */
+  RequestId?: string | null;
 }
 
 /** A grid column of a dashboard tab. */

@@ -9,6 +9,7 @@ using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Rules;
 using BBH.CP.Atlas.Service.Platform.Sections;
 using BBH.CP.Atlas.Service.Platform.Security;
+using BBH.CP.Atlas.Service.Platform.Workflow;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -39,7 +40,14 @@ internal sealed class SectionHarness : IDisposable
         _configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["AppSettings:ConfigFolder"] = configFolder,
-            ["AppSettings:Modules:TTDV2:AccessMode"] = accessMode.ToString()
+            ["AppSettings:Modules:TTDV2:AccessMode"] = accessMode.ToString(),
+            ["AppSettings:HostedClientURL"] = "https://atlas.test",
+            ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:Icg"] = "icg@test.local",
+            ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:CsTeam"] = "cs@test.local",
+            ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:Imrg"] = "imrg@test.local",
+            ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:StarFasIfiCash"] = "star@test.local",
+            ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:FixedIncome"] = "fi@test.local",
+            ["AppSettings:Modules:CFPINFLOW:Workflow:Lists:Equity"] = "eq@test.local;eq2@test.local"
         }).Build();
         _configStore = new AtlasConfigStore(_configuration, new TestHost(configFolder));
     }
@@ -50,6 +58,9 @@ internal sealed class SectionHarness : IDisposable
     public FixedTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 21, 10, 0, 0, TimeSpan.Zero));
 
     public ListLogger<AtlasAccessService> AccessLog { get; } = new();
+
+    /// <summary>The workflow adapter of the services: a fake engine by default (no engine tables). Null = no adapter.</summary>
+    public IAtlasWorkflowAdapter? Workflow { get; set; } = new FakeWorkflowAdapter();
 
     public ConfigSectionService Service(AtlasTableRegistry registry, string lanId, params AtlasRole[] roles) =>
         new(ModuleServices(registry, lanId, roles, NullLoggerFactory.Instance)) { AppCode = "TTDV2" };
@@ -76,7 +87,7 @@ internal sealed class SectionHarness : IDisposable
             [new PBAccountsOptionProvider(_configuration, user), new UsersInRolesOptionProvider(directory),
                 new YearsOptionProvider(Time), new WeekEndingsOptionProvider(Time),
                 new AtlasTableOptionProvider(context, registry, _configStore, new MemoryCache(new MemoryCacheOptions()))],
-            Time, _configuration, loggerFactory);
+            Time, _configuration, loggerFactory, workflow: Workflow);
 
         return services;
     }
@@ -124,4 +135,28 @@ internal sealed class ConfigCopy : IDisposable
     }
 
     public void Dispose() => Directory.Delete(Folder, recursive: true);
+}
+
+/// <summary>
+/// A workflow adapter with no engine: each action succeeds and gives the state of its action key (the CFPINFLOW keys by
+/// default). It keeps the calls. It has no instance, so the state check on load does nothing.
+/// </summary>
+internal sealed class FakeWorkflowAdapter : IAtlasWorkflowAdapter
+{
+    public Dictionary<string, string> NewStates { get; } = new(StringComparer.Ordinal)
+    {
+        ["Submit"] = "Submitted", ["NotifyInformational"] = "Submitted", ["ConfirmFunds"] = "FundsReceived"
+    };
+
+    public List<AtlasWorkflowCall> Calls { get; } = [];
+
+    public AtlasWorkflowResult Run(AtlasWorkflowCall call)
+    {
+        Calls.Add(call);
+        return new AtlasWorkflowResult(true, "Success", null, NewStates.GetValueOrDefault(call.ActionKey), call.InstanceId, call.IdempotencyKey, false);
+    }
+
+    public string? ReadState(string instanceId, string userId, IReadOnlyList<string> roles) => null;
+
+    public string? DispatchNotifications(AtlasWorkflowResult result) => null;
 }

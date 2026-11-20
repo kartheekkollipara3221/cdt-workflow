@@ -9,7 +9,7 @@ namespace BBH.CP.Atlas.Platform.Tests.Data;
 [Trait("Category", "SqlServer")]
 public sealed class CopyScriptTests : IAsyncLifetime
 {
-    private readonly SqlServerDatabaseFixture _db = new();
+    private readonly SqlServerDatabaseFixture _db = new() { WorkflowEngine = false };
     private static readonly string Release = Path.Combine(TestPaths.AtlasPlatformRoot(), "sql", "release-p1");
 
     public async Task InitializeAsync()

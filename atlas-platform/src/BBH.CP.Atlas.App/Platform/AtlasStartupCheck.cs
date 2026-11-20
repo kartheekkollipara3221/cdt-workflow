@@ -1,6 +1,7 @@
 using BBH.CP.Atlas.Data;
 using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
+using BBH.CP.Atlas.Service.Platform.Workflow;
 using BBH.CP.Atlas.Service.Application;
 using BBH.CP.Atlas.Service.Platform.Attachments;
 using BBH.CP.Atlas.Service.Platform.Audit;
@@ -143,6 +144,7 @@ public static class AtlasStartupCheck
         {
             CheckForm(check.Services, manifest, form, table, error);
             CheckDefaults(form, table, warning);
+            CheckWorkflowSettings(check.Services.GetRequiredService<IConfiguration>(), manifest, form.Section.Workflow, error);
         }
 
         CheckDashboard(check.ConfigStore, check.Tables, manifest, error);
@@ -160,6 +162,25 @@ public static class AtlasStartupCheck
 
         // Typing errors in property names are warnings. Typing errors in names, tokens, patterns and actions are errors.
         CheckContract(check.ConfigStore, manifest, form, table, error, warning);
+    }
+
+    /// <summary>
+    /// Checks the settings that an engine binding needs: an address for each list key, and the client address for a
+    /// record link.
+    /// </summary>
+    private static void CheckWorkflowSettings(IConfiguration configuration, AtlasAppManifest manifest, CPWorkflow? workflow, Action<string> error)
+    {
+        if (workflow?.Steps is not { Count: > 0 })
+            return;
+
+        IEnumerable<string> listKeys = ((IEnumerable<CPWorkflowRecipient>?)workflow.Recipients?.Values ?? [])
+            .SelectMany(x => (string.IsNullOrWhiteSpace(x.List) ? [] : new[] { x.List }).Concat(x.Map?.Values.SelectMany(v => v) ?? []));
+        foreach (string listKey in listKeys.Distinct(StringComparer.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(configuration[AtlasWorkflowInputs.ListSetting(manifest.Code, listKey)]))
+                error($"the Workflow list '{listKey}' has no address: set {AtlasWorkflowInputs.ListSetting(manifest.Code, listKey)}.");
+
+        if (workflow.TemplateData?.Values.Any(x => x.RecordLink) == true && string.IsNullOrWhiteSpace(configuration[AtlasWorkflowInputs.HostedClientUrlSetting]))
+            error($"the Workflow template data has a RecordLink, but {AtlasWorkflowInputs.HostedClientUrlSetting} is empty.");
     }
 
     /// <summary>Checks the settings of the manifest. Returns false when the app is disabled and is not checked further.</summary>

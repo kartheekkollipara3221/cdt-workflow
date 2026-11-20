@@ -1,5 +1,10 @@
 // STAND-IN: do not copy to the target.
 // The local demo host. Program.cs and the endpoint tests use it.
+using WorkflowEngine.Application.Normalization;
+using WorkflowEngine.Application.Results;
+using WorkflowEngine.Application.WorkflowNotification;
+using WorkflowEngine.Infrastructure.DependencyInjection;
+using WorkflowEngine.Infrastructure.WorkflowNotification;
 using BBH.CP.Atlas.App.Platform;
 using BBH.CP.Atlas.App.UserAuthentication;
 using BBH.CP.Atlas.Data;
@@ -35,6 +40,17 @@ public static class StandInHost
         builder.Services.AddDbContext<CPSharepointContext>(o => o.UseSqlServer(TPAMAPIAccess.GetConnectionString(configuration, "DBConnection")));
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddSingleton<IUserInfo, UserInfo>();
+
+        // The workflow engine, as the target program.cs registers it. The dispatcher is the stand-in copy of the target one.
+        builder.Services.AddScoped<WorkflowActionEnvelopeNormalizer>();
+        builder.Services.AddScoped<CanonicalRequestHasher>();
+        builder.Services.AddScoped<WorkflowActionResultBuilder>();
+        builder.Services.AddScoped<CanonicalWorkflowResultSerializer>();
+        // Locally the engine tables are in the platform database, so DBConnection is the default of DefaultConnection.
+        if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("DefaultConnection")))
+            builder.Configuration["ConnectionStrings:DefaultConnection"] = configuration.GetConnectionString("DBConnection");
+        builder.Services.AddWorkflowInfrastructure(configuration);
+        builder.Services.AddScoped<IWorkflowActionNotificationDispatcher, WorkflowActionNotificationDispatcher>();
 
         // Platform lines (the same lines go into the target program.cs).
         builder.Services.AddAtlasPlatform(configuration);

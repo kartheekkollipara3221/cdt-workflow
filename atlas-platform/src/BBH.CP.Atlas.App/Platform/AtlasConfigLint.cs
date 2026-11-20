@@ -7,6 +7,7 @@ using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Application;
 using BBH.CP.Atlas.Service.Platform.Attachments;
+using BBH.CP.Atlas.Service.Platform.Workflow;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Sections;
 
@@ -106,9 +107,78 @@ public static partial class AtlasConfigLint
             }
         }
 
+        EngineBinding(form, workflow, names, table, error);
+
         int saveButtons = AtlasWorkflowSteps.SaveButtons(form.Section).Count;
         if (saveButtons != 1)
             error($"the form has Workflow Steps and {saveButtons} buttons with the action Save; a form with steps has exactly one submit button.");
+    }
+
+    /// <summary>
+    /// Checks the engine part of a binding with steps: the prefix, the actor roles, the engine actions of each step, the
+    /// recipients and the template data.
+    /// </summary>
+    private static void EngineBinding(CPAtlasApplicationConfig form, CPWorkflow workflow, HashSet<string> names, AtlasTable? table, Action<string> error)
+    {
+        bool Known(string? name) => name != null && (names.Contains(name) || table?.HasColumn(name) == true);
+
+        if (string.IsNullOrWhiteSpace(workflow.BusinessObjectPrefix))
+            error("the Workflow has Steps but no BusinessObjectPrefix.");
+        if (workflow.ActorRoles != null && !string.Equals(workflow.ActorRoles, ConfigSectionService.UserActorRoles, StringComparison.OrdinalIgnoreCase))
+            error($"the Workflow ActorRoles '{workflow.ActorRoles}' is not known (use \"{ConfigSectionService.UserActorRoles}\").");
+
+        foreach ((string state, CPWorkflowStep step) in workflow.Steps!)
+        {
+            string where = $"the Workflow step '{state}'";
+            List<CPWorkflowEngineAction> actions = step?.EngineActions ?? [];
+            if (actions.Count == 0)
+                error($"{where} has no engine action.");
+            bool initial = string.Equals(state, workflow.InitialState, StringComparison.OrdinalIgnoreCase);
+            for (int index = 0; index < actions.Count; index++)
+            {
+                CPWorkflowEngineAction action = actions[index];
+                bool start = !string.IsNullOrWhiteSpace(action.Start);
+                if (start == !string.IsNullOrWhiteSpace(action.Execute))
+                    error($"{where}: engine action {index + 1} must have exactly one of Start and Execute.");
+                else if (start != (initial && index == 0))
+                    error($"{where}: engine action {index + 1} must be {(initial && index == 0 ? "a Start (the first action of the InitialState step)" : "an Execute")}.");
+                foreach (string key in action.Recipients ?? [])
+                    if (workflow.Recipients?.ContainsKey(key) != true)
+                        error($"{where}: the recipient key '{key}' has no definition in Workflow.Recipients.");
+            }
+        }
+
+        List<CPApplicationControl> controls = [.. (form.Section?.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []))];
+        foreach ((string key, CPWorkflowRecipient source) in workflow.Recipients ?? new Dictionary<string, CPWorkflowRecipient>())
+        {
+            string where = $"the Workflow recipient '{key}'";
+            int sources = (string.IsNullOrWhiteSpace(source.List) ? 0 : 1) + (string.IsNullOrWhiteSpace(source.ListByField) ? 0 : 1)
+                + (string.IsNullOrWhiteSpace(source.FromNameField) ? 0 : 1);
+            if (sources != 1)
+                error($"{where} must have exactly one of List, ListByField and FromNameField.");
+            if (!string.IsNullOrWhiteSpace(source.FromNameField) && !Known(source.FromNameField))
+                error($"{where} names the field '{source.FromNameField}', which is not a field of the form or a column of the table.");
+            if (!string.IsNullOrWhiteSpace(source.ListByField))
+            {
+                if (!Known(source.ListByField))
+                    error($"{where} names the field '{source.ListByField}', which is not a field of the form or a column of the table.");
+                if (source.Map is not { Count: > 0 })
+                    error($"{where} has ListByField but no Map.");
+                CPApplicationControl? control = controls.FirstOrDefault(x => string.Equals(x.Field ?? x.Name, source.ListByField, StringComparison.OrdinalIgnoreCase));
+                if (control?.Options is { Count: > 0 } options)
+                    foreach (string value in (IEnumerable<string>?)source.Map?.Keys ?? [])
+                        if (!options.Any(x => string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase)))
+                            error($"{where}: the Map value '{value}' is not an option of '{control.Name}'.");
+            }
+        }
+
+        foreach ((string token, CPWorkflowTemplateValue source) in workflow.TemplateData ?? new Dictionary<string, CPWorkflowTemplateValue>())
+        {
+            if (source.RecordLink == !string.IsNullOrWhiteSpace(source.Field))
+                error($"the Workflow template value '{token}' must have exactly one of Field and RecordLink.");
+            else if (!source.RecordLink && !Known(source.Field))
+                error($"the Workflow template value '{token}' names the field '{source.Field}', which is not a field of the form or a column of the table.");
+        }
     }
 
     private static void Column(string? name, string key, AtlasTable? table, Action<string> error, bool required)

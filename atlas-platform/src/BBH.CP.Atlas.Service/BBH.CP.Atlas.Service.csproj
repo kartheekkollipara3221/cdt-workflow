@@ -10,6 +10,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BBH.CP.Atlas.Data\BBH.CP.Atlas.Data.csproj" />
+    <!-- The workflow engine of this repo. The target Service project references its own copy of the same projects. -->
+    <ProjectReference Include="..\..\..\src\WorkflowEngine.Application\WorkflowEngine.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\WorkflowEngine.Domain\WorkflowEngine.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Server clean-up of rich text. Approved package; the target team adds it. Its dependencies AngleSharp 1.10.0 and
