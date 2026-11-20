@@ -110,3 +110,4 @@ One question at a time. The order is the order of effect on the design.
 | # | Answer | Date |
 |---|---|---|
 | Q1 | A: approved. Build the engine adapter (module 10) for section forms in P2. The engine code does not change. | 2026-11-19 |
+| Q2 | A: no engine change. The binding gives two engine actions for the Submit button; the adapter runs them in order (E1, then E2 with the state kept). A test must prove that the engine accepts an action that keeps the state. | 2026-11-19 |
