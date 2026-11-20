@@ -65,9 +65,10 @@ The dated history entries below are unchanged, newest first: platform and target
   pool, run 045, copy the files of the B85 row, start, --atlas-check 0 errors.
 3 P2 requirements DONE 2026-11-19 (first pass): app ClientInflows, code CFPINFLOW (CFPOUTFLOW = later app), menu
   "Client Flows Portal - Inflow", table CFP.Inflow (+ CFP.InflowAttachment, target-made, we may change them). Answers
-  D1-D30 in docs/ClientInflows/ONBOARDING_ANSWERS.md (template v2 sections; screenshots in the same folder). Still
-  open there: owner/contact/user count/dev date, Comment pictures (assumed none), DL addresses, AIN RM LAN ID + RMCC
-  (target team). New reusable requirement: AIN account lookup that fills fields (4+ apps). Requirements only, no design.
+  D1-D34 in docs/ClientInflows/ONBOARDING_ANSWERS.md (template v2 sections; screenshots in the same folder). Was
+  open, now closed: section 1 details not needed; Comment no pictures; real DLs at target, smtp4dev locally; RM email
+  = AIN RelationshipManager matched to CP_Atlas_User.DisplayName; one new AIN column RMCC (display names, `;`), added
+  here by local script, target team does the same; no/ambiguous match = skip + log warning, --atlas-check lists them. New reusable requirement: AIN account lookup that fills fields (4+ apps). Requirements only, no design.
 4 PENDING_DECISIONS.html: Q01 bug list, Q07/Q08 before 050/090 run anywhere, the rest as before (Q02-Q51).
 
 ### Next

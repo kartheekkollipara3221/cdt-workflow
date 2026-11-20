@@ -42,6 +42,10 @@ email3). Current SharePoint site: `imsp.bbh.com/sites/imops/inflowOutflow`.
 | D28 | Date of destruction is for display only (no automatic delete or hide). Normal CP Atlas data handling; no special confidential fields. No other systems except the AIN account data. | 2026-11-19 |
 | D29 | Account Number list: all accounts in the AIN account inventory that are not deleted. Control: ngselect with search (number and name). Each item shows "number - name". | 2026-11-19 |
 | D30 | Test scenarios 1-6 in section 14 accepted. Test users are mock values: A035313 (Write), A023456 (Read). | 2026-11-19 |
+| D31 | Section 1 details (owner, contact, user count, dev date) are not needed for development. Comment has no pictures (as D12). Distribution lists: real DLs at the target; local tests use smtp4dev. | 2026-11-19 |
+| D32 | One new AIN column only: RMCC, added in this repo (local script) so the app works here; the user asks the target team to make the same change in `AIN.AccountInventory`. It holds display names that match `CP_Atlas_User.DisplayName`, many values allowed, separated by `;`. RMCC is usually one person for each account. | 2026-11-19 |
+| D33 | No RM LAN ID column. The RM email comes from `CP_Atlas_User`: `AIN.AccountInventory.RelationshipManager` matches `CP_Atlas_User.DisplayName`, and the app uses that user's `Email`. RMCC names resolve the same way. Replaces the open item of D9. | 2026-11-19 |
+| D34 | Name match rules: case and extra spaces ignored. One active user with an email: send. No match, or two or more users with the same name: leave that person out, send to the others, write a warning to the log. `--atlas-check` lists the AIN accounts whose RM or RMCC names do not match exactly one user. | 2026-11-19 |
 
 ## 1. App identity
 
@@ -95,7 +99,7 @@ email3). Current SharePoint site: `imsp.bbh.com/sites/imops/inflowOutflow`.
 | 11 | part 1 | Submitted By | user, filled with the current user at submit, read-only | yes (auto) | FlowSubmittedBy | confirmed |
 | 12 | part 1 | I confirm the information given in this form is correct | checkbox, must be ticked to submit | yes | FlowConfirm | confirmed |
 | 13 | Cash Receipt Confirmation | Funds have been received | checkbox, must be ticked to submit part 2 | yes | none (SP: Fund Received) | confirmed |
-| 14 | Cash Receipt Confirmation | Comment | richtext (CKEditor 5), no pictures (assumed as D12) | no | Comment | confirmed (no-pictures rule assumed) |
+| 14 | Cash Receipt Confirmation | Comment | richtext (CKEditor 5), no pictures (D31) | no | Comment | confirmed |
 | 15 | Cash Receipt Confirmation | Attachments ("Please attach proof of custodian receipt.") | filepicker, many files, default types and 10 MB per file, read-only after the second submit | yes | CFP.InflowAttachment | confirmed (largest number of files: not given, take as no limit) |
 | 16 | part 2 | Submitted By | user, filled with the current user at submit, read-only | yes (auto) | CashSubmittedBy | confirmed |
 | 17 | part 2 | I confirm ... correct | checkbox, must be ticked to submit | yes | CashConfirm | confirmed |
@@ -140,14 +144,4 @@ Test users (mock): A035313 = Write, A023456 = Read.
 
 ## Still open
 
-- Section 1: business owner, technical contact, number of users, date needed in dev.
-- Comment (field 14): no pictures assumed, as Description (D12).
-- Exact message texts for the checks (scenario 3): platform default texts unless the owner gives others.
-- The new distribution list addresses (ICG, Fixed Income, Equity, IMRG, CS Team, Star FAS IFI Cash Team): placeholder addresses until the target team creates them.
-- AIN data: RM LAN ID and RMCC columns (D9, target team).
-
-## Notes for the design phase (not requirements)
-
-- N1 `CFP.Inflow.Description` is `varchar(max)` (not Unicode). Rich text pasted from Word or email can hold Unicode characters. Check this in the design.
-- N2 `CFP.Inflow` has no LanId and no RowVersion columns; the platform needs them (additive script).
-- N3 `CFP.Inflow` has no column for "Funds have been received" (SharePoint had "Fund Received"). Add one in the design.
+None for the first pass. Next: the gap report.
