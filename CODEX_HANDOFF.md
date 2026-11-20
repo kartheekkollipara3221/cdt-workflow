@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 design draft 1 waits for approval)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 design approved, build not started)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -94,17 +94,18 @@ The dated history entries below are unchanged, newest first: platform and target
    MustBeTrue, request field Button + Action.Set, Table option provider + LookupTables, attachments with
    AttachmentColumns map, richtext, engine adapter with Workflow.Steps/Recipients/TemplateData, IAtlasUserDirectory,
    Info severity + name report), build steps 0-7 (step 0 = engine test for the state-keeping action), tests.
-   WAITS FOR THE USER: section 14 has 6 approval items: (1) optional v1/ManagePage fields Button, RequestId,
-   RemovedAttachmentIds + route GET v1/Attachment/{appCode}/{id}; (2) CFP.InflowAttachment.FileName -> nvarchar(1000);
-   (3) target file changes (program.cs line, package.json CKEditor, Service csproj HtmlSanitizer, appsettings);
-   (4) log events 41025-41029; (5) export = built-in grid menu only, or also a button; (6) the 4 fixed lists stay as
-   static addresses in the engine script. NO CODE AND NO SQL SCRIPT EXISTS FOR P2.
+   DRAFT 2 = APPROVED 2026-11-20: all 6 items of section 14 answered (14.1): (1) yes: optional v1/ManagePage fields
+   Button, RequestId, RemovedAttachmentIds + route GET v1/Attachment/{appCode}/{id}; (2) yes:
+   CFP.InflowAttachment.FileName -> nvarchar(1000); (3) yes: target file changes (program.cs line, package.json
+   CKEditor, Service csproj HtmlSanitizer, appsettings); (4) yes: log events 41025-41029; (5) export = built-in grid
+   menu only, no button; (6) ALL SIX lists in the app settings (AppSettings:Modules:CFPINFLOW:Workflow:Lists:<Key>),
+   the engine script has no address, each recipient rule is a request input (this replaces gap item A16).
+   NO CODE AND NO SQL SCRIPT EXISTS FOR P2. The user has not yet said "start the build".
 
 ### Next
-0. P2: get the user's answers to the 6 approval items of module 25 section 14 (one at a time), record them in the
-   design (.md, then make the .html again), commit. Only after the approval: build step 0 (engine test: an action
-   that keeps the state), then steps 1-7 of module 25 section 13, platform gates and one commit for each step.
-   Do not push.
+0. P2: the design (module 25, draft 2) is approved. Wait for the user to say "start the build". Then build step 0
+   (engine test: an action that keeps the state runs and makes its outbox row; if it fails, stop and ask), then
+   steps 1-7 of module 25 section 13, platform gates and one commit for each step. Do not push.
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
 2. P2 requirements recorded (pending 3). Gap report + design go to another model: start from
@@ -207,7 +208,7 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## Next-session prompt
 "Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
-section A Pending 5 and Next 0, one question at a time (next: the 6 approval items of module 25 section 14, then build step 0). Keep the broad
+section A Pending 5 and Next 0, one question at a time (next: P2 build step 0 of module 25 section 13, after the user says to start). Keep the broad
 goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
 nothing breaks the existing system."
 

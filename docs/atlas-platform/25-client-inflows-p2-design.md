@@ -1,7 +1,7 @@
 # Module 25: ClientInflows (P2) implementation design
 
-Status: Draft 1, 2026-11-20. Design only. No code and no SQL script exists yet. The user must approve this design
-before the build starts (section 14).
+Status: Draft 2, 2026-11-20. Approved by the user: all six items of section 14 have an answer (14.1). Design only.
+No code and no SQL script exists yet. The build starts with step 0 of section 13 when the user says so.
 
 ## 1. Purpose
 
@@ -138,15 +138,18 @@ all keys are new.
 
 | Route | To | Cc |
 |---|---|---|
-| E1 | Static: ICG list | none |
-| E2 | Request input `investmentLists` (required); request input `relationshipManager` (not required) | none |
-| E3 | Request input `investmentLists` (required); request input `relationshipManager` (not required); static: CS Team list | Request input `rmcc` (not required); static: IMRG list; static: Star FAS IFI Cash Team list |
+| E1 | `icg` (required) | none |
+| E2 | `investmentLists` (required); `relationshipManager` (not required) | none |
+| E3 | `investmentLists` (required); `relationshipManager` (not required); `csTeam` (required) | `rmcc` (not required); `imrg` (required); `starFasIfiCash` (required) |
+
+Each recipient rule is a request input: the adapter sends the addresses with the action (10.6). The script has no
+email address.
 
 - The subject and body text come from `email1.jpeg` to `email3.jpeg` (D19). Tokens: `{{accountName}}`,
   `{{accountNumber}}`, `{{amount}}`, `{{inflowDate}}`, `{{recordLink}}`.
-- The static addresses in the script are placeholders (`icg-inflow@example.com`, ...). The target team sets the real
-  lists before the run. The four fixed lists stay in the engine metadata; only the Investment Type lists are in the app
-  settings (Q3).
+- All six lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team, Fixed Income, Equity) are in the app settings of each
+  environment (Q3 and section 14.1, answer 6). The local settings have placeholder addresses
+  (`icg-inflow@example.com`, ...).
 - `NotifyInformational` keeps the state. A test must prove that the engine accepts it (Q2). This test is the first
   build step (section 13).
 
@@ -456,14 +459,19 @@ Optional properties on the `Workflow` object of the form (partial class of the t
   "StatusLabels": { "Draft": "Draft", "Submitted": "Submitted", "FundsReceived": "Funds Received" },
   "Steps": {
     "SubmitPart1": [
-      { "Start": "Submit" },
+      { "Start": "Submit", "Recipients": [ "icg" ] },
       { "Execute": "NotifyInformational", "Recipients": [ "investmentLists", "relationshipManager" ] }
     ],
     "SubmitPart2": [
-      { "Execute": "ConfirmFunds", "Recipients": [ "investmentLists", "relationshipManager", "rmcc" ] }
+      { "Execute": "ConfirmFunds",
+        "Recipients": [ "investmentLists", "relationshipManager", "csTeam", "rmcc", "imrg", "starFasIfiCash" ] }
     ]
   },
   "Recipients": {
+    "icg": { "List": "Icg" },
+    "csTeam": { "List": "CsTeam" },
+    "imrg": { "List": "Imrg" },
+    "starFasIfiCash": { "List": "StarFasIfiCash" },
     "investmentLists": {
       "ListByField": "InvestmentType",
       "Map": {
@@ -530,7 +538,8 @@ view. The engine role `Write` has the same name as the app role.
 
 | Source | Meaning |
 |---|---|
-| `ListByField` + `Map` | The value of the field selects list keys. Each key has one or more addresses in `AppSettings:Modules:<Code>:Workflow:Lists:<Key>` (separated by `;`). |
+| `List` | One fixed list key. Each key has one or more addresses in `AppSettings:Modules:<Code>:Workflow:Lists:<Key>` (separated by `;`). |
+| `ListByField` + `Map` | The value of the field selects one or more list keys. The addresses come from the same setting as for `List`. |
 | `FromNameField` | The field holds display names, separated by `;`. Each name is found in `CP_Atlas_User`. |
 | `FromUserField` | The field holds a LAN ID (module 10, 4.6). Designed, not used in P2. |
 
@@ -616,10 +625,10 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 |---|---|---|
 | 1 | `v1/ManagePage` gets three optional request fields: `Button`, `RequestId`, `RemovedAttachmentIds`. New route `GET v1/Attachment/{appCode}/{id}` (decided in module 8). All additive. | Approve |
 | 2 | `CFP.InflowAttachment.FileName` from `varchar(1000)` to `nvarchar(1000)`, so a file name keeps its characters. The table has no platform data yet. | Approve |
-| 3 | Target files that change (integration steps, the user does them): `program.cs` (one `AddAtlasModule` line), `package.json` (the two CKEditor packages replace the six 41.4.2 packages, after the target team checks its own use of them), the Service `.csproj` (`HtmlSanitizer`), `appsettings.json` (list addresses, `WebBaseUrl`), `tailwind.config.js` only if the form uses a new class. | Approve |
+| 3 | Target files that change (integration steps, the user does them): `program.cs` (one `AddAtlasModule` line), `package.json` (the two CKEditor packages replace the six 41.4.2 packages, after the target team checks its own use of them), the Service `.csproj` (`HtmlSanitizer`), `appsettings.json` (the six list addresses, `WebBaseUrl`), `tailwind.config.js` only if the form uses a new class. | Approve |
 | 4 | New log events 41025 to 41029: `Atlas.RecipientSkipped`, `Atlas.WorkflowStepFailed`, `Atlas.WorkflowSync`, `Atlas.NotificationDispatchFailed`, `Atlas.AttachmentRefused`. New identifiers, none changed. | Approve |
 | 5 | Export: the built-in grid menu, no new button. Tell me if you also want a visible "Export" button on the platform dashboard (generic, one dashboard JSON key). | Built-in menu only |
-| 6 | The four fixed lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team) stay as static addresses in the engine script. A change of such a list is an SQL change. The other choice is to put them in the app settings too, with the same list mechanism. | Keep in the engine script |
+| 6 | Where the four fixed lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team) live: static addresses in the engine script, or the app settings with the two Investment Type lists. | See the answer |
 
 ### 14.1 Answers
 
@@ -630,18 +639,19 @@ These are the stop-and-ask items of this design. The answers Q1 to Q9 already co
 | 3 | Approved: the target file changes (`program.cs`, `package.json`, the Service `.csproj`, `appsettings.json`, and `tailwind.config.js` only if necessary). | 2026-11-20 |
 | 4 | Approved: the log events 41025 to 41029. | 2026-11-20 |
 | 5 | The built-in grid menu only. No export button. | 2026-11-20 |
+| 6 | All six lists are in the app settings. The engine script has no email address; each recipient rule is a request input. | 2026-11-20 |
 
 ## 15. Target integration steps (for `INTEGRATION.md`)
 
 1. Prerequisites: the engine migrations are current and the engine scheduled job with the outbox retry runs
    (module 10, 4.5; module 11).
-2. Run `sql/release-p2/` 100 to 150 in number order. Set the real list addresses in `150` first. The AIN team gets
-   `140`.
+2. Run `sql/release-p2/` 100 to 150 in number order. The AIN team gets `140`.
 3. Copy the platform folders as for P1, plus `Config/CFPINFLOW.app.json`, `CFPINFLOW.json`,
    `CFPINFLOW.Dashboard.json`.
 4. Do the target file changes of section 14, item 3.
-5. Settings in each environment: `AppSettings:Modules:CFPINFLOW:Workflow:Lists:FixedIncome`,
-   `...:Lists:Equity`, `AppSettings:Atlas:WebBaseUrl`.
+5. Settings in each environment: `AppSettings:Modules:CFPINFLOW:Workflow:Lists:<Key>` for the six keys `Icg`,
+   `CsTeam`, `Imrg`, `StarFasIfiCash`, `FixedIncome`, `Equity`, and `AppSettings:Atlas:WebBaseUrl`. A missing address
+   is a start-up check error.
 6. Grant the roles `Read` and `Write` with the grant template.
 7. Run `--atlas-check`. Read the Info lines: each line is an RM or RMCC name that gets no email. Correct the data in
    AIN or in `CP_Atlas_User`.

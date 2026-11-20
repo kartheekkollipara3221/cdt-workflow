@@ -46,7 +46,7 @@ ol.flow{padding-left:22px}ol.flow li{margin:6px 0}
 <body>
 <main>
 <div class="eyebrow">CP Atlas platform · module 25</div><h1>Module 25: ClientInflows (P2) implementation design</h1>
-<p>Status: Draft 1, 2026-11-20. Design only. No code and no SQL script exists yet. The user must approve this design before the build starts (section 14).</p>
+<p>Status: Draft 2, 2026-11-20. Approved by the user: all six items of section 14 have an answer (14.1). Design only. No code and no SQL script exists yet. The build starts with step 0 of section 13 when the user says so.</p>
 <section>
 <h2>1. Purpose</h2>
 <p>ClientInflows (app code <code>CFPINFLOW</code>) is release P2: the second platform app, and the first one with attachments, rich text and a workflow. This document tells how to build it. Most of the work is generic platform code that the next apps use again. The app itself is JSON and SQL.</p>
@@ -139,11 +139,12 @@ account list   &lt;--------------- Table option provider  &lt;------------------
 <tr><td><code>ConfirmFunds</code></td><td><code>Submitted</code></td><td><code>FundsReceived</code></td><td><code>Write</code></td><td><code>ClientInflow.FundsReceived</code></td><td>E3</td></tr>
 </tbody></table></div>
 <div class="table-wrap"><table><thead><tr><th>Route</th><th>To</th><th>Cc</th></tr></thead><tbody>
-<tr><td>E1</td><td>Static: ICG list</td><td>none</td></tr>
-<tr><td>E2</td><td>Request input <code>investmentLists</code> (required); request input <code>relationshipManager</code> (not required)</td><td>none</td></tr>
-<tr><td>E3</td><td>Request input <code>investmentLists</code> (required); request input <code>relationshipManager</code> (not required); static: CS Team list</td><td>Request input <code>rmcc</code> (not required); static: IMRG list; static: Star FAS IFI Cash Team list</td></tr>
+<tr><td>E1</td><td><code>icg</code> (required)</td><td>none</td></tr>
+<tr><td>E2</td><td><code>investmentLists</code> (required); <code>relationshipManager</code> (not required)</td><td>none</td></tr>
+<tr><td>E3</td><td><code>investmentLists</code> (required); <code>relationshipManager</code> (not required); <code>csTeam</code> (required)</td><td><code>rmcc</code> (not required); <code>imrg</code> (required); <code>starFasIfiCash</code> (required)</td></tr>
 </tbody></table></div>
-<ul><li>The subject and body text come from <code>email1.jpeg</code> to <code>email3.jpeg</code> (D19). Tokens: <code>{{accountName}}</code>, <code>{{accountNumber}}</code>, <code>{{amount}}</code>, <code>{{inflowDate}}</code>, <code>{{recordLink}}</code>.</li><li>The static addresses in the script are placeholders (<code>icg-inflow@example.com</code>, ...). The target team sets the real lists before the run. The four fixed lists stay in the engine metadata; only the Investment Type lists are in the app settings (Q3).</li><li><code>NotifyInformational</code> keeps the state. A test must prove that the engine accepts it (Q2). This test is the first build step (section 13).</li></ul>
+<p>Each recipient rule is a request input: the adapter sends the addresses with the action (10.6). The script has no email address.</p>
+<ul><li>The subject and body text come from <code>email1.jpeg</code> to <code>email3.jpeg</code> (D19). Tokens: <code>{{accountName}}</code>, <code>{{accountNumber}}</code>, <code>{{amount}}</code>, <code>{{inflowDate}}</code>, <code>{{recordLink}}</code>.</li><li>All six lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team, Fixed Income, Equity) are in the app settings of each environment (Q3 and section 14.1, answer 6). The local settings have placeholder addresses (<code>icg-inflow@example.com</code>, ...).</li><li><code>NotifyInformational</code> keeps the state. A test must prove that the engine accepts it (Q2). This test is the first build step (section 13).</li></ul>
 <h3>4.4 Local database</h3>
 <p><code>atlas-platform/local/sql/</code> gets two scripts, and <code>setup-local-db.ps1</code> runs them:</p>
 <ul><li><code>020-local-cfp-ain-tables.sql</code>: <code>CFP.Inflow</code>, <code>CFP.InflowAttachment</code> and <code>AIN.AccountInventory</code> in the exact target shape (from the target copy), so the release scripts are tested against the real start point. Sample accounts: clean names, one RM with no user, one RM name with two users, one RMCC with two names.</li><li><code>900-local-seed.sql</code> (extended): users A035313 (<code>Write</code>) and A023456 (<code>Read</code>), and placeholder addresses.</li></ul>
@@ -304,14 +305,19 @@ account list   &lt;--------------- Table option provider  &lt;------------------
   &quot;StatusLabels&quot;: { &quot;Draft&quot;: &quot;Draft&quot;, &quot;Submitted&quot;: &quot;Submitted&quot;, &quot;FundsReceived&quot;: &quot;Funds Received&quot; },
   &quot;Steps&quot;: {
     &quot;SubmitPart1&quot;: [
-      { &quot;Start&quot;: &quot;Submit&quot; },
+      { &quot;Start&quot;: &quot;Submit&quot;, &quot;Recipients&quot;: [ &quot;icg&quot; ] },
       { &quot;Execute&quot;: &quot;NotifyInformational&quot;, &quot;Recipients&quot;: [ &quot;investmentLists&quot;, &quot;relationshipManager&quot; ] }
     ],
     &quot;SubmitPart2&quot;: [
-      { &quot;Execute&quot;: &quot;ConfirmFunds&quot;, &quot;Recipients&quot;: [ &quot;investmentLists&quot;, &quot;relationshipManager&quot;, &quot;rmcc&quot; ] }
+      { &quot;Execute&quot;: &quot;ConfirmFunds&quot;,
+        &quot;Recipients&quot;: [ &quot;investmentLists&quot;, &quot;relationshipManager&quot;, &quot;csTeam&quot;, &quot;rmcc&quot;, &quot;imrg&quot;, &quot;starFasIfiCash&quot; ] }
     ]
   },
   &quot;Recipients&quot;: {
+    &quot;icg&quot;: { &quot;List&quot;: &quot;Icg&quot; },
+    &quot;csTeam&quot;: { &quot;List&quot;: &quot;CsTeam&quot; },
+    &quot;imrg&quot;: { &quot;List&quot;: &quot;Imrg&quot; },
+    &quot;starFasIfiCash&quot;: { &quot;List&quot;: &quot;StarFasIfiCash&quot; },
     &quot;investmentLists&quot;: {
       &quot;ListByField&quot;: &quot;InvestmentType&quot;,
       &quot;Map&quot;: {
@@ -344,7 +350,8 @@ account list   &lt;--------------- Table option provider  &lt;------------------
 <p><code>ActorRoles: &quot;User&quot;</code>: the adapter sends the names of the active roles of the user in the app, from the active roles view. The engine role <code>Write</code> has the same name as the app role.</p>
 <h3>10.6 Recipients</h3>
 <div class="table-wrap"><table><thead><tr><th>Source</th><th>Meaning</th></tr></thead><tbody>
-<tr><td><code>ListByField</code> + <code>Map</code></td><td>The value of the field selects list keys. Each key has one or more addresses in <code>AppSettings:Modules:&lt;Code&gt;:Workflow:Lists:&lt;Key&gt;</code> (separated by <code>;</code>).</td></tr>
+<tr><td><code>List</code></td><td>One fixed list key. Each key has one or more addresses in <code>AppSettings:Modules:&lt;Code&gt;:Workflow:Lists:&lt;Key&gt;</code> (separated by <code>;</code>).</td></tr>
+<tr><td><code>ListByField</code> + <code>Map</code></td><td>The value of the field selects one or more list keys. The addresses come from the same setting as for <code>List</code>.</td></tr>
 <tr><td><code>FromNameField</code></td><td>The field holds display names, separated by <code>;</code>. Each name is found in <code>CP_Atlas_User</code>.</td></tr>
 <tr><td><code>FromUserField</code></td><td>The field holds a LAN ID (module 10, 4.6). Designed, not used in P2.</td></tr>
 </tbody></table></div>
@@ -386,10 +393,10 @@ account list   &lt;--------------- Table option provider  &lt;------------------
 <div class="table-wrap"><table><thead><tr><th>#</th><th>Item</th><th>Recommendation</th></tr></thead><tbody>
 <tr><td>1</td><td><code>v1/ManagePage</code> gets three optional request fields: <code>Button</code>, <code>RequestId</code>, <code>RemovedAttachmentIds</code>. New route <code>GET v1/Attachment/{appCode}/{id}</code> (decided in module 8). All additive.</td><td>Approve</td></tr>
 <tr><td>2</td><td><code>CFP.InflowAttachment.FileName</code> from <code>varchar(1000)</code> to <code>nvarchar(1000)</code>, so a file name keeps its characters. The table has no platform data yet.</td><td>Approve</td></tr>
-<tr><td>3</td><td>Target files that change (integration steps, the user does them): <code>program.cs</code> (one <code>AddAtlasModule</code> line), <code>package.json</code> (the two CKEditor packages replace the six 41.4.2 packages, after the target team checks its own use of them), the Service <code>.csproj</code> (<code>HtmlSanitizer</code>), <code>appsettings.json</code> (list addresses, <code>WebBaseUrl</code>), <code>tailwind.config.js</code> only if the form uses a new class.</td><td>Approve</td></tr>
+<tr><td>3</td><td>Target files that change (integration steps, the user does them): <code>program.cs</code> (one <code>AddAtlasModule</code> line), <code>package.json</code> (the two CKEditor packages replace the six 41.4.2 packages, after the target team checks its own use of them), the Service <code>.csproj</code> (<code>HtmlSanitizer</code>), <code>appsettings.json</code> (the six list addresses, <code>WebBaseUrl</code>), <code>tailwind.config.js</code> only if the form uses a new class.</td><td>Approve</td></tr>
 <tr><td>4</td><td>New log events 41025 to 41029: <code>Atlas.RecipientSkipped</code>, <code>Atlas.WorkflowStepFailed</code>, <code>Atlas.WorkflowSync</code>, <code>Atlas.NotificationDispatchFailed</code>, <code>Atlas.AttachmentRefused</code>. New identifiers, none changed.</td><td>Approve</td></tr>
 <tr><td>5</td><td>Export: the built-in grid menu, no new button. Tell me if you also want a visible "Export" button on the platform dashboard (generic, one dashboard JSON key).</td><td>Built-in menu only</td></tr>
-<tr><td>6</td><td>The four fixed lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team) stay as static addresses in the engine script. A change of such a list is an SQL change. The other choice is to put them in the app settings too, with the same list mechanism.</td><td>Keep in the engine script</td></tr>
+<tr><td>6</td><td>Where the four fixed lists (ICG, CS Team, IMRG, Star FAS IFI Cash Team) live: static addresses in the engine script, or the app settings with the two Investment Type lists.</td><td>See the answer</td></tr>
 </tbody></table></div>
 <h3>14.1 Answers</h3>
 <div class="table-wrap"><table><thead><tr><th>#</th><th>Answer</th><th>Date</th></tr></thead><tbody>
@@ -398,11 +405,12 @@ account list   &lt;--------------- Table option provider  &lt;------------------
 <tr><td>3</td><td>Approved: the target file changes (<code>program.cs</code>, <code>package.json</code>, the Service <code>.csproj</code>, <code>appsettings.json</code>, and <code>tailwind.config.js</code> only if necessary).</td><td>2026-11-20</td></tr>
 <tr><td>4</td><td>Approved: the log events 41025 to 41029.</td><td>2026-11-20</td></tr>
 <tr><td>5</td><td>The built-in grid menu only. No export button.</td><td>2026-11-20</td></tr>
+<tr><td>6</td><td>All six lists are in the app settings. The engine script has no email address; each recipient rule is a request input.</td><td>2026-11-20</td></tr>
 </tbody></table></div>
 </section>
 <section>
 <h2>15. Target integration steps (for <code>INTEGRATION.md</code>)</h2>
-<ol><li>Prerequisites: the engine migrations are current and the engine scheduled job with the outbox retry runs (module 10, 4.5; module 11).</li><li>Run <code>sql/release-p2/</code> 100 to 150 in number order. Set the real list addresses in <code>150</code> first. The AIN team gets <code>140</code>.</li><li>Copy the platform folders as for P1, plus <code>Config/CFPINFLOW.app.json</code>, <code>CFPINFLOW.json</code>, <code>CFPINFLOW.Dashboard.json</code>.</li><li>Do the target file changes of section 14, item 3.</li><li>Settings in each environment: <code>AppSettings:Modules:CFPINFLOW:Workflow:Lists:FixedIncome</code>, <code>...:Lists:Equity</code>, <code>AppSettings:Atlas:WebBaseUrl</code>.</li><li>Grant the roles <code>Read</code> and <code>Write</code> with the grant template.</li><li>Run <code>--atlas-check</code>. Read the Info lines: each line is an RM or RMCC name that gets no email. Correct the data in AIN or in <code>CP_Atlas_User</code>.</li><li>Restart the app pool.</li><li>Old data: the target team moves the SharePoint records with LAN IDs in the person columns, UTC dates, <code>WorkflowState</code> and <code>Status</code> filled. A moved record in state <code>Submitted</code> has no engine instance; the second submit of such a record needs a decision of the target team before the move (start an instance in the move script, or move only closed records).</li></ol>
+<ol><li>Prerequisites: the engine migrations are current and the engine scheduled job with the outbox retry runs (module 10, 4.5; module 11).</li><li>Run <code>sql/release-p2/</code> 100 to 150 in number order. The AIN team gets <code>140</code>.</li><li>Copy the platform folders as for P1, plus <code>Config/CFPINFLOW.app.json</code>, <code>CFPINFLOW.json</code>, <code>CFPINFLOW.Dashboard.json</code>.</li><li>Do the target file changes of section 14, item 3.</li><li>Settings in each environment: <code>AppSettings:Modules:CFPINFLOW:Workflow:Lists:&lt;Key&gt;</code> for the six keys <code>Icg</code>, <code>CsTeam</code>, <code>Imrg</code>, <code>StarFasIfiCash</code>, <code>FixedIncome</code>, <code>Equity</code>, and <code>AppSettings:Atlas:WebBaseUrl</code>. A missing address is a start-up check error.</li><li>Grant the roles <code>Read</code> and <code>Write</code> with the grant template.</li><li>Run <code>--atlas-check</code>. Read the Info lines: each line is an RM or RMCC name that gets no email. Correct the data in AIN or in <code>CP_Atlas_User</code>.</li><li>Restart the app pool.</li><li>Old data: the target team moves the SharePoint records with LAN IDs in the person columns, UTC dates, <code>WorkflowState</code> and <code>Status</code> filled. A moved record in state <code>Submitted</code> has no engine instance; the second submit of such a record needs a decision of the target team before the move (start an instance in the move script, or move only closed records).</li></ol>
 </section>
 <section>
 <h2>16. Backward compatibility</h2>
