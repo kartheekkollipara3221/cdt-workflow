@@ -77,6 +77,7 @@ The platform is the generic, metadata-driven app layer of CP Atlas, so that the 
 - The target code (CP Atlas: `program.cs`, `CPAtlasService`, the controllers, `cp-atlas-dashboard.ts`, ...) belongs to the target team. State what the target must change as integration steps in `INTEGRATION.md`; the user does the copy and the wiring. `target-implementation-read-only/` is a read-only, git-ignored copy of target code: never edit it, and never copy its license keys.
 - Keep the platform generic. A new app must not need new C# or TypeScript. Never copy target hardcoding into the platform (field-name `if` chains, fixed field lists, redirects). TTDV2 is pilot metadata, not a special case in the code.
 - Look and control usage follow the target (layout, `@pbdev` controls, ag-grid, toastr, messages). Behaviour stays metadata-driven (rules, effects, computed values, registries).
+- A section form with a workflow has one submit button, not one button for each section. The server selects the workflow step from the state of the record. The form metadata lists the steps by state. Each save of such a form runs the step for the current state; no save goes past the workflow.
 - Target stack: .NET 10 / C# 14, EF Core 10, SQL Server, Angular 21 (`atlas-platform/WebUi`). No new packages: use only what the target already has (`ag-grid` 33, `@ng-select/ng-select` 21, `ngx-toastr` 20, `@pbdev/pbdev-core`).
 
 ### Backward compatibility (platform)
