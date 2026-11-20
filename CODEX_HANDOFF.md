@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-19, P2 gap report, questions Q1-Q2 answered)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 design draft 1 waits for approval)
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -79,14 +79,32 @@ The dated history entries below are unchanged, newest first: platform and target
   Q1 = A (3aa24e5): engine adapter (module 10) APPROVED for section forms in P2; engine code unchanged.
   Q2 = A (63f9f1b): two engine actions for the Submit button (E1, then E2 with the state kept); no engine change;
        a test must prove the engine accepts an action that keeps the state (no code refuses it; read only).
-  Q3 ASKED, NOT ANSWERED: Investment Type lists in the platform (binding map + app settings, recommended) or in the
-       engine (3 actions + 3 routes for each email). Q4-Q8 not asked yet (Q5 = stop-and-ask: varchar -> nvarchar).
-  Not yet read for the design: modules 01, 04-07, 09, 11, 12, INTEGRATION.md, CODE_TRACE.md (read before Task 2).
+  Q3 = A (27336cc): Investment Type lists in the platform (map in the form JSON, addresses in app settings,
+       sent to the engine as recipient inputs).
+  Q4 = A (24adc5a): keep CFP.InflowAttachment; Type holds the filepicker control name (files show in their section).
+  Q5 = A (c4e94a8): Description and Comment varchar(max) -> nvarchar(max) APPROVED.
+  Q6 = B (75dd32d): NuGet HtmlSanitizer (+ AngleSharp) APPROVED by the user; the target team must approve and add it.
+  Q7 = A (d50d3e5): new severity Info in --atlas-check, not counted, exit code unchanged.
+  Q8 = A (818e254): E3 uses RM and RMCC of T1; new nullable column CFP.Inflow.RMCC.
+  Q9 = A (4dba20b): export = the Excel export built into the grid (target has ag-grid-enterprise + AllEnterpriseModule;
+       the local stand-in has community only; never copy the target license key).
+6. P2 DESIGN, DRAFT 1 (7a7e0a3, not pushed): docs/atlas-platform/25-client-inflows-p2-design.md + .html, README row 25.
+   The .html is made from the .md (headings, tables, lists, code) with the style block of 10-engine-adapter.html.
+   Content: release-p2 scripts 100-150 (plan only), CFPINFLOW manifest/form/dashboard, generic code (state in rules,
+   MustBeTrue, request field Button + Action.Set, Table option provider + LookupTables, attachments with
+   AttachmentColumns map, richtext, engine adapter with Workflow.Steps/Recipients/TemplateData, IAtlasUserDirectory,
+   Info severity + name report), build steps 0-7 (step 0 = engine test for the state-keeping action), tests.
+   WAITS FOR THE USER: section 14 has 6 approval items: (1) optional v1/ManagePage fields Button, RequestId,
+   RemovedAttachmentIds + route GET v1/Attachment/{appCode}/{id}; (2) CFP.InflowAttachment.FileName -> nvarchar(1000);
+   (3) target file changes (program.cs line, package.json CKEditor, Service csproj HtmlSanitizer, appsettings);
+   (4) log events 41025-41029; (5) export = built-in grid menu only, or also a button; (6) the 4 fixed lists stay as
+   static addresses in the engine script. NO CODE AND NO SQL SCRIPT EXISTS FOR P2.
 
 ### Next
-0. P2: ask Q3 again, then Q4-Q8 (Q9 not blocking), record each answer in GAP_REPORT.md section 7 and commit. Then
-   write docs/atlas-platform/25-client-inflows-p2-design.md + .html, update the README index, stop for approval.
-   No code, no SQL scripts. Do not push.
+0. P2: get the user's answers to the 6 approval items of module 25 section 14 (one at a time), record them in the
+   design (.md, then make the .html again), commit. Only after the approval: build step 0 (engine test: an action
+   that keeps the state), then steps 1-7 of module 25 section 13, platform gates and one commit for each step.
+   Do not push.
 1. User: copy the package c79593d to the target dev region in the B85 row order (stop app pool, run 045, copy the
    6 files, start, --atlas-check 0 errors).
 2. P2 requirements recorded (pending 3). Gap report + design go to another model: start from
