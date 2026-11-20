@@ -207,7 +207,7 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## Next-session prompt
 "Resume. Read the top of CODEX_HANDOFF.md (sections A and B) and memory target-sync-2026-11-18. Continue with
-section A Pending 5 and Next 0, one question at a time (next: P2 gap report question Q3, then Q4-Q8, then the design document 25). Keep the broad
+section A Pending 5 and Next 0, one question at a time (next: the 6 approval items of module 25 section 14, then build step 0). Keep the broad
 goal: CP Atlas = engine + platform, one product; seamless integration at the target, platform generic and simple,
 nothing breaks the existing system."
 
