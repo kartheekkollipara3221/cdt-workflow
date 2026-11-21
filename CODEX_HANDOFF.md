@@ -188,7 +188,7 @@ The dated history entries below are unchanged, newest first: platform and target
      Gate fix: EndpointTests set only DBConnection, so the engine took DefaultConnection of appsettings.Development.json
      and wrote to the local DB CPAtlasPlatformDev (2nd run failed: instance of record 10000 existed). The test now
      sets DefaultConnection too. Left over in CPAtlasPlatformDev: engine instance WF-CFP-INFLOW-10000 with no record
-     (the first local record will get ID 10000 and its submit will fail) -> asked the user how to clean it.
+     (the first local record will get ID 10000 and its submit will fail). User 2026-11-20: leave it.
      Comment example "CFP-INFLOW-" in CPPlatformDto changed to "APP-REC-" (no app names in C#/TS).
      User decisions 2026-11-20 (recorded in module 25 section 19.7):
      (1) Email send = option A: the platform calls IWorkflowActionNotificationDispatcher with the TARGET namespace
