@@ -178,6 +178,48 @@ public sealed class CfpInflowWorkflowTests(SqlServerDatabaseFixture database) : 
     }
 
     [Fact]
+    public async Task A_name_with_one_user_gives_the_address_in_E2_and_in_E3_To_and_Cc()
+    {
+        await Scalar("""
+            IF NOT EXISTS (SELECT 1 FROM AIN.AccountInventory WHERE AccountNumber = '700900')
+                INSERT INTO AIN.AccountInventory (Account, AccountName, AccountNumber, RelationshipManager, StarAccountNumber,
+                    Custodian, CreatedBy, CreatedDate, IsDeleted, RMCC)
+                VALUES ('700900 - Mail Test', 'Mail Test', '700900', 'Pat Mail', 'S-700900', 'Custodian One', 'test', GETUTCDATE(), 0,
+                    'Casey Mail;Pat Mail');
+            IF NOT EXISTS (SELECT 1 FROM dbo.CP_Atlas_User WHERE LanID = 'wf.pat')
+                INSERT INTO dbo.CP_Atlas_User (LanID, DisplayName, Email, IsDeleted) VALUES
+                ('wf.pat', N'  pat   MAIL ', N'pat@test.local', 0), ('wf.casey', N'Casey Mail', N'casey@test.local', 0);
+            SELECT 1;
+            """);
+
+        CPAtlasPage first = Svc().SavePage(NewInput("700900"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+        AssertSaved(first);
+        CPApplicationSection loaded = Svc().LoadPage(new CPAtlasPage { AppCode = App, ID = first.ID });
+        AssertSaved(Svc().SavePage(EditInput(first.ID, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true")),
+            Files(("CashAttachments#$#receipt.pdf", Pdf))));
+
+        string instance = $"WF-CFP-INFLOW-{first.ID}";
+        (List<string> e2To, _) = await RecipientsAsync(instance, "ClientInflow.SubmittedInformational");
+        (List<string> e3To, List<string> e3Cc) = await RecipientsAsync(instance, "ClientInflow.FundsReceived");
+        Assert.Contains("pat@test.local", e2To);
+        Assert.Contains("pat@test.local", e3To);
+        Assert.Contains("casey@test.local", e3Cc);
+        Assert.DoesNotContain(_logs.Entries, x => x.Contains("Atlas.RecipientSkipped", StringComparison.Ordinal));
+    }
+
+    /// <summary>Returns the To and Cc addresses of the outbox row of one notification type.</summary>
+    private async Task<(List<string> To, List<string> Cc)> RecipientsAsync(string instance, string type)
+    {
+        string json = (string)(await Scalar(
+            $"SELECT TOP (1) NotificationRecipientsJson FROM dbo.NotificationOutbox WHERE WorkflowInstanceId = '{instance}' AND NotificationType = '{type}'"))!;
+        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(json);
+        List<string> Read(string name) => [.. document.RootElement.EnumerateObject()
+            .Where(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(x => x.Value.EnumerateArray()).Select(x => x.GetString()!)];
+        return (Read("ToEmailAddresses"), Read("CcEmailAddresses"));
+    }
+
+    [Fact]
     public void The_RecipientSkipped_log_of_a_first_submit_has_the_new_record_ID()
     {
         CPAtlasPage first = Svc().SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
