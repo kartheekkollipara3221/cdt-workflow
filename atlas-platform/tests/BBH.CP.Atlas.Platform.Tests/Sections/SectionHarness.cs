@@ -59,6 +59,9 @@ internal sealed class SectionHarness : IDisposable
 
     public ListLogger<AtlasAccessService> AccessLog { get; } = new();
 
+    /// <summary>The display name of the test user, or null for "User " and the LAN ID.</summary>
+    public string? DisplayName { get; set; }
+
     /// <summary>The workflow adapter of the services: a fake engine by default (no engine tables). Null = no adapter.</summary>
     public IAtlasWorkflowAdapter? Workflow { get; set; } = new FakeWorkflowAdapter();
 
@@ -77,7 +80,7 @@ internal sealed class SectionHarness : IDisposable
         AtlasPlatformContext platform = new(new DbContextOptionsBuilder<AtlasPlatformContext>().UseSqlServer(connection).Options, registry);
         _resources.AddRange([platform, context, connection]);
 
-        FakeUserContext user = new(lanId, roles);
+        FakeUserContext user = new(lanId, roles) { DisplayName = DisplayName ?? "User " + lanId };
         AtlasUserDirectory directory = new(context, new MemoryCache(new MemoryCacheOptions()));
         AtlasAccessService access = new(user, AccessLog);
         AtlasModuleServices services = new(

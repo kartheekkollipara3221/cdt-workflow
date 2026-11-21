@@ -489,6 +489,30 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Empty(engine.Calls);
     }
 
+    [Fact]
+    public async Task A_display_name_longer_than_the_column_is_cut_and_the_LAN_ID_stays_exact()
+    {
+        string longName = "Alexandra Catherine Montgomery-Fitzgerald Wellington III"; // 57 characters
+        using SectionHarness harness = new(_db) { DisplayName = longName };
+        ConfigSectionService Service() => harness.ServiceFor(App, _registry, Writer, CfpRoles.Write);
+
+        CPAtlasPage saved = Service().SavePage(NewInput(), FlowFile());
+        AssertSaved(saved);
+        await SetStateAsync(saved.ID, "Draft");
+        CPApplicationSection loaded = Service().LoadPage(new CPAtlasPage { AppCode = App, ID = saved.ID });
+        CPAtlasPage input = EditInput(saved.ID, loaded.Version, ("Description", "Second save"));
+        input.RemovedAttachmentIds = [int.Parse(Assert.Single(Control(loaded, "FlowAttachments").Files!).ID!, System.Globalization.CultureInfo.InvariantCulture)];
+        AssertSaved(Service().SavePage(input, Files(("FlowAttachments#$#second.pdf", Pdf))));
+
+        string cut = longName[..50];
+        Assert.Equal($"{cut}|c.write|{cut}|c.write", await _db.ScalarAsync(
+            $"SELECT CONCAT_WS('|', CreatedBy, CreatedByLanId, ModifiedBy, ModifiedByLanId) FROM CFP.InflowAttachment WHERE InflowId = {saved.ID} AND IsDeleted = 1"));
+        Assert.Equal(0, await _db.ScalarAsync(
+            $"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {saved.ID} AND (CreatedBy <> N'{cut}' OR CreatedByLanId <> N'c.write')"));
+        // Create, AttachmentAdd, Update, AttachmentRemove and AttachmentAdd.
+        Assert.Equal(5, await _db.ScalarAsync($"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {saved.ID}"));
+    }
+
     private const string FundsReceivedJson =
         "{ \"Name\": \"FundsReceived\", \"Field\": \"FundsReceived\", \"Label\": \"Funds have been received\", \"Type\": \"checkbox\", \"Validator\": { \"MustBeTrue\": true } },";
 

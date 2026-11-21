@@ -27,6 +27,15 @@ public sealed record AtlasColumn(
     public bool IsDatabaseGenerated => IsIdentity || IsRowVersion || IsComputed;
 
     /// <summary>
+    /// Returns the text with no more characters than the column holds. Null and a text that fits are not changed.
+    /// </summary>
+    /// <remarks>
+    /// Use it only for a label that the server writes, such as a display name. A value of the user is checked, not cut.
+    /// </remarks>
+    public string? Cut(string? text) =>
+        text != null && MaxLength is > 0 and var max && text.Length > max ? text[..max] : text;
+
+    /// <summary>
     /// True if an insert with no value (null) must use the database default.
     /// </summary>
     /// <remarks>

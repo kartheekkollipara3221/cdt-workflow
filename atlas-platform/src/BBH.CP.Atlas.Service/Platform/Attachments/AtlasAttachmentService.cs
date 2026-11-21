@@ -98,10 +98,10 @@ public sealed class AtlasAttachmentService(CPSharepointContext context, IAtlasUs
         ];
         Optional(values, table.ContentType, "@type", AtlasAttachmentRules.ContentTypeOf(file.FileName));
         Optional(values, table.SizeBytes, "@size", (long)file.Content.Length);
-        Optional(values, table.CreatedBy, "@createdBy", user.DisplayName);
+        Optional(values, table.CreatedBy, "@createdBy", table.CreatedBy?.Cut(user.DisplayName) ?? "");
         Optional(values, table.CreatedByLanId, "@createdByLanId", user.LanId);
         Optional(values, table.CreatedDate, "@createdDate", now);
-        Optional(values, table.ModifiedBy, "@modifiedBy", user.DisplayName);
+        Optional(values, table.ModifiedBy, "@modifiedBy", table.ModifiedBy?.Cut(user.DisplayName) ?? "");
         Optional(values, table.ModifiedByLanId, "@modifiedByLanId", user.LanId);
         Optional(values, table.ModifiedDate, "@modifiedDate", now);
 
@@ -128,7 +128,7 @@ public sealed class AtlasAttachmentService(CPSharepointContext context, IAtlasUs
             parameters.Add(value is string text ? Text(name, text) : new SqlParameter(name, value));
         }
 
-        Set(table.ModifiedBy, "@modifiedBy", user.DisplayName);
+        Set(table.ModifiedBy, "@modifiedBy", table.ModifiedBy?.Cut(user.DisplayName) ?? "");
         Set(table.ModifiedByLanId, "@modifiedByLanId", user.LanId);
         Set(table.ModifiedDate, "@modifiedDate", now);
 

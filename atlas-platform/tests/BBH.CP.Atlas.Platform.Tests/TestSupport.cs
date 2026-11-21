@@ -12,7 +12,7 @@ internal sealed class FakeUserContext(string lanId, params AtlasRole[] roles) : 
 {
     public string LanId { get; } = lanId;
 
-    public string DisplayName => "User " + LanId;
+    public string DisplayName { get; init; } = "User " + lanId;
 
     public CPUser User => new() { LanID = LanId, DisplayName = DisplayName };
 

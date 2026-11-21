@@ -69,7 +69,7 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
         Dictionary<string, object?> entry = table.NewRecord();
         Set(entry, table, ReferenceIdColumn, refId);
         Set(entry, table, ReferenceTypeColumn, manifest.Code);
-        Set(entry, table, "CreatedBy", user.DisplayName);
+        Set(entry, table, "CreatedBy", table.Find("CreatedBy")?.Cut(user.DisplayName)); // the LAN ID column holds the exact person
         Set(entry, table, "CreatedByLanId", user.LanId);
         Set(entry, table, "CreatedDate", manifest.AuditTime == AtlasAuditTime.Utc
             ? time.GetUtcNow().UtcDateTime
