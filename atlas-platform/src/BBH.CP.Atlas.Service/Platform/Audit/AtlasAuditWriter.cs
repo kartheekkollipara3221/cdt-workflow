@@ -48,22 +48,23 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
 
     /// <summary>Adds the entry to the platform context. The caller saves the context.</summary>
     /// <returns>False when the event is an Update with no change. Then the method adds nothing.</returns>
-    public bool Add(AtlasAppManifest manifest, int refId, string auditEvent, IReadOnlyList<AtlasAuditChange> changes)
+    public bool Add(AtlasAppManifest manifest, int refId, string auditEvent, IReadOnlyList<AtlasAuditChange> changes) =>
+        AddEntry(manifest, refId, auditEvent, changes) != null;
+
+    /// <summary>Adds the entry to the platform context and returns it. The caller saves the context.</summary>
+    /// <param name="always">True adds an Update entry also when it has no change, because the caller appends changes later.</param>
+    /// <returns>The tracked entry, or null when the event is an Update with no change and <paramref name="always"/> is false.</returns>
+    public Dictionary<string, object?>? AddEntry(AtlasAppManifest manifest, int refId, string auditEvent,
+        IReadOnlyList<AtlasAuditChange> changes, bool always = false)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(changes);
-        if (auditEvent == AtlasAuditEvents.Update && changes.Count == 0)
-            return false;
+        if (auditEvent == AtlasAuditEvents.Update && changes.Count == 0 && !always)
+            return null;
 
         AtlasTable table = AuditTable(manifest);
         List<Dictionary<string, string?>> message = [new() { ["Name"] = EventName, ["Value"] = auditEvent }];
-        message.AddRange(changes.Select(x => new Dictionary<string, string?>
-        {
-            ["Name"] = x.Name,
-            ["Label"] = x.Label,
-            ["Old"] = x.Old,
-            ["Value"] = x.Value
-        }));
+        message.AddRange(changes.Select(Item));
 
         Dictionary<string, object?> entry = table.NewRecord();
         Set(entry, table, ReferenceIdColumn, refId);
@@ -75,8 +76,31 @@ public sealed class AtlasAuditWriter(AtlasPlatformContext context, IAtlasUserCon
             : time.GetLocalNow().DateTime);
         Set(entry, table, "LogMessage", JsonSerializer.Serialize(message));
         context.Records(table.FullName).Add(entry);
-        return true;
+        return entry;
     }
+
+    /// <summary>Adds changes to the end of an entry that <see cref="AddEntry"/> returned. The caller saves the context.</summary>
+    public void Append(AtlasAppManifest manifest, Dictionary<string, object?> entry, IReadOnlyList<AtlasAuditChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentNullException.ThrowIfNull(changes);
+        if (changes.Count == 0 || AuditTable(manifest).Find("LogMessage") is not { } column)
+            return;
+
+        List<Dictionary<string, string?>> message =
+            JsonSerializer.Deserialize<List<Dictionary<string, string?>>>(entry[column.Name] as string ?? "[]") ?? [];
+        message.AddRange(changes.Select(Item));
+        entry[column.Name] = JsonSerializer.Serialize(message);
+    }
+
+    private static Dictionary<string, string?> Item(AtlasAuditChange change) => new()
+    {
+        ["Name"] = change.Name,
+        ["Label"] = change.Label,
+        ["Old"] = change.Old,
+        ["Value"] = change.Value
+    };
 
     /// <summary>Returns the entries of one record, oldest first (the same order as the target History Log).</summary>
     public List<CPAuditLog> Read(AtlasAppManifest manifest, int refId)

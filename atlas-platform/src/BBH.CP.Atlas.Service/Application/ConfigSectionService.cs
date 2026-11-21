@@ -719,7 +719,14 @@ namespace BBH.CP.Atlas.Service.Application
             state.Errors.AddRange(state.Context.Errors);
         }
 
-        /// <summary>Saves the record and the audit entry in one transaction (save steps 11 and 12). Returns false when the save fails; the errors tell why.</summary>
+        /// <summary>
+        /// Saves the record, the files and the audit entries, then runs the first engine action, in one transaction
+        /// (save steps 11 and 12).
+        /// </summary>
+        /// <remarks>
+        /// The engine call is after all inserts. After it, the save writes only the state columns and the status line.
+        /// </remarks>
+        /// <returns>False when the save fails; the errors tell why.</returns>
         private bool Persist(SaveState state)
         {
             AtlasTable table = state.Table;
@@ -733,12 +740,8 @@ namespace BBH.CP.Atlas.Service.Application
             bool saved = SaveWithAudit(state.Manifest, table, state.Record, state.IsNew,
                 state.IsNew ? AtlasAuditEvents.Create : AtlasAuditEvents.Update,
                 () => Changes(state.Fields, table, state.Previous, state.Record, state.IsNew), state.Errors,
-                (id, mainChanges) =>
-                {
-                    List<(string Event, AtlasAuditChange Change)> entries = WriteFiles(state, id);
-                    RunFirstEngineAction(state, id, mainChanges); // the engine call is the last write before the commit
-                    return entries;
-                });
+                id => WriteFiles(state, id),
+                state.Engine == null ? null : id => RunFirstEngineAction(state, id));
             if (!saved)
                 LogEngineWithoutSave(state);
             return saved;
@@ -914,12 +917,20 @@ namespace BBH.CP.Atlas.Service.Application
         /// <summary>
         /// Saves the record, the other writes of the save and the audit entries in one transaction.
         /// </summary>
-        /// <param name="afterRecord">Runs after the record write with the record ID and the changes of the audit entry, in the
-        /// transaction. It can add changes, and returns more audit entries (for example the files). Null = no other write.</param>
+        /// <param name="afterRecord">Runs after the record write with the record ID, in the transaction. It returns more
+        /// audit entries (for example the files). Null = no other write.</param>
+        /// <param name="beforeCommit">Runs after all audit entries are saved, as the last step before the commit. It
+        /// returns the changes to add to the audit entry of the save. Null = no such step.</param>
         /// <returns>False when the save fails; the errors tell why. Nothing is then written.</returns>
+        /// <remarks>
+        /// An ordinary write error (a constraint, a length or a permission) occurs before <paramref name="beforeCommit"/>.
+        /// Thus a step that writes outside the transaction, such as the engine call, runs only when the other writes
+        /// worked. After it, only the changes of tracked rows are saved.
+        /// </remarks>
         private bool SaveWithAudit(AtlasAppManifest manifest, AtlasTable table, Dictionary<string, object?> record, bool isNew,
             string auditEvent, Func<List<AtlasAuditChange>> changes, List<CPPageError> errors,
-            Func<int, List<AtlasAuditChange>, List<(string Event, AtlasAuditChange Change)>>? afterRecord = null)
+            Func<int, List<(string Event, AtlasAuditChange Change)>>? afterRecord = null,
+            Func<int, List<AtlasAuditChange>>? beforeCommit = null)
         {
             AtlasPlatformContext platform = Services.PlatformContext;
             using IDbContextTransaction transaction = platform.BeginSharedTransaction(Services.Context);
@@ -931,14 +942,24 @@ namespace BBH.CP.Atlas.Service.Application
                 platform.SaveChanges();
 
                 int id = (int)record[table.Key!.Name]!;
-                List<(string Event, AtlasAuditChange Change)> more = afterRecord?.Invoke(id, list) ?? [];
-                if (manifest.AuditMode == AtlasAuditMode.Server && !string.IsNullOrWhiteSpace(manifest.AuditTable))
+                List<(string Event, AtlasAuditChange Change)> more = afterRecord?.Invoke(id) ?? [];
+                Dictionary<string, object?>? entry = null;
+                bool audit = manifest.AuditMode == AtlasAuditMode.Server && !string.IsNullOrWhiteSpace(manifest.AuditTable);
+                if (audit)
                 {
-                    bool added = Services.Audit.Add(manifest, id, auditEvent, list);
+                    // With a later step, the entry of the save is always added, because the step adds its changes to it.
+                    entry = Services.Audit.AddEntry(manifest, id, auditEvent, list, always: beforeCommit != null);
                     foreach ((string moreEvent, AtlasAuditChange change) in more)
-                        added |= Services.Audit.Add(manifest, id, moreEvent, [change]);
-                    if (added)
-                        platform.SaveChanges();
+                        Services.Audit.Add(manifest, id, moreEvent, [change]);
+                }
+
+                platform.SaveChanges();
+                if (beforeCommit != null)
+                {
+                    List<AtlasAuditChange> last = beforeCommit(id);
+                    if (entry != null)
+                        Services.Audit.Append(manifest, entry, last);
+                    platform.SaveChanges();
                 }
 
                 transaction.Commit();

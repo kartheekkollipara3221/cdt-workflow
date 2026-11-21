@@ -65,14 +65,17 @@ namespace BBH.CP.Atlas.Service.Application
         }
 
         /// <summary>
-        /// Runs the first engine action in the transaction of the record, and writes the new state and status.
+        /// Runs the first engine action in the transaction of the record, and sets the new state and status on the record.
         /// </summary>
-        /// <param name="mainChanges">The changes of the audit entry of the save. The status line goes into it.</param>
+        /// <remarks>
+        /// The record, the files and the audit entries are saved before this call. The caller saves the state change.
+        /// </remarks>
+        /// <returns>The status line for the audit entry of the save. Empty for a save with no engine action.</returns>
         /// <exception cref="WorkflowRefusedException">The engine refused the action. The caller rolls back.</exception>
-        private void RunFirstEngineAction(SaveState state, int recordId, List<AtlasAuditChange> mainChanges)
+        private List<AtlasAuditChange> RunFirstEngineAction(SaveState state, int recordId)
         {
             if (state.Engine is not { } engine)
-                return;
+                return [];
 
             AtlasWorkflowResult result;
             try
@@ -98,8 +101,7 @@ namespace BBH.CP.Atlas.Service.Application
             string? oldLabel = AtlasWorkflowSteps.LabelOf(state.Section, state.WorkflowState);
             string? newLabel = AtlasWorkflowSteps.LabelOf(state.Section, result.NewState);
             WriteState(state.Table, state.Record, engine.Binding, result.NewState, newLabel);
-            Services.PlatformContext.SaveChanges();
-            mainChanges.Add(new AtlasAuditChange(engine.Binding.StatusField ?? engine.Binding.StateField ?? "Status", "Status", oldLabel, newLabel));
+            return [new AtlasAuditChange(engine.Binding.StatusField ?? engine.Binding.StateField ?? "Status", "Status", oldLabel, newLabel)];
         }
 
         /// <summary>

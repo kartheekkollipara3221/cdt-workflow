@@ -137,6 +137,47 @@ public sealed class CfpInflowWorkflowTests(SqlServerDatabaseFixture database) : 
     }
 
     [Fact]
+    public async Task A_failed_audit_write_stops_the_submit_before_the_engine_call()
+    {
+        object? instances = await Scalar("SELECT COUNT(*) FROM dbo.WorkflowInstance");
+        object? outbox = await Scalar("SELECT COUNT(*) FROM dbo.NotificationOutbox");
+        await Scalar("ALTER TABLE CFP.AuditLog WITH NOCHECK ADD CONSTRAINT CK_Test_NoAudit CHECK (ReferenceID < 0); SELECT 1;");
+        try
+        {
+            CPAtlasPage refused = Svc().SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+
+            Assert.Equal(0, refused.ID);
+            Assert.Equal("SaveFailed", Assert.Single(refused.Errors!).Code);
+            Assert.Equal(instances, await Scalar("SELECT COUNT(*) FROM dbo.WorkflowInstance"));
+            Assert.Equal(outbox, await Scalar("SELECT COUNT(*) FROM dbo.NotificationOutbox"));
+            Assert.DoesNotContain(_logs.Entries, x => x.Contains("AtlasCommitFailed", StringComparison.Ordinal));
+        }
+        finally
+        {
+            await Scalar("ALTER TABLE CFP.AuditLog DROP CONSTRAINT CK_Test_NoAudit; SELECT 1;");
+        }
+    }
+
+    [Fact]
+    public async Task The_second_submit_keeps_one_audit_entry_with_the_status_line()
+    {
+        CPAtlasPage first = Svc().SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+        AssertSaved(first);
+        CPApplicationSection loaded = Svc().LoadPage(new CPAtlasPage { AppCode = App, ID = first.ID });
+        object? before = await Scalar($"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {first.ID}");
+
+        AssertSaved(Svc().SavePage(EditInput(first.ID, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true")),
+            Files(("CashAttachments#$#receipt.pdf", Pdf))));
+
+        // One Update entry with the fields and the status line, and one AttachmentAdd entry.
+        Assert.Equal(Convert.ToInt32(before) + 2, Convert.ToInt32(await Scalar($"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {first.ID}")));
+        string update = Convert.ToString(await Scalar(
+            $"SELECT LogMessage FROM CFP.AuditLog WHERE ReferenceID = {first.ID} AND LogMessage LIKE '%\"Update\"%'"), System.Globalization.CultureInfo.InvariantCulture)!;
+        Assert.Contains("FundsReceived", update, StringComparison.Ordinal);
+        Assert.Contains("\"Old\":\"Submitted\",\"Value\":\"Funds Received\"", update, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_double_submit_with_one_RequestId_makes_one_record()
     {
         CPAtlasPage input = NewInput("700100");
