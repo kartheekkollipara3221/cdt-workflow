@@ -13,7 +13,8 @@ namespace BBH.CP.Atlas.Service.Platform.Sections;
 /// <remarks>
 /// The allow list is one constant of the platform, so an app JSON cannot make it weaker. It keeps the text formats,
 /// headings, lists, links, block quotes and tables of the editor. It removes pictures, styles, scripts and event
-/// attributes. A link can use only http, https or mailto, and gets rel="noopener noreferrer".
+/// attributes. A link with a scheme can use only http, https or mailto. A link with no scheme (for example "/page" or
+/// "//host/page") stays; the browser opens it with the scheme of the page. Each link gets rel="noopener noreferrer".
 /// </remarks>
 public static partial class AtlasRichText
 {

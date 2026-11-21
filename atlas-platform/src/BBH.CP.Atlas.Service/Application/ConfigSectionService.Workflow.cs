@@ -43,7 +43,8 @@ namespace BBH.CP.Atlas.Service.Application
         private AtlasWorkflowInputs WorkflowInputs => new(Services.Configuration, Services.Directory, Logger);
 
         /// <summary>
-        /// Makes the engine part of a submit and checks its inputs before the write (save step 10).
+        /// Makes the engine part of a submit and checks its inputs after the OnBeforeSave hook (save step 10) and before
+        /// the write.
         /// </summary>
         /// <remarks>
         /// A recipient key with no address and no Optional, or an empty template value, is an error. Nothing is written.

@@ -13,6 +13,9 @@ public class RichTextTests
     [InlineData("<a href=\"javascript:alert(1)\">x</a>", "<a rel=\"noopener noreferrer\">x</a>")]
     [InlineData("<a href=\"https://example.com/a\" target=\"_blank\">x</a>", "<a href=\"https://example.com/a\" rel=\"noopener noreferrer\">x</a>")]
     [InlineData("<a href=\"mailto:a@b.com\">m</a>", "<a href=\"mailto:a@b.com\" rel=\"noopener noreferrer\">m</a>")]
+    [InlineData("<a href=\"/page\">r</a>", "<a href=\"/page\" rel=\"noopener noreferrer\">r</a>")] // no scheme: stays
+    [InlineData("<a href=\"//host.example/x\">h</a>", "<a href=\"//host.example/x\" rel=\"noopener noreferrer\">h</a>")]
+    [InlineData("<a href=\"ftp://host.example/x\">f</a>", "<a rel=\"noopener noreferrer\">f</a>")]
     [InlineData("<figure class=\"table\"><table><tbody><tr><td colspan=\"2\">c</td></tr></tbody></table></figure>",
         "<figure class=\"table\"><table><tbody><tr><td colspan=\"2\">c</td></tr></tbody></table></figure>")]
     [InlineData("<figure class=\"image\"><table><tbody><tr><td class=\"table\">c</td></tr></tbody></table></figure>",
