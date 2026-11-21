@@ -432,6 +432,65 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Empty(Control(loaded, "CashAttachments").Files!); // part 2 is hidden in Draft
     }
 
+    private const string FundsReceivedJson =
+        "{ \"Name\": \"FundsReceived\", \"Field\": \"FundsReceived\", \"Label\": \"Funds have been received\", \"Type\": \"checkbox\", \"Validator\": { \"MustBeTrue\": true } },";
+
+    private static string FundsReceivedWithEffect(string action) => FundsReceivedJson.Replace(
+        "\"MustBeTrue\": true }", $"\"MustBeTrue\": true }}, \"Effects\": [ {{ \"When\": {{ \"Equals\": \"true\" }}, \"{action}\": [ \"CashAttachments\" ] }} ]",
+        StringComparison.Ordinal);
+
+    [Fact]
+    public async Task A_Require_effect_on_a_file_picker_is_checked_on_the_server()
+    {
+        int id = await SubmittedRecordAsync();
+        using ConfigCopy config = new ConfigCopy().Replace("CFPINFLOW.json", FundsReceivedJson, FundsReceivedWithEffect("Require"))
+            .Replace("CFPINFLOW.json", "\"DivClass\": \"col-span-3\",\n            \"Validator\": { \"Required\": true }", "\"DivClass\": \"col-span-3\"");
+        using SectionHarness harness = new(_db, AtlasAccessMode.Enforce, config.Folder);
+        CPApplicationSection loaded = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+
+        CPAtlasPage refused = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write)
+            .SavePage(EditInput(id, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true")), NoFiles);
+
+        Assert.Equal(0, refused.ID);
+        CPPageError error = Assert.Single(refused.Errors!);
+        Assert.Equal(("CashAttachments", "Required"), (error.Field, error.Code));
+    }
+
+    [Fact]
+    public async Task A_Hide_effect_on_a_required_file_picker_lets_the_save_go_with_no_file()
+    {
+        int id = await SubmittedRecordAsync();
+        using ConfigCopy config = new ConfigCopy().Replace("CFPINFLOW.json", FundsReceivedJson, FundsReceivedWithEffect("Hide"));
+        using SectionHarness harness = new(_db, AtlasAccessMode.Enforce, config.Folder);
+        CPApplicationSection loaded = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+
+        CPAtlasPage saved = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write)
+            .SavePage(EditInput(id, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true")), NoFiles);
+
+        AssertSaved(saved);
+        Assert.Equal(0, await _db.ScalarAsync($"SELECT COUNT(*) FROM CFP.InflowAttachment WHERE InflowId = {id} AND [Type] = 'CashAttachments'"));
+    }
+
+    [Fact]
+    public async Task A_Show_effect_on_a_hidden_file_picker_takes_the_file_and_gives_it_on_load_and_download()
+    {
+        int id = await SubmittedRecordAsync();
+        using ConfigCopy config = new ConfigCopy().Replace("CFPINFLOW.json", FundsReceivedJson, FundsReceivedWithEffect("Show"))
+            .Replace("CFPINFLOW.json", "\"Label\": \"Please attach proof of custodian receipt.\",", "\"Label\": \"Please attach proof of custodian receipt.\", \"Visible\": false,");
+        using SectionHarness harness = new(_db, AtlasAccessMode.Enforce, config.Folder);
+        CPApplicationSection loaded = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+
+        CPAtlasPage saved = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write)
+            .SavePage(EditInput(id, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true")), CashFile());
+
+        AssertSaved(saved);
+        CPApplicationSection again = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+        CPAttachment file = Assert.Single(Control(again, "CashAttachments").Files!);
+        Assert.Equal("receipt.pdf", file.Name);
+        AtlasAttachmentContent content = harness.ServiceFor(App, _registry, Reader, CfpRoles.Read).OpenAttachment(int.Parse(file.ID!, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(Pdf, content.Content);
+    }
+
     [Fact]
     public async Task A_path_in_the_file_name_is_not_used()
     {

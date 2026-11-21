@@ -14,9 +14,12 @@ namespace BBH.CP.Atlas.Service.Application
 {
     public partial class ConfigSectionService : IAtlasAttachmentSource
     {
-        /// <summary>A file picker of the section with its effective state after the rules.</summary>
-        private sealed record FilePicker(CPApplicationControl Control, bool Visible, bool Enabled)
+        /// <summary>A file picker of the section with its effective state after the rules (and the effects on a save).</summary>
+        private sealed record FilePicker(AtlasControlState State)
         {
+            public CPApplicationControl Control => State.Control;
+            public bool Visible => State.Visible;
+            public bool Enabled => !State.Disabled;
             public string Label => Control.Label ?? Control.Name;
         }
 
@@ -44,26 +47,40 @@ namespace BBH.CP.Atlas.Service.Application
         }
 
         /// <summary>Returns the file pickers of the section, with the state that the rules gave them.</summary>
-        private static List<FilePicker> FilePickers(CPApplicationSection section)
+        /// <param name="outcome">The rule outcome of the section, for HiddenByRule and DisabledByRule. Null = not known.</param>
+        private static List<FilePicker> FilePickers(CPApplicationSection section, AtlasRuleOutcome? outcome)
         {
             List<FilePicker> pickers = [];
             foreach (CPApplicationControl control in section.Controls ?? [])
             {
                 if (AtlasAttachmentRules.IsFilePicker(control))
-                    pickers.Add(new FilePicker(control, control.Visible, !control.Disabled));
+                    pickers.Add(Picker(control, control.Visible, control.Disabled));
                 foreach (CPApplicationControl child in (control.ChildControls ?? []).Where(AtlasAttachmentRules.IsFilePicker))
-                    pickers.Add(new FilePicker(child, control.Visible && child.Visible, !control.Disabled && !child.Disabled));
+                    pickers.Add(Picker(child, control.Visible && child.Visible, control.Disabled || child.Disabled));
             }
             return pickers;
+
+            FilePicker Picker(CPApplicationControl control, bool visible, bool disabled) => new(new AtlasControlState
+            {
+                Control = control,
+                Visible = visible,
+                Disabled = disabled,
+                Required = control.Validator?.Required == true,
+                HiddenByRule = outcome?.HiddenByRule.Contains(control.Name) == true,
+                DisabledByRule = outcome?.DisabledByRule.Contains(control.Name) == true
+            });
         }
 
         /// <summary>
-        /// Gives each visible file picker the stored files of its control. A hidden file picker gets no files.
+        /// Gives each file picker the stored files of its control. A file picker that a rule hides gets no files.
         /// </summary>
-        /// <remarks>The load does not read the content. A file of a disabled file picker is disabled.</remarks>
-        private void LoadAttachments(AtlasAppManifest manifest, CPApplicationSection section, int recordId)
+        /// <remarks>
+        /// The load does not read the content. A file picker that the JSON hides keeps its files, because an effect can
+        /// show it. A file of a file picker that a rule disables is disabled.
+        /// </remarks>
+        private void LoadAttachments(AtlasAppManifest manifest, CPApplicationSection section, int recordId, AtlasRuleOutcome outcome)
         {
-            List<FilePicker> pickers = FilePickers(section);
+            List<FilePicker> pickers = FilePickers(section, outcome);
             if (pickers.Count == 0)
                 return;
 
@@ -71,14 +88,14 @@ namespace BBH.CP.Atlas.Service.Application
             IReadOnlyList<AtlasAttachmentInfo> files = table == null || recordId <= 0 ? [] : Services.Attachments.List(table, recordId);
             foreach (FilePicker picker in pickers)
             {
-                picker.Control.Files = !picker.Visible ? [] : [.. files
+                picker.Control.Files = picker.State.HiddenByRule ? [] : [.. files
                     .Where(x => string.Equals(x.ControlName, picker.Control.Name, StringComparison.OrdinalIgnoreCase))
                     .Select(x => new CPAttachment
                     {
                         ID = x.Id.ToString(CultureInfo.InvariantCulture),
                         Name = x.FileName,
                         Type = picker.Control.Name,
-                        Disabled = !picker.Enabled,
+                        Disabled = picker.State.DisabledByRule,
                         SizeBytes = x.SizeBytes,
                         CreatedBy = x.CreatedBy ?? (x.CreatedByLanId == null ? null : Services.Directory.DisplayName(x.CreatedByLanId)),
                         CreatedDate = x.CreatedDate == null ? null : AtlasValueConverter.ToWire(x.CreatedDate, DateColumn, Manifest.SystemTimeIsUtc)
@@ -93,13 +110,15 @@ namespace BBH.CP.Atlas.Service.Application
         /// Reads and checks the new files and the removed files of a save.
         /// </summary>
         /// <remarks>
-        /// A file is accepted only for a file picker that is visible and enabled for the user and the state.
+        /// A file is accepted only for a file picker that is visible and enabled for the user and the state, after the
+        /// rules and the server effects.
         /// The checks are the type, the size, the signature, the number of files and Required.
         /// Each refused file gives an error and the log event Atlas.AttachmentRefused. Nothing is written.
         /// </remarks>
         private void ReadFiles(SaveState state, IFormFileCollection? files)
         {
-            List<FilePicker> pickers = FilePickers(state.Section);
+            List<FilePicker> pickers = FilePickers(state.Section, state.Outcome);
+            AtlasServerEffects.ApplyToControls(state.Fields, state.Current, [.. pickers.Select(x => x.State)]);
             IReadOnlyList<int> removedIds = state.Input.RemovedAttachmentIds ?? [];
             if (pickers.Count == 0 && (files == null || files.Count == 0) && removedIds.Count == 0)
                 return;
@@ -212,8 +231,8 @@ namespace BBH.CP.Atlas.Service.Application
                     + state.Files.Added.Count(x => Same(x.ControlName, name));
                 int? max = picker.Control.Multiple ? picker.Control.MaxFiles : 1;
 
-                if (count == 0 && picker.Control.Validator?.Required == true)
-                    state.Errors.Add(Error(name, "Required", picker.Control.Validator.Message ?? $"{picker.Label} is required."));
+                if (count == 0 && picker.State.Required)
+                    state.Errors.Add(Error(name, "Required", picker.Control.Validator?.Message ?? $"{picker.Label} is required."));
                 else if (max is > 0 && count > max)
                     state.Errors.Add(Error(name, "MaxFiles", AtlasAttachmentRules.CountText(picker.Label, max.Value)));
             }
@@ -266,14 +285,14 @@ namespace BBH.CP.Atlas.Service.Application
         }
 
         private static string? LabelOf(SaveState state, string controlName) =>
-            FilePickers(state.Section).FirstOrDefault(x => string.Equals(x.Control.Name, controlName, StringComparison.OrdinalIgnoreCase))?.Control.Label;
+            FilePickers(state.Section, null).FirstOrDefault(x => string.Equals(x.Control.Name, controlName, StringComparison.OrdinalIgnoreCase))?.Control.Label;
 
         /// <summary>
         /// Returns a stored file for a download, after the View check of its record.
         /// </summary>
         /// <remarks>
         /// The content type comes from the stored file name, not from the upload. A file of a file picker that a rule
-        /// hides from the user is not found.
+        /// hides from the user is not found. A file picker that the JSON hides gives its files, as the load does.
         /// </remarks>
         public AtlasAttachmentContent OpenAttachment(int id)
         {
@@ -292,8 +311,8 @@ namespace BBH.CP.Atlas.Service.Application
             CPApplicationSection section = form.Section
                 ?? throw AtlasProblemException.Config($"The form of {manifest.Code} has no Section.");
             string? workflowState = AtlasWorkflowSteps.StateOf(section, main, record, isNew: false);
-            Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record, workflowState), manifest.RuleMode, manifest.RuleDefault);
-            if (!FilePickers(section).Any(x => x.Visible && string.Equals(x.Control.Name, info.ControlName, StringComparison.OrdinalIgnoreCase)))
+            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(section, form.Rules, RuleContext(manifest, form, record, workflowState), manifest.RuleMode, manifest.RuleDefault);
+            if (!FilePickers(section, outcome).Any(x => !x.State.HiddenByRule && string.Equals(x.Control.Name, info.ControlName, StringComparison.OrdinalIgnoreCase)))
                 throw AtlasProblemException.NotFound($"File {id} of {manifest.Code} was not found.");
 
             byte[] content = Services.Attachments.ReadContent(table, id)

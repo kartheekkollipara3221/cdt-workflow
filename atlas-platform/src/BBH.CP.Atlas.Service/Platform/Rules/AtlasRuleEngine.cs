@@ -1,4 +1,5 @@
 using BBH.CP.Atlas.Data.DTO;
+using BBH.CP.Atlas.Service.Platform.Attachments;
 using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Sections;
 
@@ -15,7 +16,7 @@ public sealed record AtlasRuleContext(IReadOnlyList<string> RoleTokens, IReadOnl
 /// <remarks>
 /// A field is in a set when the section showed (or enabled) it before the rules, and the rules hid (or disabled) it.
 /// The names are the output names of <see cref="AtlasFormFields"/>.
-/// That is the control Name, or the column field of a SingleRowFields grid.
+/// That is the control Name, or the column field of a SingleRowFields grid. A file picker is in the sets by its Name.
 /// A field that the JSON hides is not in HiddenByRule.
 /// </remarks>
 public sealed record AtlasRuleOutcome(IReadOnlySet<string> HiddenByRule, IReadOnlySet<string> DisabledByRule);
@@ -195,7 +196,10 @@ public sealed class AtlasRuleEngine
                 .Where(column => !string.IsNullOrWhiteSpace(column.field))
                 .Select(column => new FieldState(column.field!, visible, disabled || column.cellRendererParams?.disabled == true))];
 
-        return string.IsNullOrWhiteSpace(control.Field) ? [] : [new FieldState(control.Name, visible, disabled)];
+        // A file picker has no Field, but the server checks its state, so it is in the outcome too.
+        return string.IsNullOrWhiteSpace(control.Field) && !AtlasAttachmentRules.IsFilePicker(control)
+            ? []
+            : [new FieldState(control.Name, visible, disabled)];
     }
 
     private static void Compare(List<FieldState> before, List<FieldState> after, HashSet<string> hidden, HashSet<string> disabled)

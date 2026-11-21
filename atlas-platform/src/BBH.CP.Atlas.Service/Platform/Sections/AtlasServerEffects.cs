@@ -50,6 +50,35 @@ public static class AtlasServerEffects
     }
 
     /// <summary>
+    /// Applies Show, Hide, Require, Unrequire, Enable and Disable to controls that are not fields, such as file pickers.
+    /// </summary>
+    /// <remarks>
+    /// The order and the rule priority are the same as in <see cref="Apply"/>. An effect names such a control by its Name.
+    /// </remarks>
+    public static void ApplyToControls(AtlasFormFields fields, Func<AtlasFormField, string?> current, IReadOnlyCollection<AtlasControlState> controls)
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(controls);
+        if (controls.Count == 0)
+            return;
+
+        foreach (AtlasFormField source in Sources(fields))
+        {
+            string? value = current(source);
+            foreach (CPEffect effect in ServerEffects(source).Where(x => Matches(x.When, value)))
+            {
+                foreach (AtlasControlState target in Named(controls, effect.Show).Where(x => !x.HiddenByRule)) target.Visible = true;
+                foreach (AtlasControlState target in Named(controls, effect.Hide)) target.Visible = false;
+                foreach (AtlasControlState target in Named(controls, effect.Require)) target.Required = true;
+                foreach (AtlasControlState target in Named(controls, effect.Unrequire)) target.Required = false;
+                foreach (AtlasControlState target in Named(controls, effect.Enable).Where(x => !x.DisabledByRule)) target.Disabled = false;
+                foreach (AtlasControlState target in Named(controls, effect.Disable)) target.Disabled = true;
+            }
+        }
+    }
+
+    /// <summary>
     /// Returns the values that the server sets.
     /// </summary>
     /// <remarks>
@@ -133,4 +162,34 @@ public static class AtlasServerEffects
 
     private static IEnumerable<AtlasFormField> Targets(AtlasFormFields fields, IEnumerable<string>? names) =>
         (names ?? []).SelectMany(name => fields.Find(name) is { } field ? new[] { field } : fields.FieldsOf(name));
+
+    private static IEnumerable<AtlasControlState> Named(IReadOnlyCollection<AtlasControlState> controls, IEnumerable<string>? names) =>
+        (names ?? []).SelectMany(name => controls.Where(x => string.Equals(x.Control.Name, name, StringComparison.OrdinalIgnoreCase)));
+}
+
+/// <summary>
+/// The effective state of a control that is not a field, such as a file picker, after the rules and the server effects.
+/// </summary>
+public sealed class AtlasControlState
+{
+    /// <summary>The control.</summary>
+    public required CPApplicationControl Control { get; init; }
+
+    /// <summary>True when the control shows.</summary>
+    public bool Visible { get; set; }
+
+    /// <summary>True when the user cannot change the control.</summary>
+    public bool Disabled { get; set; }
+
+    /// <summary>True when the control needs a value.</summary>
+    public bool Required { get; set; }
+
+    /// <summary>True when the JSON shows the control and a rule hides it. An effect cannot show it.</summary>
+    public bool HiddenByRule { get; init; }
+
+    /// <summary>True when the JSON enables the control and a rule disables it. An effect cannot enable it.</summary>
+    public bool DisabledByRule { get; init; }
+
+    /// <summary>True when the user can change the control: it shows and it is enabled.</summary>
+    public bool CanChange => Visible && !Disabled;
 }

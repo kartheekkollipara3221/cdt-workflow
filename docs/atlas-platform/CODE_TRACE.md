@@ -289,3 +289,5 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.App/Platform/AtlasNameReport.cs` | `(file)` | spec 25 §11 | Q7 | Lists lookup names with no single user as Info lines (--atlas-check only). |
 | `src/BBH.CP.Atlas.App/Platform/AtlasStartupCheck.cs` | `AtlasCheckSeverity` | spec 25 §11 | Q7 | Info: a report line that is not counted and does not change the exit code. |
 | `src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs` | `CheckForm` | spec 25 §7.3 | — | A SetFromOption target can be a non-system column of the main table. |
+| `src/BBH.CP.Atlas.Service/Platform/Sections/AtlasServerEffects.cs` | `ApplyToControls` | spec 25 §8 | review 27 CR-02 | Applies Show, Hide, Require, Unrequire, Enable and Disable to the file pickers on the server. |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.Attachments.cs` | `LoadAttachments` | spec 25 §8 | review 27 CR-02 | A file picker that the JSON hides keeps its files; only a rule removes them (load and download). |

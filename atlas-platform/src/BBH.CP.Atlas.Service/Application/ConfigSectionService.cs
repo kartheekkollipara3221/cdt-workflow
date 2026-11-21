@@ -206,7 +206,7 @@ namespace BBH.CP.Atlas.Service.Application
             ClearRuleHiddenValues(fields);
             KeepOnlySavedOptions(fields);
             AtlasWorkflowSteps.ApplyToSubmitButton(section, workflowState);
-            LoadAttachments(manifest, section, record == null ? 0 : page.ID);
+            LoadAttachments(manifest, section, record == null ? 0 : page.ID, outcome);
 
             string name = section.HeaderName ?? form.Name ?? manifest.Name ?? manifest.Code;
             section.HeaderName = record != null && !string.IsNullOrWhiteSpace(form.HeaderNameWithId)
@@ -434,6 +434,9 @@ namespace BBH.CP.Atlas.Service.Application
             public Dictionary<string, string?> Previous { get; set; } = [];
             public CPApplicationSection Section { get; set; } = null!;
             public AtlasFormFields Fields { get; set; } = null!;
+
+            /// <summary>The fields and the file pickers that the rules hide or disable.</summary>
+            public AtlasRuleOutcome Outcome { get; set; } = null!;
             public Dictionary<string, string?> Submitted { get; set; } = [];
 
             /// <summary>The fields that the server effects set (SetFromOption, Set, Clear).</summary>
@@ -514,9 +517,9 @@ namespace BBH.CP.Atlas.Service.Application
             AtlasAppManifest manifest = state.Manifest;
             state.Section = state.Form.Section
                 ?? throw AtlasProblemException.Config($"The form of {manifest.Code} has no Section.");
-            AtlasRuleOutcome outcome = Services.Rules.ApplyToSection(state.Section, state.Form.Rules,
+            state.Outcome = Services.Rules.ApplyToSection(state.Section, state.Form.Rules,
                 RuleContext(manifest, state.Form, state.Stored, state.WorkflowState), manifest.RuleMode, manifest.RuleDefault);
-            state.Fields = AtlasFormFields.From(state.Section, outcome);
+            state.Fields = AtlasFormFields.From(state.Section, state.Outcome);
         }
 
         /// <summary>Reads the outputs, applies the server effects and checks the allow list (save steps 4 and 5).</summary>
@@ -525,7 +528,8 @@ namespace BBH.CP.Atlas.Service.Application
             state.Submitted = ReadOutputs(state.Input, state.Fields, state.Errors);
             CleanRichText(state);
 
-            // Server part of Effects (Show, Hide, Require, Unrequire) and the SetFromOption targets.
+            // Server part of Effects (Show, Hide, Require, Unrequire) and the SetFromOption targets. The file
+            // pickers get the same effects when the files are read.
             state.Derived = AtlasServerEffects.Apply(state.Fields, state.Current);
             state.Computed = new((IEnumerable<string>?)state.Form.Computed?.Keys ?? [], StringComparer.OrdinalIgnoreCase);
 
