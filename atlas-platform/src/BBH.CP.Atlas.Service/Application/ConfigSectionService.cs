@@ -4,6 +4,7 @@ using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Service.Application.Interfaces;
 using BBH.CP.Atlas.Service.Platform;
+using BBH.CP.Atlas.Service.Platform.Attachments;
 using BBH.CP.Atlas.Service.Platform.Audit;
 using BBH.CP.Atlas.Service.Platform.Options;
 using BBH.CP.Atlas.Service.Platform.Registry;
@@ -272,7 +273,11 @@ namespace BBH.CP.Atlas.Service.Application
             }
         }
 
-        /// <summary>Returns the fields (Name and column) that the rules hide from this user for this record.</summary>
+        /// <summary>
+        /// Returns the fields (Name and column) and the file pickers (Name) that the rules hide from this user for this
+        /// record.
+        /// </summary>
+        /// <remarks>The file entries of the History name the file picker, so its name masks the file names.</remarks>
         private HashSet<string> RuleHiddenFields(AtlasAppManifest manifest, CPAtlasApplicationConfig form, Dictionary<string, object?>? record)
         {
             HashSet<string> hidden = new(StringComparer.OrdinalIgnoreCase);
@@ -286,6 +291,10 @@ namespace BBH.CP.Atlas.Service.Application
                 hidden.Add(field.Name);
                 hidden.Add(field.Field);
             }
+
+            foreach (CPApplicationControl picker in (form.Section.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []))
+                .Where(x => AtlasAttachmentRules.IsFilePicker(x) && outcome.HiddenByRule.Contains(x.Name)))
+                hidden.Add(picker.Name);
             return hidden;
         }
 

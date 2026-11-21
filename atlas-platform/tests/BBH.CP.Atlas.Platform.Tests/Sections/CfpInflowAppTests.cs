@@ -446,6 +446,30 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.All(engine.Calls, call => Assert.Equal("Custodian One", call.NotificationInput.TemplateData!["custodian"]));
     }
 
+    [Fact]
+    public async Task The_History_masks_the_file_names_of_a_file_picker_that_a_rule_hides()
+    {
+        int id = await SubmittedRecordAsync();
+        using ConfigCopy config = new ConfigCopy().Replace("CFPINFLOW.json",
+            "{ \"States\": [ \"Draft\" ], \"Visible\": false, \"Disabled\": true },",
+            "{ \"Roles\": [ \"Read\" ], \"Visible\": false },\n          { \"States\": [ \"Draft\" ], \"Visible\": false, \"Disabled\": true },");
+        using SectionHarness harness = new(_db, AtlasAccessMode.Enforce, config.Folder);
+        CPApplicationSection loaded = harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+        AssertSaved(harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).SavePage(
+            EditInput(id, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true"), ("Comment", "secret comment")),
+            Files(("CashAttachments#$#secret-receipt.pdf", Pdf))));
+
+        string history = string.Join("\n", harness.ServiceFor(App, _registry, Reader, CfpRoles.Read).GetAuditLog(App, id)
+            .Select(x => Convert.ToString(x.LogMessage, System.Globalization.CultureInfo.InvariantCulture)));
+        string writerHistory = string.Join("\n", harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).GetAuditLog(App, id)
+            .Select(x => Convert.ToString(x.LogMessage, System.Globalization.CultureInfo.InvariantCulture)));
+
+        Assert.DoesNotContain("secret comment", history, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-receipt.pdf", history, StringComparison.Ordinal);
+        Assert.Contains("CashAttachments", history, StringComparison.Ordinal); // the entry stays, with ***
+        Assert.Contains("secret-receipt.pdf", writerHistory, StringComparison.Ordinal);
+    }
+
     private const string FundsReceivedJson =
         "{ \"Name\": \"FundsReceived\", \"Field\": \"FundsReceived\", \"Label\": \"Funds have been received\", \"Type\": \"checkbox\", \"Validator\": { \"MustBeTrue\": true } },";
 
