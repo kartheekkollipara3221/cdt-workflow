@@ -470,6 +470,25 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Contains("secret-receipt.pdf", writerHistory, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("not-a-guid")]
+    [InlineData("6f1c9a40-0000-4000-8000-000000000001-and-more-text-that-is-too-long-for-the-engine-columns-6f1c9a40-0000-4000-8000-000000000001-6f1c9a40")]
+    public async Task A_RequestId_that_is_not_a_GUID_refuses_the_submit_with_no_write(string requestId)
+    {
+        FakeWorkflowAdapter engine = (FakeWorkflowAdapter)_harness.Workflow!;
+        object? before = await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.Inflow");
+        CPAtlasPage input = NewInput();
+        input.RequestId = requestId;
+
+        CPAtlasPage refused = Svc(Writer, CfpRoles.Write).SavePage(input, FlowFile());
+
+        Assert.Equal(0, refused.ID);
+        CPPageError error = Assert.Single(refused.Errors!);
+        Assert.Equal(("", "RequestIdInvalid"), (error.Field, error.Code));
+        Assert.Equal(before, await _db.ScalarAsync("SELECT COUNT(*) FROM CFP.Inflow"));
+        Assert.Empty(engine.Calls);
+    }
+
     private const string FundsReceivedJson =
         "{ \"Name\": \"FundsReceived\", \"Field\": \"FundsReceived\", \"Label\": \"Funds have been received\", \"Type\": \"checkbox\", \"Validator\": { \"MustBeTrue\": true } },";
 

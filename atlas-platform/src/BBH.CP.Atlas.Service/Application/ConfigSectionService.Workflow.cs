@@ -56,7 +56,7 @@ namespace BBH.CP.Atlas.Service.Application
                 Binding = binding,
                 Actions = actions,
                 Roles = ActorRolesOf(binding, state.Manifest),
-                RequestId = state.Input.RequestId!.Trim()
+                RequestId = state.RequestId!
             };
             state.Engine = engine;
             engine.Recipients = WorkflowInputs.Recipients(state.Manifest.Code, binding, actions.SelectMany(x => x.Recipients ?? []),

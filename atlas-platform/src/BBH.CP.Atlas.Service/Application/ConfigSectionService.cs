@@ -428,6 +428,9 @@ namespace BBH.CP.Atlas.Service.Application
             /// <summary>The submit step of a form with steps, or null.</summary>
             public CPWorkflowStep? WorkflowStep { get; set; }
 
+            /// <summary>The RequestId of a submit as a GUID in the "D" format, or null for a form with no steps.</summary>
+            public string? RequestId { get; set; }
+
             /// <summary>The names in the Set of the step (control names or column names). Only the server writes them.</summary>
             public HashSet<string> StepSet { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -514,6 +517,15 @@ namespace BBH.CP.Atlas.Service.Application
                 state.Errors.Add(Error("", "RequestIdRequired", "The request has no RequestId. Open the record again and repeat your change."));
                 return false;
             }
+
+            // The engine keys have a length limit, so only a GUID is accepted. One format gives one key for one GUID.
+            if (!Guid.TryParse(state.Input.RequestId.Trim(), out Guid requestId))
+            {
+                state.Errors.Add(Error("", "RequestIdInvalid", "The RequestId of the request is not a GUID."));
+                return false;
+            }
+
+            state.RequestId = requestId.ToString("D");
 
             foreach (string name in (IEnumerable<string>?)state.WorkflowStep.Set?.Keys ?? [])
                 state.StepSet.Add(name);

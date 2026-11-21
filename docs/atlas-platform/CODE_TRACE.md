@@ -295,3 +295,4 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs` | `EngineBinding` | spec 25 §10.2 | review 27 CR-05 | A binding field must be a column, or a control with a column; the adapter reads only such a value. |
 | `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.Workflow.cs` | `FieldValue` | spec 25 §10.6, §10.7 | review 27 CR-05 | Reads a binding value by column name, or through the column of the named control. |
 | `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs` | `RuleHiddenFields` | spec 25 §12 | review 27 CR-06 | Adds each file picker that a rule hides, so the History masks its file names. |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs` | `SelectStep` | spec 25 §10.3 | review 27 CR-07 | Refuses a RequestId that is not a GUID before any write; the engine keys use the GUID in the D format. |
