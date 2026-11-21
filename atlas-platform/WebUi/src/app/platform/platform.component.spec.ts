@@ -173,11 +173,20 @@ describe('AtlasFormComponent (review NG-09)', () => {
 
   it('sends a new RequestId with each save', () => {
     const { fixture, http } = setup(section([text('Name')]));
+    const ids: string[] = [];
 
-    click(fixture, '#btn_Submit');
+    for (let save = 0; save < 2; save++) {
+      click(fixture, '#btn_Submit');
+      const request = http.expectOne((r) => r.url === 'ManagePage');
+      ids.push(String(JSON.parse(String((request.request.body as FormData).get('input'))).RequestId));
+      // The server answers with an error, so the form stays open for the next save.
+      request.flush({ ID: 0, Errors: [{ Field: '', Code: 'Conflict', Message: 'Another user changed this record.' }] });
+      fixture.detectChanges();
+    }
 
-    const body = http.expectOne((r) => r.url === 'ManagePage').request.body as FormData;
-    expect(String(JSON.parse(String(body.get('input'))).RequestId)).toMatch(/^[0-9a-f-]{36}$/);
+    expect(ids[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(ids[1]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(ids[1]).not.toBe(ids[0]);
   });
 
   it('saves when a required field is hidden, and does not send the hidden field', () => {

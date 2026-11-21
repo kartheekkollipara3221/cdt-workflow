@@ -2,6 +2,7 @@ using BBH.CP.Atlas.Data.DTO;
 using BBH.CP.Atlas.Data.Platform;
 using BBH.CP.Atlas.Platform.Tests.Data;
 using BBH.CP.Atlas.Service.Application;
+using BBH.CP.Atlas.Service.Platform.Registry;
 using BBH.CP.Atlas.Service.Platform.Security;
 using BBH.CP.Atlas.Service.Platform.Workflow;
 using Microsoft.AspNetCore.Http;
@@ -217,6 +218,85 @@ public sealed class CfpInflowWorkflowTests(SqlServerDatabaseFixture database) : 
             .Where(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
             .SelectMany(x => x.Value.EnumerateArray()).Select(x => x.GetString()!)];
         return (Read("ToEmailAddresses"), Read("CcEmailAddresses"));
+    }
+
+    [Fact]
+    public async Task A_later_action_that_gives_another_state_keeps_the_save_and_writes_the_error_log()
+    {
+        FakeWorkflowAdapter engine = new();
+        engine.NewStates["NotifyInformational"] = "Elsewhere";
+        using SectionHarness harness = new(database) { Workflow = engine };
+
+        CPAtlasPage first = SvcOf(harness).SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+
+        AssertSaved(first);
+        Assert.Equal("Submitted", await Scalar($"SELECT WorkflowState FROM CFP.Inflow WHERE ID = {first.ID}"));
+        Assert.Contains(_logs.Entries, x => x.Contains("Atlas.WorkflowStepFailed", StringComparison.Ordinal)
+            && x.Contains("StateDifference: the record has Submitted, the engine has Elsewhere", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_necessary_recipient_with_no_address_refuses_the_submit_with_no_write()
+    {
+        using ConfigCopy config = new ConfigCopy().Replace("CFPINFLOW.json",
+            "\"relationshipManager\": { \"FromNameField\": \"RelationshipManager\", \"Optional\": true }",
+            "\"relationshipManager\": { \"FromNameField\": \"RelationshipManager\", \"Optional\": false }");
+        FakeWorkflowAdapter engine = new();
+        using SectionHarness harness = new(database, AtlasAccessMode.Enforce, config.Folder) { Workflow = engine };
+        object? before = await Scalar("SELECT COUNT(*) FROM CFP.Inflow");
+
+        CPAtlasPage refused = SvcOf(harness).SavePage(NewInput("700200"), Files(("FlowAttachments#$#a.pdf", Pdf))); // Nobody Known
+
+        Assert.Equal(0, refused.ID);
+        Assert.Equal("NoRecipient", Assert.Single(refused.Errors!).Code);
+        Assert.Equal(before, await Scalar("SELECT COUNT(*) FROM CFP.Inflow"));
+        Assert.Empty(engine.Calls);
+        Assert.Contains(_logs.Entries, x => x.Contains("Atlas.RecipientSkipped", StringComparison.Ordinal) && x.Contains("RecordId=0 ", StringComparison.Ordinal)
+            && x.Contains("Nobody Known", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task An_engine_exception_refuses_the_submit_and_writes_nothing()
+    {
+        using SectionHarness harness = new(database) { Workflow = new ThrowingWorkflowAdapter() };
+        object? before = await Scalar("SELECT COUNT(*) FROM CFP.Inflow");
+
+        CPAtlasPage refused = SvcOf(harness).SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+
+        Assert.Equal(0, refused.ID);
+        Assert.Equal("EngineError", Assert.Single(refused.Errors!).Code);
+        Assert.Equal(before, await Scalar("SELECT COUNT(*) FROM CFP.Inflow"));
+        Assert.Contains(_logs.Entries, x => x.Contains("Atlas.WorkflowStepFailed", StringComparison.Ordinal) && x.Contains("Reason=EngineError", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_failed_write_after_the_engine_action_writes_the_AtlasCommitFailed_log()
+    {
+        FakeWorkflowAdapter engine = new();
+        engine.NewStates["Submit"] = new string('S', 300); // longer than WorkflowState: the state write fails
+        using SectionHarness harness = new(database) { Workflow = engine };
+        object? before = await Scalar("SELECT COUNT(*) FROM CFP.Inflow");
+
+        CPAtlasPage refused = SvcOf(harness).SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+
+        Assert.Equal(0, refused.ID);
+        Assert.Equal("SaveFailed", Assert.Single(refused.Errors!).Code);
+        Assert.Equal(before, await Scalar("SELECT COUNT(*) FROM CFP.Inflow"));
+        Assert.Single(engine.Calls); // the later action does not run
+        Assert.Contains(_logs.Entries, x => x.Contains("Atlas.WorkflowStepFailed", StringComparison.Ordinal) && x.Contains("AtlasCommitFailed", StringComparison.Ordinal));
+    }
+
+    private ConfigSectionService SvcOf(SectionHarness harness) =>
+        new(harness.ModuleServices(_registry, Writer, [CfpRoles.Write with { }], _logs)) { AppCode = App };
+
+    /// <summary>An engine that throws at each action.</summary>
+    private sealed class ThrowingWorkflowAdapter : IAtlasWorkflowAdapter
+    {
+        public AtlasWorkflowResult Run(AtlasWorkflowCall call) => throw new InvalidOperationException("The engine is not available.");
+
+        public string? ReadState(string instanceId, string userId, IReadOnlyList<string> roles) => null;
+
+        public string? DispatchNotifications(AtlasWorkflowResult result) => null;
     }
 
     [Fact]
