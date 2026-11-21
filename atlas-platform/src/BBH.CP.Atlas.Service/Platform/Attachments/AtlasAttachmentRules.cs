@@ -98,6 +98,25 @@ public static class AtlasAttachmentRules
         return true;
     }
 
+    /// <summary>
+    /// Returns true when a name has a control character (for example CR, LF, tab or NUL) or a text direction character.
+    /// </summary>
+    /// <remarks>
+    /// Such a character can make a name show as a different name, or write a false line in a log or a list.
+    /// </remarks>
+    public static bool HasBadCharacter(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        return name.Any(x => char.IsControl(x) || x is >= '‪' and <= '‮' or >= '⁦' and <= '⁩');
+    }
+
+    /// <summary>Returns a name for a log entry: each control or text direction character becomes "?".</summary>
+    public static string LogText(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        return HasBadCharacter(name) ? string.Concat(name.Select(x => HasBadCharacter(x.ToString()) ? '?' : x)) : name;
+    }
+
     /// <summary>Returns the extension of a file name or an Accept item in lowercase, with the dot.</summary>
     public static string Extension(string name)
     {

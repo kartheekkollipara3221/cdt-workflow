@@ -189,6 +189,8 @@ namespace BBH.CP.Atlas.Service.Application
             IReadOnlyList<string> accept = AtlasAttachmentRules.AcceptOf(picker.Control);
             if (fileName.Length == 0)
                 return Error(picker.Control.Name, "InvalidFile", $"{label}: a file has no name.");
+            if (AtlasAttachmentRules.HasBadCharacter(fileName))
+                return Error(picker.Control.Name, "FileName", $"{label}: the file name has a character that is not permitted. Rename the file.");
             if (fileName.Length > AtlasAttachmentRules.MaxNameLength)
                 return Error(picker.Control.Name, "FileName",
                     $"{label}: the file name is longer than {AtlasAttachmentRules.MaxNameLength} characters.");
@@ -243,7 +245,8 @@ namespace BBH.CP.Atlas.Service.Application
         private void Refuse(SaveState state, string controlName, string fileName, string code, string message, bool pageError = false)
         {
             state.Errors.Add(Error(pageError ? "" : controlName, code, message));
-            AtlasLog.AttachmentRefused(Logger, state.Manifest.Code, Services.User.LanId, state.Input.ID, controlName, fileName, code);
+            AtlasLog.AttachmentRefused(Logger, state.Manifest.Code, Services.User.LanId, state.Input.ID,
+                AtlasAttachmentRules.LogText(controlName), AtlasAttachmentRules.LogText(fileName), code);
         }
 
         private static byte[] Read(IFormFile file)

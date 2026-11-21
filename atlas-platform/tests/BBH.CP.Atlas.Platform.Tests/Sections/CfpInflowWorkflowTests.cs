@@ -178,6 +178,19 @@ public sealed class CfpInflowWorkflowTests(SqlServerDatabaseFixture database) : 
     }
 
     [Fact]
+    public void The_log_of_a_refused_file_has_no_line_break_from_the_file_name()
+    {
+        CPAtlasPage refused = Svc().SavePage(NewInput("700100"), Files(
+            ("FlowAttachments#$#a\r\nAtlas.Forged line.exe", Pdf), ("No\r\nControl.pdf", Pdf)));
+
+        Assert.Equal(0, refused.ID);
+        List<string> logs = [.. _logs.Entries.Where(x => x.Contains("Atlas.AttachmentRefused", StringComparison.Ordinal))];
+        Assert.Equal(2, logs.Count);
+        Assert.All(logs, x => Assert.DoesNotContain('\n', x));
+        Assert.All(logs, x => Assert.DoesNotContain('\r', x));
+    }
+
+    [Fact]
     public async Task A_double_submit_with_one_RequestId_makes_one_record()
     {
         CPAtlasPage input = NewInput("700100");

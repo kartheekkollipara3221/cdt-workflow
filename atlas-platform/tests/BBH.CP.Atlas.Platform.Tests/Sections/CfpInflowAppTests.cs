@@ -566,6 +566,9 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
     [InlineData("NoSuchControl#$#a.pdf", "pdf", "NoSuchControl", "NotAllowed")]
     [InlineData("Description#$#a.pdf", "pdf", "Description", "NotAllowed")]
     [InlineData("no-separator.pdf", "pdf", "", "InvalidFile")]
+    [InlineData("FlowAttachments#$#a\r\nAtlas.Forged line.pdf", "pdf", "FlowAttachments", "FileName")]
+    [InlineData("FlowAttachments#$#a\0b.pdf", "pdf", "FlowAttachments", "FileName")]
+    [InlineData("FlowAttachments#$#tab\there.pdf", "pdf", "FlowAttachments", "FileName")]
     public async Task A_refused_file_stops_the_save_and_nothing_is_written(string part, string kind, string field, string code)
     {
         byte[] content = kind switch
