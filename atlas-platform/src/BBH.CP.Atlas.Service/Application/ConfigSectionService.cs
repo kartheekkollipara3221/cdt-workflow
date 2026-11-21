@@ -218,8 +218,26 @@ namespace BBH.CP.Atlas.Service.Application
             section.Version = record == null ? null : VersionOf(table, record);
             section.UserPermissions = Services.Access.UserPermissions(manifest, form, record);
             section.Computed = form.Computed;
+            section.Workflow = TargetKeysOnly(section.Workflow);
             return section;
         }
+
+        /// <summary>
+        /// Returns a copy of the workflow binding with the target keys only, for the load response.
+        /// </summary>
+        /// <remarks>
+        /// The platform client does not read the binding. The platform keys (the steps, the recipients, the template data)
+        /// are server data, so they are not sent. The target keys stay, because the target class needs them.
+        /// </remarks>
+        private static CPWorkflow? TargetKeysOnly(CPWorkflow? workflow) => workflow == null ? null : new CPWorkflow
+        {
+            Key = workflow.Key,
+            Roles = workflow.Roles,
+            Actions = workflow.Actions,
+            AssignRoles = workflow.AssignRoles,
+            Notifications = workflow.Notifications,
+            AdditionalInfo = workflow.AdditionalInfo
+        };
 
         /// <summary>
         /// Removes the value and the options of each field that a rule hides from the current user.

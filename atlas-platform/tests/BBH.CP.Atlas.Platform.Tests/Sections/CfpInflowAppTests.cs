@@ -513,6 +513,25 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Equal(5, await _db.ScalarAsync($"SELECT COUNT(*) FROM CFP.AuditLog WHERE ReferenceID = {saved.ID}"));
     }
 
+    [Fact]
+    public async Task The_load_response_has_only_the_target_keys_of_the_workflow_binding()
+    {
+        int id = await SubmittedRecordAsync();
+
+        CPApplicationSection loaded = Svc(Reader, CfpRoles.Read).LoadPage(new CPAtlasPage { AppCode = App, ID = id });
+        string json = System.Text.Json.JsonSerializer.Serialize(loaded);
+
+        CPWorkflow workflow = loaded.Workflow!;
+        Assert.Equal("ClientInflow", workflow.Key);
+        Assert.NotNull(workflow.Roles);
+        Assert.NotNull(workflow.Actions);
+        Assert.All(new object?[] { workflow.Steps, workflow.Recipients, workflow.TemplateData, workflow.StatusLabels, workflow.BusinessObjectPrefix,
+            workflow.ActorRoles, workflow.StateField, workflow.StatusField, workflow.InitialState }, Assert.Null);
+        Assert.DoesNotContain("relationshipManager", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("CFP-INFLOW-", json, StringComparison.Ordinal);
+        Assert.Equal("Submit", loaded.Buttons!.Single(x => x.Name == "Submit").Label); // the steps still give the button
+    }
+
     private const string FundsReceivedJson =
         "{ \"Name\": \"FundsReceived\", \"Field\": \"FundsReceived\", \"Label\": \"Funds have been received\", \"Type\": \"checkbox\", \"Validator\": { \"MustBeTrue\": true } },";
 
