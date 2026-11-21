@@ -34,6 +34,11 @@ The dated history entries below are unchanged, newest first: platform and target
   can show it when a rule hides it (same gap as CR-04 for visibility); options (a) start-up check refuses it, (b)
   rule engine records rule-hidden independent of the JSON; user decides.
   NEXT: build step 7 (after the user's "continue").
+  User requests after the fixes (9b054e9, not pushed): pbdev-loader over the form while a save runs; stored file =
+  red bold link with a hover/focus effect; trash icon class pbdev-icon-trash -> pbdev_icon-trash (the hyphen form is
+  not a pbdev-core class; local look maps it to Font Awesome); "Powered by CKEditor" label hidden by CSS (OWNER
+  DECISION, GPL key; I said the GPL terms may require the label). Local only, not committed: appsettings.Development.json
+  Notifications:Sender = NoOp (no local SMTP; each refused send took about 2 s per connection).
 - PUSHED 2026-11-19 (origin/console-code-first-0518 = a3d0b70, includes a6ed759..a3d0b70). Last target package: built
   from 8aa11e3 (B85, audit ReferenceID/ReferenceType + 045), commit c79593d, 93 files; previous 93446aa (B84). Local
   app runs with `npm run start:target-look` + API StandIn; user tested B85 locally on 2026-11-19: "code is working as
