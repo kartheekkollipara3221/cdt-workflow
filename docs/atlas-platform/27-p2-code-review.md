@@ -1,6 +1,8 @@
 # Module 27: review of the ClientInflows (P2) code
 
-Status: 2026-11-20. Independent review of the P2 build, commits `ca194af` to `f9b5bc5` (build steps 0 to 6). Review
+Status: 2026-11-20. The answers are in section 6.
+
+Independent review of the P2 build, commits `ca194af` to `f9b5bc5` (build steps 0 to 6). Review
 only. No code, no SQL and no design text is changed by this review. The user decides which findings change the code.
 
 ## 1. Method
@@ -476,3 +478,40 @@ These points were seen and are decided or out of scope:
 - The dispatcher stand-in in `Service/StandIn/Engine/`, and a later engine action that fails as log only (19.7).
 - The engine message of a refused action goes to the user as it is (design 10.3, step 5).
 - Missing API authentication. Engine code. `050`, `090` and R01 to R04.
+
+## 6. Answers
+
+Status: 2026-11-20. The developer checked each finding, made a test that fails for each defect, and then corrected
+it. All 14 findings are accepted. CR-10 and CR-11 are test gaps: the code was correct, so the new tests pass on it. A
+mutation check (a broken copy of the code) proves that they find a defect. CR-12 is comment text only. Each commit ran
+all platform gates. The target package is not rebuilt (build step 7 does it).
+
+| ID | Corrected | What was done, or why the proposal was changed | Commit |
+|---|---|---|---|
+| CR-01 | Yes | The save writes the record, the files and all audit entries, and saves them. Then it runs the first engine action. After the engine call it only updates two tracked rows: the state columns of the record and the status line in the audit entry of the save. A failed audit insert now stops the submit before the engine call. Test: a CHECK constraint on `CFP.AuditLog` (before: engine instances 3 to 4). | `32aed5a` |
+| CR-02 | Yes, as proposed | The rule outcome has the file pickers. `AtlasServerEffects.ApplyToControls` applies the six effects to them, in the same order and with the same rule priority as for the fields. The load and the download give the files of each file picker that a rule does not hide; a file picker that the JSON hides keeps its files, as a field keeps its value. Tests: the three failure cases. | `5d795dc` |
+| CR-03 | Yes, as proposed | The form keeps the `RequestId` until the server answers, and sends it again after an HTTP failure. For `IdempotencyConflict` it adds "Open the dashboard to see the saved record." Design 10.3 changed (approved in advance). A second submit that is sent again is refused before the engine (the state has no step); a real-engine test proves that no second E3 goes out. | `2b59914` |
+| CR-04 | Yes, with the second proposal | The first proposal (keep the full list for an `Enable` target) is not safe: for a control that the JSON disables, a rule changes nothing, so the field is never "disabled by rule". Thus the full list with its Data would go to each user, also a Read user, and the server `Enable` would open the field also for a user whom a rule makes read-only. The start-up check now refuses an `Enable` effect on a control that the JSON disables (itself or by its container). A `Disable` effect gives the same behaviour. | `4210b12` |
+| CR-05 | Yes, both proposals | One rule on both sides: a binding name is a column, or a control that has a column. The check refuses other names; the adapter reads the value (and the label) through the column of a named control. | `2c12f8a` |
+| CR-06 | Yes, as proposed | The hidden names of the History also have each file picker that a rule hides, so its file names show as `***`. The entry stays. | `4ca407e` |
+| CR-07 | Yes, as proposed | A `RequestId` that is not a GUID is the page error `RequestIdInvalid`, before each write. The engine keys use the GUID in the "D" format. | `2d149d5` |
+| CR-08 | Yes, extended | A file name with a control character, or a text direction character (U+202A to U+202E, U+2066 to U+2069), is the error `FileName`. The log entry of each refused file gets `?` for such a character. | `1b893c9` |
+| CR-09 | Yes, as proposed | The skipped names are kept and logged after the commit, with the record ID. When the save stops before the write, they are logged with the request ID (0 = no record). | `522d4d0` |
+| CR-10 | Yes (tests) | `EmailOfDisplayNameTests` (the cases of design 13.1, a blank email and a deleted user) and one real-engine test: a name gives the address in E2 and E3 To, the RMCC name in E3 Cc. Mutation check: 5 of 11 tests fail with a case-sensitive compare. | `1fd09c5` |
+| CR-11 | Yes (tests) | Script 150 runs a second time with no change of content and one log row. The spec does two saves and compares the two values. Four tests for the error paths: `StateDifference`, `NoRecipient`, `EngineError`, `AtlasCommitFailed`. | `3f32327` |
+| CR-12 | Yes | Comment 1 corrected with CR-01 (`32aed5a`). Comment 2: `PrepareEngine` runs after save step 10, before the write. Comment 3: a link with no scheme stays; new test cases pin this. | `26cf86e` |
+| CR-13 | Yes, as proposed | The load response has a copy of the binding with the target keys only. The platform keys are null in the response. Approved in advance. | `3da8f78` |
+| CR-14 | Yes, as proposed | New member `AtlasColumn.Cut`. The display name in `CreatedBy` and `ModifiedBy` (files and audit) is cut to the column length; the LAN ID columns stay exact. | `7c4140c` |
+
+### 6.1 Points for the user
+
+- New need from CR-01 (for build step 7, `INTEGRATION.md`): after the engine call the save updates the audit entry
+  of the save (the status line). Thus the API login needs UPDATE permission on the audit table of an app with a
+  workflow (`CFP.AuditLog`), not only INSERT. An app with no workflow does not update an audit row.
+- New observation from CR-04, not corrected (it is not in this review): the same gap is also there for the
+  visibility. A `Show` effect on a field that the JSON hides can show it also when a rule hides it, because a rule
+  changes nothing for a field that the JSON already hides. Such a field is then not "hidden by rule": its value is in
+  the load response and the History, and the server accepts its value. No form of today has a `Show` effect. Options:
+  (a) the start-up check refuses a `Show` effect on a control that the JSON hides (as CR-04), or (b) the rule engine
+  records what a rule hides independent of the JSON. The user decides.
+- CR-07 makes the GUID format of design 10.3 a server check. A caller that is not the platform client must send a GUID.

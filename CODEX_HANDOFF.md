@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-6 done; CODE REVIEW module 27 done and pushed (a15b7ad), fixes CR-01 to CR-14 are next (before step 7); see section A, "P2 code review")
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-6 done; CODE REVIEW module 27 FIXED: CR-01 to CR-14 corrected, 14 commits 32aed5a..3da8f78 + docs commit, NOT pushed; next = build step 7; see section A, "P2 code review")
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -16,10 +16,24 @@ The dated history entries below are unchanged, newest first: platform and target
   tests, 127 specs, --atlas-check 0/0). The reviewer's probe programs are NOT in the repository: each fix needs its
   own failing test first.
   PUSHED 2026-11-20: origin/console-code-first-0518 = a15b7ad (design, P2 build steps 0-6 and the review).
-  NEXT: a new session (the user plans Opus) corrects the findings: own judgment for each finding, one commit for each
-  fix, CR-01 first, CR-03 and CR-13 last (approved in advance by the user if the developer agrees), then a section
-  "6. Answers" in module 27. No fix is made yet. Build step 7 (INTEGRATION.md, package) comes after the fixes. The
-  target package is not rebuilt.
+  FIXES DONE 2026-11-20 (late; NOT pushed; target package NOT rebuilt): all 14 findings accepted and corrected, one
+  commit each, each with a test that failed first (CR-10/CR-11 = test gaps: mutation check instead) and all gates:
+  CR-01 32aed5a, CR-02 5d795dc, CR-04 4210b12, CR-05 2c12f8a, CR-06 4ca407e, CR-07 2d149d5, CR-08 1b893c9,
+  CR-09 522d4d0, CR-10 1fd09c5, CR-11 3f32327, CR-12 26cf86e, CR-14 7c4140c, CR-03 2b59914, CR-13 3da8f78; then one
+  docs commit (module 27 section 6 "Answers", CODE_TRACE CR-01 row, this file). Last gates: build 0 warnings,
+  476 .NET tests, --atlas-check 0/0, ng build 0 warnings, 129 specs, target-flags clean.
+  Changed behaviour: audit rows before the engine call, after it only UPDATEs (state columns + status line in the
+  audit entry); server effects on file pickers (+ files of a JSON-hidden picker on load/download); start-up error for
+  an Enable effect on a JSON-disabled control; binding names = column or control with a column; History masks file
+  names of a rule-hidden picker; RequestId must be a GUID (key in "D" format); file names with control/bidi chars
+  refused, log text sanitized; RecipientSkipped logged after the commit with the record ID; client keeps RequestId
+  after an HTTP failure; load response has only the target keys of Workflow; display name cut to the column length
+  (new AtlasColumn.Cut). Design 25 section 10.3 words changed (CR-03, approved), .html made again.
+  OPEN FOR THE USER (module 27 section 6.1): (1) step 7 INTEGRATION.md: the API login needs UPDATE on CFP.AuditLog
+  (status line update after the engine call); (2) new observation, not fixed: a Show effect on a JSON-hidden field
+  can show it when a rule hides it (same gap as CR-04 for visibility); options (a) start-up check refuses it, (b)
+  rule engine records rule-hidden independent of the JSON; user decides.
+  NEXT: build step 7 (after the user's "continue").
 - PUSHED 2026-11-19 (origin/console-code-first-0518 = a3d0b70, includes a6ed759..a3d0b70). Last target package: built
   from 8aa11e3 (B85, audit ReferenceID/ReferenceType + 045), commit c79593d, 93 files; previous 93446aa (B84). Local
   app runs with `npm run start:target-look` + API StandIn; user tested B85 locally on 2026-11-19: "code is working as
@@ -241,6 +255,8 @@ The dated history entries below are unchanged, newest first: platform and target
      (decision 1); INTEGRATION.md notes of 19.7 (own dispatcher at the target, run 150 in the engine DB, six list keys
      + HostedClientURL per environment, WorkflowState for records moved from SharePoint); smtp4dev scenarios 1-2 if
      the user installs smtp4dev.
+     From the module 27 fixes: INTEGRATION.md must say that the API login needs UPDATE (not only INSERT) on the
+     audit table of a workflow app (CFP.AuditLog), and that a non-platform caller must send a GUID as RequestId.
      The COPY list of atlas-platform/local/make-target-package.py has only the TTDV2 files and sql/release-p1/: add
      Config/CFPINFLOW.app.json, CFPINFLOW.json, CFPINFLOW.Dashboard.json and sql/release-p2/ (local/ is never packaged).
 
@@ -414,7 +430,8 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 
 ## Next-session prompt
 "Resume the P2 build (ClientInflows, CFPINFLOW) at step 7. Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
-(steps 0-6 are done and committed; item 'Step 7 NEXT' lists the work), then docs/atlas-platform/
+(steps 0-6 and the module 27 fixes CR-01..CR-14 are done and committed; item 'Step 7 NEXT' lists the work; read
+module 27 section 6.1 for the two open points), then docs/atlas-platform/
 25-client-inflows-p2-design.md sections 13, 15 and 19. Step 7: INTEGRATION.md, CODE_TRACE.md, Config/README.md,
 onboarding template update, target package rebuild (add the CFPINFLOW config files and sql/release-p2/ to the copy
 list). First ask me for the live target file of IWorkflowActionNotificationDispatcher. Run all platform gates, one
@@ -425,6 +442,17 @@ Inflow names in C# or TypeScript). Talk in short ASD-STE100 sentences, one quest
 ---
 
 # HISTORY (newest first; entries unchanged)
+
+---
+
+# DONE - 2026-11-20 (late). Module 27 code review fixes CR-01 to CR-14 (32aed5a..3da8f78 + docs commit), not pushed.
+
+- One commit for each finding, CR-01 first, CR-03 and CR-13 last. Answers: module 27 section 6. Package not rebuilt.
+- Changed files (platform): Service/Application/ConfigSectionService.cs, .Attachments.cs, .Workflow.cs;
+  Service/Platform/Audit/AtlasAuditWriter.cs; Rules/AtlasRuleEngine.cs; Sections/AtlasServerEffects.cs,
+  AtlasRichText.cs; Attachments/AtlasAttachmentRules.cs, AtlasAttachmentService.cs; Workflow/AtlasWorkflowInputs.cs;
+  Data/Platform/AtlasTable.cs; App/Platform/AtlasConfigLint.cs; WebUi form/atlas-form.component.ts; tests (new:
+  Security/EmailOfDisplayNameTests.cs, Data/ReleaseP2WorkflowScriptTests.cs); docs 25 (.md/.html), 27, CODE_TRACE.md.
 
 ---
 

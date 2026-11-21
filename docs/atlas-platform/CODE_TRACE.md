@@ -301,3 +301,4 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Data/Platform/AtlasTable.cs` | `Cut` | spec 25 §8.2 | review 27 CR-14 | The display name in CreatedBy and ModifiedBy is cut to the column length; the LAN ID column stays exact. |
 | `WebUi/src/app/platform/form/atlas-form.component.ts` | `save` | spec 25 §10.3 | review 27 CR-03 | Keeps the RequestId after an HTTP failure and sends it again; a new RequestId after a server answer. |
 | `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs` | `TargetKeysOnly` | spec 25 §10.2 | review 27 CR-13 | The load response keeps only the target keys of the workflow binding (Key, Roles, Actions and the other target keys). |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.cs` | `SaveWithAudit` | spec 25 §10.3 | review 27 CR-01 | Saves all inserts (record, files, audit entries) before the engine step; after it only tracked rows change. |
