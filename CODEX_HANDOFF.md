@@ -37,8 +37,15 @@ The dated history entries below are unchanged, newest first: platform and target
   User requests after the fixes (9b054e9, not pushed): pbdev-loader over the form while a save runs; stored file =
   red bold link with a hover/focus effect; trash icon class pbdev-icon-trash -> pbdev_icon-trash (the hyphen form is
   not a pbdev-core class; local look maps it to Font Awesome); "Powered by CKEditor" label hidden by CSS (OWNER
-  DECISION, GPL key; I said the GPL terms may require the label). Local only, not committed: appsettings.Development.json
-  Notifications:Sender = NoOp (no local SMTP; each refused send took about 2 s per connection).
+  DECISION, GPL key; I said the GPL terms may require the label).
+  END TO END TEST 2026-11-20 (night): smtp4dev 3.15.0 installed as a global dotnet tool (Rnwood.Smtp4dev). Start it:
+  PowerShell  & "$env:USERPROFILE\.dotnet\tools\smtp4dev.cmd" --urls=http://localhost:5000 --smtpport=25 --db= --imapport= --pop3port=
+  (inbox http://localhost:5000, in memory). appsettings.Development.json is back to Sender "Smtp" (committed value; no
+  local change). User ran the full flow (E1, E2, E3) with smtp4dev: "test looks good". This also covers the open item
+  "smtp4dev scenarios 1-2" of step 6/7. With no smtp4dev running, each submit waits about 2 s per failed connection;
+  then set Sender "NoOp" locally. Servers were stopped at the end of the session, except an old UI dev server
+  (node PID 16132, port 4200, started 16:54) that the tool could not stop: stop it by PID before npm run start:target-look.
+  NOT PUSHED: origin is at a15b7ad; local commits 32aed5a..HEAD (CR fixes, docs, UI requests, this note).
 - PUSHED 2026-11-19 (origin/console-code-first-0518 = a3d0b70, includes a6ed759..a3d0b70). Last target package: built
   from 8aa11e3 (B85, audit ReferenceID/ReferenceType + 045), commit c79593d, 93 files; previous 93446aa (B84). Local
   app runs with `npm run start:target-look` + API StandIn; user tested B85 locally on 2026-11-19: "code is working as
@@ -434,7 +441,7 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 - Commit/push only when asked. Commit trailer: Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> (or the trailer the session reminder gives).
 
 ## Next-session prompt
-"Resume the P2 build (ClientInflows, CFPINFLOW) at step 7. Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
+"Resume the P2 build (ClientInflows, CFPINFLOW) at step 7 (module 27 fixes, UI requests and the smtp4dev end to end test are done; nothing pushed). Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
 (steps 0-6 and the module 27 fixes CR-01..CR-14 are done and committed; item 'Step 7 NEXT' lists the work; read
 module 27 section 6.1 for the two open points), then docs/atlas-platform/
 25-client-inflows-p2-design.md sections 13, 15 and 19. Step 7: INTEGRATION.md, CODE_TRACE.md, Config/README.md,
