@@ -126,6 +126,25 @@ atlas-form {
   .p-8 {
     padding: 2rem;
   }
+
+  // The loader over the page while a save runs. It also stops a click on the form.
+  .atlas-saving {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(255 255 255 / 60%);
+    cursor: progress;
+  }
+}
+
+// The "Powered by CKEditor" label. The editor puts it in the page body, outside the form, so this rule is global.
+// The owner decided to hide it.
+.ck.ck-powered-by,
+.ck.ck-balloon-panel.ck-powered-by-balloon {
+  display: none !important;
 }
 
 // ---------- Dashboard (cp-atlas-dashboard.scss) ----------
@@ -279,6 +298,21 @@ atlas-dashboard {
 
     .btn-active {
       color: red;
+    }
+
+    // A stored file: a red link that gets darker and underlined when the pointer or the focus is on it.
+    .atlas-file-link {
+      color: variables.$status-red;
+      font-weight: bold;
+      text-decoration: underline transparent;
+      text-underline-offset: 3px;
+      transition: color 0.15s ease-in-out, text-decoration-color 0.15s ease-in-out;
+
+      &:hover,
+      &:focus-visible {
+        color: color-mix(in srgb, variables.$status-red 75%, black);
+        text-decoration-color: currentColor;
+      }
     }
 
     .atlas-file-note {

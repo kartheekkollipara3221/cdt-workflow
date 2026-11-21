@@ -189,6 +189,18 @@ describe('AtlasFormComponent (review NG-09)', () => {
     expect(ids[1]).not.toBe(ids[0]);
   });
 
+  it('shows the loader while a save runs and removes it when the server answers', () => {
+    const { fixture, http } = setup(section([text('Name')]));
+    expect(element(fixture, '#div_Saving')).toBeNull();
+
+    click(fixture, '#btn_Submit');
+    expect(element(fixture, '#div_Saving pbdev-loader') === null).toBe(false);
+
+    http.expectOne((r) => r.url === 'ManagePage').flush({ ID: 0, Errors: [{ Field: '', Code: 'Conflict', Message: 'Changed.' }] });
+    fixture.detectChanges();
+    expect(element(fixture, '#div_Saving')).toBeNull();
+  });
+
   it('sends the same RequestId again when the user tries again after an HTTP failure', () => {
     const { fixture, http } = setup(section([text('Name')]));
     const requestIdOf = (request: TestRequest) => String(JSON.parse(String((request.request.body as FormData).get('input'))).RequestId);
@@ -774,6 +786,16 @@ describe('AtlasFormComponent file picker', () => {
     expect(page.RemovedAttachmentIds).toEqual([7]);
     expect(page.Outputs.map((x) => x.Name)).toEqual(['Name']);
     request.flush({ ID: 5, Errors: [] });
+  });
+
+  it('shows a stored file as a link and the trash icon of pbdev-core on a stored and on a new file', () => {
+    const { fixture } = setup(section([picker()]));
+
+    pickFiles(fixture, [pdf('new.pdf')]);
+
+    expect(element(fixture, '#lnk_File_7')?.classList.contains('atlas-file-link')).toBe(true);
+    expect(element(fixture, '#btn_RemoveFile_7 i')?.className).toBe('pbdev_icon-trash');
+    expect(element(fixture, '.atlas-file-new button i')?.className).toBe('pbdev_icon-trash');
   });
 
   it('keeps the stored file when the user answers No', () => {

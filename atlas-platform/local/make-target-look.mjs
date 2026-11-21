@@ -204,7 +204,7 @@ const fonts = [
 ].join('\n');
 const iconFallback = {
   user: 'f007', help: 'f059', 'chevron-down': 'f078', calendar: 'f133', 'caret-right': 'f0da', close: 'f00d',
-  'info-outline': 'f05a', 'more-horizontal': 'f141',
+  'info-outline': 'f05a', 'more-horizontal': 'f141', trash: 'f1f8',
 };
 const icons = `\n// LOCAL ONLY: pbdev-icons font not supplied. Font Awesome glyphs for the pbdev icons in use.\n${Object.entries(iconFallback)
   .map(([n, c]) => `.pbdev_icon-${n}:before { content: '\\${c}'; font-family: 'Font Awesome 7 Free' !important; font-weight: 900; }`)

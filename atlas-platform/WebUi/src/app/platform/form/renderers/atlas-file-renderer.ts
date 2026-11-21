@@ -26,12 +26,12 @@ import { AtlasRendererBase } from './atlas-renderers';
     }
     @for (file of control.Files ?? []; track file.ID) {
       <div class="link-button-container" [attr.id]="'divA_' + file.ID">
-        <a href="" (click)="download(file, $event)">{{ file.Name }}</a>
+        <a href="" class="atlas-file-link" [attr.id]="'lnk_File_' + file.ID" (click)="download(file, $event)">{{ file.Name }}</a>
         @if (isRemoved(file)) {
           <span class="atlas-file-note">removed when you save</span>
         } @else if (!disabled && !file.Disabled) {
           <button type="button" class="btn-active" [attr.id]="'btn_RemoveFile_' + file.ID" [attr.aria-label]="'Remove ' + file.Name"
-            (click)="asking = file"><i class="pbdev-icon-trash"></i></button>
+            (click)="asking = file"><i class="pbdev_icon-trash" aria-hidden="true"></i></button>
         }
       </div>
     }
@@ -40,7 +40,7 @@ import { AtlasRendererBase } from './atlas-renderers';
         <span>{{ file.name }}</span>
         @if (!disabled) {
           <button type="button" class="btn-active" [attr.aria-label]="'Remove ' + file.name" (click)="removeNew($index)">
-            <i class="pbdev-icon-trash"></i>
+            <i class="pbdev_icon-trash" aria-hidden="true"></i>
           </button>
         }
       </div>

@@ -93,4 +93,11 @@
     <button type="button" class="modal-confirm-yes-btn" id="btn_ConfirmDelete" (click)="remove()">Yes</button>
   </div>
 </pbdev-dialog>
+
+@if (saving()) {
+<!-- The loader covers the form while a save runs, so the user sees the wait and cannot change the values. -->
+<div class="atlas-saving" id="div_Saving" role="status" aria-live="polite" aria-label="Saving">
+  <pbdev-loader />
+</div>
+}
 }
