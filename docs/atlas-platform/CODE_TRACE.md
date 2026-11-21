@@ -291,3 +291,4 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs` | `CheckForm` | spec 25 §7.3 | — | A SetFromOption target can be a non-system column of the main table. |
 | `src/BBH.CP.Atlas.Service/Platform/Sections/AtlasServerEffects.cs` | `ApplyToControls` | spec 25 §8 | review 27 CR-02 | Applies Show, Hide, Require, Unrequire, Enable and Disable to the file pickers on the server. |
 | `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.Attachments.cs` | `LoadAttachments` | spec 25 §8 | review 27 CR-02 | A file picker that the JSON hides keeps its files; only a rule removes them (load and download). |
+| `src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs` | `EnableTargets` | spec 25 §7.1 | review 27 CR-04 | Refuses an Enable effect on a control that the JSON disables, so a rule keeps its priority. |

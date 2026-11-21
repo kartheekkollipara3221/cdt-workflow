@@ -627,6 +627,27 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         File.WriteAllText(form, text.Replace(oldText, newText, StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("\"Name\": \"AccountNumber\",", "\"Name\": \"AccountNumber\", \"Disabled\": true,", "AccountNumber")]
+    [InlineData("\"Name\": \"AccountName\", \"Field\": \"AccountName\",", "\"Name\": \"AccountName\", \"Field\": \"AccountName\",", "AccountName")]
+    public async Task An_Enable_effect_on_a_control_that_the_JSON_disables_is_an_error(string oldText, string newText, string target)
+    {
+        CopyRealConfig();
+        string file = Path.Combine(_folder, "CFPINFLOW.json");
+        string text = File.ReadAllText(file);
+        Assert.Contains(oldText, text, StringComparison.Ordinal);
+        const string investmentType = "\"PlaceHolder\": \"Investment Type\",";
+        Assert.Contains(investmentType, text, StringComparison.Ordinal);
+        text = text.Replace(oldText, newText, StringComparison.Ordinal).Replace(investmentType,
+            investmentType + $" \"Effects\": [ {{ \"When\": {{ \"HasValue\": true }}, \"Enable\": [ \"{target}\" ] }} ],", StringComparison.Ordinal);
+        File.WriteAllText(file, text);
+
+        (int code, string report) = await CheckAsync(_folder);
+
+        Assert.Equal(1, code);
+        Assert.Contains($"ERROR CFPINFLOW: an effect of 'InvestmentType' enables '{target}', which the JSON disables.", report, StringComparison.Ordinal);
+    }
+
     private void CopyRealConfig()
     {
         Directory.CreateDirectory(_folder);

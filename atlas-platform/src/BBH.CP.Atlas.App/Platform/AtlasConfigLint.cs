@@ -65,6 +65,7 @@ public static partial class AtlasConfigLint
         List<CPApplicationControl> controls = [.. (form.Section?.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []))];
         HashSet<string> names = DuplicateNames(controls, error);
         EffectTargets(controls, names, table, error);
+        EnableTargets(form, error);
         EffectCycles(controls, error);
         RuleTargets(form, controls, names, error);
         Defaults(form, names, error);
@@ -214,6 +215,31 @@ public static partial class AtlasConfigLint
         foreach (string name in list ?? [])
             if (!names.Contains(name))
                 error($"{where} names '{name}', which is not a control or field of the form.");
+    }
+
+    /// <summary>
+    /// Reports an Enable effect on a control that the JSON disables, itself or by its container.
+    /// </summary>
+    /// <remarks>
+    /// A rule cannot keep such a control read-only, because the rule changes nothing that the JSON did not already
+    /// disable. The load also sends only the saved option of such a dropdown. A Disable effect gives the same
+    /// behaviour with no such gap.
+    /// </remarks>
+    private static void EnableTargets(CPAtlasApplicationConfig form, Action<string> error)
+    {
+        Dictionary<string, bool> disabled = new(StringComparer.OrdinalIgnoreCase);
+        foreach (CPApplicationControl control in form.Section?.Controls ?? [])
+        {
+            disabled.TryAdd(control.Name, control.Disabled);
+            foreach (CPApplicationControl child in control.ChildControls ?? [])
+                disabled.TryAdd(child.Name, control.Disabled || child.Disabled);
+        }
+
+        foreach (CPApplicationControl control in (form.Section?.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? [])))
+            foreach (string target in (control.Effects ?? []).SelectMany(x => x.Enable ?? []).Distinct(StringComparer.OrdinalIgnoreCase))
+                if (disabled.GetValueOrDefault(target))
+                    error($"an effect of '{control.Name}' enables '{target}', which the JSON disables. A rule cannot then keep it "
+                        + "read-only. Leave Disabled out of the JSON and use a Disable effect.");
     }
 
     /// <summary>Checks the targets of the effects, the HeaderFromDate controls and the Pattern of each control.</summary>
