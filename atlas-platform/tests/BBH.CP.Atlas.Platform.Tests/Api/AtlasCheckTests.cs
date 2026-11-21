@@ -80,6 +80,12 @@ public sealed class AtlasCheckTests(SqlServerDatabaseFixture database) : IDispos
         "the Workflow recipient 'investmentLists': the Map value 'Bonds' is not an option of 'InvestmentType'.")]
     [InlineData("\"amount\": { \"Field\": \"Amount\",", "\"amount\": { \"Field\": \"Amt\",",
         "the Workflow template value 'amount' names the field 'Amt', which is not a field of the form or a column of the table.")]
+    [InlineData("\"accountName\": { \"Field\": \"AccountName\" }", "\"accountName\": { \"Field\": \"FlowAttachments\" }",
+        "the Workflow template value 'accountName' names the field 'FlowAttachments', which is not a field of the form or a column of the table.")]
+    [InlineData("{ \"FromNameField\": \"RelationshipManager\",", "{ \"FromNameField\": \"CashAttachments\",",
+        "the Workflow recipient 'relationshipManager' names the field 'CashAttachments', which is not a field of the form or a column of the table.")]
+    [InlineData("\"ListByField\": \"InvestmentType\",", "\"ListByField\": \"InflowDetails\",",
+        "the Workflow recipient 'investmentLists' names the field 'InflowDetails', which is not a field of the form or a column of the table.")]
     [InlineData("\"imrg\": { \"List\": \"Imrg\" },", "\"imrg\": { \"List\": \"NoSuchList\" },",
         "the Workflow list 'NoSuchList' has no address: set AppSettings:Modules:CFPINFLOW:Workflow:Lists:NoSuchList.")]
     [InlineData("\"InitialState\": \"Draft\",", "\"InitialState\": \"New\",", "the Workflow InitialState 'New' is not a key of StatusLabels.")]

@@ -432,6 +432,20 @@ public sealed class CfpInflowAppTests : IAsyncLifetime, IDisposable
         Assert.Empty(Control(loaded, "CashAttachments").Files!); // part 2 is hidden in Draft
     }
 
+    [Fact]
+    public void A_template_value_can_name_a_control_whose_column_has_another_name()
+    {
+        using ConfigCopy config = new ConfigCopy()
+            .Replace("CFPINFLOW.json", "{ \"Name\": \"Custodian\", \"Field\": \"Custodian\",", "{ \"Name\": \"CustodianName\", \"Field\": \"Custodian\",")
+            .Replace("CFPINFLOW.json", "\"TemplateData\": {", "\"TemplateData\": {\n        \"custodian\": { \"Field\": \"CustodianName\" },");
+        using SectionHarness harness = new(_db, AtlasAccessMode.Enforce, config.Folder);
+        FakeWorkflowAdapter engine = (FakeWorkflowAdapter)harness.Workflow!;
+
+        AssertSaved(harness.ServiceFor(App, _registry, Writer, CfpRoles.Write).SavePage(NewInput(), FlowFile()));
+
+        Assert.All(engine.Calls, call => Assert.Equal("Custodian One", call.NotificationInput.TemplateData!["custodian"]));
+    }
+
     private const string FundsReceivedJson =
         "{ \"Name\": \"FundsReceived\", \"Field\": \"FundsReceived\", \"Label\": \"Funds have been received\", \"Type\": \"checkbox\", \"Validator\": { \"MustBeTrue\": true } },";
 

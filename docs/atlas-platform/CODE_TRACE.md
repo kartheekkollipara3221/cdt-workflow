@@ -292,3 +292,5 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Service/Platform/Sections/AtlasServerEffects.cs` | `ApplyToControls` | spec 25 §8 | review 27 CR-02 | Applies Show, Hide, Require, Unrequire, Enable and Disable to the file pickers on the server. |
 | `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.Attachments.cs` | `LoadAttachments` | spec 25 §8 | review 27 CR-02 | A file picker that the JSON hides keeps its files; only a rule removes them (load and download). |
 | `src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs` | `EnableTargets` | spec 25 §7.1 | review 27 CR-04 | Refuses an Enable effect on a control that the JSON disables, so a rule keeps its priority. |
+| `src/BBH.CP.Atlas.App/Platform/AtlasConfigLint.cs` | `EngineBinding` | spec 25 §10.2 | review 27 CR-05 | A binding field must be a column, or a control with a column; the adapter reads only such a value. |
+| `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.Workflow.cs` | `FieldValue` | spec 25 §10.6, §10.7 | review 27 CR-05 | Reads a binding value by column name, or through the column of the named control. |

@@ -121,7 +121,12 @@ public static partial class AtlasConfigLint
     /// </summary>
     private static void EngineBinding(CPAtlasApplicationConfig form, CPWorkflow workflow, HashSet<string> names, AtlasTable? table, Action<string> error)
     {
-        bool Known(string? name) => name != null && (names.Contains(name) || table?.HasColumn(name) == true);
+        // The adapter reads a value from a column: the named column, or the column of the named control.
+        List<CPApplicationControl> fieldControls = [.. (form.Section?.Controls ?? []).SelectMany(x => new[] { x }.Concat(x.ChildControls ?? []))];
+        bool Known(string? name) => name != null && (table == null
+            ? names.Contains(name)
+            : table.HasColumn(name) || fieldControls.Any(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(x.Field) && table.HasColumn(x.Field)));
 
         if (string.IsNullOrWhiteSpace(workflow.BusinessObjectPrefix))
             error("the Workflow has Steps but no BusinessObjectPrefix.");
@@ -165,7 +170,8 @@ public static partial class AtlasConfigLint
                     error($"{where} names the field '{source.ListByField}', which is not a field of the form or a column of the table.");
                 if (source.Map is not { Count: > 0 })
                     error($"{where} has ListByField but no Map.");
-                CPApplicationControl? control = controls.FirstOrDefault(x => string.Equals(x.Field ?? x.Name, source.ListByField, StringComparison.OrdinalIgnoreCase));
+                CPApplicationControl? control = controls.FirstOrDefault(x => string.Equals(x.Name, source.ListByField, StringComparison.OrdinalIgnoreCase))
+                    ?? controls.FirstOrDefault(x => string.Equals(x.Field, source.ListByField, StringComparison.OrdinalIgnoreCase));
                 if (control?.Options is { Count: > 0 } options)
                     foreach (string value in (IEnumerable<string>?)source.Map?.Keys ?? [])
                         if (!options.Any(x => string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase)))

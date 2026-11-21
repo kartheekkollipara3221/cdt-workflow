@@ -247,11 +247,15 @@ namespace BBH.CP.Atlas.Service.Application
                 record[statusColumn.Name] = label;
         }
 
+        /// <summary>Returns the record value of a binding name: a column, or a control with a column.</summary>
         private static object? FieldValue(SaveState state, string field) =>
-            state.Table.Find(field) is { } column ? state.Record.GetValueOrDefault(column.Name) : null;
+            ColumnOf(state, field) is { } column ? state.Record.GetValueOrDefault(column.Name) : null;
 
         private static string FieldLabel(SaveState state, string field) =>
-            state.Fields.All.FirstOrDefault(x => string.Equals(x.Field, field, StringComparison.OrdinalIgnoreCase))?.Label ?? field;
+            (state.Fields.Find(field) ?? (ColumnOf(state, field) is { } column ? state.Fields.Find(column.Name) : null))?.Label ?? field;
+
+        private static AtlasColumn? ColumnOf(SaveState state, string name) =>
+            state.Table.Find(name) ?? (state.Fields.Find(name) is { } field ? state.Table.Find(field.Field) : null);
 
         private static string ActionKeyOf(CPWorkflowEngineAction action) => action.Start ?? action.Execute ?? "";
 
