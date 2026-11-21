@@ -24,6 +24,9 @@ namespace BBH.CP.Atlas.Service.Application
             public Dictionary<string, IReadOnlyList<WorkflowRecipientInput>> Recipients { get; set; } = [];
             public List<AtlasWorkflowResult> Results { get; } = [];
 
+            /// <summary>The names that matched no single user. They are logged when the record ID is known.</summary>
+            public List<AtlasSkippedRecipient> Skipped { get; } = [];
+
             /// <summary>The state that the first action gave, or null before it.</summary>
             public string? NewState { get; set; }
         }
@@ -60,8 +63,19 @@ namespace BBH.CP.Atlas.Service.Application
             };
             state.Engine = engine;
             engine.Recipients = WorkflowInputs.Recipients(state.Manifest.Code, binding, actions.SelectMany(x => x.Recipients ?? []),
-                field => FieldValue(state, field), state.Input.ID, state.Errors);
+                field => FieldValue(state, field), state.Input.ID, state.Errors, engine.Skipped);
             WorkflowInputs.TemplateData(state.Manifest.Code, binding, field => FieldValue(state, field), field => FieldLabel(state, field), 0, state.Errors);
+            if (state.Errors.Count > 0)
+                LogSkippedRecipients(state, state.Input.ID); // the save stops; 0 = no record
+        }
+
+        /// <summary>Logs the recipient names that matched no single user, with the record ID, one time for each save.</summary>
+        private void LogSkippedRecipients(SaveState state, int recordId)
+        {
+            if (state.Engine is not { Skipped.Count: > 0 } engine)
+                return;
+            WorkflowInputs.LogSkipped(state.Manifest.Code, recordId, engine.Skipped);
+            engine.Skipped.Clear();
         }
 
         /// <summary>
@@ -114,6 +128,7 @@ namespace BBH.CP.Atlas.Service.Application
         /// </remarks>
         private void RunLaterEngineActions(SaveState state, int recordId)
         {
+            LogSkippedRecipients(state, recordId);
             if (state.Engine is not { Results.Count: > 0 } engine)
                 return;
 

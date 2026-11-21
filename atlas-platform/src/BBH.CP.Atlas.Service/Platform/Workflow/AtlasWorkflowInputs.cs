@@ -7,6 +7,9 @@ using WorkflowEngine.Application.Contracts;
 
 namespace BBH.CP.Atlas.Service.Platform.Workflow;
 
+/// <summary>A name of a recipient field that matched no single user with an email. The email goes to the others.</summary>
+public sealed record AtlasSkippedRecipient(string Key, string Name, string Reason);
+
 /// <summary>
 /// Makes the email inputs of an engine action from the binding and the values of the record: the recipients and the
 /// template data.
@@ -35,8 +38,11 @@ public sealed class AtlasWorkflowInputs(IConfiguration configuration, IAtlasUser
     /// </summary>
     /// <param name="value">Returns the value of a field (column) of the record.</param>
     /// <param name="recordId">The record ID for the log, or 0 for a new record.</param>
+    /// <param name="skipped">Null: each name with no match is logged now. Else the names are added to this list, and the
+    /// caller logs them when the record ID is known (see <see cref="LogSkipped"/>).</param>
     public Dictionary<string, IReadOnlyList<WorkflowRecipientInput>> Recipients(
-        string appCode, CPWorkflow binding, IEnumerable<string> keys, Func<string, object?> value, int recordId, List<CPPageError> errors)
+        string appCode, CPWorkflow binding, IEnumerable<string> keys, Func<string, object?> value, int recordId, List<CPPageError> errors,
+        List<AtlasSkippedRecipient>? skipped = null)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(value);
@@ -57,6 +63,8 @@ public sealed class AtlasWorkflowInputs(IConfiguration configuration, IAtlasUser
                     AtlasNameMatch match = directory.EmailOfDisplayName(name);
                     if (match.Email is { Length: > 0 } email)
                         list.Add(new WorkflowRecipientInput(null, email, name));
+                    else if (skipped != null)
+                        skipped.Add(new AtlasSkippedRecipient(key, name, match.Problem ?? "no match"));
                     else
                         AtlasLog.RecipientSkipped(logger, appCode, recordId, key, name, match.Problem ?? "no match");
                 }
@@ -73,6 +81,15 @@ public sealed class AtlasWorkflowInputs(IConfiguration configuration, IAtlasUser
         }
 
         return inputs;
+    }
+
+    /// <summary>Writes the warning log Atlas.RecipientSkipped for each name that <see cref="Recipients"/> left out.</summary>
+    /// <param name="recordId">The record ID, or 0 when the save made no record.</param>
+    public void LogSkipped(string appCode, int recordId, IEnumerable<AtlasSkippedRecipient> skipped)
+    {
+        ArgumentNullException.ThrowIfNull(skipped);
+        foreach (AtlasSkippedRecipient item in skipped)
+            AtlasLog.RecipientSkipped(logger, appCode, recordId, item.Key, item.Name, item.Reason);
     }
 
     /// <summary>

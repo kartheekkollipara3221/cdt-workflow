@@ -178,6 +178,17 @@ public sealed class CfpInflowWorkflowTests(SqlServerDatabaseFixture database) : 
     }
 
     [Fact]
+    public void The_RecipientSkipped_log_of_a_first_submit_has_the_new_record_ID()
+    {
+        CPAtlasPage first = Svc().SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+
+        AssertSaved(first);
+        List<string> skipped = [.. _logs.Entries.Where(x => x.Contains("Atlas.RecipientSkipped", StringComparison.Ordinal))];
+        Assert.NotEmpty(skipped);
+        Assert.All(skipped, x => Assert.Contains($"RecordId={first.ID} ", x, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void The_log_of_a_refused_file_has_no_line_break_from_the_file_name()
     {
         CPAtlasPage refused = Svc().SavePage(NewInput("700100"), Files(
