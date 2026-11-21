@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-6 done; CODE REVIEW module 27 FIXED: CR-01 to CR-14 corrected, 14 commits 32aed5a..3da8f78 + docs commit, NOT pushed; next = build step 7; see section A, "P2 code review")
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-6 done; CODE REVIEW module 27 FIXED: CR-01 to CR-14 corrected, 14 commits 32aed5a..3da8f78 + docs commit, PUSHED (e5a7dd6); next = build step 7; see section A, "P2 code review")
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -45,7 +45,7 @@ The dated history entries below are unchanged, newest first: platform and target
   "smtp4dev scenarios 1-2" of step 6/7. With no smtp4dev running, each submit waits about 2 s per failed connection;
   then set Sender "NoOp" locally. Servers were stopped at the end of the session, except an old UI dev server
   (node PID 16132, port 4200, started 16:54) that the tool could not stop: stop it by PID before npm run start:target-look.
-  NOT PUSHED: origin is at a15b7ad; local commits 32aed5a..HEAD (CR fixes, docs, UI requests, this note).
+  PUSHED 2026-11-20 (user asked): origin/console-code-first-0518 = e5a7dd6 + this note (CR fixes, docs, UI requests).
 - PUSHED 2026-11-19 (origin/console-code-first-0518 = a3d0b70, includes a6ed759..a3d0b70). Last target package: built
   from 8aa11e3 (B85, audit ReferenceID/ReferenceType + 045), commit c79593d, 93 files; previous 93446aa (B84). Local
   app runs with `npm run start:target-look` + API StandIn; user tested B85 locally on 2026-11-19: "code is working as
@@ -441,7 +441,7 @@ fixes, Q44 C01-C25 evidence, Q45 archive/retention, Q51 engine adapter timing.
 - Commit/push only when asked. Commit trailer: Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> (or the trailer the session reminder gives).
 
 ## Next-session prompt
-"Resume the P2 build (ClientInflows, CFPINFLOW) at step 7 (module 27 fixes, UI requests and the smtp4dev end to end test are done; nothing pushed). Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
+"Resume the P2 build (ClientInflows, CFPINFLOW) at step 7 (module 27 fixes, UI requests and the smtp4dev end to end test are done and pushed). Read AGENTS.md, then CODEX_HANDOFF.md section A, Next item 0
 (steps 0-6 and the module 27 fixes CR-01..CR-14 are done and committed; item 'Step 7 NEXT' lists the work; read
 module 27 section 6.1 for the two open points), then docs/atlas-platform/
 25-client-inflows-p2-design.md sections 13, 15 and 19. Step 7: INTEGRATION.md, CODE_TRACE.md, Config/README.md,
