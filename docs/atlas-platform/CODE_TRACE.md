@@ -299,3 +299,4 @@ code does and why. They do not hold these references (rules: `AGENTS.md`, sectio
 | `src/BBH.CP.Atlas.Service/Platform/Attachments/AtlasAttachmentRules.cs` | `HasBadCharacter` | spec 08 | review 27 CR-08 | A file name with a control or text direction character is refused; the log gets ? for such a character. |
 | `src/BBH.CP.Atlas.Service/Application/ConfigSectionService.Workflow.cs` | `LogSkippedRecipients` | spec 25 §10.6 | review 27 CR-09 | Logs Atlas.RecipientSkipped after the commit, with the ID of the new record. |
 | `src/BBH.CP.Atlas.Data/Platform/AtlasTable.cs` | `Cut` | spec 25 §8.2 | review 27 CR-14 | The display name in CreatedBy and ModifiedBy is cut to the column length; the LAN ID column stays exact. |
+| `WebUi/src/app/platform/form/atlas-form.component.ts` | `save` | spec 25 §10.3 | review 27 CR-03 | Keeps the RequestId after an HTTP failure and sends it again; a new RequestId after a server answer. |

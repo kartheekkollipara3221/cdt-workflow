@@ -647,9 +647,14 @@ Failures after the commit do not undo the save:
 
 Double submit (DR-16):
 
-- Request field `RequestId`: a GUID that the client makes for each user action. It is optional in the `v1/ManagePage`
-  contract, but a submit of a form with steps needs it (step 1). With no `RequestId`, the protection is lost, so the
-  server does not make one itself.
+- Request field `RequestId`: a GUID that the client makes for each submit. The client keeps the `RequestId` until the
+  server gives an answer. When the user tries again after an HTTP failure (no answer, or a time-out), the client sends
+  the same `RequestId` again, because the server can have saved the first request. After an answer, the next submit
+  gets a new `RequestId`. It is optional in the `v1/ManagePage` contract, but a submit of a form with steps needs it
+  (step 1), and it must be a GUID. With no `RequestId`, the protection is lost, so the server does not make one itself.
+- A first submit that is sent again gets the page error "This request was already processed." The client adds
+  "Open the dashboard to see the saved record." A second submit that is sent again is refused before the engine,
+  because the record is no longer in the state of the step. In both cases no second email goes out.
 - The idempotency key of engine action n is `RequestId` + `:` + n.
 - The engine key is global and the engine compares the request hash. A second request with the same `RequestId` for
   a new record gets a second record ID, so the engine refuses it and the second record is rolled back. The adapter

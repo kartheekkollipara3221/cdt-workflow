@@ -4,7 +4,7 @@
 // app.config.ts; it needs zone.js (loaded by Karma at the target; not installed locally, so it returns early there).
 import { provideToastr } from 'ngx-toastr';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZoneChangeDetection } from '@angular/core';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
@@ -187,6 +187,38 @@ describe('AtlasFormComponent (review NG-09)', () => {
     expect(ids[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(ids[1]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(ids[1]).not.toBe(ids[0]);
+  });
+
+  it('sends the same RequestId again when the user tries again after an HTTP failure', () => {
+    const { fixture, http } = setup(section([text('Name')]));
+    const requestIdOf = (request: TestRequest) => String(JSON.parse(String((request.request.body as FormData).get('input'))).RequestId);
+
+    click(fixture, '#btn_Submit');
+    const lost = http.expectOne((r) => r.url === 'ManagePage');
+    const first = requestIdOf(lost);
+    lost.flush(null, { status: 504, statusText: 'Gateway Timeout' }); // the server can have saved the record
+    fixture.detectChanges();
+    click(fixture, '#btn_Submit');
+    const again = http.expectOne((r) => r.url === 'ManagePage');
+
+    expect(requestIdOf(again)).toBe(first);
+    again.flush({ ID: 5, Errors: [] });
+  });
+
+  it('tells the user to open the dashboard when the server already processed the request', () => {
+    const { fixture, http, navigated } = setup(section([text('Name')]));
+
+    click(fixture, '#btn_Submit');
+    http.expectOne((r) => r.url === 'ManagePage').flush({
+      ID: 0,
+      Errors: [{ Field: '', Code: 'IdempotencyConflict', Message: 'This request was already processed.' }],
+    });
+    fixture.detectChanges();
+
+    const alert = element(fixture, '[role=alert]')?.textContent ?? '';
+    expect(alert.includes('This request was already processed.')).toBe(true);
+    expect(alert.includes('Open the dashboard')).toBe(true);
+    expect(navigated).toEqual([]);
   });
 
   it('saves when a required field is hidden, and does not send the hidden field', () => {

@@ -324,6 +324,23 @@ public sealed class CfpInflowWorkflowTests(SqlServerDatabaseFixture database) : 
     }
 
     [Fact]
+    public async Task A_second_submit_sent_again_with_its_RequestId_changes_nothing_and_sends_no_second_email()
+    {
+        CPAtlasPage first = Svc().SavePage(NewInput("700100"), Files(("FlowAttachments#$#a.pdf", Pdf)));
+        AssertSaved(first);
+        CPApplicationSection loaded = Svc().LoadPage(new CPAtlasPage { AppCode = App, ID = first.ID });
+        CPAtlasPage second = EditInput(first.ID, loaded.Version, ("FundsReceived", "true"), ("CashConfirm", "true"));
+        AssertSaved(Svc().SavePage(second, Files(("CashAttachments#$#receipt.pdf", Pdf))));
+
+        CPAtlasPage again = Svc().SavePage(second, Files(("CashAttachments#$#receipt.pdf", Pdf))); // the answer was lost
+
+        Assert.Equal(0, again.ID);
+        Assert.NotEmpty(again.Errors!);
+        Assert.Equal(1, await Scalar($"SELECT COUNT(*) FROM dbo.NotificationOutbox WHERE WorkflowInstanceId = 'WF-CFP-INFLOW-{first.ID}' AND NotificationType = 'ClientInflow.FundsReceived'"));
+        Assert.Equal(1, await Scalar($"SELECT COUNT(*) FROM CFP.InflowAttachment WHERE InflowId = {first.ID} AND [Type] = 'CashAttachments'"));
+    }
+
+    [Fact]
     public async Task A_double_submit_with_one_RequestId_makes_one_record()
     {
         CPAtlasPage input = NewInput("700100");

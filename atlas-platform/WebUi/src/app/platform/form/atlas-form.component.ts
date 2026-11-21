@@ -54,6 +54,13 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   readonly loadError = signal<string | null>(null);
   readonly pageErrors = signal<CPPageError[]>([]);
   readonly section = signal<CPApplicationSection | null>(null);
+  /**
+   * The RequestId of a save that got no answer from the server, or null.
+   *
+   * After an HTTP failure the server can have saved the record. The next save sends the same RequestId, so the
+   * server does not save the record a second time.
+   */
+  private pendingRequestId: string | null = null;
   readonly visible = signal<Record<string, boolean>>({});
   readonly required = signal<Record<string, boolean>>({});
   readonly historyOpen = signal(false);
@@ -362,6 +369,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
     const removed = removedFileIds(section, this.form, shown);
 
     this.saving.set(true);
+    const requestId = (this.pendingRequestId ??= newRequestId());
     this.api
       .save(
         {
@@ -369,7 +377,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
           ID: this.id(),
           Version: section.Version ?? null,
           Outputs: buildOutputs(section, this.form, shown),
-          RequestId: newRequestId(),
+          RequestId: requestId,
           ...(removed.length ? { RemovedAttachmentIds: removed } : {}),
         },
         files,
@@ -378,6 +386,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
       .subscribe({
         next: (result) => {
           this.saving.set(false);
+          this.pendingRequestId = null; // the server answered: the next save is a new user action
           if (result.Errors?.length) {
             this.showErrors(result.Errors);
             return;
@@ -386,7 +395,7 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
           this.router.navigate(this.dashboardLink(this.code()));
         },
         error: (error) => {
-          this.saving.set(false);
+          this.saving.set(false); // the RequestId stays for the next try
           this.httpFail(error);
         },
       });
@@ -425,6 +434,9 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
       if (control && control.enabled) {
         control.setErrors({ ...(control.errors ?? {}), server: error.Message });
         control.markAsTouched();
+      } else if (error.Code === ALREADY_PROCESSED) {
+        // A save before this one got no answer, but the server saved it.
+        page.push({ ...error, Message: `${error.Message} Open the dashboard to see the saved record.` });
       } else {
         page.push(error);
       }
@@ -433,8 +445,11 @@ export class AtlasFormComponent implements OnInit, AtlasEffectTarget {
   }
 }
 
+/** The error code of a save whose RequestId the server already processed. */
+const ALREADY_PROCESSED = 'IdempotencyConflict';
+
 /**
- * Returns a new request ID (a version 4 GUID) for one user action.
+ * Returns a new request ID (a version 4 GUID) for one submit. A try again after an HTTP failure uses the same ID.
  *
  * crypto.randomUUID works only on a secure page (https or localhost). getRandomValues works on each page.
  */
