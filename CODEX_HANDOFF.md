@@ -1,4 +1,4 @@
-# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-6 done and committed, step 7 next after the user's "continue"; full hand-off in section A, Next 0)
+# CP Atlas hand-off - read this first (updated 2026-11-20, P2 BUILD: steps 0-6 done; CODE REVIEW module 27 done and pushed (a15b7ad), fixes CR-01 to CR-14 are next (before step 7); see section A, "P2 code review")
 
 CP Atlas is ONE product with two components in this repo: the Atlas platform (atlas-platform/) and the workflow engine
 (src/, workflow-api/). PROJECT.md section 0 and the AGENTS.md section "Atlas platform" describe the split (added
@@ -9,6 +9,17 @@ The dated history entries below are unchanged, newest first: platform and target
 ## A. Atlas platform (atlas-platform/) - ACTIVE
 
 ### State (2026-11-19; P2 build state is in Next item 0, 2026-11-20)
+- P2 code review (2026-11-20, late): independent review of the P2 build (ca194af..f9b5bc5) is in
+  docs/atlas-platform/27-p2-code-review.md, commit a15b7ad. 14 findings: CR-01 High (audit rows are written after
+  the engine commit), CR-02 to CR-04 Medium (effects on a file picker are client only; a new RequestId at each click;
+  a dropdown that an effect enables gets no options), CR-05 to CR-14 Low. All gates passed on f9b5bc5 (435 .NET
+  tests, 127 specs, --atlas-check 0/0). The reviewer's probe programs are NOT in the repository: each fix needs its
+  own failing test first.
+  PUSHED 2026-11-20: origin/console-code-first-0518 = a15b7ad (design, P2 build steps 0-6 and the review).
+  NEXT: a new session (the user plans Opus) corrects the findings: own judgment for each finding, one commit for each
+  fix, CR-01 first, CR-03 and CR-13 last (approved in advance by the user if the developer agrees), then a section
+  "6. Answers" in module 27. No fix is made yet. Build step 7 (INTEGRATION.md, package) comes after the fixes. The
+  target package is not rebuilt.
 - PUSHED 2026-11-19 (origin/console-code-first-0518 = a3d0b70, includes a6ed759..a3d0b70). Last target package: built
   from 8aa11e3 (B85, audit ReferenceID/ReferenceType + 045), commit c79593d, 93 files; previous 93446aa (B84). Local
   app runs with `npm run start:target-look` + API StandIn; user tested B85 locally on 2026-11-19: "code is working as
